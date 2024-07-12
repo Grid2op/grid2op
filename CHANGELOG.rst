@@ -137,6 +137,10 @@ Native multi agents support:
 - [IMPROVED] error message when forecasts are not correctly set-up
 
 
+[1.10.4] - 2024-xx-yy
+-------------------------
+
+
 [1.10.3] - 2024-07-12
 -------------------------
 - [BREAKING] `env.chronics_hander.set_max_iter(xxx)` is now a private function. Use 
