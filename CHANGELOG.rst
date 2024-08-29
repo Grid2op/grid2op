@@ -139,7 +139,9 @@ Native multi agents support:
 
 [1.10.4] - 2024-xx-yy
 -------------------------
-
+- [FIXED] an issue in the backend: if the backend failed to be
+  created the `_grid` attribute was set to `None` and not set back to
+- [FIXED] the `self.skip_if_needed()` was missing for one of the test suite.
 
 [1.10.3] - 2024-07-12
 -------------------------
