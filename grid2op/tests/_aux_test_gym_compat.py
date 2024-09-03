@@ -36,7 +36,7 @@ import pdb
 
 class AuxilliaryForTest:
     def _aux_GymEnv_cls(self):
-        return LegacyGymEnv
+        return GymEnv
     
     def _aux_ContinuousToDiscreteConverter_cls(self):
         return ContinuousToDiscreteConverter
