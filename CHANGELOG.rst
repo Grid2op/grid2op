@@ -144,6 +144,8 @@ Native multi agents support:
 - [FIXED] the `self.skip_if_needed()` was missing for one of the test suite.
 - [FIXED] an error in the descirption of the `educ_case14_storage` environment
   (wrong sign for the slack generator)
+- [FIXED] the environment would not load in case of an incorrect "layout.json"
+  instead of raising a warning.
 - [IMPROVED] error message when forecasts are not correctly set-up
 
 [1.10.3] - 2024-07-12
