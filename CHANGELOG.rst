@@ -146,6 +146,8 @@ Native multi agents support:
   (wrong sign for the slack generator)
 - [FIXED] the environment would not load in case of an incorrect "layout.json"
   instead of raising a warning.
+- [FIXED] some issue with gym_compat module for "newest" version of 
+  gymnasium (1.0.0)
 - [IMPROVED] error message when forecasts are not correctly set-up
 
 [1.10.3] - 2024-07-12
