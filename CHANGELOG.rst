@@ -3,15 +3,10 @@ Change Log
 
 [TODO]
 --------------------
-- [???] closer integration with `gym` especially the "register env", being able to 
-  create an env from a string etc.
-- [???] clean the notebook on RL
-- [???] use the typing module for type annotation.
 - [???] use some kind of "env.get_state()" when simulating instead of recoding everything "by hand"
 - [???] use "backend.get_action_to_set()" in simulate
 - [???] model better the voltage, include voltage constraints
 - [???] use the prod_p_forecasted and co in the "next_chronics" of simulate
-- [???] add a "_cst_" or something in the `const` member of all the classes
 - [???] in deepcopy of env, make tests that the "pointers" are properly propagated in the attributes (for example
   `envcpy._game_rules.legal_action` should not be copied when building `envcpy._helper_action_env`)
 - [???] add multi agent
@@ -23,47 +18,70 @@ Change Log
 - [???] model delay in observations
 - [???] model delay in action
 - [???] Code and test the "load from disk" method
-- [???] Make the redispatching data independent from the time step (eg instead of "in MW / step" have it in "MW / h")
-  and have grid2op convert it to MW / step
 - [???] add a "plot action" method
 - [???] in MultiEnv, when some converter of the observations are used, have each child process to compute
   it in parallel and transfer the resulting data.
 - [???] "asynch" multienv
 - [???] properly model interconnecting powerlines
 
-Work kind of in progress
-----------------------------------
-- TODO A number of max buses per sub
-- TODO in the runner, save multiple times the same sceanrio
-- TODO in the gym env, make the action_space and observation_space attribute
-  filled automatically (see ray integration, it's boring to have to copy paste...)
-
-Next release
+Next few releases
 ---------------------------------
+
+General grid2op improvments:
+
 - numpy 2 compat (need pandapower for that)
-- automatic read from local dir also on windows !
-- TODO doc for the "new" feature of automatic "experimental_read_from_local_dir"
 - TODO bug on maintenance starting at midnight (they are not correctly handled in the observation)
   => cf script test_issue_616
+- TODO A number of max buses per sub
+- TODO in the runner, save multiple times the same scenario
+- TODO improve type annotation for all public functions
+- TODO add a "_cst_" or something for the `const` members of all the classes
+- TODO properly document and type hint all public members of all the public classes
+- TODO properly implement the copy and "deepcopy" API
+- TODO Make the redispatching data independent from the time step (eg instead of "in MW / step" have it in "MW / h")
+  and have grid2op convert it to MW / step
+
+Better multi processing support: 
+
+- automatic read from local dir also on windows !
+- TODO doc for the "new" feature of automatic "experimental_read_from_local_dir"
+- TODO extend this feature to work also on windows based OS 
+- TODO finish the test in automatic_classes
+
+
+Features related to gymnasium compatibility:
+
 - TODO put the Grid2opEnvWrapper directly in grid2op as GymEnv
 - TODO faster gym_compat (especially for DiscreteActSpace and BoxGymObsSpace)
 - TODO Notebook for tf_agents
 - TODO Notebook for acme
 - TODO Notebook using "keras rl" (see https://keras.io/examples/rl/ppo_cartpole/)
 - TODO example for MCTS https://github.com/bwfbowen/muax et https://github.com/google-deepmind/mctx
-- TODO jax everything that can be: create a simple env based on jax for topology manipulation, without
-  redispatching or rules
-- TODO backend in jax, maybe ?
 - TODO done and truncated properly handled in gym_compat module (when game over
   before the end it's probably truncated and not done) 
 - TODO when reset, have an attribute "reset_infos" with some infos about the
   way reset was called.
+- TODO on CI: test only gym, only gymnasium and keep current test for both gym and gymnasium
+- TODO refactor the gym_compat module to have a "legacy" stuff exactly like today
+  and the current class only supporting gymnasium (with possibly improved speed)
+- TODO in the gym env, make the action_space and observation_space attribute
+  filled automatically (see ray integration, it's boring to have to copy paste...)
+- [???] closer integration with `gymnasium` especially the "register env", being able to 
+  create an env from a string etc.
+
+Grid2op extended features:
+
 - TODO ForecastEnv in MaskedEnv ! (and obs.simulate there too !)
-- TODO finish the test in automatic_classes
 - TODO in multi-mix increase the reset options with the mix the user wants
 - TODO L2RPN scores as reward (sum loads after the game over and have it in the final reward)
-- TODO on CI: test only gym, only gymnasium and keep current test for both gym and gymnasium
 - TODO work on the reward class (see https://github.com/rte-france/Grid2Op/issues/584)
+- TODO jax everything that can be: create a simple env based on jax for topology manipulation, without
+  redispatching or rules
+- TODO backend in jax, maybe ?
+
+Native multi agents support:
+
+- cf ad-hoc branch (dev-multiagents)
 
 
 [1.10.4] - 2024-xx-yy

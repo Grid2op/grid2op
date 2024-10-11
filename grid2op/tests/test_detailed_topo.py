@@ -14,6 +14,7 @@ import hashlib
 import grid2op
 from grid2op.dtypes import dt_bool
 from grid2op.Action import BaseAction, CompleteAction
+from grid2op.Action._BackendAction import _BackendAction
 from grid2op.Observation import BaseObservation
 from grid2op.Runner import Runner
 from grid2op.Backend import PandaPowerBackend
@@ -741,7 +742,111 @@ class DetailedTopoTester_Action(unittest.TestCase):
     # TODO detailed topo test from_switches_position when there is a mask in the substation
     # TODO detailed topo test env.step only switch
     # TODO detailed topo test env.step switch and set_bus
+
+class TestActAndBkAct(unittest.TestCase):
+    def _aux_n_bb_per_sub(self):
+        return 2
+    
+    def setUp(self) -> None:
+        DetailedTopoTester.setUp(self)
         
+    def test_no_switch_action(self):
+        # TODO detailed topo: speed it up by
+        # not using the routine to/ from switch !
+        obs = self.env.reset()
+        
+        # agent does that
+        act : BaseAction = self.env.action_space()
+        
+        # env does that
+        bk_act : _BackendAction = self.env._backend_action
+        bk_act += act
+        
+        # backend does that
+        (
+            active_bus, # TODO detailed topo does not compute that
+            (prod_p, prod_v, load_p, load_q, storage),
+            topo__,  # TODO detailed topo does not compute that
+            shunts__,  # TODO detailed topo does not compute shunt_bus there
+        ) = bk_act()
+        switch_pos = bk_act.get_all_switches()
+        tgt_switch = np.array([False, False, False, False, False, False, False, False, False,
+                               False, False, False, False, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False])
+        assert (switch_pos == tgt_switch).all()
+        
+        # env does that again
+        bk_act.reset()
+        
+    def test_switch_bbc_action(self):    
+        """do an action of closing a switch between busbars
+        (which has no impact on topo)"""
+        # TODO detailed topo: speed it up by
+        # not using the routine to/ from switch !
+        obs = self.env.reset()
+        
+        # agent does that
+        act : BaseAction = self.env.action_space({"set_switch": [(0, 1)]})
+        
+        # env does that
+        bk_act : _BackendAction = self.env._backend_action
+        bk_act += act
+        
+        # backend does that
+        (
+            active_bus, # TODO detailed topo does not compute that
+            (prod_p, prod_v, load_p, load_q, storage),
+            topo__,  # TODO detailed topo does not compute that
+            shunts__,  # TODO detailed topo does not compute shunt_bus there
+        ) = bk_act()
+        switch_pos = bk_act.get_all_switches()
+        tgt_switch = np.array([True, False, False, False, False, False, False, False, False,
+                               False, False, False, False, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False])
+        assert (switch_pos == tgt_switch).all()
+        
+        # env does that again
+        bk_act.reset()
+        
+    
 # TODO detailed topo test no shunt too
 # TODO detailed topo test "_get_full_cls_str"(experimental_read_from_local_dir)
 # TODO detailed topo test with different n_busbar_per_sub

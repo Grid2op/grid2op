@@ -434,6 +434,8 @@ class Backend(GridObjects, ABC):
 
         TODO detailed topo: change of behaviour !
         
+        .. newinversion:: 1.11.0
+        
         Returns
         -------
         np.ndarray
