@@ -532,6 +532,7 @@ class _BackendAction(GridObjects):
         self._storage_bus = None
         self._shunt_bus = None
         # self._detailed_topo = None  # tuple: busbar_connector_state, switches_state
+        self.current_switch = None
         if cls.detailed_topo_desc is not None:
             self.last_switch_registered = np.zeros(cls.detailed_topo_desc.switches.shape[0], dtype=dt_bool)
             self.current_switch = np.zeros(cls.detailed_topo_desc.switches.shape[0], dtype=dt_bool)
@@ -903,6 +904,8 @@ class _BackendAction(GridObjects):
              shunt_bus_modif or 
              other._modif_change_status or
              other._modif_set_status)) :
+            import pdb
+            pdb.set_trace()
             mask_switch = ... # mask the switches affected by the action (switch in the sub or in the powerline)
             shunt_bus = ...
             subs_changed = ...  # maks of the substation affected by TOPOLOGY

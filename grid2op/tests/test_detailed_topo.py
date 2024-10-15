@@ -796,16 +796,8 @@ class TestActAndBkAct(unittest.TestCase):
         
         # env does that again
         bk_act.reset()
-        
-    def test_switch_bbc_action(self):    
-        """do an action of closing a switch between busbars
-        (which has no impact on topo)"""
-        # TODO detailed topo: speed it up by
-        # not using the routine to/ from switch !
-        obs = self.env.reset()
-        
-        # agent does that
-        act : BaseAction = self.env.action_space({"set_switch": [(0, 1)]})
+    
+    def _aux_test_bk_act(self, act, tgt_switch):
         
         # env does that
         bk_act : _BackendAction = self.env._backend_action
@@ -819,6 +811,20 @@ class TestActAndBkAct(unittest.TestCase):
             shunts__,  # TODO detailed topo does not compute shunt_bus there
         ) = bk_act()
         switch_pos = bk_act.get_all_switches()
+        assert (switch_pos == tgt_switch).all()
+        
+        # env does that again
+        bk_act.reset()
+        
+    def test_switch_bbc_action(self):    
+        """do an action of closing a switch between busbars
+        (which has no impact on topo)"""
+        # TODO detailed topo: speed it up by
+        # not using the routine to/ from switch !
+        obs = self.env.reset()
+        
+        # agent does that
+        act : BaseAction = self.env.action_space({"set_switch": [(0, 1)]})
         tgt_switch = np.array([True, False, False, False, False, False, False, False, False,
                                False, False, False, False, False,  True,  True, False,  True,
                                 True, False,  True,  True, False,  True,  True, False,  True,
@@ -841,10 +847,33 @@ class TestActAndBkAct(unittest.TestCase):
                                 True, False,  True,  True, False,  True,  True, False,  True,
                                 True, False,  True,  True, False,  True,  True, False,  True,
                                 True, False,  True,  True, False])
-        assert (switch_pos == tgt_switch).all()
+        self._aux_test_bk_act(act, tgt_switch)
         
-        # env does that again
-        bk_act.reset()
+        # agent does that
+        act : BaseAction = self.env.action_space({"set_switch": [(0, 1), (15, -1)]})
+        tgt_switch = np.array([True, False, False, False, False, False, False, False, False,
+                               False, False, False, False, False,  True,  False, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False])
+        self._aux_test_bk_act(act, tgt_switch)
         
     
 # TODO detailed topo test no shunt too
