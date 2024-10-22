@@ -3,6 +3,7 @@ Work "in progress"
 
 General grid2op improvments:
 
+- ill formed docstring in the BaseAction module
 - remove pandapower dependency (have a way to install grid2op without pandapower)
 - better logging
 - have functions that automatically computes topo_vect and switch_state in the backend 
@@ -23,6 +24,7 @@ General grid2op improvments:
 - in parallel distribute the loading of the time series if using a `MultifolderWithCache`
 - Code and test the "load from disk" method
 - add a "plot action" method
+- does not read every data of the backend if not used
 
 Better multi processing support: 
 
@@ -94,6 +96,16 @@ Native multi agents support:
 
 - cf ad-hoc branch (dev-multiagents)
 - properly model interconnecting powerlines
+
+[1.11.0] - 202x-yy-zz
+-----------------------
+- [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
+- [ADDED] possibility to retrieve some structural information about elements with
+  with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
+  or , `gridobj.get_storage_info(...)` 
+- [IMPROVED] possibility to set the injections values with names
+  to be consistent with other way to set the actions (*eg* set_bus)
+- [IMPROVED] error messages when creating an action which changes the injections
 
 [1.10.4] - 2024-10-15
 -------------------------
