@@ -2095,7 +2095,26 @@ class BaseAction(GridObjects):
                 self._modif_inj = True
                 for k in tmp_d:
                     if k in self.attr_list_set:
-                        self._dict_inj[k] = np.array(tmp_d[k]).astype(dt_float)
+                        possible_vals = tmp_d[k]
+                        if isinstance(possible_vals, dict):
+                            if k == "load_p" or k == "load_q":
+                                nb_el = type(self).n_load 
+                                el_nms = type(self).name_load
+                            elif k == "prod_p" or k == "prod_v":
+                                nb_el = type(self).n_gen
+                                el_nms = type(self).name_gen
+                            else:
+                                raise AmbiguousAction(f"Impossible modify the injection with the key {k}")
+                            vals = np.full(nb_el, dtype=dt_float, fill_value=np.nan)
+                            for el_nm, el_val in possible_vals.items():
+                                el_ids = (el_nms == el_nm).nonzero()[0]
+                                if len(el_ids) == 0:
+                                    raise AmbiguousAction(f"No element named {el_nm} for key {k} when trying to modify the injection")
+                                elif len(el_ids) >= 2:
+                                    raise AmbiguousAction(f"More than one element named {el_nm} for key {k} when trying to modify the injection")
+                                vals[el_ids[0]] = dt_float(el_val)
+                        else:
+                            self._dict_inj[k] = np.array(tmp_d[k]).astype(dt_float)
                         # TODO check the size based on the input data !
                     else:
                         warn = (
@@ -4241,16 +4260,16 @@ class BaseAction(GridObjects):
                 new_bus = int(new_bus)
             except Exception as exc_:
                 raise AmbiguousAction(
-                    f'new_bus should be convertible to integer. Error was : "{exc_}"'
+                    f'new_bus should be convertible to integer, you provided {type(new_bus)}'
                 ) from exc_
 
             if new_bus < min_val:
                 raise AmbiguousAction(
-                    f"new_bus should be between {min_val} and {max_val}"
+                    f"new_bus should be between {min_val} and {max_val} found {new_bus}, check element id {el_id}"
                 )
             if new_bus > max_val:
                 raise AmbiguousAction(
-                    f"new_bus should be between {min_val} and {max_val}"
+                    f"new_bus should be between {min_val} and {max_val} found {new_bus}, check element id {el_id}"
                 )
 
             if isinstance(el_id, (float, dt_float, np.float64)):

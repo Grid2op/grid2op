@@ -5101,3 +5101,187 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
 
 """
         return res
+    
+    @classmethod
+    def get_line_info(cls, *, line_id : Optional[int]=None, line_name : Optional[str]=None) -> Tuple[int, str, int, int]:
+        """
+        .. versionadded:: 1.11.0
+            
+        This function returns some information about a powerline, either given by its
+        name (with the kwargs `line_name` or by its id, with the kwargs `line_id`)
+        
+        It does not accept any positional argument (only key-word argument) and you need 
+        to specify only one of `line_name` OR `line_id` but not both.
+        
+        .. info::
+            `line_id` is a python id, so it should be between `0` and `env.n_line - 1`
+        
+        Examples
+        ----------
+        
+        You can use it like this:
+        
+        .. code-block:: python
+        
+            import grid2op
+            env_name = "l2rpn_case14_sandbox"
+            env = grid2op.make(env_name)
+            
+            line_id, line_name, subor_id, subex_id = type(env).get_line_info("5_12_9")
+            line_id, line_name, subor_id, subex_id = type(env).get_line_info(15)
+            
+        """
+        line_id, line_name = cls._aux_info("line", 
+                                           cls.name_line,
+                                           cls.n_line,
+                                           obj_id=line_id,
+                                           obj_name=line_name)
+        sub_or = cls.line_or_to_subid[line_id]
+        sub_ex = cls.line_ex_to_subid[line_id]
+        return line_id, line_name, sub_or, sub_ex
+    
+    @classmethod
+    def _aux_info(cls,
+                  el_nm,
+                  cls_name_el,
+                  cls_n_el,
+                  obj_id : Optional[int]=None,
+                  obj_name : Optional[str]=None) -> Tuple[int, str, int]:
+        if obj_id is None and obj_name is None:
+            raise RuntimeError(f"You should provide at least `{el_nm}_name` or `{el_nm}_id` key-word argument")
+        if obj_id is not None and obj_name is not None:
+            raise RuntimeError(f"You should provide only one of `{el_nm}_name` or `{el_nm}_id` key-word argument, you provided both")
+        if obj_id is None:
+            try:
+                obj_name = str(obj_name)
+            except TypeError as exc_:
+                raise RuntimeError(f"`{el_nm}_name` should be convertible to a string, you provided {type(obj_name)}") from exc_
+            id_ = (cls_name_el == obj_name).nonzero()[0]
+            if len(id_) == 0:
+                raise RuntimeError(f"No {el_nm} named {obj_name} is found on your grid")
+            if len(id_) >= 2:
+                raise RuntimeError(f"Multiple {el_nm}s are named {obj_name} on your grid.")
+            obj_id = int(id_[0])
+        if obj_name is None:
+            try:
+                obj_id = int(obj_id)
+            except TypeError as exc_:
+                raise RuntimeError(f"`{el_nm}_id` should be convertible to an int, you provided {type(obj_id)}") from exc_
+            if obj_id < 0:
+                raise RuntimeError(f"`{el_nm}_id` should be >=0, you provided {obj_id}")
+            if obj_id >= cls_n_el:
+                raise RuntimeError(f"`{el_nm}_id` should not exceed {cls_n_el}, the number of {el_nm}s on the grid. "
+                                   f"You provided `{el_nm}_id`={obj_id}")
+            obj_name = cls_name_el[obj_id]
+        return obj_id, obj_name
+    
+    @classmethod
+    def get_load_info(cls, *, load_id : Optional[int]=None, load_name : Optional[str]=None) -> Tuple[int, str, int]:
+        """
+        .. versionadded:: 1.11.0
+            
+        This function returns some information about a load, either given by its
+        name (with the kwargs `load_name` or by its id, with the kwargs `load_id`)
+        
+        It does not accept any positional argument (only key-word argument) and you need 
+        to specify only one of `load_name` OR `load_id` but not both.
+        
+        .. info::
+            `load_id` is a python id, so it should be between `0` and `env.n_load - 1`
+        
+        Examples
+        ----------
+        
+        You can use it like this:
+        
+        .. code-block:: python
+        
+            import grid2op
+            env_name = "l2rpn_case14_sandbox"
+            env = grid2op.make(env_name)
+            
+            load_id, load_name, sub_id = type(env).get_load_info("load_2_1")
+            load_id, load_name, sub_id = type(env).get_load_info(3)
+            
+        """
+        load_id, load_name = cls._aux_info("load", 
+                                           cls.name_load,
+                                           cls.n_load,
+                                           obj_id=load_id,
+                                           obj_name=load_name)
+        sub_id = cls.load_to_subid[load_id]
+        return load_id, load_name, sub_id
+    
+    @classmethod
+    def get_gen_info(cls, *, gen_id : Optional[int]=None, gen_name : Optional[str]=None) -> Tuple[int, str, int]:
+        """
+        .. versionadded:: 1.11.0
+            
+        This function returns some information about a generator, either given by its
+        name (with the kwargs `gen_name` or by its id, with the kwargs `gen_id`)
+        
+        It does not accept any positional argument (only key-word argument) and you need 
+        to specify only one of `gen_name` OR `gen_id` but not both.
+        
+        .. info::
+            `gen_id` is a python id, so it should be between `0` and `env.n_gen - 1`
+        
+        Examples
+        ----------
+        
+        You can use it like this:
+        
+        .. code-block:: python
+        
+            import grid2op
+            env_name = "l2rpn_case14_sandbox"
+            env = grid2op.make(env_name)
+            
+            gen_id, gen_name, sub_id = type(env).get_gen_info("gen_5_2")
+            gen_id, gen_name, sub_id = type(env).get_gen_info(3)
+            
+        """
+        gen_id, gen_name = cls._aux_info("gen", 
+                                         cls.name_gen,
+                                         cls.n_gen,
+                                         obj_id=gen_id,
+                                         obj_name=gen_name)
+        sub_id = cls.gen_to_subid[gen_id]
+        return gen_id, gen_name, sub_id
+    
+    @classmethod
+    def get_storage_info(cls, *, storage_id : Optional[int]=None, storage_name : Optional[str]=None) -> Tuple[int, str, int]:
+        """
+        .. versionadded:: 1.11.0
+            
+        This function returns some information about a generator, either given by its
+        name (with the kwargs `storage_name` or by its id, with the kwargs `storage_id`)
+        
+        It does not accept any positional argument (only key-word argument) and you need 
+        to specify only one of `storage_name` OR `storage_id` but not both.
+        
+        .. info::
+            `storage_id` is a python id, so it should be between `0` and `env.n_storage - 1`
+            
+        Examples
+        ----------
+        
+        You can use it like this:
+        
+        .. code-block:: python
+        
+            import grid2op
+            env_name = "educ_case14_storage"
+            env = grid2op.make(env_name, test=True)
+            
+            storage_id, storage_name, sub_id = type(env).get_storage_info("storage_7_1")
+            storage_id, storage_name, sub_id = type(env).get_storage_info(1)
+            
+        """
+        storage_id, storage_name = cls._aux_info("storage", 
+                                                 cls.name_storage,
+                                                 cls.n_storage,
+                                                 obj_id=storage_id,
+                                                 obj_name=storage_name)
+        sub_id = cls.storage_to_subid[storage_id]
+        return storage_id, storage_name, sub_id
