@@ -48,6 +48,7 @@ RESET_OPTIONS_TYPING = Union[Dict[Literal["time serie id"], int],
                              Dict[Literal["init state"], DICT_ACT_TYPING],
                              Dict[Literal["init ts"], int],
                              Dict[Literal["max step"], int],
+                             Dict[Literal["thermal limit"], Union[List[float], Dict[str, float]]],
                              None]
 
 #: type hints for a "GridObject" when converted to a dictionary
