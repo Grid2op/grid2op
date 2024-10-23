@@ -443,7 +443,6 @@ class __AuxGymObservationSpace:
         -------
         gymlike_observation: :class:`gymnasium.spaces.dict.Dict`
            The corresponding gymnasium dict
-
         """
         return self._base_to_gym(
             self.spaces.keys(),
