@@ -23,7 +23,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 pkgs = {
     "required": [
-        "numpy>=1.20,<2",  # disable numpy 2 for now
+        "numpy",
         "scipy>=1.4.1",
         "pandas>=1.0.3",
         "pandapower>=2.2.2",
@@ -101,13 +101,13 @@ if sys.version_info.minor == 12:
                                                                        )
                               ]
 
-setup(description='An gymnasium compatible environment to model sequential decision making  for powersystems',
+setup(description='An gymnasium compatible environment to model sequential decision making for powersystems',
       long_description=long_description,
       long_description_content_type="text/markdown",
       author='Benjamin DONNOT',
       author_email='benjamin.donnot@rte-france.com',
       python_requires='>=3.8',
-      url="https://github.com/rte-france/Grid2Op",
+      url="https://github.com/Grid2Op/grid2op",
       packages=setuptools.find_packages(),
       include_package_data=True,
       install_requires=pkgs["required"],

@@ -301,7 +301,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     #: this are the keys of the dictionnary `options`
     #: that can be used when calling `env.reset(..., options={})`
-    KEYS_RESET_OPTIONS = {"time serie id", "init state", "init ts", "max step"}
+    KEYS_RESET_OPTIONS = {"time serie id", "init state", "init ts", "max step", "thermal limit"}
     
     def __init__(
         self,
@@ -1456,7 +1456,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # change also the reward used in simulate
             self._observation_space.change_reward(self._reward_helper.template_reward)
             self.__new_reward_func = None
-
+            
+        if options is not None and "thermal limit" in options:
+            self.set_thermal_limit(options["thermal limit"])
+            
         self._last_obs = None
 
         if options is not None and "time serie id" in options:
@@ -1823,9 +1826,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 except Exception as exc_:
                     raise Grid2OpException(
                         f"When setting thermal limit with a dictionary, the keys should be "
-                        f"the values of the thermal limit (in amps) you provided something that "
-                        f'cannot be converted to a float. Error was "{exc_}".'
-                    )
+                        f"the names of the lines and the values the thermal limit (in amps) "
+                        f"you provided something that "
+                        f'cannot be converted to a float {type(val)}'
+                    ) from exc_
                 tmp[ind_line] = val_fl
 
         elif isinstance(thermal_limit, (np.ndarray, list)):
@@ -1834,8 +1838,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             except Exception as exc_:
                 raise Grid2OpException(
                     f"Impossible to convert the vector as input into a 1d numpy float array. "
-                    f"Error was: \n {exc_}"
-                )
+                ) from exc_
             if tmp.shape[0] != self.n_line:
                 raise Grid2OpException(
                     "Attempt to set thermal limit on {} powerlines while there are {}"
