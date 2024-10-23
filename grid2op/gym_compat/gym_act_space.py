@@ -6,7 +6,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from collections import OrderedDict
 import warnings
 import numpy as np
 
@@ -18,20 +17,20 @@ from grid2op.Environment import (
 from grid2op.Action import BaseAction, ActionSpace
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.Converter.Converters import Converter
-from grid2op.gym_compat.utils import GYM_AVAILABLE, GYMNASIUM_AVAILABLE
+from grid2op.gym_compat.utils import GYM_AVAILABLE, GYMNASIUM_AVAILABLE, DictType
 
 
 class __AuxGymActionSpace:
     """
-    This class enables the conversion of the action space into a gym "space".
+    This class enables the conversion of the action space into a gymnasium "space".
 
     Resulting action space will be a :class:`gym.spaces.Dict`.
 
-    **NB** it is NOT recommended to use the sample of the gym action space. Please use the sampling (
+    **NB** it is NOT recommended to use the sample of the gymnasium action space. Please use the sampling (
     if availabe) of the original action space instead [if not available this means there is no
     implemented way to generate reliable random action]
 
-    **Note** that gym space converted with this class should be seeded independently. It is NOT seeded
+    **Note** that gymnasium space converted with this class should be seeded independently. It is NOT seeded
     when calling :func:`grid2op.Environment.Environment.seed`.
 
     .. warning::
@@ -51,7 +50,7 @@ class __AuxGymActionSpace:
         See :ref:`gymnasium_gym` for more information
     
     .. note::
-        A gymnasium Dict is encoded as a OrderedDict (`from collection import OrderedDict`)
+        A gymnasium Dict can be encoded as a OrderedDict (`from collection import OrderedDict`)
         see the example section for more information.
         
     Examples
@@ -69,7 +68,7 @@ class __AuxGymActionSpace:
         env = grid2op.make(env_name)
         gym_env =  GymEnv(env)
         
-        obs = gym_env.reset()  # obs will be an OrderedDict (default, but you can customize it)
+        obs = gym_env.reset()  # obs will be an Dict (default, but you can customize it)
         
         # is equivalent to "do nothing"
         act = {}  
@@ -126,36 +125,47 @@ class __AuxGymActionSpace:
             env, (Environment, MultiMixEnvironment, BaseMultiProcessEnvironment)
         ):
             # action_space is an environment
-            self.initial_act_space = env.action_space
-            self._init_env = env
+            # self.initial_act_space = env.action_space
+            # self._init_env = env
+            self._template_act = env.action_space()
+            self._converter = None
+            self.__is_converter = False
         elif isinstance(env, ActionSpace) and converter is None:
             warnings.warn(
                 "It is now deprecated to initialize an Converter with an "
                 "action space. Please use an environment instead."
             )
-            self.initial_act_space = env
-            self._init_env = None
+            self._converter = None
+            self._template_act = env()
+            self.__is_converter = False
+        elif isinstance(env, type(self)):
+            self._template_act = env._template_act.copy()
+            self._converter = env._converter
+            self.__is_converter = env.__is_converter
         else:
             raise RuntimeError(
                 "GymActionSpace must be created with an Environment or an ActionSpace (or a Converter)"
             )
         dict_ = {}
+        
         # TODO Make sure it works well !
         if converter is not None and isinstance(converter, Converter):
-            # a converter allows to ... convert the data so they have specific gym space
-            self.initial_act_space = converter
+            # a converter allows to ... convert the data so they have specific gymnasium space
+            # self.initial_act_space = converter
+            self._converter = converter
+            self._template_act = converter.init_action_space()
             dict_ = converter.get_gym_dict(type(self))
             self.__is_converter = True
         elif converter is not None:
             raise RuntimeError(
-                'Impossible to initialize a gym action space with a converter of type "{}" '
+                'Impossible to initialize a gymnasium action space with a converter of type "{}" '
                 "A converter should inherit from grid2op.Converter".format(
                     type(converter)
                 )
             )
         else:
             self._fill_dict_act_space(
-                dict_, self.initial_act_space, dict_variables=dict_variables
+                dict_, dict_variables=dict_variables
             )
             dict_ = self._fix_dict_keys(dict_)
             self.__is_converter = False
@@ -194,11 +204,11 @@ class __AuxGymActionSpace:
         If an attribute has been ignored, for example by :func`GymEnv.keep_only_obs_attr`
         or and is now present here, it will be re added in the final observation
         """
-        if self._init_env is None:
-            raise RuntimeError(
-                "Impossible to reencode a space that has been initialized with an "
-                "action space as input. Please provide a valid"
-            )
+        # if self._init_env is None:
+        #     raise RuntimeError(
+        #         "Impossible to reencode a space that has been initialized with an "
+        #         "action space as input. Please provide a valid"
+        #     )
         if self.__is_converter:
             raise RuntimeError(
                 "Impossible to reencode a space that is a converter space."
@@ -224,16 +234,18 @@ class __AuxGymActionSpace:
             else:
                 raise RuntimeError(f"Impossible to find key {key} in your action space")
         my_dict[key2] = fun
-        res = type(self)(env=self._init_env, dict_variables=my_dict)
+        res = type(self)(env=self, dict_variables=my_dict)
         return res
 
-    def _fill_dict_act_space(self, dict_, action_space, dict_variables):
+    def _fill_dict_act_space(self, dict_, dict_variables):
         # TODO what about dict_variables !!!
         for attr_nm, sh, dt in zip(
-            action_space.attr_list_vect, action_space.shape, action_space.dtype
+            type(self._template_act).attr_list_vect,
+            self._template_act.shapes(),
+            self._template_act.dtypes()
         ):
             if sh == 0:
-                # do not add "empty" (=0 dimension) arrays to gym otherwise it crashes
+                # do not add "empty" (=0 dimension) arrays to gymnasium otherwise it crashes
                 continue
             my_type = None
             shape = (sh,)
@@ -248,7 +260,9 @@ class __AuxGymActionSpace:
                 if attr_nm == "_set_line_status":
                     my_type = type(self)._BoxType(low=-1, high=1, shape=shape, dtype=dt)
                 elif attr_nm == "_set_topo_vect":
-                    my_type = type(self)._BoxType(low=-1, high=2, shape=shape, dtype=dt)
+                    my_type = type(self)._BoxType(low=-1,
+                                                  high=type(self._template_act).n_busbar_per_sub,
+                                                  shape=shape, dtype=dt)
             elif dt == dt_bool:
                 # boolean observation space
                 my_type = self._boolean_type(sh)
@@ -261,28 +275,28 @@ class __AuxGymActionSpace:
                 SpaceType = type(self)._BoxType
 
                 if attr_nm == "prod_p":
-                    low = action_space.gen_pmin
-                    high = action_space.gen_pmax
+                    low = type(self._template_act).gen_pmin
+                    high = type(self._template_act).gen_pmax
                     shape = None
                 elif attr_nm == "prod_v":
                     # voltages can't be negative
                     low = 0.0
                 elif attr_nm == "_redispatch":
                     # redispatch
-                    low = -1.0 * action_space.gen_max_ramp_down
-                    high = 1.0 * action_space.gen_max_ramp_up
-                    low[~action_space.gen_redispatchable] = 0.0
-                    high[~action_space.gen_redispatchable] = 0.0
+                    low = -1.0 * type(self._template_act).gen_max_ramp_down
+                    high = 1.0 * type(self._template_act).gen_max_ramp_up
+                    low[~type(self._template_act).gen_redispatchable] = 0.0
+                    high[~type(self._template_act).gen_redispatchable] = 0.0
                 elif attr_nm == "_curtail":
                     # curtailment
-                    low = np.zeros(action_space.n_gen, dtype=dt_float)
-                    high = np.ones(action_space.n_gen, dtype=dt_float)
-                    low[~action_space.gen_renewable] = -1.0
-                    high[~action_space.gen_renewable] = -1.0
+                    low = np.zeros(type(self._template_act).n_gen, dtype=dt_float)
+                    high = np.ones(type(self._template_act).n_gen, dtype=dt_float)
+                    low[~type(self._template_act).gen_renewable] = -1.0
+                    high[~type(self._template_act).gen_renewable] = -1.0
                 elif attr_nm == "_storage_power":
                     # storage power
-                    low = -1.0 * action_space.storage_max_p_prod
-                    high = 1.0 * action_space.storage_max_p_absorb
+                    low = -1.0 * type(self._template_act).storage_max_p_prod
+                    high = 1.0 * type(self._template_act).storage_max_p_absorb
                 my_type = SpaceType(low=low, high=high, shape=shape, dtype=dt)
 
             if my_type is None:
@@ -297,14 +311,14 @@ class __AuxGymActionSpace:
             res[self.keys_grid2op_2_human[k]] = v
         return res
 
-    def from_gym(self, gymlike_action: OrderedDict) -> object:
+    def from_gym(self, gymlike_action: DictType) -> object:
         """
         Transform a gym-like action (such as the output of "sample()") into a grid2op action
 
         Parameters
         ----------
-        gymlike_action: :class:`gym.spaces.dict.OrderedDict`
-            The action, represented as a gym action (ordered dict)
+        gymlike_action: :class:`gym.spaces.dict.Dict`
+            The action, represented as a gymnasium action (ordered dict)
 
         Returns
         -------
@@ -315,10 +329,10 @@ class __AuxGymActionSpace:
         if self.__is_converter:
             # case where the action space comes from a converter, in this case the converter takes the
             # delegation to convert the action to openai gym
-            res = self.initial_act_space.convert_action_from_gym(gymlike_action)
+            res = self._converter.convert_action_from_gym(gymlike_action)
         else:
             # case where the action space is a "simple" action space
-            res = self.initial_act_space()
+            res = self._template_act.copy()
             for k, v in gymlike_action.items():
                 internal_k = self.keys_human_2_grid2op[k]
                 if internal_k in self._keys_encoding:
@@ -328,9 +342,9 @@ class __AuxGymActionSpace:
                 res._assign_attr_from_name(internal_k, tmp)
         return res
 
-    def to_gym(self, action: object) -> OrderedDict:
+    def to_gym(self, action: object) -> DictType:
         """
-        Transform an action (non gym) into an action compatible with the gym Space.
+        Transform an action (non gymnasium) into an action compatible with the gymnasium Space.
 
         Parameters
         ----------
@@ -340,12 +354,12 @@ class __AuxGymActionSpace:
         Returns
         -------
         gym_action:
-            The same action converted as a OrderedDict (default used by gym in case of action space
+            The same action converted as a Dict (default used by gymnasium in case of action space
             being Dict)
 
         """
         if self.__is_converter:
-            gym_action = self.initial_act_space.convert_action_to_gym(action)
+            gym_action = self._converter.convert_action_to_gym(action)
         else:
             # in that case action should be an instance of grid2op BaseAction
             assert isinstance(
