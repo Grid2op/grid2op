@@ -266,13 +266,15 @@ class BaseTestLoadingBackendPandaPower:
         i = 0
         self.chronics_handler.next_chronics()
 
+        ch = copy.deepcopy(self.chronics_handler)
+        ch.cleanup_action_space()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             self.env = Environment(
                 init_grid_path=os.path.join(self.path_matpower, self.case_file),
                 backend=self.get_backend(),
                 init_env_path=os.path.join(self.path_matpower, self.case_file),
-                chronics_handler=self.chronics_handler,
+                chronics_handler=ch,
                 parameters=self.env_params,
                 rewardClass=L2RPNReward,
                 names_chronics_to_backend=self.names_chronics_to_backend,
@@ -928,7 +930,7 @@ class TestDeactivateForecast(unittest.TestCase):
         It only checks the right parameters are used for the environment (or obs_env) but it do not currently
         check the observation (with the cooldown for example)
 
-        This is the example taken from https://github.com/rte-france/Grid2Op/issues/128 (first remak)
+        This is the example taken from https://github.com/Grid2Op/grid2op/issues/128 (first remak)
         """
 
         # modify the parmeters for simulate
