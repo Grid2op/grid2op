@@ -7,11 +7,18 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import numpy as np
+from typing import Literal, Dict, Tuple, Any, Optional, Union, Generic
 
 from grid2op.dtypes import dt_int
 from grid2op.Chronics import Multifolder
-from grid2op.gym_compat.utils import GYM_AVAILABLE, GYMNASIUM_AVAILABLE
-from grid2op.gym_compat.utils import (check_gym_version, sample_seed)
+from grid2op.Environment import Environment
+from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
+from grid2op.gym_compat.utils import (GYM_AVAILABLE,
+                                      GYMNASIUM_AVAILABLE,
+                                      check_gym_version,
+                                      sample_seed,
+                                      ObsType,
+                                      ActType)
     
     
 def conditional_decorator(condition):
@@ -22,11 +29,13 @@ def conditional_decorator(condition):
         return NotImplementedError()  # anything that is not a callbe anyway
     return decorator
 
+_TIME_SERIE_ID = "time serie id"
+RESET_INFO_GYM_TYPING = Dict[Literal["time serie id", "seed", "grid2op_env_seed", "underlying_env_seeds"], Any]
 
-class __AuxGymEnv:
+class __AuxGymEnv(Generic[ObsType, ActType]):
     """
-    fully implements the openAI gym API by using the :class:`GymActionSpace` and :class:`GymObservationSpace`
-    for compliance with openAI gym.
+    fully implements the gymnasium API by using the :class:`GymActionSpace` and :class:`GymObservationSpace`
+    for compliance with gymnasium.
 
     They can handle action_space_converter or observation_space converter to change the representation of data
     that will be fed to the agent.  #TODO
@@ -34,7 +43,7 @@ class __AuxGymEnv:
     .. warning::
         The `gym` package has some breaking API change since its version 0.26. Depending on the version installed,
         we attempted, in grid2op, to maintain compatibility both with former version and later one. This makes this
-        class behave differently depending on the version of gym you have installed !
+        class behave differently depending on the version of gymnasium / gym you have installed !
         
         The main changes involve the functions `env.step` and `env.reset`
         
@@ -45,7 +54,7 @@ class __AuxGymEnv:
     - :class:`GymEnv_Modern` for gym >= 0.26
 
     .. warning::
-        Depending on the presence absence of gymnasium and gym packages this class might behave differently.
+        Depending on the presence absence of `gymnasium` and `gym` packages this class might behave differently.
         
         In grid2op we tried to maintain compatibility both with gymnasium (newest) and gym (legacy, 
         no more maintained) RL packages. The behaviour is the following:
@@ -63,7 +72,7 @@ class __AuxGymEnv:
         
     Notes
     ------
-    The environment passed as input is copied. It is not modified by this "gym environment"
+    The environment passed as input is copied. It is not modified by this "gymnasium environment"
 
     Examples
     --------
@@ -76,7 +85,7 @@ class __AuxGymEnv:
 
         env_name = "l2rpn_case14_sandbox"  # or any other name
         env = grid2op.make(env_name)
-        gym_env = GymEnv(env)  # is a gym environment properly inheriting from gym.Env !
+        gym_env = GymEnv(env)  # is a gymnasium environment properly inheriting from gym.Env !
 
     There are a few difference between "raw" grid2op environment and gymnasium environments.
     
@@ -92,41 +101,62 @@ class __AuxGymEnv:
     In gym, there are no specific representations of the action class. More precisely, for each action
     type (:class:`MultiDiscreteActSpace`, :class:`DiscreteActSpace`, :class:`BoxGymActSpace` or 
     :class:`GymActionSpace`) there is a way to encode it. For example, by default (:class:`GymActionSpace`)
-    an action is represented through an OrderedDict (`from collection import OrderedDict`)
+    an action is represented through an Dict (`from collection import OrderedDict`)
     """
 
-    def __init__(self, env_init, shuffle_chronics=True, render_mode="rgb_array"):
-        check_gym_version(type(self)._gymnasium)
+    def __init__(self,
+                 env_init: Environment,
+                 shuffle_chronics:Optional[bool]=True,
+                 render_mode: Literal["rgb_array"]="rgb_array",
+                 with_forecast: bool=False):
+        cls = type(self)
+        check_gym_version(cls._gymnasium)
+        self.action_space = cls._ActionSpaceType(env_init)
+        self.observation_space = cls._ObservationSpaceType(env_init)
+        self.reward_range = env_init.reward_range
+        self.metadata = env_init.metadata
         self.init_env = env_init.copy()
-        self.action_space = type(self)._ActionSpaceType(self.init_env)
-        self.observation_space = type(self)._ObservationSpaceType(self.init_env)
-        self.reward_range = self.init_env.reward_range
-        self.metadata = self.init_env.metadata
         self.init_env.render_mode = render_mode
         self._shuffle_chronics = shuffle_chronics
+        if not with_forecast:
+            # default in grid2op 1.10.3
+            # to improve pickle compatibility and speed
+            self.init_env.deactivate_forecast()
+            self.init_env._observation_space.obs_env.close()
+            self.init_env._observation_space.obs_env = None
+            self.init_env._observation_space._ObsEnv_class = None
+            self.init_env._last_obs._obs_env = None
+            self.init_env._last_obs._ptr_kwargs_env = False
+            self.init_env.current_obs._obs_env = None
+            self.init_env.current_obs._ptr_kwargs_env = False
             
         super().__init__()  # super should reference either gym.Env or gymnasium.Env
         if not hasattr(self, "_np_random"):
-            # for older version of gym it does not exist
+            # for older version of gymnasium it does not exist
             self._np_random = np.random.RandomState()
         
-    def _aux_step(self, gym_action):
+    def _aux_step(self, gym_action: ActType) -> Tuple[ObsType, float, bool, STEP_INFO_TYPING]:
         # used for gym < 0.26
         g2op_act = self.action_space.from_gym(gym_action)
         g2op_obs, reward, done, info = self.init_env.step(g2op_act)
         gym_obs = self.observation_space.to_gym(g2op_obs)
         return gym_obs, float(reward), done, info
     
-    def _aux_step_new(self, gym_action):
+    def _aux_step_new(self, gym_action: ActType) -> Tuple[ObsType, float, bool, bool, STEP_INFO_TYPING]:
         # used for gym >= 0.26
         # TODO refacto with _aux_step
         g2op_act = self.action_space.from_gym(gym_action)
         g2op_obs, reward, terminated, info = self.init_env.step(g2op_act)
         gym_obs = self.observation_space.to_gym(g2op_obs)
         truncated = False # see https://github.com/openai/gym/pull/2752
+        if "exception" in info:
+            info["exception"] = [str(el) for el in info["exception"]]
         return gym_obs, float(reward), terminated, truncated, info
 
-    def _aux_reset(self, seed=None, return_info=None, options=None):
+    def _aux_reset(self,
+                   seed: Optional[int]=None,
+                   return_info: Optional[bool]=None,
+                   options: RESET_OPTIONS_TYPING=None) -> Union[ObsType, Tuple[ObsType, RESET_INFO_GYM_TYPING]]:
         # used for gym < 0.26
         if self._shuffle_chronics and isinstance(
             self.init_env.chronics_handler.real_data, Multifolder
@@ -136,12 +166,12 @@ class __AuxGymEnv:
         if seed is not None:
             seed_, next_seed, underlying_env_seeds = self._aux_seed(seed)
             
-        g2op_obs = self.init_env.reset()
+        g2op_obs = self.init_env.reset(options=options)
         gym_obs = self.observation_space.to_gym(g2op_obs)
             
         if return_info:
             chron_id = self.init_env.chronics_handler.get_id()
-            info = {"time serie id": chron_id}
+            info = {_TIME_SERIE_ID: chron_id}
             if seed is not None:
                 info["seed"] = seed
                 info["grid2op_env_seed"] = next_seed
@@ -150,23 +180,28 @@ class __AuxGymEnv:
         else:
             return gym_obs
 
-    def _aux_reset_new(self, seed=None, options=None):
-        # used for gym > 0.26
-        if self._shuffle_chronics and isinstance(
-            self.init_env.chronics_handler.real_data, Multifolder
-        ):
-            self.init_env.chronics_handler.sample_next_chronics()
+    def _aux_reset_new(self,
+                       seed: Optional[int]=None,
+                       options: RESET_OPTIONS_TYPING=None) -> Tuple[ObsType,RESET_INFO_GYM_TYPING]:
         
-        super().reset(seed=seed)    
+        super().reset(seed=seed)  # seed gymnasium env
         if seed is not None:
             self._aux_seed_spaces()
             seed, next_seed, underlying_env_seeds = self._aux_seed_g2op(seed)
             
-        g2op_obs = self.init_env.reset()
+        # used for gym > 0.26
+        if (self._shuffle_chronics and 
+            isinstance(self.init_env.chronics_handler.real_data, Multifolder) and 
+            (not (options is not None and _TIME_SERIE_ID in options))):
+            self.init_env.chronics_handler.sample_next_chronics()
+        
+        # we don't seed grid2op with reset as it is done
+        # earlier
+        g2op_obs = self.init_env.reset(seed=None, options=options)
         gym_obs = self.observation_space.to_gym(g2op_obs)
             
         chron_id = self.init_env.chronics_handler.get_id()
-        info = {"time serie id": chron_id}
+        info = {_TIME_SERIE_ID: chron_id}
         if seed is not None:
             info["seed"] = seed
             info["grid2op_env_seed"] = next_seed
@@ -174,10 +209,10 @@ class __AuxGymEnv:
         return gym_obs, info
         
     def render(self):
-        """for compatibility with open ai gym render function"""
+        """for compatibility with open ai gymnasium render function"""
         return self.init_env.render()
 
-    def close(self):
+    def close(self) -> None:
         if hasattr(self, "init_env") and self.init_env is not None:
             self.init_env.close()
             del self.init_env
@@ -199,13 +234,13 @@ class __AuxGymEnv:
         self.observation_space.seed(next_seed)
             
     def _aux_seed_g2op(self, seed):
-            # then seed the underlying grid2op env
-            max_ = np.iinfo(dt_int).max 
-            next_seed = sample_seed(max_, self._np_random)
-            underlying_env_seeds = self.init_env.seed(next_seed)
-            return seed, next_seed, underlying_env_seeds
+        # then seed the underlying grid2op env
+        max_ = np.iinfo(dt_int).max 
+        next_seed = sample_seed(max_, self._np_random)
+        underlying_env_seeds = self.init_env.seed(next_seed)
+        return seed, next_seed, underlying_env_seeds
         
-    def _aux_seed(self, seed=None):
+    def _aux_seed(self, seed: Optional[int]=None):
         # deprecated in gym >=0.26
         if seed is not None:
             # seed the gym env
@@ -232,13 +267,13 @@ if GYM_AVAILABLE:
     _AuxGymEnv.__doc__ = __AuxGymEnv.__doc__
     class GymEnv_Legacy(_AuxGymEnv):
         # for old version of gym        
-        def reset(self, *args, **kwargs):
+        def reset(self, *args, **kwargs) -> ObsType:
             return self._aux_reset(*args, **kwargs)
 
-        def step(self, action):
+        def step(self, action: ActType) -> Tuple[ObsType, float, bool, STEP_INFO_TYPING]:
             return self._aux_step(action)
 
-        def seed(self, seed):
+        def seed(self, seed: Optional[int]) -> None:
             # defined only on some cases
             return self._aux_seed(seed)
 
@@ -246,12 +281,15 @@ if GYM_AVAILABLE:
     class GymEnv_Modern(_AuxGymEnv):
         # for new version of gym
         def reset(self,
-                *,
-                seed=None,
-                options=None,):
+                  *,
+                  seed: Optional[int]=None,
+                  options: RESET_OPTIONS_TYPING = None) -> Tuple[
+                     ObsType,
+                     RESET_INFO_GYM_TYPING
+                  ]:
             return self._aux_reset_new(seed, options)
 
-        def step(self, action):
+        def step(self, action : ActType)  -> Tuple[ObsType, float, bool, bool, STEP_INFO_TYPING]:
             return self._aux_step_new(action)
     GymEnv_Legacy.__doc__ = __AuxGymEnv.__doc__
     GymEnv_Modern.__doc__ = __AuxGymEnv.__doc__
@@ -270,13 +308,60 @@ if GYMNASIUM_AVAILABLE:
     _AuxGymnasiumEnv.__doc__ = __AuxGymEnv.__doc__
     
     class GymnasiumEnv(_AuxGymnasiumEnv):
-        # for new version of gym
+        # for gymnasium
         def reset(self,
-                *,
-                seed=None,
-                options=None,):
+                  *,
+                  seed: Optional[int]=None,
+                  options: RESET_OPTIONS_TYPING = None) -> Tuple[
+                     ObsType,
+                     RESET_INFO_GYM_TYPING
+                  ]:
+            """This function will reset the underlying grid2op environment
+            and return the next state of the grid (as the gymnasium observation)
+            and some other information.
+
+            Parameters
+            ----------
+            seed : Optional[int], optional
+                The seed for this new environment, by default None
+            options : RESET_OPTIONS_TYPING, optional
+                See the documentation of :func:`grid2op.Environment.Environment.reset`
+                for more information about it, by default None
+
+            Returns
+            -------
+            Tuple[ ObsType, RESET_INFO_GYM_TYPING ]
+                _description_
+            """
             return self._aux_reset_new(seed, options)
 
-        def step(self, action):
+        def step(self, action: ActType) -> Tuple[ObsType, float, bool, bool, STEP_INFO_TYPING]:
+            """Run one timestep of the environment’s dynamics using the agent actions.
+            
+            When the end of an episode is reached (terminated or truncated), 
+            it is necessary to call reset() to reset this environment’s state for the next episode.
+
+            Parameters
+            ----------
+            action : ``ActType``
+                An action that can be process by the :func:`grid2op.gym_compat.gym_act_space.GymActionSpace.from_gym` 
+                (given in the form of a gymnasium action belonging to a gymnasium space.).
+                
+                For example it can be a sorted dictionary if you are using default 
+                :class:`grid2op.gym_compat.gym_act_space.GymActionSpace`  
+                or a numpy array if you are using :class:`grid2op.gym_compat.box_gym_actspace.BoxGymnasiumActSpace`
+
+            Returns
+            -------
+            Tuple[ObsType, float, bool, bool, STEP_INFO_TYPING]
+                
+                - observation: an instance of the current observation space (can be a dictionary, a numpy array etc.)
+                - reward: the reward for the previous action
+                - truncated: whether the environment was terminated
+                - done: whether the environment is done
+                - info: other information, see :func:`grid2op.Environment.BaseEnv.step` for more
+                  information about the available informations.
+                  
+            """
             return self._aux_step_new(action)
     GymnasiumEnv.__doc__ = __AuxGymEnv.__doc__
