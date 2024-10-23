@@ -66,7 +66,7 @@ Next release
 - TODO work on the reward class (see https://github.com/rte-france/Grid2Op/issues/584)
 
 
-[1.10.4] - 2024-xx-yy
+[1.10.4] - 2024-10-14
 -------------------------
 - [FIXED] an issue in the backend: if the backend failed to be
   created the `_grid` attribute was set to `None` and not set back to
@@ -77,7 +77,13 @@ Next release
   instead of raising a warning.
 - [FIXED] some issue with gym_compat module for "newest" version of 
   gymnasium (1.0.0)
+- [FIXED] github ci (v1 and v2 artifact are now deprecated)
+- [ADDED] a code of conduct from github
+- [ADDED] a "CONTRIBUTING.md" files (instead of having contribution instructions 
+  in the readme)
+- [ADDED] numpy 2 support (now that pandapower allows it)
 - [IMPROVED] error message when forecasts are not correctly set-up
+
 
 [1.10.3] - 2024-07-12
 -------------------------
