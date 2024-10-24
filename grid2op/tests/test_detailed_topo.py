@@ -167,7 +167,7 @@ class DetailedTopoTester(unittest.TestCase):
         
         obs = self.env.reset()
         dtd = type(obs).detailed_topo_desc
-        switches_state = dtd.compute_switches_position(obs.topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(obs.topo_vect, obs._shunt_bus)[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].all()  # all connected
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].all()  # all on bus 1
@@ -175,7 +175,7 @@ class DetailedTopoTester(unittest.TestCase):
         
         # move everything to bus 2
         switches_state = dtd.compute_switches_position(np.full(obs.topo_vect.shape, fill_value=2),
-                                                                                np.full(obs._shunt_bus.shape, fill_value=2))
+                                                       np.full(obs._shunt_bus.shape, fill_value=2))[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].all()  # all connected
         assert switches_state[(start_id + 2)::(nb_busbar + 1)].all()  # all on busbar 2
@@ -185,7 +185,7 @@ class DetailedTopoTester(unittest.TestCase):
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).line_or_pos_topo_vect[0]] = -1
         topo_vect[type(obs).line_ex_pos_topo_vect[0]] = -1
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         # quickly check other elements
         assert switches_state.sum() == 116
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 58
@@ -200,7 +200,7 @@ class DetailedTopoTester(unittest.TestCase):
         # load 3 to bus 2
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).load_pos_topo_vect[3]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
@@ -212,7 +212,7 @@ class DetailedTopoTester(unittest.TestCase):
         # gen 1 to bus 2
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).gen_pos_topo_vect[1]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
@@ -225,7 +225,7 @@ class DetailedTopoTester(unittest.TestCase):
         topo_vect = 1 * obs.topo_vect
         el_id = 6
         topo_vect[type(obs).line_or_pos_topo_vect[el_id]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
@@ -238,7 +238,7 @@ class DetailedTopoTester(unittest.TestCase):
         topo_vect = 1 * obs.topo_vect
         el_id = 9
         topo_vect[type(obs).line_ex_pos_topo_vect[el_id]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
@@ -251,7 +251,7 @@ class DetailedTopoTester(unittest.TestCase):
         topo_vect = 1 * obs.topo_vect
         el_id = 0
         topo_vect[type(obs).storage_pos_topo_vect[el_id]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
@@ -264,7 +264,7 @@ class DetailedTopoTester(unittest.TestCase):
         shunt_bus = 1 * obs._shunt_bus
         el_id = 0
         shunt_bus[el_id] = 2
-        switches_state = dtd.compute_switches_position(obs.topo_vect, shunt_bus)
+        switches_state = dtd.compute_switches_position(obs.topo_vect, shunt_bus)[0]
         assert switches_state.sum() == 120
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
@@ -284,7 +284,7 @@ class DetailedTopoTester(unittest.TestCase):
         
         # nothing modified
         switches_state = bk_act.get_all_switches()
-        assert switches_state.sum() == 120
+        assert switches_state.sum() == 120, f"{switches_state.sum()} vs 120"
         assert switches_state[start_id::(nb_busbar + 1)].all()  # all connected
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].all()  # all on bus 1
         assert (~switches_state[(start_id + 2)::(nb_busbar + 1)]).all()  # nothing on busbar 2
@@ -292,9 +292,9 @@ class DetailedTopoTester(unittest.TestCase):
         # I modified the position of a "regular" element load 1 for the sake of the example
         bk_act += self.env.action_space({"set_bus": {"loads_id": [(1, 2)]}})
         switches_state = bk_act.get_all_switches()
-        assert switches_state.sum() == 120
+        assert switches_state.sum() == 120, f"{switches_state.sum()} vs 120"
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
-        assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
+        assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59, f"{switches_state[(start_id + 1)::(nb_busbar + 1)].sum()}"  # busbar 1
         assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 1  # busbar 2
         id_switch = dtd.get_switch_id_ieee(dtd.load_to_conn_node_id[1])
         assert switches_state[id_switch:(id_switch + nb_busbar + 1)].sum() == 2  # only 2 switches closed
@@ -303,7 +303,7 @@ class DetailedTopoTester(unittest.TestCase):
         # I disconnect it
         bk_act += self.env.action_space({"set_bus": {"loads_id": [(1, -1)]}})
         switches_state = bk_act.get_all_switches()
-        assert switches_state.sum() == 118
+        assert switches_state.sum() == 118, f"{switches_state.sum()} vs 120"
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 59
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
         assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 0  # busbar 2
@@ -314,7 +314,7 @@ class DetailedTopoTester(unittest.TestCase):
         # I modify the position of a shunt (a bit special)
         bk_act += self.env.action_space({"shunt": {"set_bus": [(0, 2)]}})
         switches_state = bk_act.get_all_switches()
-        assert switches_state.sum() == 120
+        assert switches_state.sum() == 120, f"{switches_state.sum()} vs 120"
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
         assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 1  # busbar 2
@@ -322,20 +322,31 @@ class DetailedTopoTester(unittest.TestCase):
         assert switches_state[id_switch:(id_switch + nb_busbar + 1)].sum() == 2  # only 2 switches closed
         assert switches_state[id_switch + 2]  # busbar 2
         
+        # set back it back to its original position
+        bk_act += self.env.action_space({"shunt": {"set_bus": [(0, 1)]}})
+        switches_state = bk_act.get_all_switches()
+        assert switches_state.sum() == 120, f"{switches_state.sum()} vs 120"
+        assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
+        assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 60  # busbar 1
+        assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 0   # busbar 2
+        id_switch = dtd.get_switch_id_ieee(dtd.shunt_to_conn_node_id[0])
+        assert switches_state[id_switch:(id_switch + nb_busbar + 1)].sum() == 2  # only 2 switches closed
+        assert switches_state[id_switch + 1]  # busbar 1
+        
         # I disconnect it
         bk_act += self.env.action_space({"shunt": {"set_bus": [(0, -1)]}})
         switches_state = bk_act.get_all_switches()
-        assert switches_state.sum() == 118
+        assert switches_state.sum() == 119, f"{switches_state.sum()} vs 119"
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 59
-        assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 59  # busbar 1
-        assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 0  # busbar 2
+        assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 60  # busbar 1 (shunt was on busbar 2)
+        assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 0  # busbar 2 (shunt was on busbar 2)
         id_switch = dtd.get_switch_id_ieee(dtd.shunt_to_conn_node_id[0])
-        assert switches_state[id_switch:(id_switch + nb_busbar + 1)].sum() == 0  # only 2 switches closed
+        assert switches_state[id_switch:(id_switch + nb_busbar + 1)].sum() == 1  # only switch in direct control of shunts switched off
         
         # set back it back to its original position
         bk_act += self.env.action_space({"shunt": {"set_bus": [(0, 1)]}})
         switches_state = bk_act.get_all_switches()
-        assert switches_state.sum() == 120
+        assert switches_state.sum() == 120, f"{switches_state.sum()} vs 120"
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 60
         assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 60  # busbar 1
         assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 0   # busbar 2
@@ -344,16 +355,19 @@ class DetailedTopoTester(unittest.TestCase):
         assert switches_state[id_switch + 1]  # busbar 1
         
         # then I disconnect a powerline (check that both ends are disconnected)
-        bk_act += self.env.action_space({"set_bus": {"lines_or_id": [(3, -1)]}})
+        line_id = 3
+        act = self.env.action_space({"set_bus": {"lines_or_id": [(line_id, -1)]}})
+        _ = act.get_topological_impact(obs.line_status, _store_in_cache=True, _read_from_cache=False)
+        bk_act += act
         switches_state = bk_act.get_all_switches()
-        assert switches_state.sum() == 116
+        assert switches_state.sum() == 118, f"{switches_state.sum()} vs 118"
         assert switches_state[start_id::(nb_busbar + 1)].sum() == 58
-        assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 58  # busbar 1
+        assert switches_state[(start_id + 1)::(nb_busbar + 1)].sum() == 60  # busbar 1 (lines are still connected there)
         assert switches_state[(start_id + 2)::(nb_busbar + 1)].sum() == 0  # busbar 2
-        id_switch_or = dtd.get_switch_id_ieee(dtd.line_or_to_conn_node_id[3])
-        id_switch_ex = dtd.get_switch_id_ieee(dtd.line_ex_to_conn_node_id[3])
-        assert (~switches_state[id_switch_or:(id_switch_or + nb_busbar + 1)]).all()
-        assert (~switches_state[id_switch_ex:(id_switch_ex + nb_busbar + 1)]).all()
+        id_switch_or = dtd.get_switch_id_ieee(dtd.line_or_to_conn_node_id[line_id])
+        id_switch_ex = dtd.get_switch_id_ieee(dtd.line_ex_to_conn_node_id[line_id])
+        assert (switches_state[id_switch_or:(id_switch_or + nb_busbar + 1)]).sum() == 1  # switch to busbar 1 still connected
+        assert (switches_state[id_switch_ex:(id_switch_ex + nb_busbar + 1)]).sum() == 1  # switch to busbar 1 still connected
         
     def test_from_switches_position_basic(self):
         nb_busbar = self._aux_n_bb_per_sub()
@@ -811,13 +825,14 @@ class TestActAndBkAct(unittest.TestCase):
             shunts__,  # TODO detailed topo does not compute shunt_bus there
         ) = bk_act()
         switch_pos = bk_act.get_all_switches()
-        assert (switch_pos == tgt_switch).all()
+        
+        assert (switch_pos == tgt_switch).all(), f"check switches {(switch_pos != tgt_switch).nonzero()[0]}"
         
         # env does that again
         bk_act.reset()
         
-    def test_switch_bbc_action(self):    
-        """do an action of closing a switch between busbars
+    def test_switch_bbs_action(self):    
+        """do an action of closing switches between busbars
         (which has no impact on topo)"""
         # TODO detailed topo: speed it up by
         # not using the routine to/ from switch !
@@ -875,6 +890,128 @@ class TestActAndBkAct(unittest.TestCase):
                                 True, False,  True,  True, False])
         self._aux_test_bk_act(act, tgt_switch)
         
+        # agent does that
+        act : BaseAction = self.env.action_space({"set_switch": [(0, 1), (15, -1), (7, 1), (8, 1)]})
+        tgt_switch = np.array([True, False, False, False, False, False, False, True, True,
+                               False, False, False, False, False,  True,  False, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False,  True,  True, False,  True,
+                               True, False,  True,  True, False])
+        self._aux_test_bk_act(act, tgt_switch)
+        
+    def test_switch_bbs_and_topo_act(self):    
+        """do an action of closing switches between busbars
+        and a topological action with set_bus"""
+        # TODO detailed topo: speed it up by
+        # not using the routine to/ from switch !
+        obs = self.env.reset()
+    
+        # agent does that
+        act : BaseAction = self.env.action_space({"set_switch": [(1, 1)]})  # switch on sub 1
+        act += self.env.action_space({"set_bus": {"topo_vect_id": [(0, 1), (1, 1)]}})  # set_bus on sub 0
+        tgt_switch = np.array([False, True, False, False, False, False, False, False, False,
+                               False, False, False, False, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False])
+        self._aux_test_bk_act(act, tgt_switch)
+        
+        # agent does that
+        act : BaseAction = self.env.action_space({"set_switch": [(1, 1)]})  # switch on sub 1
+        act += self.env.action_space({"set_bus": {"topo_vect_id": [(0, 2), (1, 1)]}})  # set_bus on sub 0
+        tgt_switch = np.array([False, True, False, False, False, False, False, False, False,
+                               False, False, False, False, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False])
+        tgt_switch[66] = False
+        tgt_switch[67] = True
+        self._aux_test_bk_act(act, tgt_switch)
+        
+        # agent does that
+        act : BaseAction = self.env.action_space({"set_switch": [(1, 1)]})  # switch on sub 1
+        act += self.env.action_space({"set_bus": {"topo_vect_id": [(0, 2), (1, 1), (9, 2)]}})  # set_bus on sub 0 and 2
+        tgt_switch = np.array([False, True, False, False, False, False, False, False, False,
+                               False, False, False, False, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False,  True,  True, False,  True,
+                                True, False,  True,  True, False])
+        tgt_switch[66] = False
+        tgt_switch[67] = True
+        tgt_switch[132] = False
+        tgt_switch[133] = True
+        self._aux_test_bk_act(act, tgt_switch)
+        
+    # TODO test with shunts
+    # TODO test with line status !
     
 # TODO detailed topo test no shunt too
 # TODO detailed topo test "_get_full_cls_str"(experimental_read_from_local_dir)

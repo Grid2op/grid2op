@@ -135,7 +135,7 @@ class AuxTestComputeSwitchPos:
         """test I can compute this for the reference test case"""
         dtd, target, result = self._aux_read_case("1")
         dtd._aux_compute_busbars_sections()
-        switches = dtd.compute_switches_position(target)
+        switches = dtd.compute_switches_position(target)[0]
         self._aux_test_switch_topo(dtd, target, switches)
                     
     def test_case1_all_samebus(self):
@@ -144,7 +144,7 @@ class AuxTestComputeSwitchPos:
         dtd._aux_compute_busbars_sections()
         for bus in range(dtd.busbar_section_to_subid.shape[0]):
             target[:] = bus + 1
-            switches = dtd.compute_switches_position(target)
+            switches = dtd.compute_switches_position(target)[0]
             self._aux_test_switch_topo(dtd, target, switches)
     
     def test_case1_impossible_toomuch_buses(self):
@@ -156,7 +156,7 @@ class AuxTestComputeSwitchPos:
             els = np.array(list(dtd._conn_node_to_bbs_conn_node_id[dtd.line_or_to_conn_node_id[el_id]]))
             target[el_id] = (dtd.busbar_section_to_conn_node_id == els[el_id % len(els)]).nonzero()[0][0] + 1
         # test that it works in general case with all possible buses
-        switches = dtd.compute_switches_position(target)
+        switches = dtd.compute_switches_position(target)[0]
         self._aux_test_switch_topo(dtd, target, switches)
         
         # now test that it breaks if the index of a bus it too high
@@ -164,7 +164,7 @@ class AuxTestComputeSwitchPos:
             tmp = 1 * target
             tmp[el_id] = bus_id_too_high
             with self.assertRaises(ImpossibleTopology):
-                switches = dtd.compute_switches_position(tmp)
+                switches = dtd.compute_switches_position(tmp)[0]
                 
     def test_case1_impossible_connectivity(self):
         """test for some more cases where it would be impossible (forced to connect busbar breaker 
@@ -183,14 +183,14 @@ class AuxTestComputeSwitchPos:
             els = np.array(list(dtd._conn_node_to_bbs_conn_node_id[dtd.line_or_to_conn_node_id[el_id]]))
             target[el_id] = (dtd.busbar_section_to_conn_node_id == els[0]).nonzero()[0][0] + 1
         # should work
-        switches = dtd.compute_switches_position(target)
+        switches = dtd.compute_switches_position(target)[0]
         self._aux_test_switch_topo(dtd, target, switches)
         
         # here I force to connect bbs 1 or 3 to bbs 0
         # which contradicts the 4 other constraints above
         target[4] = 1
         with self.assertRaises(ImpossibleTopology):
-            switches = dtd.compute_switches_position(target)
+            switches = dtd.compute_switches_position(target)[0]
                 
     def test_case1_with_disconnected_element(self):
         dtd, target, result = self._aux_read_case("1")
@@ -199,7 +199,7 @@ class AuxTestComputeSwitchPos:
         for el_id in range(len(target)):
             tmp = 1 * target
             tmp[el_id] = -1
-            switches = dtd.compute_switches_position(tmp)
+            switches = dtd.compute_switches_position(tmp)[0]
             self._aux_test_switch_topo(dtd, tmp, switches, f"when disconnecting element {el_id}")
 
 
@@ -288,97 +288,97 @@ class TestComputeSwitchPos_AddDetailedTopoIEEE(unittest.TestCase):
         
         obs = self.env.reset()
         dtd = type(obs).detailed_topo_desc
-        switches_state = dtd.compute_switches_position(obs.topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(obs.topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, obs.topo_vect, obs._shunt_bus, switches_state)
         
         # move everything to bus 2
         topo_vect = np.full(obs.topo_vect.shape, fill_value=2)
         shunt_bus = np.full(obs._shunt_bus.shape, fill_value=2)
-        switches_state = dtd.compute_switches_position(topo_vect, shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, shunt_bus, switches_state)
         
         # now check some disconnected elements (*eg* line id 0)
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).line_or_pos_topo_vect[0]] = -1
         topo_vect[type(obs).line_ex_pos_topo_vect[0]] = -1
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         
         # and now elements per elements
         # load 3 to bus 2
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).load_pos_topo_vect[3]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         
         # gen 1 to bus 2
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).gen_pos_topo_vect[1]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         
         # line or 6 to bus 2
         topo_vect = 1 * obs.topo_vect
         el_id = 6
         topo_vect[type(obs).line_or_pos_topo_vect[el_id]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         
         # line ex 9 to bus 2
         topo_vect = 1 * obs.topo_vect
         el_id = 9
         topo_vect[type(obs).line_ex_pos_topo_vect[el_id]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         
         # storage 0 to bus 2
         topo_vect = 1 * obs.topo_vect
         el_id = 0
         topo_vect[type(obs).storage_pos_topo_vect[el_id]] = 2
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         
         # shunt 0 to bus 2
         shunt_bus = 1 * obs._shunt_bus
         el_id = 0
         shunt_bus[el_id] = 2
-        switches_state = dtd.compute_switches_position(obs.topo_vect, shunt_bus)
+        switches_state = dtd.compute_switches_position(obs.topo_vect, shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, obs.topo_vect, shunt_bus, switches_state)
         
         # and now elements per elements (disco)
         # load 3
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).load_pos_topo_vect[3]] = -1
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         # gen 1 
         topo_vect = 1 * obs.topo_vect
         topo_vect[type(obs).gen_pos_topo_vect[1]] = -1
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         # line or 6 
         topo_vect = 1 * obs.topo_vect
         el_id = 6
         topo_vect[type(obs).line_or_pos_topo_vect[el_id]] = -1
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         # line ex 9
         topo_vect = 1 * obs.topo_vect
         el_id = 9
         topo_vect[type(obs).line_ex_pos_topo_vect[el_id]] = -1
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         # storage 0 
         topo_vect = 1 * obs.topo_vect
         el_id = 0
         topo_vect[type(obs).storage_pos_topo_vect[el_id]] = -1
-        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)
+        switches_state = dtd.compute_switches_position(topo_vect, obs._shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, topo_vect, obs._shunt_bus, switches_state)
         # shunt 0
         shunt_bus = 1 * obs._shunt_bus
         el_id = 0
         shunt_bus[el_id] = -1
-        switches_state = dtd.compute_switches_position(obs.topo_vect, shunt_bus)
+        switches_state = dtd.compute_switches_position(obs.topo_vect, shunt_bus)[0]
         self._aux_test_switch_topo(gridobj_cls, dtd, obs.topo_vect, shunt_bus, switches_state)
 
 

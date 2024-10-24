@@ -49,7 +49,7 @@ class TestComputeSwitchPosExt(unittest.TestCase):
         if CPROF:
             cp = cProfile.Profile()
             cp.enable()
-        switches = dtd.compute_switches_position(target)
+        switches = dtd.compute_switches_position(target)[0]
         if CPROF:
             cp.disable()
             nm_f, ext = os.path.splitext(__file__)
@@ -75,7 +75,7 @@ class TestComputeSwitchPosExt(unittest.TestCase):
             dtd, target, result = tmp
             AuxTestComputeSwitchPos._aux_test_switch_topo(dtd, target, result)
             dtd._aux_compute_busbars_sections()
-            switches = dtd.compute_switches_position(target)
+            switches = dtd.compute_switches_position(target)[0]
             AuxTestComputeSwitchPos._aux_test_switch_topo(dtd, target, switches)
     
     

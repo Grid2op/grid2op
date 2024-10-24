@@ -89,5 +89,8 @@ class AddDetailedTopoIEEE:
     def get_switches_position(self) -> Optional[np.ndarray]:
       topo_vect = self.get_topo_vect()
       *_, shunt_bus = self.shunt_info()
-      res = self.detailed_topo_desc.compute_switches_position(topo_vect, shunt_bus)
+      res, mask = self.detailed_topo_desc.compute_switches_position(topo_vect, shunt_bus)
+      # TODO detailed topo store the detailed topo somehow and return the modifications
+      # self.detailed_topo[mask] = res[mask]
+      # return self.detailed_topo
       return res

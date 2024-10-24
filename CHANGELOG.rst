@@ -106,6 +106,9 @@ Native multi agents support:
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
+- [IMPROVED] the function `action.get_topological_impact(...)` has now a "caching" mechanism
+  that allows not to recompute it over and over again (this is internal API please do not change 
+  it... unless you know what you are doing)
 
 [1.10.4] - 2024-10-15
 -------------------------

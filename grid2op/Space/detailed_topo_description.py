@@ -257,11 +257,14 @@ class DetailedTopoDescription(object):
         #:     - col 2 TODO detailed topo doc
         self.switches = None
         
-        #: TODO
+        #: TODO detailed topo doc
         self.conn_node_to_topovect_id = None
         
-        #: TODO
+        #: TODO detailed topo doc
         self.conn_node_to_shunt_id = None
+        
+        #: TODO detailed topo doc
+        self.topovect_to_conn_node_id = None
         
         #: A list of tuple that has the same size as the number of loads on the grid.
         #: For each loads, it gives the connection node ids to which (thanks to a switch) a load can be
@@ -354,7 +357,7 @@ class DetailedTopoDescription(object):
         # conn node for each busbar
         bb_conn_node = sum([[f"conn_node_sub_{subid}_busbar_{bb_i}" for bb_i in range(n_bb_per_sub)] for subid in range(n_sub)],
                              start=[])
-        res.busbar_section_to_subid = np.repeat(np.arange(n_sub),n_bb_per_sub)
+        res.busbar_section_to_subid = np.repeat(np.arange(n_sub), n_bb_per_sub)
         res.busbar_section_to_conn_node_id = np.arange(len(bb_conn_node))
         
         el_conn_node = ([f"conn_node_load_{i}" for i in range(init_grid_cls.n_load)] + 
@@ -478,10 +481,19 @@ class DetailedTopoDescription(object):
             prev_el = next_el
             handled += nb_el
         
+        res.topovect_to_conn_node_id = res._aux_init_fill_topovect_to_conn_node_id(init_grid_cls.dim_topo, res.conn_node_to_topovect_id)
         # TODO detailed topo: have a function to compute the switches `sub_id` columns from the `conn_node_to_subid`
         # TODO detailed topo: have a function for the "conn_node_to_topovect_id" and  "switches_to_shunt_id"
         return res
     
+    @staticmethod
+    def _aux_init_fill_topovect_to_conn_node_id(dim_topo, conn_node_to_topovect_id):
+        topovect_to_conn_node_id = np.zeros(dim_topo, dtype=dt_int) - 1
+        mask_in_topo = conn_node_to_topovect_id != -1
+        cn_ids = (mask_in_topo).nonzero()[0]
+        topovect_to_conn_node_id[conn_node_to_topovect_id[mask_in_topo]] = cn_ids
+        return topovect_to_conn_node_id
+        
     def _aux_compute_busbars_sections(self):
         # TODO detailed topo: speed optimization: install graph-tool (but not available with pip...)
         cls = type(self)
@@ -545,7 +557,9 @@ class DetailedTopoDescription(object):
                                        bus_vect,  # topo_vect
                                        el_to_conn_node_id,   # load_to_conn_node_id
                                        conn_node_to_bus_id,  # conn_node_to_topo_vect_id
-                                       switches_state,  # result
+                                       subs_changed,  # mask of substation that are changed
+                                       switches_state,  # result : switch state
+                                       switch_modif,  # result: mask whether the switches is modified
                                        ):
         if not self._from_ieee_grid:
             raise NotImplementedError("This function is only implemented for detailed topology "
@@ -557,36 +571,125 @@ class DetailedTopoDescription(object):
         
         # TODO detailed topo vectorize this ! (or cython maybe ?)
         for conn_node in el_to_conn_node_id:
+            if not subs_changed[self.conn_node_to_subid[conn_node]]:
+                # no need to change this element, it does not belong
+                # to a substation modified
+                continue
+            n_busbar_this_sub = (self.busbar_section_to_subid == self.conn_node_to_subid[conn_node]).sum()
+            nb_switch = n_busbar_this_sub + 1
             switch_id = self.get_switch_id_ieee(conn_node)
             my_bus = bus_vect[conn_node_to_bus_id[conn_node]]
             if my_bus == -1:
                 # I init the swith at False, so nothing to do in this case
+                switches_state[switch_id:(switch_id + nb_switch)] = False
+                switch_modif[switch_id:(switch_id + nb_switch)] = True
                 continue
+            switches_state[switch_id:(switch_id + nb_switch)] = False  # all others are disconnected
             switches_state[switch_id] = True  # connector is connected
-            switches_state[switch_id + my_bus] = True  # connector to busbar is connected
+            switches_state[switch_id + my_bus] = True  # connector to busbar `my_bus` is connected
+            switch_modif[switch_id:(switch_id + nb_switch)] = True  # all these switches are modified
     
-    def compute_switches_position_ieee(self, topo_vect, shunt_bus):
+    def compute_switches_position_ieee(self,
+                                       topo_vect,
+                                       shunt_bus,
+                                       subs_changed : Optional[np.ndarray]=None):
+        """TODO detailed topo
+
+        Parameters
+        ----------
+        topo_vect : _type_
+            _description_
+        shunt_bus : _type_
+            _description_
+        subs_changed : Optional[np.ndarray], optional
+            _description_, by default None
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        NotImplementedError
+            _description_
+        """
+        
+        if subs_changed is None:
+            subs_changed = np.ones(self._n_sub, dtype=dt_bool)
+            
         if not self._from_ieee_grid:
             raise NotImplementedError("This function is only implemented for detailed topology "
                                       "generated from ieee grids. You can use `compute_switches_position` "
                                       "for a more generic function.")
         switches_state = np.zeros(self.switches.shape[0], dtype=dt_bool)
+        switch_modif = np.zeros(self.switches.shape[0], dtype=dt_bool)
         
         # compute the position for the switches of the "topo_vect" elements
-        self._aux_compute_switches_pos_ieee(topo_vect, self.load_to_conn_node_id, self.conn_node_to_topovect_id, switches_state)
-        self._aux_compute_switches_pos_ieee(topo_vect, self.gen_to_conn_node_id, self.conn_node_to_topovect_id, switches_state)
-        self._aux_compute_switches_pos_ieee(topo_vect, self.line_or_to_conn_node_id, self.conn_node_to_topovect_id, switches_state)
-        self._aux_compute_switches_pos_ieee(topo_vect, self.line_ex_to_conn_node_id, self.conn_node_to_topovect_id, switches_state)
-        self._aux_compute_switches_pos_ieee(topo_vect, self.storage_to_conn_node_id, self.conn_node_to_topovect_id, switches_state)
+        self._aux_compute_switches_pos_ieee(topo_vect, self.load_to_conn_node_id, self.conn_node_to_topovect_id, subs_changed, switches_state, switch_modif)
+        self._aux_compute_switches_pos_ieee(topo_vect, self.gen_to_conn_node_id, self.conn_node_to_topovect_id, subs_changed, switches_state, switch_modif)
+        self._aux_compute_switches_pos_ieee(topo_vect, self.line_or_to_conn_node_id, self.conn_node_to_topovect_id, subs_changed, switches_state, switch_modif)
+        self._aux_compute_switches_pos_ieee(topo_vect, self.line_ex_to_conn_node_id, self.conn_node_to_topovect_id, subs_changed, switches_state, switch_modif)
+        self._aux_compute_switches_pos_ieee(topo_vect, self.storage_to_conn_node_id, self.conn_node_to_topovect_id, subs_changed, switches_state, switch_modif)
             
         if self.conn_node_to_shunt_id is None or shunt_bus is None or self._n_shunt == 0:
             # no need to process the shunts in these cases
-            return switches_state
+            return switches_state, switch_modif
         
         # compute the position for the switches of the "shunts" elements
-        self._aux_compute_switches_pos_ieee(shunt_bus, self.shunt_to_conn_node_id, self.conn_node_to_shunt_id, switches_state)
-        return switches_state
+        self._aux_compute_switches_pos_ieee(shunt_bus, self.shunt_to_conn_node_id, self.conn_node_to_shunt_id, subs_changed, switches_state, switch_modif)
+        return switches_state, switch_modif
+        
+    def disconnect_el_with_switch(self,
+                                  mask_topo_vect: np.ndarray,
+                                  mask_shunt : Optional[np.ndarray]=None):
+        """This function allows to disconnect the switches for a given sets of elements (if they have been
+        disconnected by set_bus, change_line_status or set_line_status for example).
+        
+        It can be use as a replacement of :func:`DetailedTopoDescription.compute_switches_position` if
+        only **disconnection** actions are being performed.
+
+        This function will set to ``False`` (meaning disconnected) all the switches directly connected to an element
+        without modifying the others. 
+        
+        It will not do anything else.
+        
+        Parameters
+        ----------
+        mask_topo_vect : np.ndarray
+            The element of the topo_vect to disconnect, represented by a mask (vector of
+            bool with the same size as `dim_topo`)
             
+        mask_shunt : Optional[np.ndarray]
+            The shunts to disconnect, represented by a mask (vector of
+            bool with the same size as `dim_topo`)
+            
+        Returns
+        ---------
+        
+        """
+        cls = type(self)
+        full_res = np.zeros(self.switches.shape[0], dtype=dt_bool) 
+        affected_switch = np.zeros(self.switches.shape[0], dtype=dt_bool) 
+        
+        # handle element in topo vect
+        cns = self.topovect_to_conn_node_id[mask_topo_vect]
+        switches = ((np.isin(self.switches[:,cls.CONN_NODE_1_ID_COL], cns)) |
+                    (np.isin(self.switches[:,cls.CONN_NODE_2_ID_COL], cns)))
+        full_res[switches] = False
+        affected_switch[switches] = True
+        
+        if mask_shunt is None:
+            return full_res, affected_switch
+        
+        # handle the shunts
+        cns = self.shunt_to_conn_node_id[mask_shunt]
+        switches = ((np.isin(self.switches[:,cls.CONN_NODE_1_ID_COL], cns)) |
+                    (np.isin(self.switches[:,cls.CONN_NODE_2_ID_COL], cns)))
+        full_res[switches] = False  # disconnect the elements
+        affected_switch[switches] = True  # say these switches have been modified
+        return full_res, affected_switch
+        
     def compute_switches_position(self,
                                   topo_vect: np.ndarray,
                                   shunt_bus: Optional[np.ndarray]=None,
@@ -629,13 +732,13 @@ class DetailedTopoDescription(object):
         if np.unique(conn_topo_vect).shape[0] > self.busbar_section_to_subid.shape[0]:
             raise ImpossibleTopology("You ask for more independant buses than there are "
                                      "busbar section on this substation")
+        if subs_changed is None:
+            subs_changed = np.ones(self._n_sub, dtype=dt_bool)
+            
         if self._from_ieee_grid:
             # specific case for IEEE grid, consistent with the AddDetailedTopoIEEE
             # class
-            return self.compute_switches_position_ieee(topo_vect, shunt_bus)
-        
-        if subs_changed is None:
-            subs_changed = np.ones(self._n_sub, dtype=dt_bool)
+            return self.compute_switches_position_ieee(topo_vect, shunt_bus, subs_changed)
         
         if subs_changed.shape[0] != self._n_sub:
             raise Grid2OpException("Incorrect size for the substation mask")
@@ -644,13 +747,15 @@ class DetailedTopoDescription(object):
             self._aux_compute_busbars_sections()
             
         full_res = np.zeros(self.switches.shape[0], dtype=dt_bool)
+        switch_modif = np.zeros(self.switches.shape[0], dtype=dt_bool)
         for sub_id, is_sub_modif in enumerate(subs_changed):
             if not is_sub_modif:
                 continue
             mask_this_sub = self.switches[:, type(self).SUB_COL] == sub_id
             res_this_sub = self._aux_compute_switches_position_one_sub(sub_id, topo_vect, shunt_bus)
             full_res[mask_this_sub] = res_this_sub
-        return full_res
+            switch_modif[mask_this_sub] = True
+        return full_res, switch_modif
     
     def _aux_compute_switches_position_one_sub(self,
                                                sub_id,
@@ -1553,6 +1658,17 @@ class DetailedTopoDescription(object):
         
         # check topo vect is consistent
         arr = self.conn_node_to_topovect_id[self.conn_node_to_topovect_id != -1]
+        if self.topovect_to_conn_node_id is None:
+            self.topovect_to_conn_node_id = self._aux_init_fill_topovect_to_conn_node_id(self._dim_topo, self.conn_node_to_topovect_id)
+        else:
+            # self.conn_node_to_topovect_id[]
+            if (np.arange(self._dim_topo) != self.conn_node_to_topovect_id[self.topovect_to_conn_node_id]).any():
+                raise Grid2OpException("Inconsistency between `conn_node_to_topovect_id` and `topovect_to_conn_node_id`")
+            mask = self.conn_node_to_topovect_id != -1
+            vals = mask.nonzero()[0]
+            if (self.topovect_to_conn_node_id[self.conn_node_to_topovect_id[mask]] != vals).any():
+                raise Grid2OpException("Inconsistency between `conn_node_to_topovect_id` and `topovect_to_conn_node_id`")
+                
         dim_topo = gridobj_cls.dim_topo
         if arr.max() != dim_topo - 1:
             raise Grid2OpException("Inconsistency in `self.conn_node_to_topovect_id`: some objects in the "
@@ -1656,6 +1772,16 @@ class DetailedTopoDescription(object):
             (lambda arr: [int(el) for el in arr]) if as_list else lambda arr: arr.flatten(),
             copy_,
         )
+        
+        if self.topovect_to_conn_node_id is None:
+            self.topovect_to_conn_node_id = self._aux_init_fill_topovect_to_conn_node_id(self._dim_topo, self.conn_node_to_topovect_id)
+        save_to_dict(
+            res,
+            self,
+            "topovect_to_conn_node_id",
+            (lambda arr: [int(el) for el in arr]) if as_list else lambda arr: arr.flatten(),
+            copy_,
+        )
         if self.conn_node_to_shunt_id is not None:
             save_to_dict(
                 res,
@@ -1750,6 +1876,9 @@ class DetailedTopoDescription(object):
         
         res.conn_node_to_topovect_id = extract_from_dict(
             dict_, "conn_node_to_topovect_id", lambda x: np.array(x).astype(dt_int)
+        )
+        res.topovect_to_conn_node_id = extract_from_dict(
+            dict_, "topovect_to_conn_node_id", lambda x: np.array(x).astype(dt_int)
         )
         res._from_ieee_grid = bool(dict_["_from_ieee_grid"])
         res._n_sub = int(dict_["_n_sub"])
