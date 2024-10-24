@@ -4264,11 +4264,11 @@ class BaseAction(GridObjects):
                 ) from exc_
 
             if new_bus < min_val:
-                raise AmbiguousAction(
+                raise IllegalAction(
                     f"new_bus should be between {min_val} and {max_val} found {new_bus}, check element id {el_id}"
                 )
             if new_bus > max_val:
-                raise AmbiguousAction(
+                raise IllegalAction(
                     f"new_bus should be between {min_val} and {max_val} found {new_bus}, check element id {el_id}"
                 )
 
