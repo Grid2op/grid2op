@@ -2056,7 +2056,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if self.flexible_load_available:
             if (self._target_flex > self.load_size).any():
                 # Action is invalid, the target flexibility would be above the size of at least one flexible load
-                cond_invalid = self._target_dispatch > self.load_size
+                cond_invalid = self._target_flex > self.load_size
                 except_ = InvalidFlexibility(
                     "You cannot ask for flexibility greater than load_size [it would be always "
                     "invalid because, even if the setpoint is 0, this dispatch would set it "
@@ -2070,7 +2070,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # Check that flexible load adjustments are consistent with their size (max consumption):
             if (self._target_flex < -self.load_size).any():
                 # Action is invalid, the target redispatching would be above pmax for at least a generator
-                cond_invalid = self._target_dispatch < -self.load_size
+                cond_invalid = self._target_flex < -self.load_size
                 except_ = InvalidFlexibility(
                     "You cannot ask for flexibility greater than load_size [it would be always "
                     "invalid because, even if the setpoint is load_size, this dispatch would set it "
