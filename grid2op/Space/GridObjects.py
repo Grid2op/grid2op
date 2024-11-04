@@ -4418,7 +4418,7 @@ class GridObjects:
         
         # Shedding
         if 'allow_shedding' in dict_:
-            cls.allow_shedding = int(dict_["allow_shedding"])
+            cls.allow_shedding = bool(dict_["allow_shedding"])
         else: # Compatibility for older versions
             cls.allow_shedding = DEFAULT_ALLOW_SHEDDING
         
