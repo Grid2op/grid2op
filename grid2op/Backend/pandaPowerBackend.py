@@ -1548,3 +1548,7 @@ class PandaPowerBackend(Backend):
         if bus_id >= self._number_true_line:
             return bus_id - self._number_true_line
         return bus_id
+
+    def set_shedding(self, allow_shedding:bool=False) -> bool:
+        # Supported as of Grid2Op 1.11.0
+        self.allow_shedding = allow_shedding

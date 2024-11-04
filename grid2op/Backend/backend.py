@@ -180,7 +180,7 @@ class Backend(GridObjects, ABC):
         #: You should not worry about the class attribute of the backend in :func:`Backend.apply_action`
         self.n_busbar_per_sub: int = DEFAULT_N_BUSBAR_PER_SUB
 
-        self.allow_shedding: bool = allow_shedding
+        self.set_shedding(allow_shedding)
     
     def can_handle_more_than_2_busbar(self):
         """
@@ -242,6 +242,15 @@ class Backend(GridObjects, ABC):
                           "'fix' this issue, you need to change the implementation of your backend or "
                           "upgrade it to a newer version.")
         self.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
+
+    def set_shedding(self, allow_shedding:bool=False) -> bool:
+        """
+        Override if the Backend supports shedding.
+        """
+        if allow_shedding:
+            raise BackendError("Backend does not support shedding")
+        else:
+            self.allow_shedding = allow_shedding
     
     def make_complete_path(self,
                            path : Union[os.PathLike, str],

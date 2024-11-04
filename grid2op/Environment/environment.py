@@ -304,7 +304,7 @@ class Environment(BaseEnv):
                 )
 
             # Shedding
-            self.backend.allow_shedding = self.allow_shedding
+            self.backend.set_shedding(self.allow_shedding)
             
             # alarm set up
             self.load_alarm_data()
