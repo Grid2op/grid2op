@@ -3930,6 +3930,9 @@ class GridObjects:
         else:
             res["name_shunt"] = None
             res["shunt_to_subid"] = None
+
+        # Shedding
+        save_to_dict(res, cls, "allow_shedding", bool, copy_)
             
         if not _topo_vect_only:
             # all the attributes bellow are not needed for the "first call"
@@ -4072,9 +4075,6 @@ class GridObjects:
             save_to_dict(
                 res, cls, "alertable_line_ids", (lambda li: [int(el) for el in li])  if as_list else None, copy_
             )
-            
-            # Shedding
-            save_to_dict(res, cls, "allow_shedding", str, copy_)
 
             # avoid further computation and save it
             if not as_list:

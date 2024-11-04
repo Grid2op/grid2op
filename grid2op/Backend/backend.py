@@ -247,6 +247,7 @@ class Backend(GridObjects, ABC):
         """
         Override if the Backend supports shedding.
         """
+        
         if allow_shedding:
             raise BackendError("Backend does not support shedding")
         else:
