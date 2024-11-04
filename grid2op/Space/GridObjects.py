@@ -3931,8 +3931,6 @@ class GridObjects:
             res["name_shunt"] = None
             res["shunt_to_subid"] = None
 
-        # Shedding
-        save_to_dict(res, cls, "allow_shedding", bool, copy_)
             
         if not _topo_vect_only:
             # all the attributes bellow are not needed for the "first call"
@@ -4131,9 +4129,6 @@ class GridObjects:
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
 
-        # Shedding
-        res["allow_shedding"] = cls.allow_shedding
-            
         # avoid further computation and save it
         if not as_list and not _topo_vect_only:
             cls._CLS_DICT_EXTENDED = res.copy()
