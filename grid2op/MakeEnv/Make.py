@@ -248,6 +248,7 @@ def _aux_make_multimix(
     test=False,
     experimental_read_from_local_dir=False,
     n_busbar=2,
+    allow_shedding=False,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -262,6 +263,7 @@ def _aux_make_multimix(
         dataset_path,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         n_busbar=n_busbar,
+        allow_shedding=allow_shedding,
         _test=test,
         _add_to_name=_add_to_name,
         _compat_glop_version=_compat_glop_version,
@@ -286,6 +288,7 @@ def make(
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
     n_busbar=2,
+    allow_shedding=False,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
     _overload_name_multimix : Optional[str]=None,  # do not use !
@@ -304,6 +307,9 @@ def make(
     
     .. versionadded:: 1.10.0
         The `n_busbar` parameters
+
+    .. versionadded:: 1.11.0
+        The `allow_shedding` parameter
         
     Parameters
     ----------
@@ -328,6 +334,9 @@ def make(
         
     n_busbar: ``int``
         Number of independant busbars allowed per substations. By default it's 2.
+
+    allow_shedding: ``bool``
+        Whether to allow loads and generators to be shed without a game over. By default it's False.
         
     kwargs:
         Other keyword argument to give more control on the environment you are creating. See
@@ -383,6 +392,7 @@ def make(
         raise Grid2OpException(f"n_busbar parameters should be convertible to integer, but we have "
                                f"int(n_busbar) = {n_busbar_int} != {n_busbar}")
         
+        
     accepted_kwargs = ERR_MSG_KWARGS.keys() | {"dataset", "test"}
     for el in kwargs:
         if el not in accepted_kwargs:
@@ -436,6 +446,7 @@ def make(
             _compat_glop_version=_compat_glop_version_tmp,
             _overload_name_multimix=_overload_name_multimix,
             n_busbar=n_busbar,
+            allow_shedding=allow_shedding,
             **kwargs
         )
 
@@ -482,6 +493,7 @@ def make(
             dataset_path=ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            allow_shedding=allow_shedding,
             _add_to_name=_add_to_name,
             _compat_glop_version=_compat_glop_version,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
@@ -497,6 +509,7 @@ def make(
             real_ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            allow_shedding=allow_shedding,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
             _overload_name_multimix=_overload_name_multimix,
             **kwargs
@@ -517,6 +530,7 @@ def make(
         dataset_path=real_ds_path,
         logger=logger,
         n_busbar=n_busbar,
+        allow_shedding=allow_shedding,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         _overload_name_multimix=_overload_name_multimix,
         **kwargs

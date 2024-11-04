@@ -34,7 +34,7 @@ from grid2op.Exceptions import (
     DivergingPowerflow,
     Grid2OpException,
 )
-from grid2op.Space import GridObjects, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import GridObjects, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_SHEDDING
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -122,8 +122,8 @@ class Backend(GridObjects, ABC):
 
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
     def __init__(self,
-                 detailed_infos_for_cascading_failures: bool=False,
-                 can_be_copied: bool=True,
+                 detailed_infos_for_cascading_failures:bool=False,
+                 can_be_copied:bool=True, allow_shedding:bool=DEFAULT_ALLOW_SHEDDING,
                  **kwargs):
         """
         Initialize an instance of Backend. This does nothing per se. Only the call to :func:`Backend.load_grid`
@@ -179,6 +179,8 @@ class Backend(GridObjects, ABC):
         #: There is a difference between this and the class attribute.
         #: You should not worry about the class attribute of the backend in :func:`Backend.apply_action`
         self.n_busbar_per_sub: int = DEFAULT_N_BUSBAR_PER_SUB
+
+        self.allow_shedding: bool = allow_shedding
     
     def can_handle_more_than_2_busbar(self):
         """

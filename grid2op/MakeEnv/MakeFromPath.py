@@ -127,6 +127,7 @@ def make_from_dataset_path(
     logger=None,
     experimental_read_from_local_dir=False,
     n_busbar=2,
+    allow_shedding=False,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -165,6 +166,8 @@ def make_from_dataset_path(
 
     n_busbar: ``int``
         Number of independant busbars allowed per substations. By default it's 2.
+
+    allow_shedding; ``bool``
         
     action_class: ``type``, optional
         Type of BaseAction the BaseAgent will be able to perform.
@@ -951,6 +954,7 @@ def make_from_dataset_path(
                                 kwargs_attention_budget=kwargs_attention_budget,
                                 logger=logger,
                                 n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
+                                allow_shedding=allow_shedding,
                                 _compat_glop_version=_compat_glop_version,
                                 _read_from_local_dir=None,  # first environment to generate the classes and save them
                                 _local_dir_cls=None,
@@ -1031,6 +1035,7 @@ def make_from_dataset_path(
         kwargs_attention_budget=kwargs_attention_budget,
         logger=logger,
         n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
+        allow_shedding=allow_shedding,
         _compat_glop_version=_compat_glop_version,
         _read_from_local_dir=classes_path,
         _allow_loaded_backend=allow_loaded_backend,

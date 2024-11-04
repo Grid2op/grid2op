@@ -67,6 +67,7 @@ class EducPandaPowerBackend(Backend):
     
     def __init__(self,
                  detailed_infos_for_cascading_failures : Optional[bool]=False,
+                 allow_shedding:bool=False,
                  can_be_copied : Optional[bool]=True):
         """
         Nothing much to do here except initializing what you would need (a tensorflow session, link to some
@@ -83,6 +84,7 @@ class EducPandaPowerBackend(Backend):
             self,
             detailed_infos_for_cascading_failures=detailed_infos_for_cascading_failures,
             can_be_copied=can_be_copied,
+            allow_shedding=allow_shedding,
             # extra arguments that might be needed for building such a backend 
             # these extra kwargs will be stored (without copy) in the
             # base class and used when another backend will be created

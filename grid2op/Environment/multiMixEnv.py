@@ -13,7 +13,7 @@ import copy
 from typing import Any, Dict, Tuple, Union, List, Literal
 
 from grid2op.dtypes import dt_int, dt_float
-from grid2op.Space import GridObjects, RandomObject, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import GridObjects, RandomObject, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_SHEDDING
 from grid2op.Exceptions import EnvError, Grid2OpException
 from grid2op.Observation import BaseObservation
 from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
@@ -165,6 +165,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         logger=None,
         experimental_read_from_local_dir=None,
         n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+        allow_shedding=DEFAULT_ALLOW_SHEDDING,
         _add_to_name="",  # internal, for test only, do not use !
         _compat_glop_version=None,  # internal, for test only, do not use !
         _test=False,
@@ -207,6 +208,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                                               _add_to_name,
                                               _compat_glop_version,
                                               n_busbar,
+                                              allow_shedding,
                                               _test,
                                               experimental_read_from_local_dir,
                                               multi_env_name,
@@ -235,6 +237,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                                              _add_to_name,
                                              _compat_glop_version,
                                              n_busbar,
+                                             allow_shedding,
                                              _test,
                                              experimental_read_from_local_dir,
                                              multi_env_name,
@@ -301,6 +304,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                           _add_to_name,
                           _compat_glop_version,
                           n_busbar,
+                          allow_shedding,
                           _test,
                           experimental_read_from_local_dir,
                           multi_env_name,
@@ -335,6 +339,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                 _add_to_name=_add_to_name,
                 _compat_glop_version=_compat_glop_version,
                 n_busbar=n_busbar,
+                allow_shedding=allow_shedding,
                 test=_test,
                 logger=this_logger,
                 experimental_read_from_local_dir=experimental_read_from_local_dir,
@@ -345,6 +350,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
             mix = make(
                 mix_path,
                 n_busbar=n_busbar,
+                allow_shedding=allow_shedding,
                 _add_to_name=_add_to_name,
                 _compat_glop_version=_compat_glop_version,
                 test=_test,

@@ -32,7 +32,7 @@ from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageControll
 from grid2op.Environment.baseEnv import BaseEnv
 from grid2op.Opponent import BaseOpponent, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_SHEDDING
 from grid2op.typing_variables import RESET_OPTIONS_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
@@ -86,6 +86,7 @@ class Environment(BaseEnv):
         parameters,
         name="unknown",
         n_busbar : N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        allow_shedding:bool=DEFAULT_ALLOW_SHEDDING,
         names_chronics_to_backend=None,
         actionClass=TopologyAction,
         observationClass=CompleteObservation,
@@ -156,6 +157,7 @@ class Environment(BaseEnv):
             highres_sim_counter=highres_sim_counter,
             update_obs_after_reward=_update_obs_after_reward,
             n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
+            allow_shedding=allow_shedding,
             name=name,
             _raw_backend_class=_raw_backend_class if _raw_backend_class is not None else type(backend),
             _init_obs=_init_obs,
@@ -278,8 +280,10 @@ class Environment(BaseEnv):
             # this is due to the class attribute
             type(self.backend).set_env_name(self.name)
             type(self.backend).set_n_busbar_per_sub(self._n_busbar)
+            
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version
+            
             self.backend.load_grid(
                 self._init_grid_path
             )  # the real powergrid of the environment
@@ -299,6 +303,9 @@ class Environment(BaseEnv):
                     f'not be able to use the renderer, plot the grid etc. The error was "{exc_}"'
                 )
 
+            # Shedding
+            self.backend.allow_shedding = self.allow_shedding
+            
             # alarm set up
             self.load_alarm_data()
             self.load_alert_data()
@@ -2204,7 +2211,8 @@ class Environment(BaseEnv):
                              _read_from_local_dir,
                              _local_dir_cls,
                              _overload_name_multimix,
-                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB
+                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+                             allow_shedding=DEFAULT_ALLOW_SHEDDING,
                              ):        
         res = cls(init_env_path=init_env_path,
                   init_grid_path=init_grid_path,
@@ -2237,6 +2245,7 @@ class Environment(BaseEnv):
                   observation_bk_class=observation_bk_class,
                   observation_bk_kwargs=observation_bk_kwargs,
                   n_busbar=int(n_busbar),
+                  allow_shedding=bool(allow_shedding),
                   _raw_backend_class=_raw_backend_class,
                   _read_from_local_dir=_read_from_local_dir,
                   _local_dir_cls=_local_dir_cls,
