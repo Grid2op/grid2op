@@ -243,7 +243,7 @@ class Backend(GridObjects, ABC):
                           "upgrade it to a newer version.")
         self.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
 
-    def set_shedding(self, allow_shedding:bool=False) -> bool:
+    def set_shedding(self, allow_shedding:bool=False):
         """
         Override if the Backend supports shedding.
         """
