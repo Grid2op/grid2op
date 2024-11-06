@@ -7,6 +7,8 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 from typing import Tuple
+
+from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.Action import BaseAction
 from grid2op.Observation import BaseObservation
 from grid2op.Environment.environment import Environment
@@ -23,6 +25,6 @@ class _ForecastEnv(Environment):
         super().__init__(*args, **kwargs)
         self._do_not_erase_local_dir_cls = True
         
-    def step(self, action: BaseAction) -> Tuple[BaseObservation, float, bool, dict]:
+    def step(self, action: BaseAction) -> Tuple[BaseObservation, float, bool, STEP_INFO_TYPING]:
         self._highres_sim_counter += 1
         return super().step(action)
