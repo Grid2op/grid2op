@@ -2034,17 +2034,9 @@ class GridObjects:
         # TODO n_busbar_per_sub different num per substations
         if isinstance(cls.n_busbar_per_sub, (int, dt_int, np.int32, np.int64)):
             cls.n_busbar_per_sub = dt_int(cls.n_busbar_per_sub)
-                                   # np.full(cls.n_sub,
-                                   #         fill_value=cls.n_busbar_per_sub,
-                                   #         dtype=dt_int)
         else:
-            # cls.n_busbar_per_sub = np.array(cls.n_busbar_per_sub)
-            # cls.n_busbar_per_sub = cls.n_busbar_per_sub.astype(dt_int)
             raise EnvError("Grid2op cannot handle a different number of busbar per substations at the moment.")
         
-        # if cls.n_busbar_per_sub != int(cls.n_busbar_per_sub):
-            # raise EnvError(f"`n_busbar_per_sub` should be convertible to an integer, found {cls.n_busbar_per_sub}")
-        # cls.n_busbar_per_sub = int(cls.n_busbar_per_sub)
         if (cls.n_busbar_per_sub < 1).any():
             raise EnvError(f"`n_busbar_per_sub` should be >= 1 found {cls.n_busbar_per_sub}")
             
@@ -3931,6 +3923,8 @@ class GridObjects:
             res["name_shunt"] = None
             res["shunt_to_subid"] = None
 
+        
+        save_to_dict(res, cls, "allow_detachment", bool, copy_)
             
         if not _topo_vect_only:
             # all the attributes bellow are not needed for the "first call"
@@ -4411,7 +4405,7 @@ class GridObjects:
                 cls.alertable_line_names = []
                 cls.alertable_line_ids = []
         
-        # Shedding
+        # Detachment of Loads / Generators
         if 'allow_detachment' in dict_:
             cls.allow_detachment = bool(dict_["allow_detachment"])
         else: # Compatibility for older versions
@@ -4976,7 +4970,8 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
 
     sub_info = {sub_info_str}
     dim_topo = {cls.dim_topo}
-
+    allow_detachment = {cls.allow_detachment}
+    
     # to which substation is connected each element
     load_to_subid = {load_to_subid_str}
     gen_to_subid = {gen_to_subid_str}
