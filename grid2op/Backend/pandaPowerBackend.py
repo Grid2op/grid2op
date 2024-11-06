@@ -122,7 +122,6 @@ class PandaPowerBackend(Backend):
         max_iter : int=10,
         can_be_copied: bool=True,
         with_numba: bool=NUMBA_,
-        allow_shedding:bool=False,
     ):
         from grid2op.MakeEnv.Make import _force_test_dataset
         if _force_test_dataset():
@@ -138,7 +137,6 @@ class PandaPowerBackend(Backend):
             dist_slack=dist_slack,
             max_iter=max_iter,
             with_numba=with_numba,
-            allow_shedding=allow_shedding,
         )
         self.with_numba : bool = with_numba
         self.prod_pu_to_kv : Optional[np.ndarray] = None
@@ -1026,20 +1024,20 @@ class PandaPowerBackend(Backend):
             # else:
             #     self._pf_init = "auto"
 
-            if not self.allow_shedding and (~self._grid.load["in_service"]).any():
-                # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
-                raise pp.powerflow.LoadflowNotConverged("Disconnected load: for now grid2op cannot handle properly"
-                                                        " disconnected load. If you want to disconnect one, say it"
-                                                        " consumes 0. instead. Please check loads: "
-                                                        f"{(~self._grid.load['in_service'].values).nonzero()[0]}"
-                                                        )
-            if not self.allow_shedding and (~self._grid.gen["in_service"]).any():
-                # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
-                raise pp.powerflow.LoadflowNotConverged("Disconnected gen: for now grid2op cannot handle properly"
-                                                        " disconnected generators. If you want to disconnect one, say it"
-                                                        " produces 0. instead. Please check generators: "
-                                                        f"{(~self._grid.gen['in_service'].values).nonzero()[0]}"
-                                                        )
+            # if not self.allow_detachment and (~self._grid.load["in_service"]).any():
+            #     # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
+            #     raise pp.powerflow.LoadflowNotConverged("Disconnected load: for now grid2op cannot handle properly"
+            #                                             " disconnected load. If you want to disconnect one, say it"
+            #                                             " consumes 0. instead. Please check loads: "
+            #                                             f"{(~self._grid.load['in_service'].values).nonzero()[0]}"
+            #                                             )
+            # if not self.allow_detachment and (~self._grid.gen["in_service"]).any():
+            #     # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
+            #     raise pp.powerflow.LoadflowNotConverged("Disconnected gen: for now grid2op cannot handle properly"
+            #                                             " disconnected generators. If you want to disconnect one, say it"
+            #                                             " produces 0. instead. Please check generators: "
+            #                                             f"{(~self._grid.gen['in_service'].values).nonzero()[0]}"
+            #                                             )
             try:
                 if is_dc:
                     pp.rundcpp(self._grid, check_connectivity=True, init="flat")
@@ -1327,6 +1325,7 @@ class PandaPowerBackend(Backend):
         res._in_service_trafo_col_id = self._in_service_trafo_col_id
         
         res._missing_two_busbars_support_info = self._missing_two_busbars_support_info
+        res._missing_detachment_support = self._missing_detachment_support
         res.div_exception = self.div_exception
         return res
 
@@ -1548,7 +1547,3 @@ class PandaPowerBackend(Backend):
         if bus_id >= self._number_true_line:
             return bus_id - self._number_true_line
         return bus_id
-
-    def set_shedding(self, allow_shedding:bool=False) -> bool:
-        # Supported as of Grid2Op 1.11.0
-        self.allow_shedding = allow_shedding

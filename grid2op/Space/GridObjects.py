@@ -33,7 +33,7 @@ from grid2op.Space.space_utils import extract_from_dict, save_to_dict
 
 # TODO tests of these methods and this class in general
 DEFAULT_N_BUSBAR_PER_SUB = 2
-DEFAULT_ALLOW_SHEDDING = False
+DEFAULT_ALLOW_DETACHMENT = False
 
 
 class GridObjects:
@@ -514,7 +514,7 @@ class GridObjects:
 
     sub_info : ClassVar[np.ndarray] = None
     dim_topo : ClassVar[np.ndarray] = -1
-    allow_shedding : ClassVar[bool] = DEFAULT_ALLOW_SHEDDING
+    allow_detachment : ClassVar[bool] = DEFAULT_ALLOW_DETACHMENT
 
     # to which substation is connected each element
     load_to_subid : ClassVar[np.ndarray] = None
@@ -687,7 +687,7 @@ class GridObjects:
         """        
         cls.shunts_data_available = False
         cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
-        cls.allow_shedding = DEFAULT_ALLOW_SHEDDING
+        cls.allow_detachment = DEFAULT_ALLOW_DETACHMENT
         
         # for redispatching / unit commitment
         cls._li_attr_disp = [
@@ -2336,7 +2336,7 @@ class GridObjects:
         cls._check_validity_alert_data()
 
         # shedding
-        assert isinstance(cls.allow_shedding, bool)
+        assert isinstance(cls.allow_detachment, bool)
 
     @classmethod
     def _check_validity_alarm_data(cls):
@@ -3095,7 +3095,7 @@ class GridObjects:
         if glop_ver < version.parse("1.11.0.dev0"):
             # Shedding did not exist, default value should have
             # no effect
-            cls.allow_shedding = DEFAULT_ALLOW_SHEDDING
+            cls.allow_detachment = DEFAULT_ALLOW_DETACHMENT
             res = True
             
         if res:
@@ -4412,10 +4412,10 @@ class GridObjects:
                 cls.alertable_line_ids = []
         
         # Shedding
-        if 'allow_shedding' in dict_:
-            cls.allow_shedding = bool(dict_["allow_shedding"])
+        if 'allow_detachment' in dict_:
+            cls.allow_detachment = bool(dict_["allow_detachment"])
         else: # Compatibility for older versions
-            cls.allow_shedding = DEFAULT_ALLOW_SHEDDING
+            cls.allow_detachment = DEFAULT_ALLOW_DETACHMENT
         
         # save the representation of this class as dict
         tmp = {}
@@ -5064,7 +5064,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     alertable_line_ids = {alertable_line_ids_str}
 
     # shedding
-    allow_shedding = {cls.allow_shedding}
+    allow_detachment = {cls.allow_detachment}
 
 """
         return res

@@ -33,7 +33,7 @@ from grid2op.Rules import BaseRules, DefaultRules
 from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.Opponent import BaseOpponent, BaseActionBudget, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_SHEDDING
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 
 from grid2op.MakeEnv.get_default_aux import _get_default_aux
 from grid2op.MakeEnv.PathUtils import _aux_fix_backend_internal_classes
@@ -128,7 +128,7 @@ def make_from_dataset_path(
     logger=None,
     experimental_read_from_local_dir=False,
     n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-    allow_shedding=DEFAULT_ALLOW_SHEDDING,
+    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -168,7 +168,7 @@ def make_from_dataset_path(
     n_busbar: ``int``
         Number of independant busbars allowed per substations. By default it's 2.
 
-    allow_shedding; ``bool``
+    allow_detachment; ``bool``
         
     action_class: ``type``, optional
         Type of BaseAction the BaseAgent will be able to perform.
@@ -955,7 +955,7 @@ def make_from_dataset_path(
                                 kwargs_attention_budget=kwargs_attention_budget,
                                 logger=logger,
                                 n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
-                                allow_shedding=allow_shedding,
+                                allow_detachment=allow_detachment,
                                 _compat_glop_version=_compat_glop_version,
                                 _read_from_local_dir=None,  # first environment to generate the classes and save them
                                 _local_dir_cls=None,
@@ -1036,7 +1036,7 @@ def make_from_dataset_path(
         kwargs_attention_budget=kwargs_attention_budget,
         logger=logger,
         n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
-        allow_shedding=allow_shedding,
+        allow_detachment=allow_detachment,
         _compat_glop_version=_compat_glop_version,
         _read_from_local_dir=classes_path,
         _allow_loaded_backend=allow_loaded_backend,
