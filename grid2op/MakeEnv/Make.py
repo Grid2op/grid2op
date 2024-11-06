@@ -20,6 +20,7 @@ from grid2op.Exceptions import Grid2OpException, UnknownEnv
 import grid2op.MakeEnv.PathUtils
 from grid2op.MakeEnv.PathUtils import _create_path_folder
 from grid2op.Download.DownloadDataset import _aux_download
+from grid2op.Space import DEFAULT_ALLOW_SHEDDING, DEFAULT_N_BUSBAR_PER_SUB
 
 _VAR_FORCE_TEST = "_GRID2OP_FORCE_TEST"
 
@@ -247,8 +248,8 @@ def _aux_make_multimix(
     dataset_path,
     test=False,
     experimental_read_from_local_dir=False,
-    n_busbar=2,
-    allow_shedding=False,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_shedding=DEFAULT_ALLOW_SHEDDING,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -287,8 +288,8 @@ def make(
     test : bool=False,
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
-    n_busbar=2,
-    allow_shedding=False,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_shedding=DEFAULT_ALLOW_SHEDDING,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
     _overload_name_multimix : Optional[str]=None,  # do not use !

@@ -33,6 +33,7 @@ from grid2op.Rules import BaseRules, DefaultRules
 from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.Opponent import BaseOpponent, BaseActionBudget, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_SHEDDING
 
 from grid2op.MakeEnv.get_default_aux import _get_default_aux
 from grid2op.MakeEnv.PathUtils import _aux_fix_backend_internal_classes
@@ -126,8 +127,8 @@ def make_from_dataset_path(
     dataset_path="/",
     logger=None,
     experimental_read_from_local_dir=False,
-    n_busbar=2,
-    allow_shedding=False,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_shedding=DEFAULT_ALLOW_SHEDDING,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
