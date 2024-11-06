@@ -344,6 +344,7 @@ class PandaPowerBackend(Backend):
 
         """
         self.can_handle_more_than_2_busbar()
+        self.can_handle_detachment()
         full_path = self.make_complete_path(path, filename)
 
         with warnings.catch_warnings():

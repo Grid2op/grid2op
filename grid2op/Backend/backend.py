@@ -1080,16 +1080,21 @@ class Backend(GridObjects, ABC):
         conv = False
         exc_me = None
 
-        # if not self.allow_detachment and (~self._grid.load["in_service"]).any():
-        #     # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
-        #     raise pp.powerflow.LoadflowNotConverged("Disconnected load: for now grid2op cannot handle properly"
-        #                                             " disconnected load. If you want to disconnect one, say it"
-        #                                             " consumes 0. instead. Please check loads: "
-        #                                             f"{(~self._grid.load['in_service'].values).nonzero()[0]}"
-        #                                             )
         try:
-            # load_p, load_q, load_v = self.loads_info()
-            # prod_p, prod_q, prod_v = self.generators_info()
+            # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
+            # .. versionadded:: 1.11.0
+            topo_vect = self.get_topo_vect()
+            
+            load_buses = topo_vect[self.load_pos_topo_vect]
+            if not self.allow_detachment and (load_buses == -1).any():
+                raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
+                                        "but this is not allowed or not supported (Game Over)")
+
+            gen_buses = topo_vect[self.gen_pos_topo_vect]
+            if not self.allow_detachment and (gen_buses == -1).any():
+                raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
+                                        "but this is not allowed or not supported (Game Over)")
+            
             conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
         except Grid2OpException as exc_:
             exc_me = exc_
