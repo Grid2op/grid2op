@@ -303,16 +303,6 @@ class Backend(GridObjects, ABC):
                           f"not possible with a backend of type {type(self)}.")
         self.allow_detachment = DEFAULT_ALLOW_DETACHMENT
 
-    def set_shedding(self, allow_detachment:bool=False):
-        """
-        Override if the Backend supports shedding.
-        """
-        
-        if allow_detachment:
-            raise BackendError("Backend does not support shedding")
-        else:
-            self.allow_detachment = allow_detachment
-    
     def make_complete_path(self,
                            path : Union[os.PathLike, str],
                            filename : Optional[Union[os.PathLike, str]]=None) -> str:
@@ -1089,7 +1079,17 @@ class Backend(GridObjects, ABC):
         """
         conv = False
         exc_me = None
+
+        # if not self.allow_detachment and (~self._grid.load["in_service"]).any():
+        #     # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
+        #     raise pp.powerflow.LoadflowNotConverged("Disconnected load: for now grid2op cannot handle properly"
+        #                                             " disconnected load. If you want to disconnect one, say it"
+        #                                             " consumes 0. instead. Please check loads: "
+        #                                             f"{(~self._grid.load['in_service'].values).nonzero()[0]}"
+        #                                             )
         try:
+            # load_p, load_q, load_v = self.loads_info()
+            # prod_p, prod_q, prod_v = self.generators_info()
             conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
         except Grid2OpException as exc_:
             exc_me = exc_

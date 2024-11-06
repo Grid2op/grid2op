@@ -86,7 +86,7 @@ class Environment(BaseEnv):
         parameters,
         name="unknown",
         n_busbar : N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
-        allow_detachmentnt:bool=DEFAULT_ALLOW_DETACHMENT,
+        allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         names_chronics_to_backend=None,
         actionClass=TopologyAction,
         observationClass=CompleteObservation,
@@ -157,7 +157,7 @@ class Environment(BaseEnv):
             highres_sim_counter=highres_sim_counter,
             update_obs_after_reward=_update_obs_after_reward,
             n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
-            allow_detachmentnallow_detachmentment,
+            allow_detachment=allow_detachment,
             name=name,
             _raw_backend_class=_raw_backend_class if _raw_backend_class is not None else type(backend),
             _init_obs=_init_obs,
@@ -303,9 +303,6 @@ class Environment(BaseEnv):
                     f'not be able to use the renderer, plot the grid etc. The error was "{exc_}"'
                 )
 
-            # Shedding
-            self.backend.set_shedding(self.allow_detachment)
-            
             # alarm set up
             self.load_alarm_data()
             self.load_alert_data()
@@ -2212,7 +2209,7 @@ class Environment(BaseEnv):
                              _local_dir_cls,
                              _overload_name_multimix,
                              n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-                             allow_detachmentnt=DEFAULT_ALLOW_DETACHMENT,
+                             allow_detachment=DEFAULT_ALLOW_DETACHMENT,
                              ):        
         res = cls(init_env_path=init_env_path,
                   init_grid_path=init_grid_path,
@@ -2245,7 +2242,7 @@ class Environment(BaseEnv):
                   observation_bk_class=observation_bk_class,
                   observation_bk_kwargs=observation_bk_kwargs,
                   n_busbar=int(n_busbar),
-                  allow_detachmentnt=booallow_detachmentment),
+                  allow_detachment=allow_detachment,
                   _raw_backend_class=_raw_backend_class,
                   _read_from_local_dir=_read_from_local_dir,
                   _local_dir_cls=_local_dir_cls,

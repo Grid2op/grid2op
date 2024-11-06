@@ -334,7 +334,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         highres_sim_counter=None,
         update_obs_after_reward=False,
         n_busbar=2,
-        allow_detachmentnt:bool=False,
+        allow_detachment:bool=False,
         _is_test: bool = False,  # TODO not implemented !!
         _init_obs: Optional[BaseObservation] =None,
         _local_dir_cls=None,
@@ -361,7 +361,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._raw_backend_class = _raw_backend_class
             
         self._n_busbar = n_busbar  # env attribute not class attribute !
-        self.allow_detachment = allow_detachmentnt
+        self.allow_detachment = allow_detachment
 
         if other_rewards is None:
             other_rewards = {}
@@ -659,7 +659,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if dict_ is None:
             dict_ = {}
         new_obj._n_busbar = self._n_busbar
-        new_obj.allow_detachmentnt = self.allow_detachment
+        new_obj.allow_detachment = self.allow_detachment
         
         new_obj._init_grid_path = copy.deepcopy(self._init_grid_path)
         new_obj._init_env_path = copy.deepcopy(self._init_env_path)

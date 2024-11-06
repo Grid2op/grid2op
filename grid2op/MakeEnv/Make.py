@@ -249,7 +249,7 @@ def _aux_make_multimix(
     test=False,
     experimental_read_from_local_dir=False,
     n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-    allow_detachmentnt=DEFAULT_ALLOW_DETACHMENT,
+    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -264,7 +264,7 @@ def _aux_make_multimix(
         dataset_path,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         n_busbar=n_busbar,
-        allow_detachmentnallow_detachmentment,
+        allow_detachment=allow_detachment,
         _test=test,
         _add_to_name=_add_to_name,
         _compat_glop_version=_compat_glop_version,
@@ -447,7 +447,7 @@ def make(
             _compat_glop_version=_compat_glop_version_tmp,
             _overload_name_multimix=_overload_name_multimix,
             n_busbar=n_busbar,
-            allow_detachmentnt=allow_detachment,
+            allow_detachment=allow_detachment,
             **kwargs
         )
 
@@ -494,7 +494,7 @@ def make(
             dataset_path=ds_path,
             logger=logger,
             n_busbar=n_busbar,
-            allow_detachmentnt=allow_detachment,
+            allow_detachment=allow_detachment,
             _add_to_name=_add_to_name,
             _compat_glop_version=_compat_glop_version,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
@@ -510,7 +510,7 @@ def make(
             real_ds_path,
             logger=logger,
             n_busbar=n_busbar,
-            allow_detachmentnt=allow_detachment,
+            allow_detachment=allow_detachment,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
             _overload_name_multimix=_overload_name_multimix,
             **kwargs
@@ -531,7 +531,7 @@ def make(
         dataset_path=real_ds_path,
         logger=logger,
         n_busbar=n_busbar,
-        allow_detachmentnt=allow_detachment,
+        allow_detachment=allow_detachment,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         _overload_name_multimix=_overload_name_multimix,
         **kwargs
