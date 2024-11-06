@@ -780,7 +780,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj.chronics_handler = copy.deepcopy(self.chronics_handler)
         # retrieve the "pointer" to the new_obj action space (for initializing the grid)
         new_obj.chronics_handler.cleanup_action_space()
-        new_obj.chronics_handler.action_space = new_obj._helper_action_env
+        if isinstance(new_obj.chronics_handler, ChronicsHandler):
+            new_obj.chronics_handler.action_space = new_obj._helper_action_env
         
         # action space
         new_obj._action_space = self._action_space.copy()
