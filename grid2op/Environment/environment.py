@@ -2135,7 +2135,7 @@ class Environment(BaseEnv):
         else:
             msg_ = ("You are probably using a legacy backend class that cannot "
                     "be copied properly. Please upgrade your backend to the latest version.")
-            self.logger.warn(msg_)
+            self.logger.warning(msg_)
             warnings.warn(msg_)
             res["backend_kwargs"] = None
             

@@ -99,13 +99,20 @@ Native multi agents support:
 
 [1.11.0] - 202x-yy-zz
 -----------------------
+- [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
+- [FIXED] missing an import on the `MaskedEnvironment` class
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
   or , `gridobj.get_storage_info(...)` 
+- [ADDED] codacy badge on the readme
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
+- [IMPROVED] (linked to https://github.com/Grid2op/grid2op/issues/657) the way the 
+  "chronics_hander" in the ObsEnv behaves (it now fully implements the public interface of 
+  a "real" chronic_handler)
+- [IMPROVED] error message in the `FromNPY` class when the backend is checked
 
 [1.10.4] - 2024-10-15
 -------------------------
