@@ -98,7 +98,7 @@ class __AuxGymActionSpace:
         "load_p": "load_p",
         "load_q": "load_q",
         "_redispatch": "redispatch",
-        "_flexibility": "flexibility",
+        "_flexibility": "flexibility", # Added ..version 1.11.0
         "_set_line_status": "set_line_status",
         "_switch_line_status": "change_line_status",
         "_set_topo_vect": "set_bus",

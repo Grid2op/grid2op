@@ -54,6 +54,8 @@ ALL_ATTR_OBS = (
     "duration_next_maintenance",
     "target_dispatch",
     "actual_dispatch",
+    "actual_flex", # Added ..version 1.11.0
+    "target_flex", # Added ..version 1.11.0
     "storage_charge",
     "storage_power_target",
     "storage_power",

@@ -29,6 +29,7 @@ from grid2op.gym_compat.utils import (ALL_ATTR_CONT,
                                       GYMNASIUM_AVAILABLE)
 
 POSSIBLE_KEYS = Literal["redispatch",
+                        "flexibility", # Added ..version 1.11.0
                         "curtail",
                         "curtail_mw",
                         "set_storage",

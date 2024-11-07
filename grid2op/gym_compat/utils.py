@@ -57,6 +57,7 @@ ALL_ATTR = (
     "set_bus",
     "change_bus",
     "redispatch",
+    "flexibility" # Added ..version 1.11.0
     "set_storage",
     "curtail",
     "raise_alarm",
@@ -71,6 +72,7 @@ ALL_ATTR_FOR_DISCRETE = (
     "set_bus",
     "change_bus",
     "redispatch",
+    "flexibility", # Added ..version 1.11.0
     "set_storage",
     "curtail"
 )
@@ -91,6 +93,7 @@ ATTR_DISCRETE = (
 
 ALL_ATTR_CONT = (
     "redispatch",
+    "flexibility", # Added ..version 1.11.0
     "set_storage",
     "curtail",
 )
