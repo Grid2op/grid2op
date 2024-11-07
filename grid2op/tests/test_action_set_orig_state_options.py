@@ -38,6 +38,12 @@ class TestSetActOptionDefault(unittest.TestCase):
                                                  "init state": init_state})
         return obs
     
+    def test_incorrect_action_error(self):
+        """test that when an action raised a warning then grid2op fails"""
+        with self.assertRaises(UserWarning):
+            obs = self.env.reset(options={"time serie id": 1,
+                                        "init state": {"toto": 1}})
+        
     def _aux_make_step(self, act=None):
         if act is None:
             act = self.env.action_space()
