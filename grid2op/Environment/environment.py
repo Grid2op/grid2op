@@ -951,7 +951,9 @@ class Environment(BaseEnv):
         if not self._parameters.IGNORE_INITIAL_STATE_TIME_SERIE:
             # load the initial state from the time series (default)
             # TODO logger: log that
-            init_action : BaseAction = self.chronics_handler.get_init_action(self._names_chronics_to_backend)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
+                init_action : BaseAction = self.chronics_handler.get_init_action(self._names_chronics_to_backend)
         else:
             # do as if everything was connected to busbar 1
             # TODO logger: log that
@@ -1278,7 +1280,9 @@ class Environment(BaseEnv):
                 if "method" in act_as_dict:
                     method = act_as_dict["method"]
                     del act_as_dict["method"]
-                init_state : BaseAction = self._helper_action_env(act_as_dict)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("error")
+                    init_state : BaseAction = self._helper_action_env(act_as_dict)
             elif isinstance(act_as_dict, BaseAction):
                 init_state = act_as_dict
             else:
