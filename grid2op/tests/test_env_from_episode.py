@@ -407,7 +407,7 @@ class TestExamples(unittest.TestCase):
                 env2 = grid2op.make(env_name,
                                     test=True,
                                     chronics_class=FromMultiEpisodeData,
-                                    data_feeding_kwargs={"li_ep_data": li_episode},
+                                    data_feeding_kwargs={"li_ep_data": li_episode, "caching": True},
                                     opponent_class=FromEpisodeDataOpponent,
                                     opponent_attack_cooldown=1,
                                     _add_to_name=type(self).__name__,
@@ -551,7 +551,10 @@ class TestTSFromMultieEpisode(unittest.TestCase):
     def tearDown(self) -> None:
         self.env.close()
         return super().tearDown()
-        
+    
+    def do_i_cache(self):
+        return False
+    
     def test_basic(self):
         """test injection, without opponent nor maintenance"""
         obs = self.env.reset()
@@ -565,7 +568,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
             env = grid2op.make(self.env_name,
                                test=True,
                                chronics_class=FromMultiEpisodeData,
-                               data_feeding_kwargs={"li_ep_data": ep_data},
+                               data_feeding_kwargs={"li_ep_data": ep_data, "caching": self.do_i_cache()},
                                opponent_attack_cooldown=99999999,
                                opponent_attack_duration=0,
                                opponent_budget_per_ts=0.,
@@ -607,6 +610,11 @@ class TestTSFromMultieEpisode(unittest.TestCase):
             obs, reward, done, info = env.step(env.action_space())
         assert env.chronics_handler.get_id() == "1"
         
-                                     
+        
+class TestTSFromMultieEpisodeWithCache(TestTSFromMultieEpisode):  
+    def do_i_cache(self):
+        return True
+
+               
 if __name__ == "__main__":
     unittest.main()
