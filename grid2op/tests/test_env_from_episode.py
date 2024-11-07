@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import os
 import unittest
 import warnings
 import numpy as np
@@ -577,6 +578,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
                                _add_to_name=type(self).__name__)
         # test init data
         obs = env.reset()
+        path_ = os.path.join(env.get_path_env(), "chronics")
         TestTSFromEpisodeMaintenance._aux_obs_equal(obs,  ep_data[0].observations[0])
         for i in range(10):
             obs, reward, done, info = env.step(env.action_space())
@@ -584,7 +586,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
         assert done
         with self.assertRaises(Grid2OpException):
             obs, reward, done, info = env.step(env.action_space())
-        assert env.chronics_handler.get_id() == "0"
+        assert env.chronics_handler.get_id() == f"{path_}@0", f"{env.chronics_handler.get_id()} vs {path_}@0"
         
         # test when reset, that it moves to next data
         obs = env.reset()
@@ -595,12 +597,12 @@ class TestTSFromMultieEpisode(unittest.TestCase):
         assert done
         with self.assertRaises(Grid2OpException):
             obs, reward, done, info = env.step(env.action_space())
-        assert env.chronics_handler.get_id() == "1"
+        assert env.chronics_handler.get_id() == f"{path_}@1", f"{env.chronics_handler.get_id()} vs {path_}@1"
         
         # test the set_id
         env.set_id("1")
         obs = env.reset()
-        assert env.chronics_handler.get_id() == "1"
+        assert env.chronics_handler.get_id() == f"{path_}@1", f"{env.chronics_handler.get_id()} vs {path_}@1"
         TestTSFromEpisodeMaintenance._aux_obs_equal(obs,  ep_data[1].observations[0])
         for i in range(10):
             obs, reward, done, info = env.step(env.action_space())
@@ -608,7 +610,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
         assert done
         with self.assertRaises(Grid2OpException):
             obs, reward, done, info = env.step(env.action_space())
-        assert env.chronics_handler.get_id() == "1"
+        assert env.chronics_handler.get_id() == f"{path_}@1", f"{env.chronics_handler.get_id()} vs {path_}@1"
         
         
 class TestTSFromMultieEpisodeWithCache(TestTSFromMultieEpisode):  

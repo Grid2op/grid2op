@@ -200,12 +200,18 @@ class FromMultiEpisodeData(GridValue):
         return self.data.forecasts()
     
     def tell_id(self, id_num: str, previous=False):
-        path_, id_num = id_num.split("@")
-        id_num = int(id_num)
-        if not isinstance(id_num, (int, dt_int)):
+        try:
+            id_num = int(id_num)
+            path_ = None
+        except ValueError:
+            path_, id_num = id_num.split("@")
+            id_num = int(id_num)
+            
+        if path_ is not None and path_ != self._path:
             raise ChronicsError("FromMultiEpisodeData can only be used with `tell_id` being an integer "
-                                "at the moment. Feel free to write a feature request if you want more.")
-
+                                "or if tell_id has the same path as the original file. "
+                                "Feel free to write a feature request if you want more.")
+        
         self._prev_cache_id = id_num
         self._prev_cache_id %= len(self.li_ep_data)
 
