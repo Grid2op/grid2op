@@ -55,7 +55,7 @@ class _ObsCH(ChangeNothing):
     def real_data(self):
         raise EnvError("There are no time series in the observation from `obs.simulate`, so no `real_data`")
 
-    # functions overriden from the ChronicsHandler class
+    # # functions overriden from the ChronicsHandler class
     def forecasts(self):
         return []
     
@@ -130,7 +130,16 @@ class _ObsCH(ChangeNothing):
         raise EnvError("There are no time series in the observation from `obs.simulate`, so no `_prev_cache_id`")
         
     def done(self):
-        return True
+        """
+        .. warning:: 
+            This function is part of the public API of ChronicsHandler,
+            by being accessible through the __getattr__ call that is
+            forwarded to the GridValue class
+            
+            Agent can in theory simulate as many times as they want,
+            the "obs.simulate" call is never "done".
+        """
+        return False
     
     def check_validity(self, backend):
         return True
@@ -251,6 +260,6 @@ class _ObsCH(ChangeNothing):
         """
         pass
     
-    def max_timestep(self):
-        raise EnvError("There are no time series in the observation from `obs.simulate`, so no `max_timestep`")
+    # def max_timestep(self):
+    #     raise EnvError("There are no time series in the observation from `obs.simulate`, so no `max_timestep`")
     
