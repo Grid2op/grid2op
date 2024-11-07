@@ -117,6 +117,7 @@ Native multi agents support:
 - [IMPROVED] error message in the `FromNPY` class when the backend is checked
 - [IMRPOVED] the `FromMultiEpisodeData` class with the addition of the `caching` 
   kwargs to allow / disable caching (which was default behavior in previous version) 
+- [IMPROVED] the `FromMultiEpisodeData` class that now returns also the path of the data
 
 [1.10.4] - 2024-10-15
 -------------------------
