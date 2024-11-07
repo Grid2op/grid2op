@@ -99,6 +99,8 @@ Native multi agents support:
 
 [1.11.0] - 202x-yy-zz
 -----------------------
+- [BREAKING] Change for `FromMultiEpisodeData` that disables the caching by default
+  when creating the data.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
@@ -113,6 +115,8 @@ Native multi agents support:
   "chronics_hander" in the ObsEnv behaves (it now fully implements the public interface of 
   a "real" chronic_handler)
 - [IMPROVED] error message in the `FromNPY` class when the backend is checked
+- [IMRPOVED] the `FromMultiEpisodeData` class with the addition of the `caching` 
+  kwargs to allow / disable caching (which was default behavior in previous version) 
 
 [1.10.4] - 2024-10-15
 -------------------------
