@@ -373,6 +373,14 @@ class __AuxGymObservationSpace:
                     high = np.maximum(
                         -self.init_env_cls_dict["gen_pmin"], +self.init_env_cls_dict["gen_pmax"]
                     )
+                elif attr_nm == "target_flex" or attr_nm == "actual_flex":
+                    # Check that Flex is within load size, Added ..version 1.11.0
+                    low = np.minimum(
+                        0.0, -self.init_env_cls_dict["load_size"]
+                    )
+                    high = np.maximum(
+                        0.0, +self.init_env_cls_dict["load_size"]
+                    )
                 elif attr_nm == "storage_power" or attr_nm == "storage_power_target":
                     low = -self.init_env_cls_dict["storage_max_p_prod"]
                     high = self.init_env_cls_dict["storage_max_p_absorb"]
