@@ -26,10 +26,6 @@ class _ObsCH(ChangeNothing):
     @property
     def chronicsClass(self):
         raise EnvError("There are no time series in the observation from `obs.simulate`, so no `chronicsClass`")
-        
-    @property
-    def action_space(self):
-        raise EnvError("There are no time series in the observation from `obs.simulate`, so no `action_space`")
     
     @property
     def path(self):
@@ -50,12 +46,8 @@ class _ObsCH(ChangeNothing):
     @property
     def _kwargs(self):
         return {}
-    
-    @property
-    def real_data(self):
-        raise EnvError("There are no time series in the observation from `obs.simulate`, so no `real_data`")
 
-    # # functions overriden from the ChronicsHandler class
+    # functions overriden from the ChronicsHandler class
     def forecasts(self):
         return []
     
@@ -128,138 +120,4 @@ class _ObsCH(ChangeNothing):
     @property
     def _prev_cache_id(self):
         raise EnvError("There are no time series in the observation from `obs.simulate`, so no `_prev_cache_id`")
-        
-    def done(self):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            Agent can in theory simulate as many times as they want,
-            the "obs.simulate" call is never "done".
-        """
-        return False
-    
-    def check_validity(self, backend):
-        return True
-    
-    def get_id(self) -> str:
-        return ""
-    
-    def shuffle(self, shuffler=None):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def sample_next_chronics(self, probabilities=None):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        raise EnvError("There are no time series in the observation from `obs.simulate`, so no `sample_next_chronics`")
-    
-    def set_chunk_size(self, new_chunk_size):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def init_datetime(self):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def next_chronics(self):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def tell_id(self, id_num, previous=False):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def set_filter(self, filter_fun):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def set_chunk_size(self, new_chunk_size):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def fast_forward(self, nb_timestep):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    def get_init_action(self, names_chronics_to_backend: Dict[Literal["loads", "prods", "lines"], Dict[str, str]]) -> Union["grid2op.Action.playableAction.PlayableAction", None]:
-        raise EnvError("There are no time series in the observation from `obs.simulate`, so no `get_init_action`")
-        
-    def regenerate_with_new_seed(self):
-        """
-        .. warning:: 
-            This function is part of the public API of ChronicsHandler,
-            by being accessible through the __getattr__ call that is
-            forwarded to the GridValue class
-            
-            It should not do anything here.
-        """
-        pass
-    
-    # def max_timestep(self):
-    #     raise EnvError("There are no time series in the observation from `obs.simulate`, so no `max_timestep`")
     
