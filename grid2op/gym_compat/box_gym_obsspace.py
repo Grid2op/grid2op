@@ -461,6 +461,19 @@ class __AuxBoxGymObsSpace:
                 (ob_sp_cls.n_gen,),
                 dt_float,
             ),
+            # Flexibility, added ..version 1.11.0
+            "target_flex": (
+                np.minimum(0.0, -ob_sp_cls.load_size),
+                np.maximum(0.0, +ob_sp_cls.load_size),
+                (ob_sp_cls.n_load,),
+                dt_float,
+            ),
+            "actual_flex": (
+                np.minimum(0.0, -ob_sp_cls.load_size),
+                np.maximum(0.0, +ob_sp_cls.load_size),
+                (ob_sp_cls.n_load,),
+                dt_float,
+            ),
             "storage_charge": (
                 np.full(shape=(ob_sp_cls.n_storage,), fill_value=0, dtype=dt_float),
                 1.0 * ob_sp_cls.storage_Emax,
