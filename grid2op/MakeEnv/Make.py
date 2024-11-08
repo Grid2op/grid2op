@@ -310,7 +310,7 @@ def make(
         The `n_busbar` parameters
 
     .. versionadded:: 1.11.0
-        The `allow_detachmentnt` parameter
+        The `allow_detachment` parameter
         
     Parameters
     ----------

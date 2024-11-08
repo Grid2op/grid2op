@@ -31,6 +31,7 @@ def _get_action_grid_class():
     GridObjects._clear_class_attribute()
     GridObjects.env_name = "test_action_env"
     GridObjects.n_busbar_per_sub = 2
+    GridObjects._allow_detachment = False
     GridObjects.n_gen = 5
     GridObjects.name_gen = np.array(["gen_{}".format(i) for i in range(5)])
     GridObjects.n_load = 11
@@ -107,6 +108,7 @@ def _get_action_grid_class():
     json_ = {
         "glop_version": grid2op.__version__,
         "n_busbar_per_sub": "2",
+        "_allow_detachment": "False",
         "name_gen": ["gen_0", "gen_1", "gen_2", "gen_3", "gen_4"],
         "name_load": [
             "load_0",

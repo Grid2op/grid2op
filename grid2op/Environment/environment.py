@@ -85,7 +85,7 @@ class Environment(BaseEnv):
         backend,
         parameters,
         name="unknown",
-        n_busbar : N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        n_busbar:N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
         allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         names_chronics_to_backend=None,
         actionClass=TopologyAction,
@@ -1495,6 +1495,7 @@ class Environment(BaseEnv):
         """
         res = {}
         res["n_busbar"] = self._n_busbar
+        res["allow_detachment"] = self._allow_detachment
         res["init_env_path"] = self._init_env_path
         res["init_grid_path"] = self._init_grid_path
         if with_chronics_handler:
@@ -2147,6 +2148,7 @@ class Environment(BaseEnv):
         res["grid_layout"] = self.grid_layout
         res["name_env"] = self.name
         res["n_busbar"] = self._n_busbar
+        res["allow_detachment"] = self._allow_detachment
 
         res["opponent_space_type"] = self._opponent_space_type
         res["opponent_action_class"] = self._opponent_action_class
@@ -2242,7 +2244,7 @@ class Environment(BaseEnv):
                   observation_bk_class=observation_bk_class,
                   observation_bk_kwargs=observation_bk_kwargs,
                   n_busbar=int(n_busbar),
-                  allow_detachment=allow_detachment,
+                  allow_detachment=bool(allow_detachment),
                   _raw_backend_class=_raw_backend_class,
                   _read_from_local_dir=_read_from_local_dir,
                   _local_dir_cls=_local_dir_cls,

@@ -123,7 +123,7 @@ class Backend(GridObjects, ABC):
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
     def __init__(self,
                  detailed_infos_for_cascading_failures:bool=False,
-                 can_be_copied:bool=True, allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
+                 can_be_copied:bool=True,
                  **kwargs):
         """
         Initialize an instance of Backend. This does nothing per se. Only the call to :func:`Backend.load_grid`
@@ -182,7 +182,7 @@ class Backend(GridObjects, ABC):
 
         # .. versionadded: 1.11.0
         self._missing_detachment_support:bool = True
-        self.allow_detachment:bool = DEFAULT_ALLOW_DETACHMENT
+        self._allow_detachment:bool = DEFAULT_ALLOW_DETACHMENT
     
     def can_handle_more_than_2_busbar(self):
         """
@@ -271,7 +271,7 @@ class Backend(GridObjects, ABC):
             At least, at time of writing there is no good reason to do so.
         """
         self._missing_detachment_support = False
-        self.allow_detachment = type(self).allow_detachment
+        self._allow_detachment = type(self)._allow_detachment
 
     def cannot_handle_detachment(self):
         """
@@ -298,10 +298,10 @@ class Backend(GridObjects, ABC):
             At least, at time of writing there is no good reason to do so.
         """
         self._missing_detachment_support = False
-        if type(self.allow_detachment != DEFAULT_ALLOW_DETACHMENT):
+        if type(self._allow_detachment != DEFAULT_ALLOW_DETACHMENT):
             warnings.warn("You asked in 'make' function to allow shedding. This is"
                           f"not possible with a backend of type {type(self)}.")
-        self.allow_detachment = DEFAULT_ALLOW_DETACHMENT
+        self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
 
     def make_complete_path(self,
                            path : Union[os.PathLike, str],
@@ -1083,15 +1083,15 @@ class Backend(GridObjects, ABC):
         try:
             # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
             # .. versionadded:: 1.11.0
-            topo_vect = self.get_topo_vect()
+            topo_vect = self._get_topo_vect()
             
             load_buses = topo_vect[self.load_pos_topo_vect]
-            if not self.allow_detachment and (load_buses == -1).any():
+            if not self._allow_detachment and (load_buses == -1).any():
                 raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
 
             gen_buses = topo_vect[self.gen_pos_topo_vect]
-            if not self.allow_detachment and (gen_buses == -1).any():
+            if not self._allow_detachment and (gen_buses == -1).any():
                 raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
             
@@ -2173,10 +2173,10 @@ class Backend(GridObjects, ABC):
                             "of your backend cannot handle detachment then change it :-)\n"
                             "Your backend will behave as if it did not support it.")
                 self._missing_detachment_support = False
-                self.allow_detachment = DEFAULT_ALLOW_DETACHMENT
+                self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
         else:
             self._missing_detachment_support = False
-            self.allow_detachment = DEFAULT_ALLOW_DETACHMENT
+            self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
             warnings.warn("Your backend is missing the `_missing_detachment_support` "
                           "attribute.")
         

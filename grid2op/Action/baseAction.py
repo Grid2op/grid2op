@@ -845,7 +845,7 @@ class BaseAction(GridObjects):
             # if there are only one busbar, the "set_bus" action can still be used
             # to disconnect the element, this is why it's not removed
             cls._aux_process_n_busbar_per_sub()
-                
+         
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
         cls.attr_list_set = set(cls.attr_list_vect)
                 

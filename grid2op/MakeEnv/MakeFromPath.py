@@ -169,6 +169,7 @@ def make_from_dataset_path(
         Number of independant busbars allowed per substations. By default it's 2.
 
     allow_detachment; ``bool``
+        Whether to allow loads/generators to be detached without a game over. By default False.
         
     action_class: ``type``, optional
         Type of BaseAction the BaseAgent will be able to perform.

@@ -1017,28 +1017,7 @@ class PandaPowerBackend(Backend):
             warnings.filterwarnings("ignore", category=RuntimeWarning)
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             self._pf_init = "dc"
-            # nb_bus = self.get_nb_active_bus()
-            # if self._nb_bus_before is None:
-            #     self._pf_init = "dc"
-            # elif nb_bus == self._nb_bus_before:
-            #     self._pf_init = "results"
-            # else:
-            #     self._pf_init = "auto"
-
-            # if not self.allow_detachment and (~self._grid.load["in_service"]).any():
-            #     # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
-            #     raise pp.powerflow.LoadflowNotConverged("Disconnected load: for now grid2op cannot handle properly"
-            #                                             " disconnected load. If you want to disconnect one, say it"
-            #                                             " consumes 0. instead. Please check loads: "
-            #                                             f"{(~self._grid.load['in_service'].values).nonzero()[0]}"
-            #                                             )
-            # if not self.allow_detachment and (~self._grid.gen["in_service"]).any():
-            #     # TODO see if there is a better way here -> do not handle this here, but rather in Backend._next_grid_state
-            #     raise pp.powerflow.LoadflowNotConverged("Disconnected gen: for now grid2op cannot handle properly"
-            #                                             " disconnected generators. If you want to disconnect one, say it"
-            #                                             " produces 0. instead. Please check generators: "
-            #                                             f"{(~self._grid.gen['in_service'].values).nonzero()[0]}"
-            #                                             )
+            
             try:
                 if is_dc:
                     pp.rundcpp(self._grid, check_connectivity=True, init="flat")

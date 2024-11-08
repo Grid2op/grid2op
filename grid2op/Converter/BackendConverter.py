@@ -95,7 +95,7 @@ class BackendConverter(Backend):
         use_target_backend_name=False,
         kwargs_target_backend=None,
         kwargs_source_backend=None,
-        allow_detachmentnt:bool=False,
+        allow_detachment:bool=False,
     ):
         Backend.__init__(
             self,
@@ -103,7 +103,7 @@ class BackendConverter(Backend):
             use_target_backend_name=use_target_backend_name,
             kwargs_target_backend=kwargs_target_backend,
             kwargs_source_backend=kwargs_source_backend,
-            allow_detachment=allow_detachmentnt,
+            allow_detachment=allow_detachment,
         )
         difcf = detailed_infos_for_cascading_failures
         if kwargs_source_backend is None:
