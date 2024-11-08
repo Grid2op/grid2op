@@ -116,7 +116,8 @@ class TestGymAlertCompat(unittest.TestCase):
         act = self.env.action_space()
         act.raise_alert = [2]
         act_gym = env_gym.action_space.to_gym(act)
-        act_str = act_gym.__str__() 
+        act_str = act_gym.__str__()
+        # NOTE: This Str Comparison may fail locally due to changes in OrderDict formatting (rely on CI if in doubt)
         assert act_str == ("OrderedDict([('change_bus', array([False, False, False, False, False, False, False, False, False,"
                            "\n       False, False, False, False, False, False, False, False, False,\n       "
                            "False, False, False, False, False, False, False, False, False,\n       False, False, False, "
