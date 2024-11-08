@@ -1859,9 +1859,7 @@ class BaseAction(GridObjects):
         )
 
     def _digest_shunt(self, dict_):
-        if not type(self).shunts_data_available:
-            return
-
+        cls = type(self)
         if "shunt" in dict_:
             ddict_ = dict_["shunt"]
 
@@ -1884,7 +1882,6 @@ class BaseAction(GridObjects):
                         vect_self[:] = tmp
                     elif isinstance(tmp, list):
                         # expected a list: (id shunt, new bus)
-                        cls = type(self)
                         for (sh_id, new_bus) in tmp:
                             if sh_id < 0:
                                 raise AmbiguousAction(
@@ -2380,18 +2377,36 @@ class BaseAction(GridObjects):
 
         """
         self._reset_vect()
-
+        cls = type(self)
+        
         if dict_ is not None:
             for kk in dict_.keys():
-                if kk not in self.authorized_keys:
+                if kk not in cls.authorized_keys:
+                    if kk == "shunt" and not cls.shunts_data_available:
+                        # no warnings are raised in this case because if a warning
+                        # were raised it could crash some environment
+                        # with shunt in "init_state.json" with a backend that does not
+                        # handle shunt
+                        continue
+                    if kk == "set_storage" and cls.n_storage == 0:
+                        # no warnings are raised in this case because if a warning
+                        # were raised it could crash some environment
+                        # with storage in "init_state.json" but if the backend did not
+                        # handle storage units
+                        continue
                     warn = 'The key "{}" used to update an action will be ignored. Valid keys are {}'
-                    warn = warn.format(kk, self.authorized_keys)
+                    warn = warn.format(kk, cls.authorized_keys)
                     warnings.warn(warn)
 
-            self._digest_shunt(dict_)
+            if cls.shunts_data_available:
+                # do not digest shunt when backend does not support it
+                self._digest_shunt(dict_)
             self._digest_injection(dict_)
             self._digest_redispatching(dict_)
-            self._digest_storage(dict_)  # ADDED for battery
+            if cls.n_storage > 0:
+                # do not digest storage when backend does not
+                # support it
+                self._digest_storage(dict_)  # ADDED for battery
             self._digest_curtailment(dict_)  # ADDED for curtailment
             self._digest_setbus(dict_)
             self._digest_change_bus(dict_)
