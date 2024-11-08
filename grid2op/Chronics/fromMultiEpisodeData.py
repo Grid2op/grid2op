@@ -123,6 +123,7 @@ class FromMultiEpisodeData(GridValue):
         self._path = path
         self._chunk_size = chunk_size
         self._list_perfect_forecasts = list_perfect_forecasts
+        self._input_li_ep_data = li_ep_data
         if self._caching:
             self.li_ep_data = [FromOneEpisodeData(path,
                                                   ep_data=el,
@@ -131,12 +132,10 @@ class FromMultiEpisodeData(GridValue):
                                                   chunk_size=chunk_size,
                                                   list_perfect_forecasts=list_perfect_forecasts,
                                                   start_datetime=start_datetime)
-                            for el in li_ep_data
-                            ]
-            self._input_li_ep_data = None
+                               for el in li_ep_data
+                              ]
         else:
-            self.li_ep_data = [None for el in li_ep_data]
-            self._input_li_ep_data = li_ep_data
+            self.li_ep_data = [None for _ in li_ep_data]
         self._prev_cache_id = len(self.li_ep_data) - 1
         self.data = self.li_ep_data[self._prev_cache_id]
         if self.data is None:
