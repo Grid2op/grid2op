@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, RTE (https://www.rte-france.com)
+# Copyright (c) 2019-2024, RTE (https://www.rte-france.com)
 # See AUTHORS.txt
 # This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
 # If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
@@ -12,26 +12,15 @@ import warnings
 from typing import Dict, Union, Tuple, List, Optional, Any, Literal
 
 import grid2op
-from grid2op.Exceptions.envExceptions import EnvError
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Environment.baseEnv import BaseEnv
+from grid2op.Exceptions import EnvError
 from grid2op.Chronics import ChangeNothing
+from grid2op.Chronics._obs_fake_chronics_handler import _ObsCH
 from grid2op.Rules import RulesChecker
 from grid2op.operator_attention import LinearAttentionBudget
 
-
-class _ObsCH(ChangeNothing):
-    """
-    INTERNAL
-
-    .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
-
-    This class is reserved to internal use. Do not attempt to do anything with it.
-    """
-
-    def forecasts(self):
-        return []
+from grid2op.Environment.baseEnv import BaseEnv
 
 
 class _ObsEnv(BaseEnv):
