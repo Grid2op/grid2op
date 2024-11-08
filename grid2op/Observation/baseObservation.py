@@ -1210,6 +1210,8 @@ class BaseObservation(GridObjects):
             "load_min_uptime",
             "load_min_downtime",
             "load_cost_per_MW",
+            "target_flex",
+            "actual_flex",
         ]:
             try:
                 cls.attr_list_vect.remove(el)
