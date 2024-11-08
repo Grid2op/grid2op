@@ -731,6 +731,8 @@ class TestBasisObsBehaviour(unittest.TestCase):
             ],
             "target_dispatch": [0.0, 0.0, 0.0, 0.0, 0.0],
             "actual_dispatch": [0.0, 0.0, 0.0, 0.0, 0.0],
+            "target_flex": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "actual_flex": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             "_shunt_p": [0.0],
             "_shunt_q": [-17.923625946044922],
             "_shunt_v": [0.20202238857746124],
@@ -878,8 +880,13 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 dt_int,
                 dt_int,
                 dt_int,
+                # Redispatch
                 dt_float,
                 dt_float,
+                # Flexibility
+                dt_float,
+                dt_float,
+                # Storage
                 dt_float,
                 dt_float,
                 dt_float,
@@ -951,8 +958,12 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 14,
                 20,
                 20,
+                # Redispatch
                 5,
                 5,
+                # Flexibility
+                11,
+                11,
                 0,
                 0,
                 0,
