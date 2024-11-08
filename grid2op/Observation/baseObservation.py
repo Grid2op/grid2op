@@ -211,6 +211,19 @@ class BaseObservation(GridObjects):
         redispatching is implemented at the current time step, and this is what this vector stores. Note that there is
         information about all generators there, even the one that are not
         dispatchable.
+        
+    target_flex: :class:`numpy.ndarray`, dtype:float
+        For **each** load, it gives the target flexibility, asked by the agent. This is the sum of all
+        flexibility asked by the agent during the episode. For each load it is a number between:
+        0 and `load_size`. Note that there is information about all loads here, even the one that are not
+        flexible.
+
+    actual_flex: :class:`numpy.ndarray`, dtype:float
+        For **each** load, it gives the flexibility currently implemented by the environment.
+        Indeed, the environment tries to implement at best the :attr:`BaseObservation.target_flex`, but sometimes,
+        due to physical limitations (e.g. size) it cannot. In this case, only the best possible
+        flexibility is implemented at the current time step, and this is what this vector stores. Note that there is
+        information about all loads here, even the one that are not flexible.
 
     storage_charge: :class:`numpy.ndarray`, dtype:float
         The actual 'state of charge' of each storage unit, expressed in MWh.
@@ -457,6 +470,8 @@ class BaseObservation(GridObjects):
         "duration_next_maintenance",
         "target_dispatch",
         "actual_dispatch",
+        "target_flex",
+        "actual_flex",
         "_shunt_p",
         "_shunt_q",
         "_shunt_v",
@@ -562,6 +577,10 @@ class BaseObservation(GridObjects):
         # redispatching
         self.target_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
         self.actual_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
+        
+        # flexibility
+        self.target_flex = np.empty(shape=cls.n_load, dtype=dt_float)
+        self.actual_flex = np.empty(shape=cls.n_load, dtype=dt_float)
 
         # storage unit
         self.storage_charge = np.empty(shape=cls.n_storage, dtype=dt_float)  # in MWh
@@ -664,6 +683,8 @@ class BaseObservation(GridObjects):
             "storage_charge",
             "actual_dispatch",
             "target_dispatch",
+            "actual_flex",
+            "target_flex",
             "duration_next_maintenance",
             "time_next_maintenance",
             "time_before_cooldown_sub",
@@ -780,9 +801,9 @@ class BaseObservation(GridObjects):
         storage_id=None,
         substation_id=None,
     ) -> Dict[Literal["p", "q", "v", "theta", "bus", "sub_id", "actual_dispatch", "target_dispatch",
-                      "maintenance", "cooldown_time", "storage_power", "storage_charge", 
-                      "storage_power_target", "storage_theta", 
-                      "topo_vect", "nb_bus", "origin", "extremity"],
+                      "actual_flex", "target_flex", "maintenance", "cooldown_time", "storage_power",
+                      "storage_charge", "storage_power_target", "storage_theta", "topo_vect",
+                      "nb_bus", "origin", "extremity"],
               Union[int, float, Dict[Literal["p", "q", "v", "a", "sub_id", "bus", "theta"], Union[int, float]]]
               ]:
         """
@@ -828,6 +849,9 @@ class BaseObservation(GridObjects):
                 - "theta" (optional) the voltage angle (in degree) of the bus to which the load is connected
                 - "bus" on which bus the load is connected in the substation
                 - "sub_id" the id of the substation to which the load is connected
+                - "actual_flex" the actual flexibility implemented for this load
+                - "target_flex" the target flexibility (cumulation of all previously asked flexibility by the agent)
+                  for this load
 
             - if a generator is inspected, then the keys are:
 
@@ -924,6 +948,8 @@ class BaseObservation(GridObjects):
                 "p": self.load_p[load_id],
                 "q": self.load_q[load_id],
                 "v": self.load_v[load_id],
+                "target_flex": self.target_flex[load_id],
+                "actual_flex": self.actual_flex[load_id],
                 "bus": self.topo_vect[self.load_pos_topo_vect[load_id]],
                 "sub_id": cls.load_to_subid[load_id],
             }
@@ -1171,6 +1197,26 @@ class BaseObservation(GridObjects):
             except ValueError as exc_:
                 # this attribute was not there in the first place
                 pass 
+            
+    @classmethod
+    def _aux_process_grid2op_compat_1110(cls):
+        cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+
+        for el in [
+            "load_size",
+            "load_flexible",
+            "load_max_ramp_up",
+            "load_max_ramp_down",
+            "load_min_uptime",
+            "load_min_downtime",
+            "load_cost_per_MW",
+        ]:
+            try:
+                cls.attr_list_vect.remove(el)
+            except ValueError as exc_:
+                # this attribute was not there in the first place
+                pass 
+        
         
     @classmethod
     def process_grid2op_compat(cls) -> None:
@@ -1200,6 +1246,10 @@ class BaseObservation(GridObjects):
         if glop_ver < version.parse("1.9.1"):
             # alert attributes have been added in 1.9.1
             cls._aux_process_grid2op_compat_191()
+        
+        if glop_ver < version.parse("1.11.0"):
+            # flexibility attributes addded in 1.10.4
+            cls._aux_process_grid2op_compat_1110()
             
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
         cls.attr_list_set = set(cls.attr_list_vect)
@@ -1275,6 +1325,10 @@ class BaseObservation(GridObjects):
         # redispatching
         self.target_dispatch[:] = np.NaN
         self.actual_dispatch[:] = np.NaN
+        
+        # flexibility
+        self.target_flex[:] = np.NaN
+        self.actual_flex[:] = np.NaN
 
         # storage units
         self.storage_charge[:] = np.NaN
@@ -1376,6 +1430,10 @@ class BaseObservation(GridObjects):
         # redispatching
         self.target_dispatch[:] = 0.0
         self.actual_dispatch[:] = 0.0
+        
+        # flexibility
+        self.target_flex[:] = 0.0
+        self.actual_flex[:] = 0.0
 
         # storage
         self.storage_charge[:] = 0.0
@@ -2699,6 +2757,8 @@ class BaseObservation(GridObjects):
         return bus_ids
         
     def _aux_add_loads(self, graph, cls, first_id):
+        nodes_prop = [("target_flex", self.target_flex),
+                      ("actual_flex", self.actual_flex)]
         edges_prop=[
             ("p", self.load_p),
             ("q", self.load_q),
@@ -2713,7 +2773,7 @@ class BaseObservation(GridObjects):
                                                   cls.n_load,
                                                   self.load_bus,
                                                   cls.load_to_subid,
-                                                  nodes_prop=None,
+                                                  nodes_prop=nodes_prop,
                                                   edges_prop=edges_prop)
         return load_ids
     
@@ -3709,6 +3769,8 @@ class BaseObservation(GridObjects):
             self._dictionnarized["cooldown"][
                 "substation"
             ] = self.time_before_cooldown_sub
+            
+            # redispatching
             self._dictionnarized["redispatching"] = {}
             self._dictionnarized["redispatching"][
                 "target_redispatch"
@@ -3716,6 +3778,15 @@ class BaseObservation(GridObjects):
             self._dictionnarized["redispatching"][
                 "actual_dispatch"
             ] = self.actual_dispatch
+            
+            # flexibility
+            self._dictionnarized["flexibility"] = {}
+            self._dictionnarized["flexibility"][
+                "target_flex"
+            ] = self.target_flex
+            self._dictionnarized["flexibility"][
+                "actual_flex"
+            ] = self.actual_flex
 
             # storage
             self._dictionnarized["storage_charge"] = 1.0 * self.storage_charge
@@ -4006,6 +4077,9 @@ class BaseObservation(GridObjects):
                     "by the environment (consult the documentation about the modeling of the "
                     "generators for example) so we will not even try to mimic this here."
                 )
+                
+        if "flexibility" in cls_act.authorized_keys:
+            pass # TODO: Implement Flexibility in BaseAction
 
         if "set_storage" in cls_act.authorized_keys:
             storage_p = act.storage_p
@@ -4226,7 +4300,12 @@ class BaseObservation(GridObjects):
         # redispatching
         self.target_dispatch[:] = env._target_dispatch
         self.actual_dispatch[:] = env._actual_dispatch
-
+        
+        # flexibility
+        # TODO: Add _target_flex and _actual_flex to BaseEnv / GridObject
+        self.target_flex[:] = np.zeros(env.n_load, dtype=dt_float)
+        self.actual_flex[:] = np.zeros(env.n_load, dtype=dt_float)
+        
         self._thermal_limit[:] = env.get_thermal_limit()
 
         if self.redispatching_unit_commitment_availble:
