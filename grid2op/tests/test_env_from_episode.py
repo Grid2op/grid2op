@@ -531,7 +531,7 @@ class TestWithOpp(unittest.TestCase):
                                 )
      
 
-class TestTSFromMultieEpisode(unittest.TestCase):
+class TestTSFromMultiEpisode(unittest.TestCase):
     def setUp(self) -> None:
         self.env_name = "l2rpn_case14_sandbox"
         with warnings.catch_warnings():
@@ -613,7 +613,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
         assert env.chronics_handler.get_id() == f"{path_}@1", f"{env.chronics_handler.get_id()} vs {path_}@1"
         
         
-class TestTSFromMultieEpisodeWithCache(TestTSFromMultieEpisode):  
+class TestTSFromMultiEpisodeWithCache(TestTSFromMultiEpisode):  
     def do_i_cache(self):
         return True
 
