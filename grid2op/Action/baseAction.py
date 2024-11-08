@@ -2504,6 +2504,7 @@ class BaseAction(GridObjects):
                 # do not digest storage when backend does not
                 # support it
                 self._digest_storage(dict_)  # ADDED for battery
+            self._digest_flexibility(dict_)
             self._digest_curtailment(dict_)  # ADDED for curtailment
             self._digest_setbus(dict_)
             self._digest_change_bus(dict_)
