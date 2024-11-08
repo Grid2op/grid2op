@@ -32,7 +32,7 @@ class BaseAgent(RandomObject, ABC):
 
     def __init__(self, action_space: ActionSpace):
         RandomObject.__init__(self)
-        self.action_space = copy.deepcopy(action_space)
+        self.action_space : ActionSpace = copy.deepcopy(action_space)
 
     def reset(self, obs: BaseObservation):
         """

@@ -118,6 +118,9 @@ Native multi agents support:
 - [IMRPOVED] the `FromMultiEpisodeData` class with the addition of the `caching` 
   kwargs to allow / disable caching (which was default behavior in previous version) 
 - [IMPROVED] the `FromMultiEpisodeData` class that now returns also the path of the data
+- [IMPROVED] the classes inherited from `GreedyAgent` with the added possibility to 
+  do the `obs.simulate` on a different time horizon (kwarg `simulated_time_step`)
+- [IMPROVED] some type hints for some agent class
 
 [1.10.4] - 2024-10-15
 -------------------------
