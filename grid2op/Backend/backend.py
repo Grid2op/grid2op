@@ -1083,8 +1083,10 @@ class Backend(GridObjects, ABC):
         try:
             # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
             # .. versionadded:: 1.11.0
-            topo_vect = self._get_topo_vect()
-            
+            if hasattr(self, "_get_topo_vect"):
+                topo_vect = self._get_topo_vect()
+            else:
+                topo_vect = self.get_topo_vect()
             load_buses = topo_vect[self.load_pos_topo_vect]
             if not self._allow_detachment and (load_buses == -1).any():
                 raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
