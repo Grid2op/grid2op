@@ -996,7 +996,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 0
             ]
         )
-        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0
+        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 11 + 11
 
     def tearDown(self):
         self.env.close()
