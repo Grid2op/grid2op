@@ -102,6 +102,10 @@ class BaseAction(GridObjects):
     - the seventh element is a vector, representing the flexibility. Components of this vector are added to the
       load's active consumption value (if set) of the first elements.
 
+    
+    - the seventh element is a vector, representing the flexibility. Components of this vector are added to the
+      load's active consumption value (if set) of the first elements.
+
     **NB** the difference between :attr:`BaseAction._set_topo_vect` and :attr:`BaseAction._change_bus_vect` is the
     following:
 
@@ -2499,11 +2503,10 @@ class BaseAction(GridObjects):
                 self._digest_shunt(dict_)
             self._digest_injection(dict_)
             self._digest_redispatching(dict_)
-            self._digest_flexibility(dict_)
             if cls.n_storage > 0:
                 # do not digest storage when backend does not
                 # support it
-                self._digest_storage(dict_)  # ADDED for battery
+                self._digest_storage(dict_) # ADDED for battery
             self._digest_flexibility(dict_)
             self._digest_curtailment(dict_)  # ADDED for curtailment
             self._digest_setbus(dict_)

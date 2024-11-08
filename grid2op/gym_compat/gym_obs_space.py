@@ -20,6 +20,7 @@ from grid2op.gym_compat.utils import GYM_AVAILABLE, GYMNASIUM_AVAILABLE
 from grid2op.Observation import BaseObservation
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.gym_compat.utils import _compute_extra_power_for_losses, DictType
+from grid2op.gym_compat.utils import _compute_extra_power_for_losses, DictType
 
 
 class __AuxGymObservationSpace:
@@ -27,10 +28,13 @@ class __AuxGymObservationSpace:
     TODO explain gym / gymnasium
     
     This class allows to transform the observation space into a gymnasium space.
+    This class allows to transform the observation space into a gymnasium space.
 
+    Gymnasium space will be a :class:`gym.spaces.Dict` with the keys being the different attributes
     Gymnasium space will be a :class:`gym.spaces.Dict` with the keys being the different attributes
     of the grid2op observation. All attributes are used.
 
+    Note that gymnasium space converted with this class should be seeded independently. It is NOT seeded
     Note that gymnasium space converted with this class should be seeded independently. It is NOT seeded
     when calling :func:`grid2op.Environment.Environment.seed`.
 
@@ -62,6 +66,7 @@ class __AuxGymObservationSpace:
 
         gym_observation_space = GymObservationSpace(env.observation_space)
         # and now gym_observation_space is a `gymnasium.spaces.dict.Dict` representing the observation space
+        # and now gym_observation_space is a `gymnasium.spaces.dict.Dict` representing the observation space
 
         # you can "convert" the grid2op observation to / from this space with:
 
@@ -70,6 +75,7 @@ class __AuxGymObservationSpace:
 
         # the conversion from gym_obs to grid2op obs is feasible, but i don't imagine
         # a situation where it is useful. And especially, you will not be able to
+        # use "obs.simulate" for the observation converted back from this gymnasium action.
         # use "obs.simulate" for the observation converted back from this gymnasium action.
 
     Notes
@@ -120,10 +126,13 @@ class __AuxGymObservationSpace:
             self._opp_attack_max_duration = env._opp_attack_max_duration
         else:
             raise RuntimeError("Unknown way to build a gymnasium observation space")
+            raise RuntimeError("Unknown way to build a gymnasium observation space")
         
+        dict_ = {}  # will represent the gymnasium.Dict space
         dict_ = {}  # will represent the gymnasium.Dict space
         
         if dict_variables is None:
+            # get the extra variables in the gymnasium space I want to get
             # get the extra variables in the gymnasium space I want to get
             dict_variables = {
                 "thermal_limit":
@@ -253,6 +262,7 @@ class __AuxGymObservationSpace:
         ):
             if sh == 0:
                 # do not add "empty" (=0 dimension) arrays to gymnasium otherwise it crashes
+                # do not add "empty" (=0 dimension) arrays to gymnasium otherwise it crashes
                 continue
             
             if (attr_nm in dict_ or 
@@ -381,6 +391,14 @@ class __AuxGymObservationSpace:
                     high = np.maximum(
                         0.0, +self.init_env_cls_dict["load_size"]
                     )
+                elif attr_nm == "target_flex" or attr_nm == "actual_flex":
+                    # Check that Flex is within load size, Added ..version 1.11.0
+                    low = np.minimum(
+                        0.0, -self.init_env_cls_dict["load_size"]
+                    )
+                    high = np.maximum(
+                        0.0, +self.init_env_cls_dict["load_size"]
+                    )
                 elif attr_nm == "storage_power" or attr_nm == "storage_power_target":
                     low = -self.init_env_cls_dict["storage_max_p_prod"]
                     high = self.init_env_cls_dict["storage_max_p_absorb"]
@@ -416,11 +434,14 @@ class __AuxGymObservationSpace:
             dict_[attr_nm] = my_type
 
     def from_gym(self, gymlike_observation: DictType) -> BaseObservation:
+    def from_gym(self, gymlike_observation: DictType) -> BaseObservation:
         """
         This function convert the gym-like representation of an observation to a grid2op observation.
 
         Parameters
         ----------
+        gymlike_observation: :class:`gymnasium.spaces.dict.Dict`
+            The observation represented as a gymnasium dict
         gymlike_observation: :class:`gymnasium.spaces.dict.Dict`
             The observation represented as a gymnasium dict
 
@@ -439,7 +460,9 @@ class __AuxGymObservationSpace:
         return res
 
     def to_gym(self, grid2op_observation: BaseObservation) -> DictType:
+    def to_gym(self, grid2op_observation: BaseObservation) -> DictType:
         """
+        Convert a grid2op observation into a gymnasium Dict.
         Convert a grid2op observation into a gymnasium Dict.
 
         Parameters
