@@ -65,6 +65,7 @@ Grid2op extended features:
 - jax everything that can be: create a simple env based on jax for topology manipulation, without
   redispatching or rules
 - backend in jax, maybe ?
+- Support for demand response in loads
 
 The "simulate" function :
 
