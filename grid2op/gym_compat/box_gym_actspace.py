@@ -29,6 +29,7 @@ from grid2op.gym_compat.utils import (ALL_ATTR_CONT,
                                       GYMNASIUM_AVAILABLE)
 
 POSSIBLE_KEYS = Literal["redispatch",
+                        "flexibility",
                         "curtail",
                         "curtail_mw",
                         "set_storage",
@@ -208,6 +209,7 @@ class __AuxBoxGymActSpace:
                                      Literal["set_bus"],
                                      Literal["change_bus"],
                                      Literal["redispatch"],
+                                     # Literal["flexibility"],
                                      Literal["set_storage"],
                                      Literal["curtail"],
                                      Literal["curtail_mw"],

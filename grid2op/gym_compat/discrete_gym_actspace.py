@@ -216,11 +216,14 @@ class __AuxDiscreteActSpace:
                                      Literal["set_bus"],
                                      Literal["change_bus"],
                                      Literal["redispatch"],
+                                     # Literal["flexibility"],
                                      Literal["set_storage"],
                                      Literal["curtail"],
                                      Literal["curtail_mw"],
                      ]]=ALL_ATTR_FOR_DISCRETE,
-        nb_bins : Dict[Literal["redispatch", "set_storage", "curtail", "curtail_mw"], int]=None,
+        nb_bins : Dict[Literal["redispatch", # "flexibility", 
+                               "set_storage",
+                               "curtail", "curtail_mw"], int]=None,
         action_list=None,
     ):
 
@@ -232,7 +235,7 @@ class __AuxDiscreteActSpace:
             )
 
         if nb_bins is None:
-            nb_bins = {"redispatch": 7, "set_storage": 7, "curtail": 7}
+            nb_bins = {"redispatch": 7, "flexibility": 7, "set_storage": 7, "curtail": 7}
 
         if "raise_alert" in attr_to_keep or "raise_alarm" in attr_to_keep:
             raise Grid2OpException("This converter cannot be use to raise alarm or raise alert. "
@@ -274,6 +277,7 @@ class __AuxDiscreteActSpace:
             "set_bus": act_sp.get_all_unitary_topologies_set,
             "change_bus": act_sp.get_all_unitary_topologies_change,
             "redispatch": act_sp.get_all_unitary_redispatch,
+            # "flexibility": act_sp.get_all_unitary_flex,
             "set_storage": act_sp.get_all_unitary_storage,
             "curtail": act_sp.get_all_unitary_curtail,
             "curtail_mw": act_sp.get_all_unitary_curtail,
