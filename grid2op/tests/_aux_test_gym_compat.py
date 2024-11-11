@@ -146,7 +146,7 @@ class _AuxTestGymCompatModule:
                 for el in env_gym.action_space.spaces
             ]
         )
-        assert dim_act_space == 166, f"{dim_act_space} != 166"
+        assert dim_act_space == 177, f"{dim_act_space} != 177"
         dim_obs_space = np.sum(
             [
                 np.sum(env_gym.observation_space[el].shape).astype(int)
