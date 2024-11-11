@@ -295,9 +295,11 @@ class _AuxTestGymCompatModule:
                 res = (5, 5, 0, 0, 0, 9)
                 res = (0, 9, 0, 0, 0, 7)
                 res = (7, 5, 0, 0, 0, 8)
+                res = (1, 9, 0, 0, 0, 6)
             else:
                 res = (2, 9, 0, 0, 0, 1)
                 res = (7, 5, 0, 0, 0, 8)
+                res = (1, 9, 0, 0, 0, 6)
         assert np.all(
             act_gym["redispatch"] == res
         ), f'wrong action: {act_gym["redispatch"]}'
