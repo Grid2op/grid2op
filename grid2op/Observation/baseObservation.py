@@ -1130,7 +1130,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError:
                 # this attribute was not there in the first place
                 pass
 
@@ -1138,7 +1138,7 @@ class BaseObservation(GridObjects):
             # added in grid2op 1.6.0 mainly for the EpisodeReboot
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError:
                 # this attribute was not there in the first place
                 pass
             
@@ -1149,7 +1149,7 @@ class BaseObservation(GridObjects):
         for el in ["max_step", "current_step"]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError:
                 # this attribute was not there in the first place
                 pass
                 
@@ -1160,7 +1160,7 @@ class BaseObservation(GridObjects):
         for el in ["delta_time"]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError:
                 # this attribute was not there in the first place
                 pass
             
@@ -1175,7 +1175,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError:
                 # this attribute was not there in the first place
                 pass 
             
@@ -1194,7 +1194,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError:
                 # this attribute was not there in the first place
                 pass 
             
@@ -1215,7 +1215,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError:
                 # this attribute was not there in the first place
                 pass 
         
