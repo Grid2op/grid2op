@@ -450,12 +450,13 @@ class TestActionBase(ABC):
         action = self.helper_action()
         (
             dict_injection,
-            set_status,
-            switch_status,
+            set_line_status,
+            switch_line_status,
             set_topo_vect,
-            switcth_topo_vect,
+            change_bus_vect,
             redispatching,
-            storage,
+            flexibility,
+            storage_power,
             shunts,
         ) = action()
 
@@ -836,6 +837,7 @@ class TestActionBase(ABC):
         act_str = (
             "This action will:\n\t - NOT change anything to the injections"
             "\n\t - NOT perform any redispatching action\n"
+            "\t - NOT perform any flexibility action\n"
             "\t - NOT modify any storage capacity\n"
             "\t - NOT perform any curtailment"
             "\n\t - NOT force any line status\n"
@@ -1272,6 +1274,7 @@ class TestActionBase(ABC):
             set_topo_vect,
             switcth_topo_vect,
             redispatching,
+            flexibility,
             storage,
             shunts,
         ) = action()
