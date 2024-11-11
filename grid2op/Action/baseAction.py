@@ -2846,41 +2846,6 @@ class BaseAction(GridObjects):
                 raise AmbiguousAction(
                     'Action of type "flexibility" are not supported by this action type'
                 )
-            # if not self.flexible_load_available:
-            #     raise FlexibilityNotAvailable(
-            #         "Impossible to use a flexibility action in this "
-            #         "environment. Please set up the proper attributes for loads"
-            #     )
-
-            # if (np.abs(self._flexibility[~cls.load_flexible]) >= 1e-7).any():
-            #     raise InvalidFlexibility(
-            #         "Trying to apply a flexibility action on a non-flexible load"
-            #     )
-
-            # if self._single_act:
-            #     if (self._flexibility > cls.load_max_ramp_up).any():
-            #         raise InvalidFlexibility(
-            #             "Some flexiblity is above the maximum ramp up"
-            #         )
-            #     if (-self._flexibility > cls.load_max_ramp_down).any():
-            #         raise InvalidFlexibility(
-            #             "Some flexiblity is below the maximum ramp down"
-            #         )
-
-                if "load_p" in self._dict_inj:
-                    new_p = self._dict_inj["load_p"]
-                    tmp_p = new_p + self._flexibility
-                    indx_ok = np.isfinite(new_p)
-                    if (tmp_p[indx_ok] > cls.load_size[indx_ok]).any():
-                        raise InvalidFlexibility(
-                            "Some flexibility, when combined with the consumption values, "
-                            "are above the maximum size of at least one load."
-                        )
-                    if (tmp_p[indx_ok] < 0.0).any():
-                        raise InvalidFlexibility(
-                            "Some flexibility amount, when combined with the consumption values, "
-                            "are below 0.0 (loads cannot act as generators!)"
-                        )
 
         # storage specific checks:
         self._is_storage_ambiguous()
