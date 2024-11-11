@@ -328,6 +328,7 @@ class _AuxTestGymCompatModule:
                 res_disp = np.array(
                     [-0.8333335,-1.666667,0.,0.,0.,2.5], dtype=dt_float
                 )
+                res_tup = (4, 4, 0, 0, 0, 6)
         assert (
             act_gym["redispatch"] == res_tup
         ), f'error. redispatch is {act_gym["redispatch"]}'
