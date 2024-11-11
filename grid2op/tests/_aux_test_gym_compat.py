@@ -183,7 +183,7 @@ class _AuxTestGymCompatModule:
                 for el in env_gym.action_space.spaces
             ]
         )
-        assert dim_act_space == 89, f"{dim_act_space=} != 89"
+        assert dim_act_space == 100, f"{dim_act_space=} != 100"
 
     def test_keep_only(self):
         """test the keep_only_attr method"""
@@ -276,9 +276,11 @@ class _AuxTestGymCompatModule:
                 res = (5, 3, 0, 0, 0, 1)
                 res = (2, 2, 0, 0, 0, 9)
                 res = (10, 3, 0, 0, 0, 7)
+                res = (6, 10, 0, 0, 0, 0)
             else:
                 res = (0, 6, 0, 0, 0, 5)
                 res = (10, 3, 0, 0, 0, 7)
+                res = (6, 10, 0, 0, 0, 0)
         
         assert np.all(
             act_gym["redispatch"] == res

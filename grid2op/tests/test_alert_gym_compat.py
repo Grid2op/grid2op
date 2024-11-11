@@ -7,6 +7,8 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import unittest
+from numpy import array, float32, int32
+from collections import OrderedDict
 
 from grid2op.tests.helper_path_test import *
 
@@ -119,36 +121,74 @@ class TestGymAlertCompat(unittest.TestCase):
         act_gym = env_gym.action_space.to_gym(act)
         act_str = act_gym.__str__()
         # NOTE: This Str Comparison may fail locally due to changes in OrderDict formatting (rely on CI if in doubt)
-        assert act_str == ("OrderedDict([('change_bus', array([False, False, False, False, False, False, False, False, False,"
-                           "\n       False, False, False, False, False, False, False, False, False,\n       "
-                           "False, False, False, False, False, False, False, False, False,\n       False, False, False, "
-                           "False, False, False, False, False, False,\n       False, False, False, False, False, False, False, "
-                           "False, False,\n       False, False, False, False, False, False, False, False, False,\n       False, "
-                           "False, False, False, False, False, False, False, False,\n       False, False, False, False, False, False, "
-                           "False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
-                           "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
-                           "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
-                           "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
-                           "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
-                           "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
-                           "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
-                           "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
-                           "False])), ('change_line_status', array([False, False, False, False, False, False, False, False, False,\n       "
-                           "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
-                           "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
-                           "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
-                           "False, False, False, False,\n       False, False, False, False, False])), ('curtail', array([-1., -1., -1., "
-                           "-1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,\n       -1., -1., -1., -1., -1., -1., -1., -1., -1.], "
-                           "dtype=float32)), ('raise_alert', array([False, False,  True, False, False, False, False, False, False,\n       "
-                           "False])), ('redispatch', array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\n       "
-                           "0., 0., 0., 0., 0.], dtype=float32)), ('set_bus', array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
-                           "0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, "
-                           "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
-                           "0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, "
-                           "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
-                           "0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0], dtype=int32)), "
-                           "('set_line_status', array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, "
-                           "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int32))])")
+        assert act_str == str(OrderedDict({'change_bus': array([False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False, 
+                                                                False, False, False, False, False, False, False, False, False, False, False, False, 
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False, False, False,
+                                                                False, False, False, False, False, False, False, False, False, False]),
+                                           'change_line_status': array([False, False, False, False, False, False, False, False, False, False, False,
+                                                                        False, False, False, False, False, False, False, False, False, False, False,
+                                                                        False, False, False, False, False, False, False, False, False, False, False,
+                                                                        False, False, False, False, False, False, False, False, False, False, False,
+                                                                        False, False, False, False, False, False, False, False, False, False, False,
+                                                                        False, False, False, False]),
+                                           'curtail': array([-1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,
+                                                             -1., -1., -1., -1., -1., -1., -1., -1., -1.], dtype=float32),
+                                           'flexibility': array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                                                 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                                                 0., 0., 0.], dtype=float32),
+                                           'raise_alert': array([False, False,  True, False, False, False, False, False, False, False]),
+                                           'redispatch': array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], dtype=float32),
+                                           'set_bus': array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                             0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                             0, 0, 0, 0, 0, 0, 0], dtype=int32),
+                                           'set_line_status': array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int32)}))
+        # assert act_str == ("OrderedDict([('change_bus', array([False, False, False, False, False, False, False, False, False,"
+        #                    "\n       False, False, False, False, False, False, False, False, False,\n       "
+        #                    "False, False, False, False, False, False, False, False, False,\n       False, False, False, "
+        #                    "False, False, False, False, False, False,\n       False, False, False, False, False, False, False, "
+        #                    "False, False,\n       False, False, False, False, False, False, False, False, False,\n       False, "
+        #                    "False, False, False, False, False, False, False, False,\n       False, False, False, False, False, False, "
+        #                    "False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
+        #                    "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
+        #                    "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
+        #                    "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
+        #                    "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
+        #                    "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
+        #                    "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
+        #                    "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
+        #                    "False])), ('change_line_status', array([False, False, False, False, False, False, False, False, False,\n       "
+        #                    "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
+        #                    "False, False, False, False,\n       False, False, False, False, False, False, False, False, False,\n       "
+        #                    "False, False, False, False, False, False, False, False, False,\n       False, False, False, False, False, "
+        #                    "False, False, False, False,\n       False, False, False, False, False])), ('curtail', array([-1., -1., -1., "
+        #                    "-1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,\n       -1., -1., -1., -1., -1., -1., -1., -1., -1.], "
+        #                    "dtype=float32)), ('raise_alert', array([False, False,  True, False, False, False, False, False, False,\n       "
+        #                    "False])), ('redispatch', array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\n       "
+        #                    "0., 0., 0., 0., 0.], dtype=float32)), ('set_bus', array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
+        #                    "0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, "
+        #                    "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
+        #                    "0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, "
+        #                    "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "
+        #                    "0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0], dtype=int32)), "
+        #                    "('set_line_status', array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, "
+        #                    "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\n       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int32))])")
 
     def test_convert_alert_to_gym(self):
         """test i can create the env"""
