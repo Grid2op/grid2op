@@ -331,6 +331,7 @@ class _AuxTestGymCompatModule:
                 )
                 res_tup = (8, 5, 0, 0, 0, 8)
                 res_tup = (8, 2, 0, 0, 0, 9)
+                res_tup = (3, 2, 0, 0, 0, 7)
                 res_disp = np.array(
                     [2.5, 0.0, 0.0, 0.0, 0.0, 7.5], dtype=dt_float
                 )
@@ -340,6 +341,7 @@ class _AuxTestGymCompatModule:
             else:
                 res_tup = (8, 9, 0, 0, 0, 2)
                 res_tup = (8, 2, 0, 0, 0, 9)
+                res_tup = (3, 2, 0, 0, 0, 7)
                 res_disp = np.array(
                     [2.5, -5., 0., 0., 0., 10.], dtype=dt_float
                 )
