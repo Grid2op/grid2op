@@ -69,13 +69,14 @@ class TestGymAlertCompat(unittest.TestCase):
         str_ = env_gym.action_space.__str__() 
         
         assert str_ == ("Dict('change_bus': MultiBinary(177), 'change_line_status': MultiBinary(59), "
-                        "'curtail': Box([-1.  0. -1. -1. -1.  0.  0.  0.  0.  0. -1.  0.  0. -1.  0.  0. -1.  "
-                        "0.\n  0. -1. -1. -1.], [-1.  1. -1. -1. -1.  1.  1.  1.  1.  1. -1.  1.  1. -1.  1.  "
-                        "1. -1.  1.\n  1. -1. -1. -1.], (22,), float32), 'raise_alert': MultiBinary(10), "
-                        "'redispatch': Box([ -1.4   0.   -1.4 -10.4  -1.4   0.    0.    0.    0.    0.   -2.8   "
-                        "0.\n   0.   -2.8   0.    0.   -4.3   0.    0.   -2.8  -8.5  -9.9], [ 1.4  0.   1.4 10.4  "
-                        "1.4  0.   0.   0.   0.   0.   2.8  0.   0.   2.8\n  0.   0.   4.3  0.   0.   2.8  8.5  9.9], "
+                        "'curtail': Box([-1.  0. -1. -1. -1.  0.  0.  0.  0.  0. -1.  0.  0. -1.  0.  0. -1.  0.\n  "
+                        "0. -1. -1. -1.], [-1.  1. -1. -1. -1.  1.  1.  1.  1.  1. -1.  1.  1. -1.  1.  1. -1.  1.\n  "
+                        "1. -1. -1. -1.], (22,), float32), 'flexibility': Box(-inf, inf, (37,), float32), 'raise_alert': "
+                        "MultiBinary(10), 'redispatch': Box([ -1.4   0.   -1.4 -10.4  -1.4   0.    0.    0.    0.    0.   -2.8   0.\n   "
+                        "0.   -2.8   0.    0.   -4.3   0.    0.   -2.8  -8.5  -9.9], "
+                        "[ 1.4  0.   1.4 10.4  1.4  0.   0.   0.   0.   0.   2.8  0.   0.   2.8\n  0.   0.   4.3  0.   0.   2.8  8.5  9.9], "
                         "(22,), float32), 'set_bus': Box(-1, 2, (177,), int32), 'set_line_status': Box(-1, 1, (59,), int32))")
+        
         str_ = env_gym.observation_space.__str__()
         assert str_ == ("Dict('_shunt_bus': Box(-2147483648, 2147483647, (6,), int32), '_shunt_p': Box(-inf, inf, (6,), float32), "
                         "'_shunt_q': Box(-inf, inf, (6,), float32), '_shunt_v': Box(-inf, inf, (6,), float32), 'a_ex': Box(0.0, inf, (59,), "
@@ -158,7 +159,7 @@ class TestGymAlertCompat(unittest.TestCase):
                 for el in env_gym.action_space.spaces
             ]
         )
-        assert dim_act_space == 526, f"{dim_act_space} != 526"
+        assert dim_act_space == 563, f"{dim_act_space} != 563"
         dim_obs_space = np.sum(
             [
                 np.sum(env_gym.observation_space[el].shape).astype(int)
@@ -195,7 +196,7 @@ class TestGymAlertCompat(unittest.TestCase):
                 for el in env_gym.action_space.spaces
             ]
         )
-        assert dim_act_space == 526, f"{dim_act_space=} != 526"
+        assert dim_act_space == 563, f"{dim_act_space=} != 563"
 
     def test_keep_only_2_alert_attr(self):
         """test the keep_only_attr method"""

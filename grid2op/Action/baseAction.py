@@ -854,7 +854,7 @@ class BaseAction(GridObjects):
             
     @classmethod
     def _aux_process_pre_flexibility(cls):
-        # TODO: super()._aux_process_pre_flexibility()
+        # super()._aux_process_pre_flexibility()
         # Ensures base types are unaffected
         cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
         cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
