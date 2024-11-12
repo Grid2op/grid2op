@@ -1963,6 +1963,16 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         )
         self._already_modified_gen[redisp_act_orig != 0] = True
         return self._already_modified_gen
+    
+    def _get_already_modified_load(self, action):
+        flex_act_orig = 1.0 * action._flexibility
+        self._target_flex[self._already_modified_load] += flex_act_orig[self._already_modified_load]
+        first_modified = (~self._already_modified_load) & (flex_act_orig != 0)
+        self._target_flex[first_modified] = (
+            self._actual_flex[first_modified] + flex_act_orig[first_modified]
+        )
+        self._already_modified_load[flex_act_orig != 0] = True
+        return self._already_modified_load
 
     def _prepare_redisp_and_flex(self, action:BaseAction, new_gen_p:np.array, new_load_p:np.array):
         # trying with an optimization method
