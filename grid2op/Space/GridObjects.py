@@ -4445,7 +4445,7 @@ class GridObjects:
                 )
         
         # Demand Response / Flexibility
-        if dict_["load_size"] is None:
+        if dict_.get("load_size", None) is None:
             cls.flexible_load_available = False
         else:
             cls.flexible_load_available = True
