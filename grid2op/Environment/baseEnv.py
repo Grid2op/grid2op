@@ -3120,7 +3120,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         already_modified_gen = self._get_already_modified_gen(action)
         already_modified_load = self._get_already_modified_load(action)
         # Checks that Redispatch / Flexibility in action is Valid
-        valid_disp, except_tmp, _ = self._prepare_redisp(action, new_gen_p, new_load_p)
+        valid_disp, except_tmp, _ = self._prepare_redisp_and_flex(action, new_gen_p, new_load_p)
 
         if except_tmp is not None:
             orig_action = action
