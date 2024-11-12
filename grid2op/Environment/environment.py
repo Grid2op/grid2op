@@ -292,6 +292,14 @@ class Environment(BaseEnv):
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
                             f"to use all grid2op functionalities. "
                             f"The error was: \"{exc_}\"")
+            try:
+                self.backend.load_flexibility_data(self.get_path_env())
+            except BackendError as exc_:
+                self.backend.flexible_load_available = False
+                warnings.warn(f"Impossible to load flexibility data. This is not an error but you will not be able "
+                              f"to use all grid2op functionalities. "
+                              f"The error was: \"{exc_}\"")
+            
             exc_ = self.backend.load_grid_layout(self.get_path_env())
             if exc_ is not None:
                 warnings.warn(
