@@ -151,6 +151,10 @@ class BackendConverter(Backend):
         self.name_grid_layout = None
         self.path_storage_data = None
         self.name_storage_data = None
+        
+        # for flexibility data
+        self.path_flex = None
+        self.name_flex = None
 
         # for easier copy of np array
         self.cst1 = dt_float(1.0)
@@ -464,6 +468,18 @@ class BackendConverter(Backend):
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
                             f"to use all grid2op functionalities. "
                             f"The error was: \"{exc_}\"")
+        if self.path_flex is not None:
+            # flexibility data is available
+            try:
+                super().load_flexibility_data(self.path_flex, name=self.name_flex)
+                self.source_backend.load_flexibility_data(
+                    self.path_flex, name=self.name_flex
+                )
+            except BackendError as exc_:
+                self.flexible_load_available = False
+                warnings.warn(f"Impossible to load flexibility data. This is not an error but you will not be able "
+                              f"to use all grid2op functionalities. "
+                              f"The error was: \"{exc_}\"")
         if self.path_storage_data is not None:
             super().load_storage_data(self.path_storage_data, self.name_storage_data)
             self.source_backend.load_storage_data(
@@ -725,6 +741,11 @@ class BackendConverter(Backend):
         # data are loaded with the name of the source backend, i need to map it to the target backend too
         self.path_redisp = path
         self.name_redisp = name
+        
+    def load_flexibility_data(self, path, name="flex_loads_charac.csv"):
+        # data are loaded with the name of the source backend, i need to map it to the target backend too
+        self.path_flex = path
+        self.name_flex = name
 
     def load_storage_data(self, path, name="storage_units_charac.csv"):
         # data are loaded with the name of the source backend, i need to map it to the target backend too
