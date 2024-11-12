@@ -1396,6 +1396,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._update_parameters()
 
         self._reset_redispatching()
+        self._reset_flexibility()
 
         # storage
         self._storage_current_charge = np.zeros(self.n_storage, dtype=dt_float)

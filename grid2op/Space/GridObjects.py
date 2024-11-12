@@ -4082,8 +4082,10 @@ class GridObjects:
                         copy_,
                     )
             else:
-                for nm_attr in cls._li_attr_flex_load:
-                    res[nm_attr] = None
+                for nm_attr, type_attr in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
+                    # Note: Need default values here for flex to work together
+                    # correctly with redispatch
+                    res[nm_attr] = np.zeros(shape=cls.n_load, dtype=type_attr)
             
             # layout (position of substation on a map of the grid)
             if cls.grid_layout is not None:
