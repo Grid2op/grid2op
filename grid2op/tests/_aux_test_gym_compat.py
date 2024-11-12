@@ -272,14 +272,8 @@ class _AuxTestGymCompatModule:
         else:
             # it's linux
             if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res = (1, 2, 0, 0, 0, 0)
-                res = (5, 3, 0, 0, 0, 1)
-                res = (2, 2, 0, 0, 0, 9)
-                res = (10, 3, 0, 0, 0, 7)
                 res = (6, 10, 0, 0, 0, 0)
             else:
-                res = (0, 6, 0, 0, 0, 5)
-                res = (10, 3, 0, 0, 0, 7)
                 res = (6, 10, 0, 0, 0, 0)
         
         assert np.all(
@@ -291,14 +285,8 @@ class _AuxTestGymCompatModule:
         else:
             # it's linux
             if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res = (0, 1, 0, 0, 0, 4)
-                res = (5, 5, 0, 0, 0, 9)
-                res = (0, 9, 0, 0, 0, 7)
-                res = (7, 5, 0, 0, 0, 8)
                 res = (1, 9, 0, 0, 0, 6)
             else:
-                res = (2, 9, 0, 0, 0, 1)
-                res = (7, 5, 0, 0, 0, 8)
                 res = (1, 9, 0, 0, 0, 6)
         assert np.all(
             act_gym["redispatch"] == res
@@ -321,33 +309,12 @@ class _AuxTestGymCompatModule:
         else:
             # it's linux
             if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res_tup = (1, 4, 0, 0, 0, 8)
-                res_disp = np.array(
-                    [-3.3333333, -1.666667, 0.0, 0.0, 0.0, 7.5], dtype=dt_float
-                )
-                res_tup = (7, 4, 0, 0, 0, 0)
-                res_disp = np.array(
-                    [1.666667, -1.666667, 0.0, 0.0, 0.0, -12.5], dtype=dt_float
-                )
-                res_tup = (8, 5, 0, 0, 0, 8)
-                res_tup = (8, 2, 0, 0, 0, 9)
                 res_tup = (3, 2, 0, 0, 0, 7)
-                res_disp = np.array(
-                    [2.5, 0.0, 0.0, 0.0, 0.0, 7.5], dtype=dt_float
-                )
-                res_disp = np.array(
-                    [2.5, -5., 0., 0., 0., 10.], dtype=dt_float
-                )
                 res_disp = np.array(
                     [-1.6666665, -5., 0., 0., 0., 5.], dtype=dt_float
                 )
             else:
-                res_tup = (8, 9, 0, 0, 0, 2)
-                res_tup = (8, 2, 0, 0, 0, 9)
                 res_tup = (3, 2, 0, 0, 0, 7)
-                res_disp = np.array(
-                    [2.5, -5., 0., 0., 0., 10.], dtype=dt_float
-                )
                 res_disp = np.array(
                     [-1.6666665, -5., 0., 0., 0., 5.], dtype=dt_float
                 )
@@ -367,36 +334,15 @@ class _AuxTestGymCompatModule:
         else:
             # it's linux
             if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res_tup = (3, 9, 0, 0, 0, 0)
-                res_disp = np.array(
-                    [-1.6666665, 6.666666, 0.0, 0.0, 0.0, -12.5], dtype=dt_float
-                )
-                res_tup = (8, 6, 0, 0, 0, 0)
-                res_disp = np.array(
-                    [2.5, 1.666666, 0.0, 0.0, 0.0, -12.5], dtype=dt_float
-                )
-                res_tup = (7, 6, 0, 0, 0, 4)
-                res_disp = np.array(
-                    [1.666667, 1.666666, 0.0, 0.0, 0.0, -2.5], dtype=dt_float
-                )
-                res_tup = (3, 8, 0, 0, 0, 8)
-                res_disp = np.array(
-                    [-1.6666665, 5., 0.0, 0.0, 0.0, 7.5], dtype=dt_float
-                )
                 res_disp = np.array(
                     [-0.8333335,-1.666667,0.,0.,0.,2.5], dtype=dt_float
                 )
                 res_tup = (4, 4, 0, 0, 0, 6)
             else:
-                res_tup = (4, 2, 0, 0, 0, 5)
-                res_tup = (3, 8, 0, 0, 0, 8)
-                res_disp = np.array(
-                    [-1.6666665, 5., 0.0, 0.0, 0.0, 7.5], dtype=dt_float
-                )
+                res_tup = (4, 4, 0, 0, 0, 6)
                 res_disp = np.array(
                     [-0.8333335,-1.666667,0.,0.,0.,2.5], dtype=dt_float
                 )
-                res_tup = (4, 4, 0, 0, 0, 6)
         assert (
             act_gym["redispatch"] == res_tup
         ), f'error. redispatch is {act_gym["redispatch"]}'
