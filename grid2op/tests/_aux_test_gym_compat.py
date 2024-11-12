@@ -269,12 +269,8 @@ class _AuxTestGymCompatModule:
         act_gym = env_gym.action_space.sample()
         if _IS_WINDOWS:
             res = (7, 9, 0, 0, 0, 9)
-        else:
-            # it's linux
-            if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res = (6, 10, 0, 0, 0, 0)
-            else:
-                res = (6, 10, 0, 0, 0, 0)
+        else: # Linux
+            res = (6, 10, 0, 0, 0, 0)
         
         assert np.all(
             act_gym["redispatch"] == res
@@ -282,12 +278,8 @@ class _AuxTestGymCompatModule:
         act_gym = env_gym.action_space.sample()
         if _IS_WINDOWS:
             res = (2, 9, 0, 0, 0, 1)
-        else:
-            # it's linux
-            if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res = (1, 9, 0, 0, 0, 6)
-            else:
-                res = (1, 9, 0, 0, 0, 6)
+        else: # Linux
+            res = (1, 9, 0, 0, 0, 6)
         assert np.all(
             act_gym["redispatch"] == res
         ), f'wrong action: {act_gym["redispatch"]}'
@@ -306,18 +298,11 @@ class _AuxTestGymCompatModule:
         if _IS_WINDOWS:
             res_tup = (6, 5, 0, 0, 0, 9)
             res_disp = np.array([0.833333, 0.0, 0.0, 0.0, 0.0, 10.0], dtype=dt_float)
-        else:
-            # it's linux
-            if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res_tup = (3, 2, 0, 0, 0, 7)
-                res_disp = np.array(
-                    [-1.6666665, -5., 0., 0., 0., 5.], dtype=dt_float
-                )
-            else:
-                res_tup = (3, 2, 0, 0, 0, 7)
-                res_disp = np.array(
-                    [-1.6666665, -5., 0., 0., 0., 5.], dtype=dt_float
-                )
+        else: # Linux
+            res_tup = (3, 2, 0, 0, 0, 7)
+            res_disp = np.array(
+                [-1.6666665, -5., 0., 0., 0., 5.], dtype=dt_float
+            )
             
         assert (
             act_gym["redispatch"] == res_tup
