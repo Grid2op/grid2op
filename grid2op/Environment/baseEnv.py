@@ -3470,6 +3470,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         except_ = []
         detailed_info = []
         init_disp = 1.0 * action._redispatch  # dispatching action
+        init_flex = 1.0 * action._flexibility # flexibility action
         init_alert = None
         if cls.dim_alerts > 0:
             init_alert = copy.deepcopy(action._raise_alert)
