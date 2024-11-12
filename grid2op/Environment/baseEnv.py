@@ -2725,7 +2725,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     def _aux_handle_curtailment_without_limit(self, action, new_p):
         """modifies the new_p argument !!!! (but not the action)"""
-        if self.redispatching_unit_commitment_availble and (
+        if self.redispatching_unit_commitment_available and (
             action._modif_curtailment or (np.abs(self._limit_curtailment - 1.) >= 1e-7).any()
         ):
             self._aux_update_curtailment_act(action)
@@ -2972,7 +2972,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # fix redispatching for curtailment storage
         if (
-            self.redispatching_unit_commitment_availble
+            self.redispatching_unit_commitment_available
             and self._parameters.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION
         ):
             # limit the curtailment / storage in case of infeasible redispatching
@@ -3369,7 +3369,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             gen_curtailed = self._aux_handle_curtailment_without_limit(action, new_p)
 
             beg__redisp = time.perf_counter()
-            if cls.redispatching_unit_commitment_availble or cls.n_storage > 0.0:
+            if cls.redispatching_unit_commitment_available or cls.n_storage > 0.0:
                 # this computes the "optimal" redispatching
                 # and it is also in this function that the limiting of the curtailment / storage actions
                 # is perform to make the state "feasible"

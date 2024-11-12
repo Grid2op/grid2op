@@ -1569,7 +1569,7 @@ class Backend(GridObjects, ABC):
             to change it.
 
         """
-        self.redispatching_unit_commitment_availble = False
+        self.redispatching_unit_commitment_available = False
 
         # for redispatching
         fullpath = os.path.join(path, name)
@@ -1671,7 +1671,7 @@ class Backend(GridObjects, ABC):
             self.gen_shutdown_cost[i] = dt_float(tmp_gen["shut_down_cost"])
             self.gen_renewable[i] = dt_bool(tmp_gen["type"] in ["wind", "solar"])
             
-        self.redispatching_unit_commitment_availble = True
+        self.redispatching_unit_commitment_available = True
 
     def load_storage_data(self,
                           path : Union[os.PathLike, str],

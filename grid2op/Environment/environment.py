@@ -288,7 +288,7 @@ class Environment(BaseEnv):
             try:
                 self.backend.load_redispacthing_data(self.get_path_env())
             except BackendError as exc_:
-                self.backend.redispatching_unit_commitment_availble = False
+                self.backend.redispatching_unit_commitment_available = False
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
                             f"to use all grid2op functionalities. "
                             f"The error was: \"{exc_}\"")

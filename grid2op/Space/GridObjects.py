@@ -586,7 +586,7 @@ class GridObjects:
     ]
     
     # for flexibility / demand response
-    _li_attr_disp : ClassVar[List[str]] = [
+    _li_attr_flex_load : ClassVar[List[str]] = [
         "load_size",
         "load_flexible",
         "load_max_ramp_up",
@@ -603,7 +603,7 @@ class GridObjects:
     ]
 
     # redispatch data, not available in all environment
-    redispatching_unit_commitment_availble : ClassVar[bool] = False
+    redispatching_unit_commitment_available : ClassVar[bool] = False
     gen_type : ClassVar[Optional[np.ndarray]] = None
     gen_pmin : ClassVar[Optional[np.ndarray]] = None
     gen_pmax : ClassVar[Optional[np.ndarray]] = None
@@ -842,7 +842,7 @@ class GridObjects:
         cls._vectorized = None
 
         # redispatch data, not available in all environment
-        cls.redispatching_unit_commitment_availble = False
+        cls.redispatching_unit_commitment_available = False
         cls.gen_type = None
         cls.gen_pmin = None
         cls.gen_pmax = None
@@ -2022,7 +2022,7 @@ class GridObjects:
                      "line_ex_to_subid",
                      "line_ex_to_sub_pos",
                      ]
-        if cls.redispatching_unit_commitment_availble:
+        if cls.redispatching_unit_commitment_available:
             attrs_int.append("gen_min_uptime")
             attrs_int.append("gen_min_downtime")
         cls._assign_attr(attrs_int, dt_int, "int", raise_if_none)
@@ -2035,7 +2035,7 @@ class GridObjects:
                      "name_storage",
                      "storage_type",
         ]
-        if cls.redispatching_unit_commitment_availble:
+        if cls.redispatching_unit_commitment_available:
             attrs_str.append("gen_type")
         cls._assign_attr(attrs_str, str, "str", raise_if_none)
         
@@ -2049,7 +2049,7 @@ class GridObjects:
                        "storage_charging_efficiency",
                        "storage_discharging_efficiency",
                        ]
-        if cls.redispatching_unit_commitment_availble:
+        if cls.redispatching_unit_commitment_available:
             attrs_float += ["gen_pmin",
                             "gen_pmax",
                             "gen_max_ramp_up",
@@ -2057,8 +2057,6 @@ class GridObjects:
                             "gen_cost_per_MW",
                             "gen_startup_cost",
                             "gen_shutdown_cost"]
-        cls._assign_attr(attrs_float, dt_float, "float", raise_if_none)
-        
         if cls.flexible_load_available:
             attrs_float += ["load_size",
                             "load_max_ramp_up",
@@ -2383,7 +2381,7 @@ class GridObjects:
                 grid2op.Space.space_utils._WARNING_ISSUED_FOR_SUB_NO_ELEM = True
 
         # redispatching / unit commitment
-        if cls.redispatching_unit_commitment_availble:
+        if cls.redispatching_unit_commitment_available:
             cls._check_validity_dispatching_data()
         
         # demand response / flexibility
@@ -4060,7 +4058,7 @@ class GridObjects:
             # attributes are not loaded yet
             
             # redispatching
-            if cls.redispatching_unit_commitment_availble:
+            if cls.redispatching_unit_commitment_available:
                 for nm_attr, type_attr in zip(cls._li_attr_disp, cls._type_attr_disp):
                     save_to_dict(
                         res,
@@ -4257,8 +4255,8 @@ class GridObjects:
             
             # redispatching / curtailment
             res[
-                "redispatching_unit_commitment_availble"
-            ] = cls.redispatching_unit_commitment_availble
+                "redispatching_unit_commitment_available"
+            ] = cls.redispatching_unit_commitment_available
             
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
@@ -4410,10 +4408,10 @@ class GridObjects:
         cls.dim_topo = cls.sub_info.sum()
 
         if dict_["gen_type"] is None:
-            cls.redispatching_unit_commitment_availble = False
+            cls.redispatching_unit_commitment_available = False
             # and no need to make anything else, because everything is already initialized at None
         else:
-            cls.redispatching_unit_commitment_availble = True
+            cls.redispatching_unit_commitment_available = True
             type_attr_disp = [
                 str,
                 dt_float,
@@ -4451,8 +4449,14 @@ class GridObjects:
             cls.flexible_load_available = False
         else:
             cls.flexible_load_available = True
-
-            for nm_attr, type_attr in zip(cls._li_attr_flex_load, cls._li_attr_flex_load):
+            type_attr_flex_load = [
+                dt_float,
+                dt_bool,
+                dt_float,
+                dt_float,
+                dt_float,
+            ]
+            for nm_attr, type_attr in zip(cls._li_attr_flex_load, type_attr_flex_load):
                 setattr(cls, nm_attr,
                     extract_from_dict(
                         dict_, nm_attr, lambda x: np.array(x).astype(type_attr)
@@ -4975,7 +4979,7 @@ class GridObjects:
 
         gen_type_str = (
             ",".join([f'"{el}"' for el in cls.gen_type])
-            if cls.redispatching_unit_commitment_availble
+            if cls.redispatching_unit_commitment_available
             else "None"
         )
         gen_pmin_str = GridObjects._format_float_vect_to_cls_str(cls.gen_pmin)
@@ -5160,7 +5164,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     _type_attr_disp = [str, float, float, bool, float, float, int, int, float, float, float, bool]
 
     # redispatch data, not available in all environment
-    redispatching_unit_commitment_availble = {"True" if cls.redispatching_unit_commitment_availble else "False"}
+    redispatching_unit_commitment_available = {"True" if cls.redispatching_unit_commitment_available else "False"}
     gen_type = np.array([{gen_type_str}])
     gen_pmin = {gen_pmin_str}
     gen_pmax = {gen_pmax_str}

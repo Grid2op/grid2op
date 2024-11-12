@@ -2805,7 +2805,7 @@ class BaseAction(GridObjects):
                 raise AmbiguousAction(
                     'Action of type "redispatch" are not supported by this action type'
                 )
-            if not self.redispatching_unit_commitment_availble:
+            if not self.redispatching_unit_commitment_available:
                 raise UnitCommitorRedispachingNotAvailable(
                     "Impossible to use a redispatching action in this "
                     "environment. Please set up the proper costs for generator"
@@ -3077,7 +3077,7 @@ class BaseAction(GridObjects):
                     'Action of type "curtail" are not supported by this action type'
                 )
 
-            if not cls.redispatching_unit_commitment_availble:
+            if not cls.redispatching_unit_commitment_available:
                 raise UnitCommitorRedispachingNotAvailable(
                     "Impossible to use a redispatching action in this "
                     "environment. Please set up the proper costs for generator. "
@@ -6076,10 +6076,10 @@ class BaseAction(GridObjects):
             raise IllegalAction(
                 "Impossible to perform curtailment action with this action type."
             )
-        if not self.redispatching_unit_commitment_availble:
+        if not self.redispatching_unit_commitment_available:
             raise IllegalAction(
                 "Impossible to perform curtailment as it is not possible to compute redispatching. "
-                'Your backend do not support "redispatching_unit_commitment_availble"'
+                'Your backend do not support "redispatching_unit_commitment_available"'
             )
 
         orig_ = self.curtail

@@ -69,7 +69,7 @@ def _get_action_grid_class():
         [3, 21, 10, 15, 22, 16, 23, 32, 37, 26, 47, 50, 54, 35, 38, 44, 57, 45, 51, 55]
     )
 
-    GridObjects.redispatching_unit_commitment_availble = True
+    GridObjects.redispatching_unit_commitment_available = True
     GridObjects.gen_type = np.array(["thermal"] * 5)
     GridObjects.gen_pmin = np.array([0.0] * 5)
     GridObjects.gen_pmax = np.array([100.0] * 5)
@@ -82,6 +82,8 @@ def _get_action_grid_class():
     GridObjects.gen_max_ramp_up = np.array([10.0, 5.0, 15.0, 7.0, 8.0])
     GridObjects.gen_max_ramp_down = np.array([11.0, 6.0, 16.0, 8.0, 9.0])
     GridObjects.gen_renewable = ~GridObjects.gen_redispatchable
+    
+    GridObjects.flexible_load_available = False
 
     GridObjects.n_storage = 2
     GridObjects.name_storage = np.array(["storage_0", "storage_1"])
@@ -315,6 +317,13 @@ def _get_action_grid_class():
         "gen_cost_per_MW": [70.0] * 5,
         "gen_startup_cost": [0.0] * 5,
         "gen_shutdown_cost": [0.0] * 5,
+        # Flexibility
+        "load_size":None,
+        "load_flexible":None,
+        "load_max_ramp_up":None,
+        "load_max_ramp_down":None,
+        "load_cost_per_MW":None,
+        # Storage
         "storage_type": ["battery"] * 2,
         "storage_Emax": [100.0, 100.0],
         "storage_Emin": [0.0, 0.0],
@@ -373,7 +382,7 @@ class TestActionBase(ABC):
             actionClass=act_cls,
         )
         self.helper_action.seed(42)
-        # save_to_dict(self.res, self.helper_action, "subtype", lambda x: re.sub("(<class ')|('>)", "", "{}".format(x)))
+        
         save_to_dict(
             self.res,
             self.helper_action,
@@ -400,6 +409,7 @@ class TestActionBase(ABC):
         assert not act._modif_set_status
         assert not act._modif_change_status
         assert not act._modif_redispatch
+        assert not act._modif_flexibility
         assert not act._modif_storage
         assert not act._modif_curtailment
 

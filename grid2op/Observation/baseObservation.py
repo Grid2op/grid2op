@@ -4195,7 +4195,7 @@ class BaseObservation(GridObjects):
         self.rho[:] = backend.get_relative_flow().astype(dt_float)
 
         # margin up and down
-        if cls.redispatching_unit_commitment_availble:
+        if cls.redispatching_unit_commitment_available:
             self.gen_margin_up[:] = np.minimum(
                 cls.gen_pmax - self.gen_p, self.gen_max_ramp_up
             )
@@ -4310,7 +4310,7 @@ class BaseObservation(GridObjects):
         
         self._thermal_limit[:] = env.get_thermal_limit()
 
-        if self.redispatching_unit_commitment_availble:
+        if self.redispatching_unit_commitment_available:
             self.gen_p_before_curtail[:] = env._gen_before_curtailment
             self.curtailment[:] = (
                 self.gen_p_before_curtail - self.gen_p
