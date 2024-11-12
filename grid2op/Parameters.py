@@ -210,8 +210,11 @@ class Parameters:
         # at will
         self.IGNORE_MIN_UP_DOWN_TIME = True
 
-        # allow dispatch on turned off generator (if ``True`` you can actually dispatch a turned on geenrator)
+        # allow dispatch on turned off generator (if ``True`` you can actually dispatch a turned on generator)
         self.ALLOW_DISPATCH_GEN_SWITCH_OFF = True
+        
+        # allow flexibility on turned off load (if ``True`` you can adjust the output of a turned on load)
+        self.ALLOW_FLEX_LOAD_SWITCH_OFF = True
 
         # if a curtailment action is "too strong" it will limit it to the "maximum feasible"
         # not to break the whole system
@@ -300,6 +303,10 @@ class Parameters:
         if "ALLOW_DISPATCH_GEN_SWITCH_OFF" in dict_:
             self.ALLOW_DISPATCH_GEN_SWITCH_OFF = Parameters._isok_txt(
                 dict_["ALLOW_DISPATCH_GEN_SWITCH_OFF"]
+            )
+        if "ALLOW_FLEX_LOAD_SWITCH_OFF" in dict_:
+            self.ALLOW_FLEX_LOAD_SWITCH_OFF = Parameters._isok_txt(
+                dict_["ALLOW_FLEX_LOAD_SWITCH_OFF"]
             )
         if "LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION" in dict_:
             self.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION = Parameters._isok_txt(
@@ -416,6 +423,7 @@ class Parameters:
         res["NO_OVERFLOW_DISCONNECTION"] = bool(self.NO_OVERFLOW_DISCONNECTION)
         res["IGNORE_MIN_UP_DOWN_TIME"] = bool(self.IGNORE_MIN_UP_DOWN_TIME)
         res["ALLOW_DISPATCH_GEN_SWITCH_OFF"] = bool(self.ALLOW_DISPATCH_GEN_SWITCH_OFF)
+        res["ALLOW_FLEX_LOAD_SWITCH_OFF"] = bool(self.ALLOW_FLEX_LOAD_SWITCH_OFF)
         res["LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION"] = bool(
             self.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION
         )
@@ -637,6 +645,14 @@ class Parameters:
         except Exception as exc_:
             raise RuntimeError(
                 f'Impossible to convert ALLOW_DISPATCH_GEN_SWITCH_OFF to bool with error \n:"{exc_}"'
+            ) from exc_
+        try:
+            if not isinstance(self.ALLOW_FLEX_LOAD_SWITCH_OFF, (bool, dt_bool)):
+                raise RuntimeError("ALLOW_FLEX_LOAD_SWITCH_OFF should be a boolean")
+            self.ALLOW_FLEX_LOAD_SWITCH_OFF = dt_bool(self.ALLOW_FLEX_LOAD_SWITCH_OFF)
+        except Exception as exc_:
+            raise RuntimeError(
+                f'Impossible to convert ALLOW_FLEX_LOAD_SWITCH_OFF to bool with error \n:"{exc_}"'
             ) from exc_
         try:
             if not isinstance(

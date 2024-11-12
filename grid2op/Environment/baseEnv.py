@@ -426,6 +426,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._forbid_dispatch_off: bool = (
             not self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF
         )
+        
+        # flexibility / demand response
+        self._forbid_flex_off: bool = (
+            not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF
+        )
 
         # type of power flow to play
         # if True, then it will not disconnect lines above their thermal limits
@@ -464,6 +469,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._gen_downtime: np.ndarray = None
         self._gen_activeprod_t: np.ndarray = None
         self._gen_activeprod_t_redisp: np.ndarray = None
+        
+        # flexibility data
+        self._target_flex: np.ndarray = None
+        self._already_modified_load: np.ndarray = None
+        self._actual_flex: np.ndarray = None
+        self._load_demand_t: np.ndarray = None
+        self._load_demand_t_flex: np.ndarray = None
 
         self._thermal_limit_a: np.ndarray = thermal_limit_a
         self._disc_lines: np.ndarray = None
@@ -716,6 +728,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         new_obj._ignore_min_up_down_times = self._ignore_min_up_down_times
         new_obj._forbid_dispatch_off = self._forbid_dispatch_off
+        new_obj._forbid_flex_off = self._forbid_flex_off
 
         # type of power flow to play
         # if True, then it will not disconnect lines above their thermal limits
@@ -760,7 +773,15 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj._gen_downtime = copy.deepcopy(self._gen_downtime)
         new_obj._gen_activeprod_t = copy.deepcopy(self._gen_activeprod_t)
         new_obj._gen_activeprod_t_redisp = copy.deepcopy(self._gen_activeprod_t_redisp)
-
+        
+        # flexibility data
+        new_obj._target_flex = copy.deepcopy(self._target_flex)
+        new_obj._already_modified_load = copy.deepcopy(self._already_modified_load)
+        new_obj._actual_flex = copy.deepcopy(self._actual_flex)
+        new_obj._load_demand_t = copy.deepcopy(self._load_demand_t)
+        new_obj._load_demand_t_flex = copy.deepcopy(self._load_demand_t_flex)
+        
+        # line disconnections
         new_obj._disc_lines = copy.deepcopy(self._disc_lines)
 
         # store environment modifications
@@ -1341,6 +1362,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._max_timestep_line_status_deactivated = (
             self._parameters.NB_TIMESTEP_COOLDOWN_LINE
         )
+        
+        # Flexible loads (with proper vector sizes)
+        self._target_flex = np.zeros(self.n_load, dtype=dt_float)
+        self._already_modified_load = np.zeros(self.n_load, dtype=dt_bool)
+        self._actual_flex = np.zeros(self.n_load, dtype=dt_float)
+        self._load_demand_t = np.zeros(self.n_load, dtype=dt_float)
+        self._load_demand_t_flex = np.zeros(self.n_load, dtype=dt_float)
 
         self._times_before_line_status_actionable = np.zeros(
             shape=(self.n_line,), dtype=dt_int
@@ -1395,7 +1423,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._parameters = self.__new_param
         self._ignore_min_up_down_times = self._parameters.IGNORE_MIN_UP_DOWN_TIME
         self._forbid_dispatch_off = not self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF
-
+        self._forbid_flex_off = not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF
+        
         # type of power flow to play
         # if True, then it will not disconnect lines above their thermal limits
         self._no_overflow_disconnection = self._parameters.NO_OVERFLOW_DISCONNECTION
@@ -1511,6 +1540,24 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._sum_curtailment_mw = dt_float(0.0)
         self._sum_curtailment_mw_prev = dt_float(0.0)
         self._limited_before = dt_float(0.0)
+        
+    def _reset_redispatching(self):
+        # redispatching
+        self._target_dispatch[:] = 0.0
+        self._already_modified_gen[:] = False
+        self._actual_dispatch[:] = 0.0
+        self._gen_uptime[:] = 0
+        self._gen_downtime[:] = 0
+        self._gen_activeprod_t[:] = 0.0
+        self._gen_activeprod_t_redisp[:] = 0.0
+        
+    def _reset_flexibility(self):
+        # flexibility / demand response
+        self._target_flex[:] = 0.0
+        self._already_modified_load[:] = False
+        self._actual_flex[:] = 0.0
+        self._load_demand_t[:] = 0.0
+        self._load_demand_t_flex[:] = 0.0
 
     def seed(self, seed=None, _seed_me=True):
         """
@@ -1860,16 +1907,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._thermal_limit_a[:] = tmp
         self.backend.set_thermal_limit(self._thermal_limit_a)
         self.observation_space.set_thermal_limit(self._thermal_limit_a)
-
-    def _reset_redispatching(self):
-        # redispatching
-        self._target_dispatch[:] = 0.0
-        self._already_modified_gen[:] = False
-        self._actual_dispatch[:] = 0.0
-        self._gen_uptime[:] = 0
-        self._gen_downtime[:] = 0
-        self._gen_activeprod_t[:] = 0.0
-        self._gen_activeprod_t_redisp[:] = 0.0
 
     def _get_new_prod_setpoint(self, action):
         """
