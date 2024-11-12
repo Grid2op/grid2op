@@ -455,8 +455,8 @@ class BackendConverter(Backend):
         if self.path_redisp is not None:
             # redispatching data were available
             try:
-                super().load_redispacthing_data(self.path_redisp, name=self.name_redisp)
-                self.source_backend.load_redispacthing_data(
+                super().load_redispatching_data(self.path_redisp, name=self.name_redisp)
+                self.source_backend.load_redispatching_data(
                     self.path_redisp, name=self.name_redisp
                 )
             except BackendError as exc_:
@@ -721,7 +721,7 @@ class BackendConverter(Backend):
         )
         return target_action
 
-    def load_redispacthing_data(self, path, name="prods_charac.csv"):
+    def load_redispatching_data(self, path, name="prods_charac.csv"):
         # data are loaded with the name of the source backend, i need to map it to the target backend too
         self.path_redisp = path
         self.name_redisp = name

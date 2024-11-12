@@ -1522,7 +1522,7 @@ class Backend(GridObjects, ABC):
                 else:
                     self.name_shunt = cls.name_shunt
                     
-    def load_redispacthing_data(self,
+    def load_redispatching_data(self,
                                 path : Union[os.PathLike, str],
                                 name : Optional[str]="prods_charac.csv") -> None:
         """

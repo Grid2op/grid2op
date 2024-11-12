@@ -286,7 +286,7 @@ class Environment(BaseEnv):
             self.backend.load_storage_data(self.get_path_env())
             self.backend._fill_names_obj()
             try:
-                self.backend.load_redispacthing_data(self.get_path_env())
+                self.backend.load_redispatching_data(self.get_path_env())
             except BackendError as exc_:
                 self.backend.redispatching_unit_commitment_available = False
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
