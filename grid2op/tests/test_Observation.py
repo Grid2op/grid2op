@@ -278,13 +278,16 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 "sub_8": [-64.0, 270.0],
                 "sub_9": [222.0, 216.0],
             },
+            # Flexibility
             "load_size":None,
             "load_flexible":None,
             "load_max_ramp_up":None,
             "load_max_ramp_down":None,
             "load_cost_per_MW":None,
+            # Shunts
             "name_shunt": ["shunt_8_0"],
             "shunt_to_subid": [8],
+            # Storage
             "storage_type": [],
             "storage_Emax": [],
             "storage_Emin": [],
@@ -295,6 +298,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "storage_charging_efficiency": [],
             "storage_discharging_efficiency": [],
             "_init_subtype": "grid2op.Observation.completeObservation.CompleteObservation",
+            # Alarms / Alerts
             "dim_alarms": 0,
             "dim_alerts": 0,
             "alarms_area_names": [],
