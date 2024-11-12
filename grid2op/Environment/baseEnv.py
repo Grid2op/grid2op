@@ -2304,7 +2304,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             x0[elts_for_x0] = mismatch / scale_x
             
             # Set the other component of x0 to their "right" value
-            can_adjust = (np.abs(x0) c<= 1e-7)
+            can_adjust = (np.abs(x0) <= 1e-7)
             if can_adjust.any():
                 init_sum = x0.sum()
                 denom_adjust = (1.0 / weights[can_adjust]).sum()
