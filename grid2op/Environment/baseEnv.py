@@ -1931,6 +1931,27 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             indx_ok = np.isfinite(tmp)
             new_p[indx_ok] = tmp[indx_ok]
         return new_p
+    
+    def _get_new_load_setpoint(self, action):
+        """
+        NB this is overidden in _ObsEnv where the data are read from the action to set this environment
+        instead
+        """
+        # get the modification of generator active setpoint from the action
+        new_p = 1.0 * self._load_demand_t
+        if "load_p" in action._dict_inj:
+            tmp = action._dict_inj["load_p"]
+            indx_ok = np.isfinite(tmp)
+            new_p[indx_ok] = tmp[indx_ok]
+
+        # modification of the environment always override the modification of the agents (if any)
+        # TODO have a flag there if this is the case.
+        if "load_p" in self._env_modification._dict_inj:
+            # modification of the production setpoint value
+            tmp = self._env_modification._dict_inj["load_p"]
+            indx_ok = np.isfinite(tmp)
+            new_p[indx_ok] = tmp[indx_ok]
+        return new_p
 
     def _get_already_modified_gen(self, action):
 
