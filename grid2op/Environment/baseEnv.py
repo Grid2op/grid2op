@@ -3177,8 +3177,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             return res_action, is_illegal_redisp, is_illegal_reco, is_done
 
         # Check the validity of min downtime and max uptime (for loads and generators)
-        except_tmp = self._handle_updown_times(gen_up_before, self._actual_dispatch,
-                                               load_up_before, self._actual_flex)
+        except_tmp = self._handle_updown_times(gen_up_before, self._actual_dispatch)
         if except_tmp is not None:
             is_illegal_reco = True
             res_action = self._action_space({})
