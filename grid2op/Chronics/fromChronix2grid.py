@@ -231,7 +231,7 @@ class FromChronix2grid(GridValue):
         By default, forecasts are only made 1 step ahead.
 
         We could change that. Do not hesitate to make a feature request
-        (https://github.com/rte-france/Grid2Op/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=) if that is necessary for you.
+        (https://github.com/Grid2Op/grid2op/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=) if that is necessary for you.
         """
         # TODO implement that and maybe refacto with fromNPY ?
         if self._forecasts is None:
@@ -309,4 +309,12 @@ class FromChronix2grid(GridValue):
             GridStateFromFileWithForecastsWithMaintenance._fix_maintenance_format(self)
             
         self.check_validity(backend=None)
+        
+    def regenerate_with_new_seed(self):
+        raise ChronicsError("You should not 'cache' the data coming from the "
+                            "`FromChronix2grid`, which is probably why you ended "
+                            "up calling this function. If you want to generate data "
+                            "'on the fly' please do not use the `MultiFolder` or "
+                            "`MultiFolderWithCache` `chronics_class` when making your "
+                            "environment.")
         

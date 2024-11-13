@@ -26,7 +26,7 @@ class IdToAct(Converter):
     A "unary action" is an action that consists only in acting on one "concept" it includes:
 
     - disconnecting a single powerline
-    - reconnecting a single powerline and connect it to bus xxx on its origin end and yyy on its extremity end
+    - reconnecting a single powerline and connect it to bus xxx on its origin side and yyy on its extremity side
     - changing the topology of a single substation
     - performing redispatching on a single generator
     - performing curtailment on a single generator
@@ -69,7 +69,8 @@ class IdToAct(Converter):
 
     def __init__(self, action_space):
         Converter.__init__(self, action_space)
-        self.__class__ = type(self).init_grid(action_space)
+        self.__class__ = IdToAct.init_grid(action_space)
+        self.init_action_space = action_space
         self.all_actions = []
         # add the do nothing topology
         self.all_actions.append(super().__call__())
@@ -273,7 +274,16 @@ class IdToAct(Converter):
                         "grid2op action. The error was:\n{}".format(e)
                     ) from exc_
         else:
-            raise RuntimeError("Impossible to load the action provided.")
+            # first make sure that all action is "correct"
+            try:
+                nb = len(all_actions)  # assert I can compute the "len"
+                for i in range(nb):
+                    act = all_actions[i]  # assert I can use the `[]` operator
+                    assert isinstance(act, BaseAction)  # assert what's in there is a BaseAction
+            except Exception as exc_:
+                raise RuntimeError("Impossible to load the action provided.") from exc_
+            # does not copy here (to save memory in case of shared memory setting)
+            self.all_actions = all_actions
         self.n = len(self.all_actions)
 
     def filter_action(self, filtering_fun):

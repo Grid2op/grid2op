@@ -63,7 +63,7 @@ from grid2op.Exceptions import *
 from grid2op.Rules import RulesChecker
 from grid2op.Rules import AlwaysLegal
 from grid2op.Action._backendAction import _BackendAction
-from grid2op.Backend import Backend, PandaPowerBackend
+from grid2op.Backend import PandaPowerBackend
 
 import pdb
                     
@@ -97,6 +97,7 @@ class BaseTestLoadingCase(MakeBackend):
         return "test_case14.json"
     
     def test_load_file(self):
+        self.skip_if_needed()
         backend = self.make_backend_with_glue_code()
         path_matpower = self.get_path()
         case_file = self.get_casefile()
@@ -350,7 +351,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         p_ex, q_ex, v_ex, a_ex = self.backend.lines_ex_info()
 
         for c_id, sub_id in enumerate(self.backend.load_to_subid):
-            l_ids = np.where(self.backend.line_or_to_subid == sub_id)[0]
+            l_ids = np.nonzero(self.backend.line_or_to_subid == sub_id)[0]
             if len(l_ids):
                 l_id = l_ids[0]
                 assert (
@@ -358,7 +359,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
                 ), "problem for load {}".format(c_id)
                 continue
 
-            l_ids = np.where(self.backend.line_ex_to_subid == sub_id)[0]
+            l_ids = np.nonzero(self.backend.line_ex_to_subid == sub_id)[0]
             if len(l_ids):
                 l_id = l_ids[0]
                 assert (
@@ -368,7 +369,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
             assert False, "load {} has not been checked".format(c_id)
 
         for g_id, sub_id in enumerate(self.backend.gen_to_subid):
-            l_ids = np.where(self.backend.line_or_to_subid == sub_id)[0]
+            l_ids = np.nonzero(self.backend.line_or_to_subid == sub_id)[0]
             if len(l_ids):
                 l_id = l_ids[0]
                 assert (
@@ -376,7 +377,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
                 ), "problem for generator {}".format(g_id)
                 continue
 
-            l_ids = np.where(self.backend.line_ex_to_subid == sub_id)[0]
+            l_ids = np.nonzero(self.backend.line_ex_to_subid == sub_id)[0]
             if len(l_ids):
                 l_id = l_ids[0]
                 assert (
@@ -855,7 +856,6 @@ class BaseTestTopoAction(MakeBackend):
             assert (
                 np.max(np.abs(p_bus.flatten())) <= self.tolvect
             ), "problem with active values, at a bus"
-
         if self.backend.shunts_data_available:
             assert (
                 np.max(np.abs(q_subs)) <= self.tolvect
@@ -972,22 +972,22 @@ class BaseTestTopoAction(MakeBackend):
         assert np.max(topo_vect) == 2, "no buses have been changed"
 
         # check that the objects have been properly moved
-        load_ids = np.where(self.backend.load_to_subid == id_)[0]
+        load_ids = np.nonzero(self.backend.load_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.load_pos_topo_vect[load_ids]]
             == arr[self.backend.load_to_sub_pos[load_ids]]
         )
-        lor_ids = np.where(self.backend.line_or_to_subid == id_)[0]
+        lor_ids = np.nonzero(self.backend.line_or_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.line_or_pos_topo_vect[lor_ids]]
             == arr[self.backend.line_or_to_sub_pos[lor_ids]]
         )
-        lex_ids = np.where(self.backend.line_ex_to_subid == id_)[0]
+        lex_ids = np.nonzero(self.backend.line_ex_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.line_ex_pos_topo_vect[lex_ids]]
             == arr[self.backend.line_ex_to_sub_pos[lex_ids]]
         )
-        gen_ids = np.where(self.backend.gen_to_subid == id_)[0]
+        gen_ids = np.nonzero(self.backend.gen_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.gen_pos_topo_vect[gen_ids]]
             == arr[self.backend.gen_to_sub_pos[gen_ids]]
@@ -1071,22 +1071,22 @@ class BaseTestTopoAction(MakeBackend):
         assert np.max(topo_vect) == 2, "no buses have been changed"
 
         # check that the objects have been properly moved
-        load_ids = np.where(self.backend.load_to_subid == id_)[0]
+        load_ids = np.nonzero(self.backend.load_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.load_pos_topo_vect[load_ids]]
             == 1 + arr[self.backend.load_to_sub_pos[load_ids]]
         )
-        lor_ids = np.where(self.backend.line_or_to_subid == id_)[0]
+        lor_ids = np.nonzero(self.backend.line_or_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.line_or_pos_topo_vect[lor_ids]]
             == 1 + arr[self.backend.line_or_to_sub_pos[lor_ids]]
         )
-        lex_ids = np.where(self.backend.line_ex_to_subid == id_)[0]
+        lex_ids = np.nonzero(self.backend.line_ex_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.line_ex_pos_topo_vect[lex_ids]]
             == 1 + arr[self.backend.line_ex_to_sub_pos[lex_ids]]
         )
-        gen_ids = np.where(self.backend.gen_to_subid == id_)[0]
+        gen_ids = np.nonzero(self.backend.gen_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.gen_pos_topo_vect[gen_ids]]
             == 1 + arr[self.backend.gen_to_sub_pos[gen_ids]]
@@ -1146,22 +1146,22 @@ class BaseTestTopoAction(MakeBackend):
         assert np.max(topo_vect) == 2, "no buses have been changed"
 
         # check that the objects have been properly moved
-        load_ids = np.where(self.backend.load_to_subid == id_)[0]
+        load_ids = np.nonzero(self.backend.load_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.load_pos_topo_vect[load_ids]]
             == 1 + arr[self.backend.load_to_sub_pos[load_ids]]
         )
-        lor_ids = np.where(self.backend.line_or_to_subid == id_)[0]
+        lor_ids = np.nonzero(self.backend.line_or_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.line_or_pos_topo_vect[lor_ids]]
             == 1 + arr[self.backend.line_or_to_sub_pos[lor_ids]]
         )
-        lex_ids = np.where(self.backend.line_ex_to_subid == id_)[0]
+        lex_ids = np.nonzero(self.backend.line_ex_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.line_ex_pos_topo_vect[lex_ids]]
             == 1 + arr[self.backend.line_ex_to_sub_pos[lex_ids]]
         )
-        gen_ids = np.where(self.backend.gen_to_subid == id_)[0]
+        gen_ids = np.nonzero(self.backend.gen_to_subid == id_)[0]
         assert np.all(
             topo_vect[self.backend.gen_pos_topo_vect[gen_ids]]
             == 1 + arr[self.backend.gen_to_sub_pos[gen_ids]]
@@ -1236,44 +1236,44 @@ class BaseTestTopoAction(MakeBackend):
         assert np.max(topo_vect) == 2, "no buses have been changed"
 
         # check that the objects have been properly moved
-        load_ids = np.where(self.backend.load_to_subid == id_1)[0]
+        load_ids = np.nonzero(self.backend.load_to_subid == id_1)[0]
         assert np.all(
             topo_vect[self.backend.load_pos_topo_vect[load_ids]]
             == 1 + arr1[self.backend.load_to_sub_pos[load_ids]]
         )
-        lor_ids = np.where(self.backend.line_or_to_subid == id_1)[0]
+        lor_ids = np.nonzero(self.backend.line_or_to_subid == id_1)[0]
         assert np.all(
             topo_vect[self.backend.line_or_pos_topo_vect[lor_ids]]
             == 1 + arr1[self.backend.line_or_to_sub_pos[lor_ids]]
         )
-        lex_ids = np.where(self.backend.line_ex_to_subid == id_1)[0]
+        lex_ids = np.nonzero(self.backend.line_ex_to_subid == id_1)[0]
         assert np.all(
             topo_vect[self.backend.line_ex_pos_topo_vect[lex_ids]]
             == 1 + arr1[self.backend.line_ex_to_sub_pos[lex_ids]]
         )
-        gen_ids = np.where(self.backend.gen_to_subid == id_1)[0]
+        gen_ids = np.nonzero(self.backend.gen_to_subid == id_1)[0]
         assert np.all(
             topo_vect[self.backend.gen_pos_topo_vect[gen_ids]]
             == 1 + arr1[self.backend.gen_to_sub_pos[gen_ids]]
         )
 
-        load_ids = np.where(self.backend.load_to_subid == id_2)[0]
+        load_ids = np.nonzero(self.backend.load_to_subid == id_2)[0]
         # TODO check the topology symmetry
         assert np.all(
             topo_vect[self.backend.load_pos_topo_vect[load_ids]]
             == arr2[self.backend.load_to_sub_pos[load_ids]]
         )
-        lor_ids = np.where(self.backend.line_or_to_subid == id_2)[0]
+        lor_ids = np.nonzero(self.backend.line_or_to_subid == id_2)[0]
         assert np.all(
             topo_vect[self.backend.line_or_pos_topo_vect[lor_ids]]
             == arr2[self.backend.line_or_to_sub_pos[lor_ids]]
         )
-        lex_ids = np.where(self.backend.line_ex_to_subid == id_2)[0]
+        lex_ids = np.nonzero(self.backend.line_ex_to_subid == id_2)[0]
         assert np.all(
             topo_vect[self.backend.line_ex_pos_topo_vect[lex_ids]]
             == arr2[self.backend.line_ex_to_sub_pos[lex_ids]]
         )
-        gen_ids = np.where(self.backend.gen_to_subid == id_2)[0]
+        gen_ids = np.nonzero(self.backend.gen_to_subid == id_2)[0]
         assert np.all(
             topo_vect[self.backend.gen_pos_topo_vect[gen_ids]]
             == arr2[self.backend.gen_to_sub_pos[gen_ids]]
@@ -2191,11 +2191,13 @@ class BaseTestResetEqualsLoadGrid(MakeBackend):
 
     def test_reset_equals_reset(self):
         self.skip_if_needed()
-        # Reset backend1 with reset
-        self.env1.reset()
-        # Reset backend2 with reset
-        self.env2.reset()
-        self._compare_backends()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
+            # Reset backend1 with reset
+            self.env1.reset()
+            # Reset backend2 with reset
+            self.env2.reset()
+            self._compare_backends()
 
     def _compare_backends(self):
         # Compare
@@ -2663,7 +2665,7 @@ class BaseTestStorageAction(MakeBackend):
 
 class BaseIssuesTest(MakeBackend):
     def test_issue_125(self):
-        # https://github.com/rte-france/Grid2Op/issues/125
+        # https://github.com/Grid2Op/grid2op/issues/125
         self.skip_if_needed()
         backend = self.make_backend_with_glue_code()
         with warnings.catch_warnings():

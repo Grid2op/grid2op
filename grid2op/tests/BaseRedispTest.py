@@ -473,7 +473,7 @@ class BaseTestRedispatchChangeNothingEnvironment(MakeBackend):
 
 
 class BaseTestRedispTooLowHigh(MakeBackend):
-    # test bug reported in issues https://github.com/rte-france/Grid2Op/issues/44
+    # test bug reported in issues https://github.com/Grid2Op/grid2op/issues/44
     def setUp(self) -> None:
         super().setUp()
         backend = self.make_backend_with_glue_code()
@@ -803,7 +803,7 @@ class BaseTestDispatchRampingIllegalETC(MakeBackend):
                 assert np.all(
                     obs.prod_p[0:2] <= obs.gen_pmax[0:2]
                 ), "above pmax for ts {}".format(i)
-            except:
+            except Exception as exc_:
                 pass
             assert np.all(
                 obs.prod_p[0:2] >= -obs.gen_pmin[0:2]

@@ -138,10 +138,13 @@ class TestAgent(HelperTests, unittest.TestCase):
             i, cum_reward, all_acts = self._aux_test_agent(agent, i_max=10)
         assert i == 11, "The powerflow diverged before step 10 for greedy agent"
         # i have more actions now, so this is not correct (though it should be..
-        # yet a proof that https://github.com/rte-france/Grid2Op/issues/86 is grounded
+        # yet a proof that https://github.com/Grid2Op/grid2op/issues/86 is grounded
         expected_reward = dt_float(12075.389)
         expected_reward = dt_float(12277.632)
         expected_reward = dt_float(12076.35644531 / 12.)
+        # 1006.363037109375
+        #: Breaking change in 1.10.0: topology are not in the same order
+        expected_reward = dt_float(1006.34924)  
         assert (
             np.abs(cum_reward - expected_reward) <= self.tol_one
         ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"
