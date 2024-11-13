@@ -24,7 +24,7 @@ from grid2op.gym_compat import GymEnv, BoxGymObsSpace, DiscreteActSpace
 
 from lightsim2grid import LightSimBackend
 from grid2op.gym_compat.utils import ALL_ATTR_FOR_DISCRETE
-from grid2op.multi_agent import ClusterUtils
+from grid2op.multi_agent import LouvainClustering
 
 ENV_NAME = "l2rpn_case14_sandbox"
 DO_NOTHING_EPISODES = -1  # 200
@@ -35,10 +35,10 @@ env_for_cls = grid2op.make(ENV_NAME,
 
 
 # Get ACTION_DOMAINS by clustering the substations
-ACTION_DOMAINS = ClusterUtils.cluster_substations(env_for_cls)
+ACTION_DOMAINS = LouvainClustering.cluster_substations(env_for_cls)
 
 # Get OBSERVATION_DOMAINS by clustering the substations
-OBSERVATION_DOMAINS = ClusterUtils.cluster_substations(env_for_cls)
+OBSERVATION_DOMAINS = LouvainClustering.cluster_substations(env_for_cls)
 
 # wrapper for gym env
 class MAEnvWrapper(MAEnv):
