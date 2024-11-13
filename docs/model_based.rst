@@ -3,6 +3,15 @@
 Model Based / Planning methods
 ====================================
 
+
+This page is organized as follow:
+
+.. contents:: Table of Contents
+    :depth: 3
+
+Objectives
+----------------
+
 .. warning::
     This page is in progress. We welcome any contribution :-)
 
@@ -165,7 +174,7 @@ You can also use it to select the action that keep the grid in a "correct" state
 
 .. note::
     We are sure there are lots of other ways to use "obs.simulate". If you have some idea let us know, for example by starting
-    a conversation here https://github.com/rte-france/Grid2Op/discussions or in our discord.
+    a conversation here https://github.com/Grid2Op/grid2op/discussions or in our discord.
 
 
 Simulator
@@ -289,7 +298,7 @@ If you rather want to disconnect some powerline as way to stress the grid, you c
 
 .. note::
     We are sure there are lots of other ways to use "obs.simulate". If you have some idea let us know, for example by starting
-    a conversation here https://github.com/rte-france/Grid2Op/discussions or in our discord.
+    a conversation here https://github.com/Grid2Op/grid2op/discussions or in our discord.
 
 
 Forecast env
@@ -369,3 +378,5 @@ And for the `ExampleAgent2`:
                     res = strat[0]  # action is the first one of the best strategy
                     highest_score = ts_survived
             return res
+
+.. include:: final.rst
