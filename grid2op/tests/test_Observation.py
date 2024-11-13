@@ -279,11 +279,11 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 "sub_9": [222.0, 216.0],
             },
             # Flexibility
-            "load_size":None,
-            "load_flexible":None,
-            "load_max_ramp_up":None,
-            "load_max_ramp_down":None,
-            "load_cost_per_MW":None,
+            "load_size":[0.0]*self.env.n_load,
+            "load_flexible":[False]*self.env.n_load,
+            "load_max_ramp_up":[0.0]*self.env.n_load,
+            "load_max_ramp_down":[0.0]*self.env.n_load,
+            "load_cost_per_MW":[0.0]*self.env.n_load,
             # Shunts
             "name_shunt": ["shunt_8_0"],
             "shunt_to_subid": [8],
