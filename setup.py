@@ -30,7 +30,6 @@ pkgs = {
         "tqdm>=4.45.0",
         "networkx>=2.4",
         "requests>=2.23.0",
-        "scikit-network>=0.32.1",
         "packaging",  # because gym changes the way it uses numpy prng in version 0.26 and i need both gym before and after...
         "typing_extensions"
     ],
@@ -42,6 +41,7 @@ pkgs = {
             "numba>=0.48.0",
             "matplotlib>=3.2.1",
             "plotly>=4.5.4",
+            "scikit-network>=0.32.1",
             "seaborn>=0.10.0",
             "imageio>=2.8.0",
             "pygifsicle>=1.0.1",
