@@ -2195,7 +2195,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 if except_tmp is None:
                     # If it is possible to "save" the situation by turning on all
                     # generators / flexible loads, do so.
-                    gen_participating = self.gen_redispatchable
+                    gen_involved = self.gen_redispatchable
                     load_involved = self.load_flexible
                     except_ = None
                 else:
