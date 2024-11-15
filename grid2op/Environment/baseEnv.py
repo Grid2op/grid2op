@@ -2109,8 +2109,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                      np.max(redisp_mismatch) >= self._tol_poly or 
                      np.abs(self._amount_storage) >= self._tol_poly or
                      np.abs(self._sum_curtailment_mw) >= self._tol_poly)
-        flex_cond = self.flexible_load_available and ((np.abs((self._actual_flex).sum()) >= self._tol_poly or
-                                                       np.max(flex_mismatch) >= self._tol_poly))
+        flex_cond = self.flexible_load_available and (np.abs((self._actual_flex).sum()) >= self._tol_poly or
+                                                       np.max(flex_mismatch) >= self._tol_poly)
         # If either redispatch or flexibility is active, we need to compute the dispact/flex vector
         if (disp_cond or flex_cond):
             except_ = self._compute_dispatch_and_flex_vect(already_modified_gen, new_gen_p,

@@ -2841,11 +2841,10 @@ class BaseAction(GridObjects):
                             "are below pmin for some generator."
                         )
                         
-        if self._modif_flexibility:
-            if "flexibility" not in cls.authorized_keys:
-                raise AmbiguousAction(
-                    'Action of type "flexibility" are not supported by this action type'
-                )
+        if self._modif_flexibility and "flexibility" not in cls.authorized_keys:
+            raise AmbiguousAction(
+                'Action of type "flexibility" are not supported by this action type'
+            )
 
         # storage specific checks:
         self._is_storage_ambiguous()
