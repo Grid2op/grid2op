@@ -317,12 +317,6 @@ def _get_action_grid_class():
         "gen_cost_per_MW": [70.0] * 5,
         "gen_startup_cost": [0.0] * 5,
         "gen_shutdown_cost": [0.0] * 5,
-        # Flexibility
-        "load_size":None,
-        "load_flexible":None,
-        "load_max_ramp_up":None,
-        "load_max_ramp_down":None,
-        "load_cost_per_MW":None,
         # Storage
         "storage_type": ["battery"] * 2,
         "storage_Emax": [100.0, 100.0],
