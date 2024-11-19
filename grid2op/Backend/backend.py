@@ -2027,7 +2027,7 @@ class Backend(GridObjects, ABC):
         }
 
         if cls.shunts_data_available and type(obs).shunts_data_available:
-            if "_shunt_bus" not in type(obs).attr_list_set:
+            if cls.n_shunt > 0 and "_shunt_bus" not in type(obs).attr_list_set:
                 raise BackendError(
                     "Impossible to set the backend to the state given by the observation: shunts data "
                     "are not present in the observation."

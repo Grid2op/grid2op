@@ -104,11 +104,17 @@ Native multi agents support:
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
+- [FIXED] the `obs.get_forecast_env` : in some cases the resulting first
+  observation (obtained from `for_env.reset()`) did not have the correct
+  topology.
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
   or , `gridobj.get_storage_info(...)` 
 - [ADDED] codacy badge on the readme
+- [ADDED] a method to check the KCL (`obs.check_kirchoff`) directly from the observation
+  (previously it was only possible to do it from the backend). This should 
+  be used for testing purpose only
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
@@ -122,6 +128,8 @@ Native multi agents support:
 - [IMPROVED] the classes inherited from `GreedyAgent` with the added possibility to 
   do the `obs.simulate` on a different time horizon (kwarg `simulated_time_step`)
 - [IMPROVED] some type hints for some agent class
+- [IMPROVED] the `backend.update_from_obs` function to work even when observation
+  does not have shunt information but there are not shunts on the grid.
 
 [1.10.4] - 2024-10-15
 -------------------------
