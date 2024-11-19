@@ -33,6 +33,7 @@ from grid2op.Space.space_utils import extract_from_dict, save_to_dict
 
 # TODO tests of these methods and this class in general
 DEFAULT_N_BUSBAR_PER_SUB = 2
+DEFAULT_ALLOW_DETACHMENT = False
 
 
 class GridObjects:
@@ -513,6 +514,7 @@ class GridObjects:
 
     sub_info : ClassVar[np.ndarray] = None
     dim_topo : ClassVar[np.ndarray] = -1
+    _allow_detachment : ClassVar[bool] = DEFAULT_ALLOW_DETACHMENT
 
     # to which substation is connected each element
     load_to_subid : ClassVar[np.ndarray] = None
@@ -685,6 +687,7 @@ class GridObjects:
         """        
         cls.shunts_data_available = False
         cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
+        cls._allow_detachment = DEFAULT_ALLOW_DETACHMENT
         
         # for redispatching / unit commitment
         cls._li_attr_disp = [
@@ -2031,17 +2034,9 @@ class GridObjects:
         # TODO n_busbar_per_sub different num per substations
         if isinstance(cls.n_busbar_per_sub, (int, dt_int, np.int32, np.int64)):
             cls.n_busbar_per_sub = dt_int(cls.n_busbar_per_sub)
-                                   # np.full(cls.n_sub,
-                                   #         fill_value=cls.n_busbar_per_sub,
-                                   #         dtype=dt_int)
         else:
-            # cls.n_busbar_per_sub = np.array(cls.n_busbar_per_sub)
-            # cls.n_busbar_per_sub = cls.n_busbar_per_sub.astype(dt_int)
             raise EnvError("Grid2op cannot handle a different number of busbar per substations at the moment.")
         
-        # if cls.n_busbar_per_sub != int(cls.n_busbar_per_sub):
-            # raise EnvError(f"`n_busbar_per_sub` should be convertible to an integer, found {cls.n_busbar_per_sub}")
-        # cls.n_busbar_per_sub = int(cls.n_busbar_per_sub)
         if (cls.n_busbar_per_sub < 1).any():
             raise EnvError(f"`n_busbar_per_sub` should be >= 1 found {cls.n_busbar_per_sub}")
             
@@ -2331,6 +2326,8 @@ class GridObjects:
 
         # alert data
         cls._check_validity_alert_data()
+        
+        assert isinstance(cls._allow_detachment, bool)
 
     @classmethod
     def _check_validity_alarm_data(cls):
@@ -2968,6 +2965,9 @@ class GridObjects:
             # to be able to load same environment with
             # different `n_busbar_per_sub`
             name_res += f"_{gridobj.n_busbar_per_sub}"
+            
+        if gridobj._allow_detachment != DEFAULT_ALLOW_DETACHMENT:
+            name_res += "_allowDetach"
                 
         if _local_dir_cls is not None and gridobj._PATH_GRID_CLASSES is not None:
             # new in grid2op 1.10.3:
@@ -3013,7 +3013,7 @@ class GridObjects:
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
-        res_cls.process_shunt_satic_data()
+        res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
@@ -3084,6 +3084,12 @@ class GridObjects:
             # this feature did not exists before
             # I need to set it to the default if set elsewhere
             cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
+            res = True
+
+        if glop_ver < version.parse("1.11.0.dev0"):
+            # Detachment did not exist, default value should have
+            # no effect
+            cls._allow_detachment = DEFAULT_ALLOW_DETACHMENT
             res = True
             
         if res:
@@ -3736,6 +3742,8 @@ class GridObjects:
                 else:
                     res[k] = v
             return
+       
+        save_to_dict(res, cls, "_allow_detachment", str, copy_)
 
         if not _topo_vect_only:
             # all the attributes bellow are not needed for the "first call"
@@ -4060,6 +4068,7 @@ class GridObjects:
             save_to_dict(
                 res, cls, "alertable_line_ids", (lambda li: [int(el) for el in li])  if as_list else None, copy_
             )
+
             # avoid further computation and save it
             if not as_list:
                 cls._CLS_DICT = res.copy()
@@ -4100,7 +4109,7 @@ class GridObjects:
         # shunt (not in topo vect but might be usefull)
         res["shunts_data_available"] = cls.shunts_data_available
         res["n_shunt"] = cls.n_shunt
-        
+
         if not _topo_vect_only:
             # all the attributes bellow are not needed for the "first call"
             # to this function when the elements are put together in the topo_vect.
@@ -4114,7 +4123,9 @@ class GridObjects:
             
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
-            
+        
+        res["_allow_detachment"] = cls._allow_detachment
+        
         # avoid further computation and save it
         if not as_list and not _topo_vect_only:
             cls._CLS_DICT_EXTENDED = res.copy()
@@ -4187,6 +4198,18 @@ class GridObjects:
                 cls._PATH_GRID_CLASSES = None
         else:
             cls._PATH_GRID_CLASSES = None
+            
+        # Detachment of Loads / Generators
+        if '_allow_detachment' in dict_:
+            if dict_["_allow_detachment"] == "True":
+                cls._allow_detachment = True 
+            elif dict_["_allow_detachment"] == "False":
+                cls._allow_detachment = False
+            else:
+                raise ValueError(f"'allow_detachment' (value: {dict_["_allow_detachment"]}'')" +
+                                 "could not be converted to Boolean ")
+        else: # Compatibility for older versions
+            cls._allow_detachment = DEFAULT_ALLOW_DETACHMENT
         
         if 'n_busbar_per_sub' in dict_:
             cls.n_busbar_per_sub = int(dict_["n_busbar_per_sub"])
@@ -4360,7 +4383,7 @@ class GridObjects:
             # backward compatibility: no storage were supported
             cls.set_no_storage()
             
-        cls.process_shunt_satic_data()
+        cls.process_shunt_static_data()
         
         if cls.glop_version != grid2op.__version__:
             # change name of the environment, this is done in Environment.py for regular environment
@@ -4408,7 +4431,7 @@ class GridObjects:
         return cls()
 
     @classmethod
-    def process_shunt_satic_data(cls):
+    def process_shunt_static_data(cls):
         """remove possible shunts data from the classes, if shunts are deactivated"""
         pass
     
@@ -4956,7 +4979,8 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
 
     sub_info = {sub_info_str}
     dim_topo = {cls.dim_topo}
-
+    _allow_detachment = {cls._allow_detachment}
+    
     # to which substation is connected each element
     load_to_subid = {load_to_subid_str}
     gen_to_subid = {gen_to_subid_str}
@@ -5042,6 +5066,9 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     dim_alerts = {cls.dim_alerts}
     alertable_line_names = {alertable_line_names_str}
     alertable_line_ids = {alertable_line_ids_str}
+
+    # shedding
+    _allow_detachment = {cls._allow_detachment}
 
 """
         return res

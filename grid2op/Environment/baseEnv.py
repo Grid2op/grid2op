@@ -28,7 +28,8 @@ from grid2op.Observation import (BaseObservation,
                                  HighResSimCounter)
 from grid2op.Backend import Backend
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Space import GridObjects, RandomObject
+from grid2op.Space import GridObjects, RandomObject, DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.typing_variables import N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import (Grid2OpException,
                                 EnvError,
                                 InvalidRedispatching,
@@ -338,7 +339,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         observation_bk_kwargs=None,  # type of backend for the observation space
         highres_sim_counter=None,
         update_obs_after_reward=False,
-        n_busbar=2,
+        n_busbar:N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         _is_test: bool = False,  # TODO not implemented !!
         _init_obs: Optional[BaseObservation] =None,
         _local_dir_cls=None,
@@ -365,6 +367,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._raw_backend_class = _raw_backend_class
             
         self._n_busbar = n_busbar  # env attribute not class attribute !
+        self._allow_detachment = allow_detachment
+
         if other_rewards is None:
             other_rewards = {}
         if kwargs_attention_budget is None:
@@ -661,6 +665,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if dict_ is None:
             dict_ = {}
         new_obj._n_busbar = self._n_busbar
+        new_obj._allow_detachment = self._allow_detachment
         
         new_obj._init_grid_path = copy.deepcopy(self._init_grid_path)
         new_obj._init_env_path = copy.deepcopy(self._init_env_path)

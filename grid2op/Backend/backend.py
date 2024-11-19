@@ -34,7 +34,7 @@ from grid2op.Exceptions import (
     DivergingPowerflow,
     Grid2OpException,
 )
-from grid2op.Space import GridObjects, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import GridObjects, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -122,8 +122,8 @@ class Backend(GridObjects, ABC):
 
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
     def __init__(self,
-                 detailed_infos_for_cascading_failures: bool=False,
-                 can_be_copied: bool=True,
+                 detailed_infos_for_cascading_failures:bool=False,
+                 can_be_copied:bool=True,
                  **kwargs):
         """
         Initialize an instance of Backend. This does nothing per se. Only the call to :func:`Backend.load_grid`
@@ -179,6 +179,10 @@ class Backend(GridObjects, ABC):
         #: There is a difference between this and the class attribute.
         #: You should not worry about the class attribute of the backend in :func:`Backend.apply_action`
         self.n_busbar_per_sub: int = DEFAULT_N_BUSBAR_PER_SUB
+
+        # .. versionadded: 1.11.0
+        self._missing_detachment_support:bool = True
+        self._allow_detachment:bool = DEFAULT_ALLOW_DETACHMENT
     
     def can_handle_more_than_2_busbar(self):
         """
@@ -240,7 +244,65 @@ class Backend(GridObjects, ABC):
                           "'fix' this issue, you need to change the implementation of your backend or "
                           "upgrade it to a newer version.")
         self.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
-    
+
+        
+    def can_handle_detachment(self):
+        """
+        .. versionadded:: 1.11.0
+        
+        This function should be called once in :func:`Backend.load_grid` if your backend is able
+        to handle the detachment of loads and generators. 
+        
+        If not called, then the `environment` will not be able to detach loads and generators.
+        
+        .. seealso::
+            :func:`Backend.cannot_handle_detachment`
+
+        .. note::
+            From grid2op 1.11.0 it is preferable that your backend calls one of
+            :func:`Backend.can_handle_detachment` or 
+            :func:`Backend.cannot_handle_detachment`.
+            
+            If not, then the environments created with your backend will not be able to 
+            "operate" grid with load and generator detachment.
+            
+        .. danger::
+            We highly recommend you do not try to override this function. 
+            At least, at time of writing there is no good reason to do so.
+        """
+        self._missing_detachment_support = False
+        self._allow_detachment = type(self)._allow_detachment
+
+    def cannot_handle_detachment(self):
+        """
+        .. versionadded:: 1.11.0
+        
+        This function should be called once in :func:`Backend.load_grid` if your backend is **NOT** able
+        to handle the detachment of loads and generators.
+        
+        If not called, then the `environment` will not be able to detach loads and generators.
+        
+        .. seealso::
+            :func:`Backend.cannot_handle_detachment`
+
+        .. note::
+            From grid2op 1.11.0 it is preferable that your backend calls one of
+            :func:`Backend.can_handle_detachment` or 
+            :func:`Backend.cannot_handle_detachment`.
+            
+            If not, then the environments created with your backend will not be able to 
+            "operate" grid with load and generator detachment.
+            
+        .. danger::
+            We highly recommend you do not try to override this function. 
+            At least, at time of writing there is no good reason to do so.
+        """
+        self._missing_detachment_support = False
+        if type(self._allow_detachment != DEFAULT_ALLOW_DETACHMENT):
+            warnings.warn("You asked in 'make' function to allow shedding. This is"
+                          f"not possible with a backend of type {type(self)}.")
+        self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
+
     def make_complete_path(self,
                            path : Union[os.PathLike, str],
                            filename : Optional[Union[os.PathLike, str]]=None) -> str:
@@ -1017,7 +1079,24 @@ class Backend(GridObjects, ABC):
         """
         conv = False
         exc_me = None
+
         try:
+            # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
+            # .. versionadded:: 1.11.0
+            if hasattr(self, "_get_topo_vect"):
+                topo_vect = self._get_topo_vect()
+            else:
+                topo_vect = self.get_topo_vect()
+            load_buses = topo_vect[self.load_pos_topo_vect]
+            if not self._allow_detachment and (load_buses == -1).any():
+                raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
+                                        "but this is not allowed or not supported (Game Over)")
+
+            gen_buses = topo_vect[self.gen_pos_topo_vect]
+            if not self._allow_detachment and (gen_buses == -1).any():
+                raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
+                                        "but this is not allowed or not supported (Game Over)")
+            
             conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
         except Grid2OpException as exc_:
             exc_me = exc_
@@ -2081,6 +2160,27 @@ class Backend(GridObjects, ABC):
             warnings.warn("Your backend is missing the `_missing_two_busbars_support_info` "
                           "attribute. This is known issue in lightims2grid <= 0.7.5. Please "
                           "upgrade your backend. This will raise an error in the future.")
+            
+        if hasattr(self, "_missing_detachment_support"):
+            if self._missing_detachment_support:
+                warnings.warn("The backend implementation you are using is probably too old to take advantage of the "
+                            "new feature added in grid2op 1.11.0: the possibility "
+                            "to detach loads or generators without leading to an immediate game over. "
+                            "To silence this warning, you can modify the `load_grid` implementation "
+                            "of your backend and either call:\n"
+                            "- self.can_handle_detachment if the current implementation "
+                            "   can handle detachments OR\n"
+                            "- self.cannot_handle_detachment if not."
+                            "\nAnd of course, ideally, if the current implementation "
+                            "of your backend cannot handle detachment then change it :-)\n"
+                            "Your backend will behave as if it did not support it.")
+                self._missing_detachment_support = False
+                self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
+        else:
+            self._missing_detachment_support = False
+            self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
+            warnings.warn("Your backend is missing the `_missing_detachment_support` "
+                          "attribute.")
         
         orig_type = type(self)
         if orig_type.my_bk_act_class is None and orig_type._INIT_GRID_CLS is None:
