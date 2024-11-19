@@ -41,6 +41,7 @@ pkgs = {
             "numba>=0.48.0",
             "matplotlib>=3.2.1",
             "plotly>=4.5.4",
+            "scikit-network>=0.32.1",
             "seaborn>=0.10.0",
             "imageio>=2.8.0",
             "pygifsicle>=1.0.1",
