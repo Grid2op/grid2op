@@ -18,3 +18,5 @@ Further Contributions by:
     - Florian Schäfer
     - Clément Goubet
     - Laure Crochepierre
+    - Dulan Bamunuge (Louvain Clustering)
+    - Thirunayan Dinesh (Louvain Clustering)
