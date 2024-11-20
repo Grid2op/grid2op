@@ -101,6 +101,8 @@ Native multi agents support:
 -----------------------
 - [BREAKING] Change for `FromMultiEpisodeData` that disables the caching by default
   when creating the data.
+- [BREAKING] deprecation of `backend.check_kirchoff` in favor of `backend.check_kirchhoff` 
+  (fix the typo in the name)
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.

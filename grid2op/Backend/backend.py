@@ -897,9 +897,9 @@ class Backend(GridObjects, ABC):
         If not implemented it returns empty list.
 
         Note that if there are shunt on the powergrid, it is recommended that this method should be implemented before
-        calling :func:`Backend.check_kirchoff`.
+        calling :func:`Backend.check_kirchhoff`.
 
-        If this method is implemented AND :func:`Backend.check_kirchoff` is called, the method
+        If this method is implemented AND :func:`Backend.check_kirchhoff` is called, the method
         :func:`Backend.sub_from_bus_id` should also be implemented preferably.
 
         Returns
@@ -1155,10 +1155,22 @@ class Backend(GridObjects, ABC):
 
     def check_kirchoff(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
+        .. versionchanged:: 1.11.0
+            Deprecated in favor of :attr:`Backend.check_kirchhoff` (no typo in the name this time)
+            
+        """
+        warnings.warn(message="please use backend.check_kirchhoff() instead", category=DeprecationWarning)
+        return self.check_kirchhoff()
+    
+    def check_kirchhoff(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
         INTERNAL
 
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
+        .. versionadded:: 1.11.0
+            Fix the typo of the :attr:`Backend.check_kirchoff` function
+            
         Check that the powergrid respects kirchhoff's law.
         This function can be called at any moment (after a powerflow has been run)
         to make sure a powergrid is in a consistent state, or to perform
@@ -1402,7 +1414,7 @@ class Backend(GridObjects, ABC):
                 )
         else:
             warnings.warn(
-                "Backend.check_kirchoff Impossible to get shunt information. Reactive information might be "
+                "Backend.check_kirchhoff Impossible to get shunt information. Reactive information might be "
                 "incorrect."
             )
         diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)

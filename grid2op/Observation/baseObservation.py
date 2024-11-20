@@ -2391,7 +2391,7 @@ class BaseObservation(GridObjects):
 
         Examples
         --------
-        The following code explains how to check that a grid meet the kirchoffs law (conservation of energy)
+        The following code explains how to check that a grid meet the Kirchhoffs law (conservation of energy)
 
         .. code-block:: python
 
@@ -2428,8 +2428,8 @@ class BaseObservation(GridObjects):
                         # the current node is the largest, so on the "extremity" side
                         p_lines += graph.edges[(k1, k2)]["p_ex"]
                         q_lines += graph.edges[(k1, k2)]["q_ex"]
-                assert abs(p_line - p_) <= 1e-5, "error for kirchoff's law for graph for P"
-                assert abs(q_line - q_) <= 1e-5, "error for kirchoff's law for graph for Q"
+                assert abs(p_line - p_) <= 1e-5, "error for Kirchhoff's law for graph for P"
+                assert abs(q_line - q_) <= 1e-5, "error for Kirchhoff's law for graph for Q"
 
         """
         cls = type(self)
@@ -2920,7 +2920,7 @@ class BaseObservation(GridObjects):
         Examples
         ---------
         
-        You can use, for example to "check" Kirchoff Current Law (or at least that no energy is created
+        You can use, for example to "check" Kirchhoff Current Law (or at least that no energy is created
         at none of the buses):
         
         .. code-block:: python
@@ -4887,7 +4887,7 @@ class BaseObservation(GridObjects):
                 q_bus[psubid, loc_bus] -= el_q[i]
 
             # compute max and min values
-            if el_v[i]:
+            if el_v is not None and el_v[i]:
                 # but only if gen is connected
                 v_bus[psubid, loc_bus][0] = min(
                     v_bus[psubid, loc_bus][0],
@@ -4898,9 +4898,9 @@ class BaseObservation(GridObjects):
                     el_v[i],
                 )
                 
-    def check_kirchoff(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def check_kirchhoff(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Analogous to "backend.check_kirchoff" but from the observation
+        Analogous to "backend.check_kirchhoff" but from the observation
 
         .. versionadded:: 1.11.0
         
@@ -4936,7 +4936,10 @@ class BaseObservation(GridObjects):
         v_bus = (
             np.zeros((cls.n_sub, cls.n_busbar_per_sub, 2), dtype=dt_float) - 1.0
         )  # sub, busbar, [min,max]
-
+        some_kind_of_inf = 1_000_000_000.
+        v_bus[:,:,0] = some_kind_of_inf
+        v_bus[:,:,1] = -1 * some_kind_of_inf
+        
         self._aux_kcl(
             cls.n_line, # cst eg. cls.n_gen
             cls.line_or_to_subid, # cst eg. cls.gen_to_subid
@@ -4987,9 +4990,9 @@ class BaseObservation(GridObjects):
                 cls.n_storage, # cst eg. cls.n_gen
                 cls.storage_to_subid, # cst eg. cls.gen_to_subid
                 self.storage_bus,
-                self.storage_p,  # cst, eg. gen_p
-                self.storage_q,  # cst, eg. gen_q
-                self.storage_v,  # cst, eg. gen_v
+                self.storage_power,  # cst, eg. gen_p
+                np.zeros(cls.n_storage),  # cst, eg. gen_q
+                None,  # cst, eg. gen_v
                 p_subs, q_subs,
                 p_bus, q_bus,
                 v_bus,
@@ -4998,7 +5001,7 @@ class BaseObservation(GridObjects):
         if cls.shunts_data_available:
             self._aux_kcl(
                 cls.n_shunt, # cst eg. cls.n_gen
-                cls.storage_to_subid, # cst eg. cls.gen_to_subid
+                cls.shunt_to_subid, # cst eg. cls.gen_to_subid
                 self._shunt_bus,
                 self._shunt_p,  # cst, eg. gen_p
                 self._shunt_q,  # cst, eg. gen_q
@@ -5009,10 +5012,11 @@ class BaseObservation(GridObjects):
                 )
         else:
             warnings.warn(
-                "Observation.check_kirchoff Impossible to get shunt information. Reactive information might be "
+                "Observation.check_kirchhoff Impossible to get shunt information. Reactive information might be "
                 "incorrect."
             )
         diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
         diff_v_bus[:, :] = v_bus[:, :, 1] - v_bus[:, :, 0]
+        diff_v_bus[np.abs(diff_v_bus - -2. * some_kind_of_inf) <= 1e-5 ] = 0.  # disconnected bus
         return p_subs, q_subs, p_bus, q_bus, diff_v_bus
     
