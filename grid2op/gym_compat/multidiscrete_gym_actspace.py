@@ -328,7 +328,7 @@ class __AuxMultiDiscreteActSpace:
                     nb_redispatch,
                     self.ATTR_NEEDBINARIZED,
                 )
-            elif el == "redispatch":
+            elif el == "flexibility":
                 self.dict_properties[el] = (
                     [nb_bins[el] for _ in range(nb_flex)],
                     nb_flex,
