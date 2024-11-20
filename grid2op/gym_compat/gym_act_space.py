@@ -290,12 +290,10 @@ class __AuxGymActionSpace:
                     high[~type(self._template_act).gen_redispatchable] = 0.0
                 elif attr_nm == "_flexibility":
                     # flexibility
-                    # TODO: Implement flexibility fill
-                    # low = -1.0 * type(self._template_act).load_max_ramp_down
-                    # high = 1.0 * type(self._template_act).load_max_ramp_up
-                    # low[~type(self._template_act).load_flexible] = 0.0
-                    # high[~type(self._template_act).load_flexible] = 0.0
-                    pass
+                    low = -1.0 * type(self._template_act).load_max_ramp_down
+                    high = 1.0 * type(self._template_act).load_max_ramp_up
+                    low[~type(self._template_act).load_flexible] = 0.0
+                    high[~type(self._template_act).load_flexible] = 0.0
                 elif attr_nm == "_curtail":
                     # curtailment
                     low = np.zeros(type(self._template_act).n_gen, dtype=dt_float)

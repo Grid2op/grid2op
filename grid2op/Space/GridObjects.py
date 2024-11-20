@@ -3278,12 +3278,9 @@ class GridObjects:
     @classmethod
     def _aux_process_pre_flexibility(cls):
         # Remove flexibility
-        flex_attrs = ["load_size", "load_flexible", 
-                      "load_max_ramp_up", "load_max_ramp_down",
-                      "load_cost_per_MW"]
-        for flex_attr in flex_attrs:
+        for flex_attr, flex_type in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
             if hasattr(cls, flex_attr):
-                setattr(cls, flex_attr, np.zeros([], dtype=dt_int))
+                setattr(cls, flex_attr, np.full(cls.n_load, fill_value=0, dtype=flex_type))
         if cls.attr_list_vect is not None:
             if "actual_flex" in cls.attr_list_vect:
                 cls.attr_list_vect.remove("actual_flex")
