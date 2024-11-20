@@ -3281,12 +3281,12 @@ class GridObjects:
         for flex_attr, flex_type in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
             if hasattr(cls, flex_attr):
                 setattr(cls, flex_attr, np.full(cls.n_load, fill_value=0, dtype=flex_type))
-        # if cls.attr_list_vect is not None:
-        #     if "actual_flex" in cls.attr_list_vect:
-        #         cls.attr_list_vect.remove("actual_flex")
-        #     if "target_flex" in cls.attr_list_vect:
-        #         cls.attr_list_vect.remove("target_flex")
-        #     cls.attr_list_set = set(cls.attr_list_vect)
+        if cls.attr_list_vect is not None:
+            if "actual_flex" in cls.attr_list_vect:
+                cls.attr_list_vect.remove("actual_flex")
+            if "target_flex" in cls.attr_list_vect:
+                cls.attr_list_vect.remove("target_flex")
+            cls.attr_list_set = set(cls.attr_list_vect)
             
     @classmethod
     def get_obj_connect_to(cls, _sentinel=None, substation_id=None):
