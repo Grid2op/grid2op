@@ -27,7 +27,7 @@ try: # Grid2OP available locally
                                            TestOpponent
                                            )
 except: # Grid2OP available as a package
-    from ._aux_opponent_for_test_alerts import (_get_steps_attack,
+    from _aux_opponent_for_test_alerts import (_get_steps_attack,
                                            TestOpponent
                                            )
 ATTACKED_LINE = "48_50_136"
