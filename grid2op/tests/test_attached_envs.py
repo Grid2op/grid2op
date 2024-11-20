@@ -183,11 +183,7 @@ class TestL2RPN_CASE14_SANDBOX(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        glop_ver = self.env._get_grid2op_version_as_version_obj()
-        if glop_ver < version.parse("1.11.0.dev0"):
-            size_th = 467
-        else:
-            size_th = 489
+        size_th = 467
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )
