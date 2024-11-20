@@ -947,6 +947,10 @@ class Environment(BaseEnv):
 
         self._backend_action = self._backend_action_class()
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
+        
+        if self._init_obs is not None:
+            self.backend.update_from_obs(self._init_obs)
+            
         init_action = None
         if not self._parameters.IGNORE_INITIAL_STATE_TIME_SERIE:
             # load the initial state from the time series (default)
@@ -1293,7 +1297,6 @@ class Environment(BaseEnv):
             if ambiguous:
                 raise Grid2OpException("You provided an invalid (ambiguous) action to set the 'init state'") from except_tmp
             init_state.remove_change()
-        
         super().reset(seed=seed, options=options)
         
         if options is not None and "max step" in options:                
