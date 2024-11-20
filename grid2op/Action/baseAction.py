@@ -854,7 +854,7 @@ class BaseAction(GridObjects):
             
     @classmethod
     def _aux_process_pre_flexibility(cls):
-        # super()._aux_process_pre_flexibility()
+        super()._aux_process_pre_flexibility()
         # Ensures base types are unaffected
         cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
         cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
@@ -2844,9 +2844,45 @@ class BaseAction(GridObjects):
                         )
                         
         if self._modif_flexibility and "flexibility" not in cls.authorized_keys:
-            raise AmbiguousAction(
-                'Action of type "flexibility" are not supported by this action type'
-            )
+            if "flexibility" not in cls.authorized_keys:
+                raise AmbiguousAction(
+                    'Action of type "flexibility" are not supported by this action type'
+                )
+            if not self.flexible_load_available:
+                raise FlexibilityNotAvailable(
+                    "Impossible to use a flexibility action in this "
+                    "environment. Please set up the proper attributes for flexible loads."
+                )
+
+            if (np.abs(self._flexibility[~cls.load_flexible]) >= 1e-7).any():
+                raise InvalidFlexibility(
+                    "Trying to apply a flexibility action on an inflexible load"
+                )
+
+            if self._single_act:
+                if (self._flexibility > cls.load_max_ramp_up).any():
+                    raise InvalidFlexibility(
+                        "Some flexibility amount is above the maximum ramp up"
+                    )
+                if (-self._flexibility > cls.load_max_ramp_down).any():
+                    raise InvalidFlexibility(
+                        "Some flexibility amount is below the maximum ramp down"
+                    )
+
+                if "load_p" in self._dict_inj:
+                    new_p = self._dict_inj["load_p"]
+                    tmp_p = new_p + self._flexibility
+                    indx_ok = np.isfinite(new_p)
+                    if (tmp_p[indx_ok] > cls.load_size[indx_ok]).any():
+                        raise InvalidFlexibility(
+                            "Some flexibility amount, accumulated with the consumption setpoint, "
+                            "is above the maximum size of some load(s)"
+                        )
+                    if (tmp_p[indx_ok] < 0.0).any():
+                        raise InvalidFlexibility(
+                            "Some flexibility amount, accumulated with the consu,ption setpoint, "
+                            "is below 0 for some load(s)"
+                        )
 
         # storage specific checks:
         self._is_storage_ambiguous()

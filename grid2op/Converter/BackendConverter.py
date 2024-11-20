@@ -738,17 +738,17 @@ class BackendConverter(Backend):
         return target_action
 
     def load_redispatching_data(self, path, name="prods_charac.csv"):
-        # data are loaded with the name of the source backend, i need to map it to the target backend too
+        # Data is loaded with the name of the source backend, it needs to map it to the target backend too
         self.path_redisp = path
         self.name_redisp = name
         
     def load_flexibility_data(self, path, name="flex_loads_charac.csv"):
-        # data are loaded with the name of the source backend, i need to map it to the target backend too
+        # Data is loaded with the name of the source backend, it needs to map it to the target backend too
         self.path_flex = path
         self.name_flex = name
 
     def load_storage_data(self, path, name="storage_units_charac.csv"):
-        # data are loaded with the name of the source backend, i need to map it to the target backend too
+        # Data is loaded with the name of the source backend, it needs to map it to the target backend too
         self.path_storage_data = path
         self.name_storage_data = name
 

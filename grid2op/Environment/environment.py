@@ -470,6 +470,7 @@ class Environment(BaseEnv):
         # first injections given)
         self._reset_maintenance()
         self._reset_redispatching()
+        self._reset_flexibility()
         self._reward_to_obs = {}
         do_nothing = self._helper_action_env({})
         
@@ -1330,6 +1331,7 @@ class Environment(BaseEnv):
         self._env_modification = None
         self._reset_maintenance()
         self._reset_redispatching()
+        self._reset_flexibility()
         self._reset_vectors_and_timings()  # it need to be done BEFORE to prevent cascading failure when there has been
             
         self.reset_grid(init_state, method)

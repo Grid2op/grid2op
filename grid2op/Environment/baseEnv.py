@@ -308,8 +308,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                           "init state",
                           "init ts",
                           "max step",
-                          "thermal limit",
-                          }
+                          "thermal limit"}
     
     def __init__(
         self,
@@ -2000,7 +1999,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # If no redispatching / flexibility is active, return
         if disp_cond and not self.flexible_load_available:
             return valid, except_, info_
-        if disp_cond and flex_cond and not self.flexible_load_available:
+        if disp_cond and flex_cond and self.flexible_load_available:
             return valid, except_, info_
         
         if self.redispatching_unit_commitment_available:
@@ -2244,7 +2243,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         scale_gen_x = max(np.max(np.abs(self._actual_dispatch)), 1.0)
         scale_load_x = max(np.max(np.abs(self._actual_flex)), 1.0)
         scale_x = dt_float(max(scale_gen_x, scale_load_x))
-        target_vals_mi_optim = np.concatenate((target_gen_vals_mi, target_load_vals_mi))
+        target_vals_mi = np.concatenate((target_gen_vals_mi, target_load_vals_mi))
+        target_vals_mi_optim =  (1.0 * (target_vals_mi / scale_x)).astype(dt_float)
 
         # See https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
         # where it is advised to scale the function

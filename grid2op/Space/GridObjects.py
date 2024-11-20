@@ -186,9 +186,9 @@ class GridObjects:
     - :attr:`GridObjects.gen_shutdown_cost`
     - :attr:`GridObjects.gen_renewable`
     
-    This information i loaded using the :func:`grid2op.Backend.Backend.load_redispatching_data` method.
+    This information is loaded using the :func:`grid2op.Backend.Backend.load_redispatching_data` method.
 
-    Additionally if you want to model an environment with demand response / flexibility in consumption, you also need
+    Note that if you want to model an environment with flexibility capabilities, you also need
     to provide the following attributes:
 
     - :attr:`GridObjects.load_size`
@@ -197,7 +197,7 @@ class GridObjects:
     - :attr:`GridObjects.load_max_ramp_down`
     - :attr:`GridObjects.load_cost_per_MW`
 
-    This information i loaded using the :func:`grid2op.Backend.Backend.load_flexibility_data` method.
+    This information is loaded using the :func:`grid2op.Backend.Backend.load_flexibility_data` method.
 
     **NB** it does not store any information about the current state of the powergrid. It stores information that
     cannot be modified by the BaseAgent, the Environment or any other entity.
@@ -398,6 +398,17 @@ class GridObjects:
           - :attr:`GridObjects.gen_startup_cost`
           - :attr:`GridObjects.gen_shutdown_cost`
           - :attr:`GridObjects.gen_renewable`
+        
+    flexible_load_available: ``bool``
+        Does the current grid allow for flexible loads. If not, any attempt to use it
+        will raise a :class:`grid2op.Exceptions.FlexibilityNotAvailable` error. [*class attribute*]
+        For an environment to be compatible with this feature, you need to set up, when loading the backend:
+
+          - :attr:`GridObjects.load_size`
+          - :attr:`GridObjects.load_flexible`
+          - :attr:`GridObjects.load_max_ramp_up`
+          - :attr:`GridObjects.load_max_ramp_down`
+          - :attr:`GridObjects.load_cost_per_MW`
 
     grid_layout: ``dict`` or ``None``
         The layout of the powergrid in a form of a dictionnary with keys the substation name, and value a tuple of
@@ -602,7 +613,7 @@ class GridObjects:
         float
     ]
 
-    # redispatch data, not available in all environment
+    # Redispatch data, not available in all environments
     redispatching_unit_commitment_available : ClassVar[bool] = False
     gen_type : ClassVar[Optional[np.ndarray]] = None
     gen_pmin : ClassVar[Optional[np.ndarray]] = None
@@ -625,7 +636,7 @@ class GridObjects:
     load_max_ramp_down: ClassVar[Optional[np.ndarray]] = None
     load_cost_per_MW: ClassVar[Optional[np.ndarray]] = None
     
-    # storage unit static data
+    # Storage unit static data
     storage_type : ClassVar[Optional[np.ndarray]] = None
     storage_Emax : ClassVar[Optional[np.ndarray]] = None
     storage_Emin : ClassVar[Optional[np.ndarray]] = None
@@ -636,19 +647,19 @@ class GridObjects:
     storage_charging_efficiency : ClassVar[Optional[np.ndarray]] = None
     storage_discharging_efficiency : ClassVar[Optional[np.ndarray]] = None
 
-    # grid layout
+    # Grid layout
     grid_layout : ClassVar[Optional[Dict[str, Tuple[float, float]]]] = None
 
-    # shunt data, not available in every backend
+    # Shunt data, not available in every backend
     shunts_data_available : ClassVar[bool] = False
     n_shunt : ClassVar[Optional[int]] = None
     name_shunt : ClassVar[Optional[np.ndarray]] = None
     shunt_to_subid : ClassVar[Optional[np.ndarray]] = None
 
-    # alarm / alert
+    # Alarm / Alert
     assistant_warning_type = None
     
-    # alarm feature
+    # Alarm feature
     # dimension of the alarm "space" (number of alarm that can be raised at each step)
     dim_alarms = 0  # TODO
     alarms_area_names = []  # name of each area  # TODO
@@ -659,7 +670,7 @@ class GridObjects:
         []
     )  # for each area in the grid, gives which powerlines it contains # TODO
 
-    # alert feature 
+    # Alert feature 
     # dimension of the alert "space" (number of alerts that can be raised at each step)
     dim_alerts = 0  # TODO
     alertable_line_names = []  # name of each line to produce an alert on # TODO
@@ -2020,8 +2031,7 @@ class GridObjects:
                      "line_or_to_sub_pos",
                      "line_ex_pos_topo_vect",
                      "line_ex_to_subid",
-                     "line_ex_to_sub_pos",
-                     ]
+                     "line_ex_to_sub_pos"]
         if cls.redispatching_unit_commitment_available:
             attrs_int.append("gen_min_uptime")
             attrs_int.append("gen_min_downtime")
@@ -2033,8 +2043,7 @@ class GridObjects:
                      "name_line", 
                      "name_sub", 
                      "name_storage",
-                     "storage_type",
-        ]
+                     "storage_type"]
         if cls.redispatching_unit_commitment_available:
             attrs_str.append("gen_type")
         cls._assign_attr(attrs_str, str, "str", raise_if_none)
@@ -2047,8 +2056,7 @@ class GridObjects:
                        "storage_marginal_cost",
                        "storage_loss",
                        "storage_charging_efficiency",
-                       "storage_discharging_efficiency",
-                       ]
+                       "storage_discharging_efficiency"]
         if cls.redispatching_unit_commitment_available:
             attrs_float += ["gen_pmin",
                             "gen_pmax",
@@ -3199,7 +3207,7 @@ class GridObjects:
             # Flexibility did not exist before
             # Affects shape of vector representation 
             cls.flexible_load_available = False
-            # cls._aux_process_pre_flexibility()
+            cls._aux_process_pre_flexibility()
             res = True
             
         if res:
@@ -3853,7 +3861,7 @@ class GridObjects:
         -------
         _topo_vect_only: this function is called once when the backend is initialized in `backend.load_grid`  
         (in `backend._compute_pos_big_topo`) and then once when everything is set up 
-        (after redispatching and storage data are loaded).
+        (after redispatching, flexibility, and storage data are loaded).
         
         This is why I need the `_topo_vect_only` flag that tells this function when it's called only for 
         `topo_vect` related attributed
@@ -4057,7 +4065,7 @@ class GridObjects:
             # Indeed, at this stage (first call in the backend.load_grid) these
             # attributes are not loaded yet
             
-            # redispatching
+            # Redispatching
             if cls.redispatching_unit_commitment_available:
                 for nm_attr, type_attr in zip(cls._li_attr_disp, cls._type_attr_disp):
                     save_to_dict(
@@ -4072,7 +4080,6 @@ class GridObjects:
                     res[nm_attr] = None
                     
             # Flexibility
-            
             for nm_attr, type_attr in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
                 if nm_attr not in res and hasattr(cls, nm_attr) is False:
                     # Note: Need default values here for flex to work together
@@ -4087,7 +4094,7 @@ class GridObjects:
                         copy_,
                     )
             
-            # layout (position of substation on a map of the grid)
+            # Layout (position of substation on a map of the grid)
             if cls.grid_layout is not None:
                 save_to_dict(
                     res,
@@ -4101,7 +4108,7 @@ class GridObjects:
             else:
                 res["grid_layout"] = None
 
-            # storage data
+            # Storage data
             save_to_dict(
                 res,
                 cls,
@@ -4166,13 +4173,13 @@ class GridObjects:
                 copy_,
             )
 
-            # alert or alarm
+            # Alert or Alarm
             if cls.assistant_warning_type is not None:
                 res["assistant_warning_type"] = str(cls.assistant_warning_type)
             else:
                 res["assistant_warning_type"] = None
             
-            # area for the alarm feature
+            # Area for the alarm feature
             res["dim_alarms"] = cls.dim_alarms
         
 
@@ -4199,16 +4206,16 @@ class GridObjects:
                 copy_,
             )
             
-            # number of line alert for the alert feature
+            # No. of line alerts for the alert feature
             res['dim_alerts'] = cls.dim_alerts 
-            # save alert line names to dict
+            # Save alert line names to dict
             save_to_dict(
                 res, cls, "alertable_line_names", (lambda li: [str(el) for el in li]) if as_list else None, copy_
             )
             save_to_dict(
                 res, cls, "alertable_line_ids", (lambda li: [int(el) for el in li])  if as_list else None, copy_
             )
-            # avoid further computation and save it
+            # Avoid further computation and save it
             if not as_list:
                 cls._CLS_DICT = res.copy()
         return res
@@ -4256,9 +4263,10 @@ class GridObjects:
             # attributes are not loaded yet
             
             # redispatching / curtailment
-            res[
-                "redispatching_unit_commitment_available"
-            ] = cls.redispatching_unit_commitment_available
+            res["redispatching_unit_commitment_available"] = cls.redispatching_unit_commitment_available
+            
+            # Flexible / redispatchable loads
+            res["flexible_load_available"] = cls.flexible_load_available
             
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
@@ -4577,7 +4585,7 @@ class GridObjects:
     def process_shunt_static_data(cls):
         """remove possible shunts data from the classes, if shunts are deactivated"""
         pass
-    
+
     @classmethod
     def set_no_storage(cls):
         """

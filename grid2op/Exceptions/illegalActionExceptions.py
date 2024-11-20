@@ -96,3 +96,11 @@ class UnitCommitorRedispachingNotAvailable(IllegalAction):
     """
 
     pass
+
+class FlexibilityNotAvailable(IllegalAction):
+    """
+    Attempt to use flexibility in an environment not set up for it
+    """
+
+    pass
+

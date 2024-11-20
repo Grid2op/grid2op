@@ -1581,7 +1581,7 @@ class Backend(GridObjects, ABC):
             warnings.warn(
                 f'Impossible to load the redispatching data for this environment with error:\n"{exc_}"\n'
                 f"Redispatching will be unavailable.\n"
-                f"Please make sure \"{name}\" file is a csv (coma ',') separated file."
+                f"Please make sure \"{name}\" file is a csv (comma ',') separated file."
             )
             return
 
