@@ -73,7 +73,7 @@ class TestGymAlertCompat(unittest.TestCase):
         assert str_ == ("Dict('change_bus': MultiBinary(177), 'change_line_status': MultiBinary(59), "
                         "'curtail': Box([-1.  0. -1. -1. -1.  0.  0.  0.  0.  0. -1.  0.  0. -1.  0.  0. -1.  0.\n  "
                         "0. -1. -1. -1.], [-1.  1. -1. -1. -1.  1.  1.  1.  1.  1. -1.  1.  1. -1.  1.  1. -1.  1.\n  "
-                        "1. -1. -1. -1.], (22,), float32), 'flexibility': Box(-inf, inf, (37,), float32), 'raise_alert': "
+                        "1. -1. -1. -1.], (22,), float32), 'flexibility': Box(0.0, 0.0, (37,), float32), 'raise_alert': "
                         "MultiBinary(10), 'redispatch': Box([ -1.4   0.   -1.4 -10.4  -1.4   0.    0.    0.    0.    0.   -2.8   0.\n   "
                         "0.   -2.8   0.    0.   -4.3   0.    0.   -2.8  -8.5  -9.9], "
                         "[ 1.4  0.   1.4 10.4  1.4  0.   0.   0.   0.   0.   2.8  0.   0.   2.8\n  0.   0.   4.3  0.   0.   2.8  8.5  9.9], "
