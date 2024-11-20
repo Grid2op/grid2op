@@ -7,7 +7,10 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import unittest
-from aaa_test_backend_interface import AAATestBackendAPI
+try: # Grid2OP available locally
+    from .aaa_test_backend_interface import AAATestBackendAPI
+except: # Grid2OP available as a package
+    from aaa_test_backend_interface import AAATestBackendAPI
 from grid2op.Backend import PandaPowerBackend
 from grid2op.Converter import BackendConverter
 

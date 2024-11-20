@@ -23,11 +23,16 @@ from grid2op.Action import BaseAction, PlayableAction
 from grid2op.Agent import BaseAgent
 from grid2op.Episode import EpisodeData
 
-from _aux_opponent_for_test_alerts import (_get_steps_attack,
-                                           TestOpponent,
-                                           TestOpponentMultiLines,
-                                           _get_blackout)
-
+try: # Grid2OP available locally
+    from ._aux_opponent_for_test_alerts import (_get_steps_attack,
+                                            TestOpponent,
+                                            TestOpponentMultiLines,
+                                            _get_blackout)
+except: # Grid2OP available as a package
+    from ._aux_opponent_for_test_alerts import (_get_steps_attack,
+                                        TestOpponent,
+                                        TestOpponentMultiLines,
+                                        _get_blackout)
 ATTACKED_LINE = "48_50_136"
 
 DEFAULT_PARAMS_TRUSTSCORE = dict(reward_min_no_blackout=-1.0,

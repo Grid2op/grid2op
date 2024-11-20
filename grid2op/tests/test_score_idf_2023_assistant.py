@@ -17,8 +17,10 @@ from grid2op.Observation import BaseObservation
 from grid2op.Action import BaseAction
 from grid2op.Chronics import FromHandlers
 from grid2op.Chronics.handlers import CSVHandler, PerfectForecastHandler
-from _aux_opponent_for_test_alerts import TestOpponent, _get_blackout
-
+try: # Grid2Op available locally
+    from ._aux_opponent_for_test_alerts import TestOpponent, _get_blackout
+except: # Grid2OP available as a package
+    from ._aux_opponent_for_test_alerts import TestOpponent, _get_blackout
 class Alert_Blackout_Agent(BaseAgent):
     def __init__(self, action_space,do_Alerts=False,blackout_step=None):
         super().__init__(action_space)

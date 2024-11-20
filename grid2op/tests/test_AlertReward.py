@@ -23,9 +23,14 @@ from grid2op.Action import BaseAction, PlayableAction
 from grid2op.Agent import BaseAgent
 from grid2op.Episode import EpisodeData
 
-from _aux_opponent_for_test_alerts import (_get_steps_attack,
-                                           TestOpponent,
-                                           TestOpponentMultiLines)
+try: # Grid2Op available locally
+    from ._aux_opponent_for_test_alerts import (_get_steps_attack,
+                                            TestOpponent,
+                                            TestOpponentMultiLines)
+except: # Grid2OP available as a package
+    from _aux_opponent_for_test_alerts import (_get_steps_attack,
+                                        TestOpponent,
+                                        TestOpponentMultiLines)
 
 ALL_ATTACKABLE_LINES= [
             "62_58_180",

@@ -223,7 +223,7 @@ class TestGymAlertCompat(unittest.TestCase):
                 for el in env_gym.observation_space.spaces
             ]
         )
-        size_th = 1718  # as of grid2Op 1.9.1 (where alerts are added)
+        size_th = 1792  # as of grid2Op 1.9.1 (where alerts are added)
                         # as of grid2Op 1.11.0 (where flexibility was added)
         assert (
             dim_obs_space == size_th

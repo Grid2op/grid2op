@@ -18,7 +18,10 @@ from grid2op.Reward import AlertReward
 from grid2op.Runner import Runner  # TODO
 from grid2op.Action import PlayableAction
 
-from _aux_opponent_for_test_alerts import OpponentForTestAlert
+try: # Grid2OP available locally
+    from ._aux_opponent_for_test_alerts import OpponentForTestAlert
+except: # Grid2OP available as a package
+    from _aux_opponent_for_test_alerts import OpponentForTestAlert
 
 ALL_ATTACKABLE_LINES = [
             "62_58_180",

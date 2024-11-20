@@ -6,15 +6,24 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-
-from _aux_test_gym_compat import (GYMNASIUM_AVAILABLE,
-                                  _AuxTestGymCompatModule,
-                                  _AuxTestBoxGymObsSpace,
-                                  _AuxTestBoxGymActSpace,
-                                  _AuxTestMultiDiscreteGymActSpace,
-                                  _AuxTestDiscreteGymActSpace,
-                                  _AuxTestAllGymActSpaceWithAlarm,
-                                  _AuxTestGOObsInRange)
+try: # Grid2OP available locally
+    from ._aux_test_gym_compat import (GYMNASIUM_AVAILABLE,
+                                    _AuxTestGymCompatModule,
+                                    _AuxTestBoxGymObsSpace,
+                                    _AuxTestBoxGymActSpace,
+                                    _AuxTestMultiDiscreteGymActSpace,
+                                    _AuxTestDiscreteGymActSpace,
+                                    _AuxTestAllGymActSpaceWithAlarm,
+                                    _AuxTestGOObsInRange)
+except: # Grid2OP available as a package
+    from ._aux_test_gym_compat import (GYMNASIUM_AVAILABLE,
+                                _AuxTestGymCompatModule,
+                                _AuxTestBoxGymObsSpace,
+                                _AuxTestBoxGymActSpace,
+                                _AuxTestMultiDiscreteGymActSpace,
+                                _AuxTestDiscreteGymActSpace,
+                                _AuxTestAllGymActSpaceWithAlarm,
+                                _AuxTestGOObsInRange)
 import unittest
 
 class AuxilliaryForTestGymnasium:

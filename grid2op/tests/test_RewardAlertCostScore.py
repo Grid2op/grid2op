@@ -21,10 +21,15 @@ from grid2op.Episode import EpisodeData
 from grid2op.Parameters import Parameters
 from grid2op.Opponent import BaseOpponent, GeometricOpponent
 from grid2op.Action import BaseAction, PlayableAction
-from _aux_opponent_for_test_alerts import (_get_steps_attack,
+
+try: # Grid2OP available locally
+    from ._aux_opponent_for_test_alerts import (_get_steps_attack,
                                            TestOpponent
                                            )
-
+except: # Grid2OP available as a package
+    from ._aux_opponent_for_test_alerts import (_get_steps_attack,
+                                           TestOpponent
+                                           )
 ATTACKED_LINE = "48_50_136"
 
 class AlertAgent(BaseAgent):
