@@ -248,6 +248,7 @@ def _aux_make_multimix(
     test=False,
     experimental_read_from_local_dir=False,
     n_busbar=2,
+    _add_cls_nm_bk=True,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -263,6 +264,7 @@ def _aux_make_multimix(
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         n_busbar=n_busbar,
         _test=test,
+        _add_cls_nm_bk=_add_cls_nm_bk,
         _add_to_name=_add_to_name,
         _compat_glop_version=_compat_glop_version,
         logger=logger,
@@ -286,6 +288,7 @@ def make(
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
     n_busbar=2,
+    _add_cls_nm_bk=True,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
     _overload_name_multimix : Optional[str]=None,  # do not use !
@@ -432,6 +435,7 @@ def make(
         
         return make_from_path_fn(
             dataset_path=dataset,
+            _add_cls_nm_bk=_add_cls_nm_bk,
             _add_to_name=_add_to_name_tmp,
             _compat_glop_version=_compat_glop_version_tmp,
             _overload_name_multimix=_overload_name_multimix,
@@ -482,6 +486,7 @@ def make(
             dataset_path=ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            _add_cls_nm_bk=_add_cls_nm_bk,
             _add_to_name=_add_to_name,
             _compat_glop_version=_compat_glop_version,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
@@ -497,6 +502,7 @@ def make(
             real_ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            _add_cls_nm_bk=_add_cls_nm_bk,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
             _overload_name_multimix=_overload_name_multimix,
             **kwargs
@@ -519,5 +525,6 @@ def make(
         n_busbar=n_busbar,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         _overload_name_multimix=_overload_name_multimix,
+        _add_cls_nm_bk=_add_cls_nm_bk,
         **kwargs
     )

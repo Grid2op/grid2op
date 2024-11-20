@@ -10,6 +10,7 @@ import os
 import time
 import copy
 import importlib.util
+from typing import Dict, Tuple, Type, Union
 import numpy as np
 import json
 import warnings
@@ -33,6 +34,7 @@ from grid2op.Rules import BaseRules, DefaultRules
 from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.Opponent import BaseOpponent, BaseActionBudget, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
+from grid2op.typing_variables import DICT_CONFIG_TYPING
 
 from grid2op.MakeEnv.get_default_aux import _get_default_aux
 from grid2op.MakeEnv.PathUtils import _aux_fix_backend_internal_classes
@@ -127,6 +129,7 @@ def make_from_dataset_path(
     logger=None,
     experimental_read_from_local_dir=False,
     n_busbar=2,
+    _add_cls_nm_bk=True,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -282,13 +285,13 @@ def make_from_dataset_path(
     """    
     # Compute and find root folder
     _check_path(dataset_path, "Dataset root directory")
-    dataset_path_abs = os.path.abspath(dataset_path)
+    dataset_path_abs : str = os.path.abspath(dataset_path)
 
     # Compute env name from directory name
-    name_env = os.path.split(dataset_path_abs)[1]
+    name_env : str = os.path.split(dataset_path_abs)[1]
  
     # Compute and find chronics folder
-    chronics_path = _get_default_aux(
+    chronics_path : str = _get_default_aux(
         "chronics_path",
         kwargs,
         defaultClassApp=str,
@@ -310,7 +313,7 @@ def make_from_dataset_path(
         exc_chronics = exc_
 
     # Compute and find grid layout file
-    grid_layout_path_abs = os.path.abspath(
+    grid_layout_path_abs : str = os.path.abspath(
         os.path.join(dataset_path_abs, NAME_GRID_LAYOUT_FILE)
     )
     try:
@@ -333,7 +336,7 @@ def make_from_dataset_path(
         spec = importlib.util.spec_from_file_location("config.config", config_path_abs)
         config_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(config_module)
-        config_data = config_module.config
+        config_data : DICT_CONFIG_TYPING = config_module.config
     except Exception as exc_:
         print(exc_)
         raise EnvError(
@@ -344,7 +347,7 @@ def make_from_dataset_path(
     graph_layout = None
     try:
         with open(grid_layout_path_abs) as layout_fp:
-            graph_layout = json.load(layout_fp)
+            graph_layout : Dict[str, Tuple[float, float]]= json.load(layout_fp)
     except Exception as exc_:
         warnings.warn(
             "Dataset {} doesn't have a valid graph layout. Expect some failures when attempting "
@@ -354,7 +357,7 @@ def make_from_dataset_path(
     # Get thermal limits
     thermal_limits = None
     if "thermal_limits" in config_data:
-        thermal_limits = config_data["thermal_limits"]
+        thermal_limits : Union[np.ndarray, Dict[str, float]]= config_data["thermal_limits"]
 
     # Get chronics_to_backend
     name_converter = None
@@ -378,9 +381,9 @@ def make_from_dataset_path(
     # Get default backend class
     backend_class_cfg = PandaPowerBackend
     if "backend_class" in config_data and config_data["backend_class"] is not None:
-        backend_class_cfg = config_data["backend_class"]
+        backend_class_cfg : Type[Backend] = config_data["backend_class"]
     ## Create the backend, to compute the powerflow
-    backend = _get_default_aux(
+    backend : Backend = _get_default_aux(
         "backend",
         kwargs,
         defaultClass=backend_class_cfg,
@@ -389,7 +392,7 @@ def make_from_dataset_path(
     )
 
     # Compute and find backend/grid file
-    grid_path = _get_default_aux(
+    grid_path : str = _get_default_aux(
         "grid_path",
         kwargs,
         defaultClassApp=str,
@@ -419,9 +422,9 @@ def make_from_dataset_path(
         "observation_class" in config_data
         and config_data["observation_class"] is not None
     ):
-        observation_class_cfg = config_data["observation_class"]
+        observation_class_cfg : Type[BaseObservation] = config_data["observation_class"]
     ## Setup the type of observation the agent will receive
-    observation_class = _get_default_aux(
+    observation_class : Type[BaseObservation] = _get_default_aux(
         "observation_class",
         kwargs,
         defaultClass=observation_class_cfg,
@@ -433,7 +436,7 @@ def make_from_dataset_path(
     ## Create the parameters of the game, thermal limits threshold,
     # simulate cascading failure, powerflow mode etc. (the gamification of the game)
     if "param" in kwargs:
-        param = _get_default_aux(
+        param : Parameters = _get_default_aux(
             "param",
             kwargs,
             defaultClass=Parameters,
@@ -493,12 +496,12 @@ def make_from_dataset_path(
     if "rules_class" in config_data and config_data["rules_class"] is not None:
         warnings.warn("You used the deprecated rules_class in your config. Please change its "
                       "name to 'gamerules_class' to mimic the grid2op.make kwargs.")
-        rules_class_cfg = config_data["rules_class"]
+        rules_class_cfg : Type[BaseRules] = config_data["rules_class"]
     if "gamerules_class" in config_data and config_data["gamerules_class"] is not None:
-        rules_class_cfg = config_data["gamerules_class"]
+        rules_class_cfg : Type[BaseRules] = config_data["gamerules_class"]
         
     ## Create the rules of the game (mimic the operationnal constraints)
-    gamerules_class = _get_default_aux(
+    gamerules_class : Type[BaseRules] = _get_default_aux(
         "gamerules_class",
         kwargs,
         defaultClass=rules_class_cfg,
@@ -510,10 +513,10 @@ def make_from_dataset_path(
     # Get default reward class
     reward_class_cfg = L2RPNReward
     if "reward_class" in config_data and config_data["reward_class"] is not None:
-        reward_class_cfg = config_data["reward_class"]
+        reward_class_cfg : Type[BaseReward] = config_data["reward_class"]
 
     ## Setup the reward the agent will receive
-    reward_class = _get_default_aux(
+    reward_class : Type[BaseReward] = _get_default_aux(
         "reward_class",
         kwargs,
         defaultClass=reward_class_cfg,
@@ -885,6 +888,10 @@ def make_from_dataset_path(
     if "class_in_file" in kwargs:
         classes_in_file_kwargs = bool(kwargs["class_in_file"])
         use_class_in_files = classes_in_file_kwargs
+        
+    # new in 1.11.0:
+    if _add_cls_nm_bk:
+        _add_to_name = backend.get_class_added_name() + _add_to_name
         
     if use_class_in_files:
         # new behaviour

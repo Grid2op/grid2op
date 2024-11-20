@@ -165,6 +165,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         logger=None,
         experimental_read_from_local_dir=None,
         n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+        _add_cls_nm_bk=True,
         _add_to_name="",  # internal, for test only, do not use !
         _compat_glop_version=None,  # internal, for test only, do not use !
         _test=False,
@@ -185,25 +186,33 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         # TODO: with backend.copy() instead !
         backendClass = None
         backend_kwargs = {}
+        _added_bk_name = ""
         if "backend" in kwargs:
             backendClass = type(kwargs["backend"])
             if hasattr(kwargs["backend"], "_my_kwargs"):
                 # was introduced in grid2op 1.7.1
                 backend_kwargs = kwargs["backend"]._my_kwargs
+            _added_bk_name = kwargs["backend"].get_class_added_name()
             del kwargs["backend"]
-        
+            
         li_mix_nms = [mix_name for mix_name in sorted(os.listdir(envs_dir)) if os.path.isdir(os.path.join(envs_dir, mix_name))]
         if not li_mix_nms:
             raise EnvError("We did not find any mix in this multi-mix environment.")
         
         # Make sure GridObject class attributes are set from first env
         # Should be fine since the grid is the same for all envs
-        multi_env_name = (None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
+        if not _add_cls_nm_bk:
+            multi_env_name = (None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
+        else:
+            _add_to_name = _added_bk_name + _add_to_name
+            multi_env_name = (None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
+            
         env_for_init = self._aux_create_a_mix(envs_dir,
                                               li_mix_nms[0],
                                               logger,
                                               backendClass,
                                               backend_kwargs,
+                                              _add_cls_nm_bk,
                                               _add_to_name,
                                               _compat_glop_version,
                                               n_busbar,
@@ -232,6 +241,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                                              logger,
                                              backendClass,
                                              backend_kwargs,
+                                             _add_cls_nm_bk,  # _add_cls_nm_bk already added in _add_to_name  ?
                                              _add_to_name,
                                              _compat_glop_version,
                                              n_busbar,
@@ -298,6 +308,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                           logger,
                           backendClass,
                           backend_kwargs,
+                          _add_cls_nm_bk,
                           _add_to_name,
                           _compat_glop_version,
                           n_busbar,
@@ -332,6 +343,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
             mix = make(
                 mix_path,
                 backend=bk,
+                _add_cls_nm_bk=_add_cls_nm_bk,
                 _add_to_name=_add_to_name,
                 _compat_glop_version=_compat_glop_version,
                 n_busbar=n_busbar,
