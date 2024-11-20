@@ -2177,7 +2177,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                     self._gen_activeprod_t_redisp[self.gen_redispatchable])
                 avail_gen_up_tmp = np.minimum(p_max_gen_up_tmp,
                                               self.gen_max_ramp_up[self.gen_redispatchable])
-                if self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF:
+                if self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF and self.flexible_load_available:
                     p_min_load_down_tmp = (0.0 - self._load_demand_t_flex[self.load_flexible])
                     avail_load_down_tmp = np.maximum(p_min_load_down_tmp,
                                                      -self.load_max_ramp_down[self.load_flexible])
@@ -2353,7 +2353,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         modded_involved = np.concatenate((modded_involved_gens, modded_involved_loads))
         
         def target(actual_dispatchable):
-            # define my real objective
+            # Define objective (quadratic)
             quad_ = (actual_dispatchable[modded_involved] - target_vals_mi_optim) ** 2
             coeffs_quads = weights[modded_involved] * quad_
             coeffs_quads_const = coeffs_quads.sum()
@@ -2370,7 +2370,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             res_jac /= scale_objective  # scaling the function
             return res_jac
 
-        # objective function
+        # Objective function
         def f(init):
             this_res = minimize(
                 target,
@@ -2596,56 +2596,45 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # computes which generator will be turned on after the action
         gen_up_after = 1.0 * self._gen_activeprod_t
         if "prod_p" in self._env_modification._dict_inj:
-            tmp = self._env_modification._dict_inj["prod_p"]
-            indx_ok = np.isfinite(tmp)
+            indx_ok = np.isfinite(self._env_modification._dict_inj["prod_p"])
             gen_up_after[indx_ok] = self._env_modification._dict_inj["prod_p"][indx_ok]
         gen_up_after += redisp_act
+        # Mask of which generators are turned ON
         gen_up_after = gen_up_after > 0.0
 
-        # update min down time, min up time etc.
+        # Update min downtime & min uptime (generators)
         gen_disconnected_this = gen_up_before & (~gen_up_after)
         gen_connected_this_timestep = (~gen_up_before) & (gen_up_after)
         gen_still_connected = gen_up_before & gen_up_after
         gen_still_disconnected = (~gen_up_before) & (~gen_up_after)
 
-        if ((
-                self._gen_downtime[gen_connected_this_timestep]
-                < self.gen_min_downtime[gen_connected_this_timestep]
-            ).any()
-            and not self._ignore_min_up_down_times
-        ):
-            # i reconnected a generator before the minimum time allowed
+        if ((self._gen_downtime[gen_connected_this_timestep]
+             < self.gen_min_downtime[gen_connected_this_timestep]).any()
+             and not self._ignore_min_up_down_times):
+            # Reconnected a generator before the minimum time allowed
             id_gen = (
                 self._gen_downtime[gen_connected_this_timestep]
                 < self.gen_min_downtime[gen_connected_this_timestep]
             )
             id_gen = (id_gen).nonzero()[0]
             id_gen = (gen_connected_this_timestep[id_gen]).nonzero()[0]
-            except_ = GeneratorTurnedOnTooSoon(
-                "Some generator has been connected too early ({})".format(id_gen)
-            )
+            except_ = GeneratorTurnedOnTooSoon(f"Some generator has been connected too early ({id_gen})")
             return except_
         else:
             self._gen_downtime[gen_connected_this_timestep] = -1
             self._gen_uptime[gen_connected_this_timestep] = 1
 
-        if (
-            (
-                self._gen_uptime[gen_disconnected_this]
-                < self.gen_min_uptime[gen_disconnected_this]
-            ).any()
-            and not self._ignore_min_up_down_times
-        ):
-            # i disconnected a generator before the minimum time allowed
+        if ((self._gen_uptime[gen_disconnected_this]
+             < self.gen_min_uptime[gen_disconnected_this]).any()
+             and not self._ignore_min_up_down_times):
+            # Disconnected a generator before the minimum time allowed
             id_gen = (
                 self._gen_uptime[gen_disconnected_this]
                 < self.gen_min_uptime[gen_disconnected_this]
             )
             id_gen = (id_gen).nonzero()[0]
             id_gen = (gen_connected_this_timestep[id_gen]).nonzero()[0]
-            except_ = GeneratorTurnedOffTooSoon(
-                "Some generator has been disconnected too early ({})".format(id_gen)
-            )
+            except_ = GeneratorTurnedOffTooSoon(f"Some generator has been disconnected too early ({id_gen})")
             return except_
         else:
             self._gen_downtime[gen_connected_this_timestep] = 0
@@ -2882,17 +2871,17 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             ind_curtailed_in_act
         ]
 
-    def _aux_compute_new_p_curtailment(self, new_p, curtailment_vect):
-        """modifies the new_p argument !!!!"""
-        gen_curtailed = (
-            np.abs(curtailment_vect - 1.) >= 1e-7
-        )  # curtailed either right now, or in a previous action
+    def _aux_compute_new_p_curtailment(self, new_gen_p:np.array, curtailment_vect:np.array) -> np.array:
+        """Modifies the new_p argument in-place!!!!"""
+        # Get generators that are either being curtailed right now, or were
+        # curtailed in a previous action
+        gen_curtailed = (np.abs(curtailment_vect - 1.) >= 1e-7)  
         max_action = self.gen_pmax[gen_curtailed] * curtailment_vect[gen_curtailed]
-        new_p[gen_curtailed] = np.minimum(max_action, new_p[gen_curtailed])
+        new_gen_p[gen_curtailed] = np.minimum(max_action, new_gen_p[gen_curtailed])
         return gen_curtailed
 
     def _aux_handle_curtailment_without_limit(self, action, new_p):
-        """modifies the new_p argument !!!! (but not the action)"""
+        """Modifies the new_p argument in-place!!!! (action not affected)"""
         if self.redispatching_unit_commitment_available and (
             action._modif_curtailment or (np.abs(self._limit_curtailment - 1.) >= 1e-7).any()
         ):
@@ -2924,12 +2913,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._sum_curtailment_mw += total_curtailment
         self._sum_curtailment_mw_prev += total_curtailment
         if total_curtailment > self._tol_poly:
-            # in this case, the curtailment is too strong, I need to make it less strong
+            # Curtailment is too strong, make it less strong
             curtailed = new_gen_p_th - new_gen_p
         else:
-            # in this case, the curtailment is too low, this can happen, for example when there is a
+            # Curtailment is too low, this can happen, for example when there is a
             # "strong" curtailment but afterwards you ask to set everything to 1. (so no curtailment)
-            # I cannot reuse the previous case (too_much > self._tol_poly) because the
+            # Cannot reuse the previous case ('too_much' > self._tol_poly) because the
             # curtailment is already computed there...
             new_p_with_previous_curtailment = 1.0 * new_gen_p_th
             self._aux_compute_new_p_curtailment(
@@ -2947,10 +2936,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_act_storage = 1.0 * self._storage_power
         sum_this_step = new_act_storage.sum()
         if abs(total_storage) < abs(sum_this_step):
-            # i can modify the current action
+            # Can modify the current action
             modif_storage = new_act_storage * total_storage / sum_this_step
         else:
-            # i need to retrieve what I did in a previous action
+            # Need to retrieve what was done in a previous action
             # because the current action is not enough (the previous actions
             # cause a problem right now)
             new_act_storage = 1.0 * self._storage_power_prev
@@ -2961,19 +2950,19 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 # TODO: this is not cover by any test :-(
                 # it happens when you do an action too strong, then a do nothing,
                 # then you decrease the limit to rapidly 
-                # (game over would jappen after at least one do nothing)
+                # (game over would happen after at least one do nothing)
                 
                 # In this case I reset it completely or do I ? I don't really
                 # know what to do !
                 modif_storage = new_act_storage  # or self._storage_power ???
 
-        # handle self._storage_power and self._storage_current_charge
+        # Handle self._storage_power and self._storage_current_charge
         coeff_p_to_E = (
             self.delta_time_seconds / 3600.0
-        )  # TODO optim this is const for all time steps
+        )  # TODO: optim this, right now it is const for all time steps
         self._storage_power -= modif_storage
 
-        # now compute the state of charge of the storage units (with efficiencies)
+        # Compute the State of Charge (SoC) of the storage units (with efficiencies)
         is_discharging = self._storage_power < 0.0
         is_charging = self._storage_power > 0.0
         modif_storage[is_discharging] /= type(self).storage_discharging_efficiency[
@@ -2984,7 +2973,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         ]
 
         self._storage_current_charge -= coeff_p_to_E * modif_storage
-        # inform the grid that the storage is reduced
+        # Inform the grid that the storage is reduced
         self._amount_storage -= total_storage
         self._amount_storage_prev -= total_storage
 
@@ -3079,7 +3068,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     this_p_load[np.isfinite(act_modif)] = act_modif[np.isfinite(act_modif)]
                     self._env_modification._dict_inj[inj_key][:] = this_p_load
                 else:
-                    elf._env_modification._dict_inj[inj_key] = (1.0 * action._dict_inj[inj_key])
+                    self._env_modification._dict_inj[inj_key] = (1.0 * action._dict_inj[inj_key])
                     self._env_modification._modif_inj = True
 
     def _aux_handle_attack(self, action: BaseAction):
@@ -3132,7 +3121,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             except_.append(except_tmp)
 
             if type(self).n_storage > 0:
-                # TODO curtailment: cancel it here too !
+                # TODO: Cancel curtailment here too!
                 self._storage_current_charge[:] = self._storage_previous_charge
                 self._amount_storage -= self._amount_storage_prev
 
@@ -3252,41 +3241,38 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     def _aux_register_env_converged(self, disc_lines:np.array, action:BaseAction, 
                                     init_line_status:np.array, new_gen_p:np.array, new_load_p:np.array):
         beg_res = time.perf_counter()
-        self.backend.update_thermal_limit(
-            self
-        )  # update the thermal limit, for DLR for example
+        # Update the thermal limit, for DLR for example
+        self.backend.update_thermal_limit(self)
         overflow_lines = self.backend.get_line_overflow()
-        # save the current topology as "last" topology (for connected powerlines)
+        # Save the current topology as "last" topology (for connected powerlines)
         # and update the state of the disconnected powerline due to cascading failure
         self._backend_action.update_state(disc_lines)
 
-        # one timestep passed, i can maybe reconnect some lines
+        # One timestep passed, can possibly reconnect some lines
         self._times_before_line_status_actionable[
             self._times_before_line_status_actionable > 0
         ] -= 1
-        # update the vector for lines that have been disconnected
+        # Update the vector for lines that have been disconnected
         self._times_before_line_status_actionable[disc_lines >= 0] = int(
             self._nb_ts_reco
         )
         self._update_time_reconnection_hazards_maintenance()
 
-        # for the powerline that are on overflow, increase this time step
+        # Increase the time step of lines on overflow (too much current)
         self._timestep_overflow[overflow_lines] += 1
 
-        # set to 0 the number of timestep for lines that are not on overflow
+        # Set to 0 the no. of timesteps for lines that are not on overflow
         self._timestep_overflow[~overflow_lines] = 0
 
-        # build the topological action "cooldown"
+        # Build the topological action "cooldown"
         aff_lines, aff_subs = action.get_topological_impact(init_line_status)
         if self._max_timestep_line_status_deactivated > 0:
-            # i update the cooldown only when this does not impact the line disconnected for the
+            # Update the cooldown only when this does not impact the line disconnected for the
             # opponent or by maintenance for example
-            cond = aff_lines  # powerlines i modified
-            # powerlines that are not affected by any other "forced disconnection"
-            cond &= (
-                self._times_before_line_status_actionable
-                < self._max_timestep_line_status_deactivated
-            )
+            cond = aff_lines  # Modified powerlines
+            # Powerlines that are not affected by any other "forced disconnection"
+            cond &= (self._times_before_line_status_actionable
+                     < self._max_timestep_line_status_deactivated)
             self._times_before_line_status_actionable[
                 cond
             ] = self._max_timestep_line_status_deactivated
@@ -3299,9 +3285,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 aff_subs
             ] = self._max_timestep_topology_deactivated
 
-        # extract production active value at this time step (should be independent of action class)
+        # Extract production active value at this time step (should be independent of action class)
         self._gen_activeprod_t[:], *_ = self.backend.generators_info()
-        # problem with the gen_activeprod_t above, is that the slack bus absorbs alone all the losses
+        # Note: The problem with the gen_activeprod_t above, is that the slack bus alone absorbs all the losses
         # of the system. So basically, when it's too high (higher than the ramp) it can
         # mess up the rest of the environment
         self._gen_activeprod_t_redisp[:] = new_gen_p + self._actual_dispatch
@@ -3310,10 +3296,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._load_demand_t[:], *_ = self.backend.loads_info()
         self._load_demand_t_flex[:] = new_load_p + self._actual_flex
         
-        # set the line status
+        # Set the line status
         self._line_status[:] = copy.deepcopy(self.backend.get_line_status())
 
-        # finally, build the observation (it's a different one at each step, we cannot reuse the same one)
+        # Finally, build the observation (it's a different one at each step, we cannot reuse the same one)
         # THIS SHOULD BE DONE AFTER EVERYTHING IS INITIALIZED !
         self.current_obs = self.get_obs(_do_copy=False)
         # TODO storage: get back the result of the storage ! with the illegal action when a storage unit
@@ -3321,22 +3307,21 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._time_extract_obs += time.perf_counter() - beg_res
 
     def _backend_next_grid_state(self):
-        """overlaoded in MaskedEnv"""
+        """Overloaded in MaskedEnv"""
         return self.backend.next_grid_state(env=self, is_dc=self._env_dc)
     
-    def _aux_run_pf_after_state_properly_set(
-        self, action, init_line_status, new_gen_p, new_load_p, except_
-    ):
+    def _aux_run_pf_after_state_properly_set(self, action:BaseAction, init_line_status:np.array,
+                                             new_gen_p:np.array, new_load_p:np.array, except_):
         has_error = True
         detailed_info = None
         try:
-            # compute the next _grid state
+            # Compute the next _grid state
             beg_pf = time.perf_counter()
             disc_lines, detailed_info, conv_ = self._backend_next_grid_state()
             self._disc_lines[:] = disc_lines
             self._time_powerflow += time.perf_counter() - beg_pf
             if conv_ is None:
-                # everything went well, so i register what is needed
+                # Everything went well, so register what is needed
                 self._aux_register_env_converged(
                     disc_lines, action, init_line_status, new_gen_p, new_load_p,
                 )
@@ -3451,7 +3436,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "Impossible to make a step with a non initialized backend. Have you called "
                 '"env.reset()" after the last game over ?'
             )
-        # I did something after calling "env.seed()" which is
+        # Did something after calling "env.seed()" which is
         # somehow "env.step()" or "env.reset()"
         self._has_just_been_seeded =  False  
         
@@ -3470,13 +3455,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._is_alert_used_in_reward = False
         except_ = []
         detailed_info = []
-        init_disp = 1.0 * action._redispatch  # dispatching action
-        init_flex = 1.0 * action._flexibility # flexibility action
+        init_disp = 1.0 * action._redispatch  # Dispatching action
+        init_flex = 1.0 * action._flexibility # Flexibility action
         init_alert = None
         if cls.dim_alerts > 0:
             init_alert = copy.deepcopy(action._raise_alert)
             
-        action_storage_power = 1.0 * action._storage_power  # battery information
+        action_storage_power = 1.0 * action._storage_power  # Battery information
         attack_duration = 0
         lines_attacked, subs_attacked = None, None
         conv_ = None
@@ -3486,7 +3471,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         beg_step = time.perf_counter()
         self._last_obs : Optional[BaseObservation] = None
-        self._forecasts = None  # force reading the forecast from the time series
+        self._forecasts = None # Force to read the forecast from the time series
         try:
             beg_ = time.perf_counter()
 
@@ -3500,10 +3485,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 is_ambiguous = True
                     
                 if cls.dim_alerts > 0:
-                    # keep the alert even if the rest is ambiguous (if alert is non ambiguous)
+                    # Keep the alert even if the rest is ambiguous (if alert is non-ambiguous)
                     is_ambiguous_alert = isinstance(except_tmp, AmbiguousActionRaiseAlert)
                     if is_ambiguous_alert:
-                        # reset the alert
+                        # Reset the alert
                         init_alert = np.zeros(cls.dim_alerts, dtype=dt_bool)
                     else:
                         action.raise_alert = init_alert
@@ -3511,7 +3496,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
             is_legal, reason = self._game_rules(action=action, env=self)
             if not is_legal:
-                # action is replace by do nothing
+                # Action is replaced by do nothing
                 action = self._action_space({})
                 init_disp = 1.0 * action._redispatch # Dispatching action
                 init_flex = 1.0 * action._flexibility # Flexibility action
@@ -3524,10 +3509,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
             if self._has_attention_budget:
                 if cls.assistant_warning_type == "zonal":
-                    # this feature is implemented, so i do it
-                    reason_alarm_illegal = self._attention_budget.register_action(
-                        self, action, is_illegal, is_ambiguous
-                    )
+                    # This feature is implemented, so do it
+                    reason_alarm_illegal = self._attention_budget.register_action(self,
+                                                action, is_illegal, is_ambiguous)
                     self._is_alarm_illegal = reason_alarm_illegal is not None
 
             # Get the modification of generator active setpoint from the environment
@@ -3552,9 +3536,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
             # Redispatch + Flexibility
             beg__redisp = time.perf_counter()
-            if (cls.redispatching_unit_commitment_available or
-                cls.flexible_load_available or
-                cls.n_storage > 0.0):
+            if cls.redispatching_unit_commitment_available or cls.flexible_load_available or cls.n_storage > 0.0:
                 # This computes the "optimal" redispatching of generators and flexibility
                 # adjustment of loads
                 # Note: It is in this function that the limiting of the curtailment / storage actions
@@ -3584,7 +3566,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     has_error = True
                     except_.append(exc_)
                     is_done = True
-                    # TODO in this case: cancel the topological action of the agent
+                    # TODO: Cancel the topological action of the agent
                     # and continue instead of "game over"
                 self._time_apply_act += time.perf_counter() - beg_
 
@@ -3656,7 +3638,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # Transfer some information computed in the reward into the obs (if any)
             self.current_obs.update_after_reward(self)
             
-        # TODO documentation on all the possible way to be illegal now
+        # TODO: Documentation on all the possible way to be illegal now
         if self.done:
             self.__is_init = False
         return self.current_obs, self.current_reward, self.done, self.infos
@@ -3723,7 +3705,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._time_opponent = dt_float(0.0)
         self._time_create_bk_act = dt_float(0.0)
         self._time_redisp = dt_float(0.0)
-        self._time_flex = dt_float(0.0)
         self._time_step = dt_float(0.0)
 
         if self._has_attention_budget:
@@ -3841,7 +3822,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             "_time_create_bk_act",
             "_time_opponent",
             "_time_redisp",
-            "_time_flex",
             "_time_step",
             "_epsilon_poly",
             "_helper_action_class",

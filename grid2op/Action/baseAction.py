@@ -1412,6 +1412,7 @@ class BaseAction(GridObjects):
             # This action will:
             #     - NOT change anything to the injections
             #     - NOT perform any redispatching action
+            #     - NOT perform any flexibility action
             #     - NOT modify any storage capacity
             #     - NOT perform any curtailment
             #     - NOT force any line status
@@ -1860,7 +1861,7 @@ class BaseAction(GridObjects):
         res += other
         return res
 
-    def __call__(self) -> Tuple[dict, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
+    def __call__(self) -> Tuple[dict, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
         """
         INTERNAL USE ONLY
 
@@ -3371,7 +3372,7 @@ class BaseAction(GridObjects):
         -------
         dict: :class:`dict`
             The dictionary representation of an action impact on objects with keys, "has_impact", "injection",
-            "force_line", "switch_line", "topology", "redispatch", "storage", "curtailment".
+            "force_line", "switch_line", "topology", "redispatch", "flexibility", "storage", "curtailment".
 
         """
         # handles actions on injections
@@ -3735,7 +3736,7 @@ class BaseAction(GridObjects):
             self._aux_as_dict_shunt(res)
         return res
 
-    def get_types(self) -> Tuple[bool, bool, bool, bool, bool, bool, bool]:
+    def get_types(self) -> Tuple[bool, bool, bool, bool, bool, bool, bool, bool]:
         """
         Shorthand to get the type of an action. The type of an action is among:
 
