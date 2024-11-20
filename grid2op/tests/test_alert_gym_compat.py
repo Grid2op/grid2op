@@ -33,8 +33,10 @@ except ImportError:
 if CAN_DO_TEST:
     if GYMNASIUM_AVAILABLE:
         import gymnasium as gym_for_test_agc
+        from gymnasium.spaces import Box, Dict, Discrete, MultiBinary, MultiDiscrete
     else:
         import gym as gym_for_test_agc
+        from gym.spaces import Box, Dict, Discrete, MultiBinary, MultiDiscrete
         
 import pdb
 
@@ -70,14 +72,20 @@ class TestGymAlertCompat(unittest.TestCase):
         env_gym = GymEnv(self.env)
         str_ = env_gym.action_space.__str__() 
         
-        assert str_ == ("Dict('change_bus': MultiBinary(177), 'change_line_status': MultiBinary(59), "
-                        "'curtail': Box([-1.  0. -1. -1. -1.  0.  0.  0.  0.  0. -1.  0.  0. -1.  0.  0. -1.  0.\n  "
-                        "0. -1. -1. -1.], [-1.  1. -1. -1. -1.  1.  1.  1.  1.  1. -1.  1.  1. -1.  1.  1. -1.  1.\n  "
-                        "1. -1. -1. -1.], (22,), float32), 'flexibility': Box(0.0, 0.0, (37,), float32), 'raise_alert': "
-                        "MultiBinary(10), 'redispatch': Box([ -1.4   0.   -1.4 -10.4  -1.4   0.    0.    0.    0.    0.   -2.8   0.\n   "
-                        "0.   -2.8   0.    0.   -4.3   0.    0.   -2.8  -8.5  -9.9], "
-                        "[ 1.4  0.   1.4 10.4  1.4  0.   0.   0.   0.   0.   2.8  0.   0.   2.8\n  0.   0.   4.3  0.   0.   2.8  8.5  9.9], "
-                        "(22,), float32), 'set_bus': Box(-1, 2, (177,), int32), 'set_line_status': Box(-1, 1, (59,), int32))")
+        assert str_ == str(Dict({'change_bus': MultiBinary(177), 'change_line_status': MultiBinary(59),
+                             'curtail': Box(np.array([-1., 0., -1., -1., -1., 0., 0., 0., 0., 0., -1., 0., 0., -1., 0., 0., -1., 0.,
+                                            0.,-1.,-1.,-1.], dtype=dt_float), 
+                                            np.array([-1., 1., -1.,-1.,-1., 1., 1., 1., 1., 1.,-1., 1., 1.,-1., 1., 1.,-1., 1.,
+                                            1.,-1.,-1.,-1.], dtype=dt_float), (22,), dt_float),
+                             'flexibility': Box(0.0, 0.0, (37,), dt_float),
+                             'raise_alert': MultiBinary(10),
+                             'redispatch': Box(np.array([-1.4, 0., -1.4, -10.4, -1.4, 0., 0., 0., 0., 0., -2.8, 0.,
+                                               0., -2.8, 0., 0., -4.3, 0., 0., -2.8, -8.5, -9.9], dtype=dt_float),
+                                              np.array([1.4, 0., 1.4, 10.4, 1.4, 0., 0., 0., 0., 0., 2.8, 0., 
+                                               0., 2.8, 0., 0., 4.3, 0., 0., 2.8, 8.5, 9.9], dtype=dt_float),
+                                              (22,), dt_float),
+                             'set_bus': Box(-1, 2, (177,), dt_int),
+                             'set_line_status': Box(-1, 1, (59,), dt_int)}))
         
         str_ = env_gym.observation_space.__str__()
         assert str_ == ("Dict('_shunt_bus': Box(-2147483648, 2147483647, (6,), int32), '_shunt_p': Box(-inf, inf, (6,), float32), "
@@ -176,7 +184,7 @@ class TestGymAlertCompat(unittest.TestCase):
                 for el in env_gym.observation_space.spaces
             ]
         )
-        size_th = 1792  # as of grid2Op 1.9.1 (where alerts are added)
+        size_th = 1718  # as of grid2Op 1.9.1 (where alerts are added)
                         # as of grid2Op 1.11.0 (where flexibility was added)
         assert (
             dim_obs_space == size_th
