@@ -188,13 +188,14 @@ class __AuxMultiDiscreteActSpace:
                                               Literal["sub_change_bus"],
                                               Literal["one_sub_change"],
                                               Literal["redispatch"],
+                                              Literal["flexibility"],
                                               Literal["set_storage"],
                                               Literal["curtail"],
                                               Literal["curtail_mw"],
                                               Literal["one_line_set"],
                                               Literal["one_line_change"],
                                               ]]=ALL_ATTR,
-                 nb_bins: Dict[Literal["redispatch", "set_storage", "curtail", "curtail_mw"], int]=None
+                 nb_bins: Dict[Literal["redispatch", "flexibility", "set_storage", "curtail", "curtail_mw"], int]=None
                 ):
         check_gym_version(type(self)._gymnasium)
         if not isinstance(grid2op_action_space, ActionSpace):
@@ -205,7 +206,7 @@ class __AuxMultiDiscreteActSpace:
             )
 
         if nb_bins is None:
-            nb_bins = {"redispatch": 7, "set_storage": 7, "curtail": 7, "curtail_mw": 7}
+            nb_bins = {"redispatch": 7, "flexibility":7, "set_storage": 7, "curtail": 7, "curtail_mw": 7}
 
         if attr_to_keep == ALL_ATTR:
             # by default, i remove all the attributes that are not supported by the action type
@@ -298,7 +299,7 @@ class __AuxMultiDiscreteActSpace:
             ),  # dimension will be computed on the fly, if the kwarg is used
         }
         self._nb_bins = nb_bins
-        for el in ["redispatch", "set_storage", "curtail", "curtail_mw"]:
+        for el in ["redispatch", "flexibility", "set_storage", "curtail", "curtail_mw"]:
             self._aux_check_continuous_elements(el, attr_to_keep, nb_bins, act_sp)
             
         self._dims = None
@@ -319,11 +320,18 @@ class __AuxMultiDiscreteActSpace:
                     f"for more information."
                 )
             nb_redispatch = act_sp.gen_redispatchable.sum()
+            nb_flex = act_sp.load_flexible.sum()
             nb_renew = act_sp.gen_renewable.sum()
             if el == "redispatch":
                 self.dict_properties[el] = (
                     [nb_bins[el] for _ in range(nb_redispatch)],
                     nb_redispatch,
+                    self.ATTR_NEEDBINARIZED,
+                )
+            elif el == "redispatch":
+                self.dict_properties[el] = (
+                    [nb_bins[el] for _ in range(nb_flex)],
+                    nb_flex,
                     self.ATTR_NEEDBINARIZED,
                 )
             elif el == "curtail" or el == "curtail_mw":
@@ -404,6 +412,7 @@ class __AuxMultiDiscreteActSpace:
                                 self._act_space,
                                 attr_to_keep=[
                                     "redispatch",
+                                    "flexibility",
                                     "set_storage",
                                     "curtail",
                                     "curtail_mw",
@@ -538,6 +547,12 @@ class __AuxMultiDiscreteActSpace:
                     self._act_space.n_gen, fill_value=np.NaN, dtype=dt_float
                 )
                 gym_act_this_[self._act_space.gen_redispatchable] = tmp
+                tmp = gym_act_this_
+            elif attr_nm == "flexibility":
+                gym_act_this_ = np.full(
+                    self._act_space.n_load, fill_value=np.NaN, dtype=dt_float
+                )
+                gym_act_this_[self._act_space.load_flexible] = tmp
                 tmp = gym_act_this_
             elif attr_nm == "curtail" or attr_nm == "curtail_mw":
                 gym_act_this_ = np.full(

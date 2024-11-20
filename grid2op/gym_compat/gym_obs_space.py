@@ -346,7 +346,7 @@ class __AuxGymObservationSpace:
                     # for redispatching
                     low -= self._tol_poly
                     high += self._tol_poly
-
+                    
                     # for "power losses" that are not properly computed in the original data
                     extra_for_losses = _compute_extra_power_for_losses(
                         self.init_env_cls_dict
@@ -372,6 +372,14 @@ class __AuxGymObservationSpace:
                     )
                     high = np.maximum(
                         -self.init_env_cls_dict["gen_pmin"], +self.init_env_cls_dict["gen_pmax"]
+                    )
+                elif attr_nm == "target_flex" or attr_nm == "actual_flex":
+                    # TODO check that to be sure
+                    low = np.minimum(
+                        0 -self.init_env_cls_dict["load_size"]
+                    )
+                    high = np.maximum(
+                        0, +self.init_env_cls_dict["load_size"]
                     )
                 elif attr_nm == "storage_power" or attr_nm == "storage_power_target":
                     low = -self.init_env_cls_dict["storage_max_p_prod"]

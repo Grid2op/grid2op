@@ -54,6 +54,8 @@ ALL_ATTR_OBS = (
     "duration_next_maintenance",
     "target_dispatch",
     "actual_dispatch",
+    "target_flex",
+    "actual_flex",
     "storage_charge",
     "storage_power_target",
     "storage_power",
@@ -457,6 +459,18 @@ class __AuxBoxGymObsSpace:
                 np.minimum(ob_sp_cls.gen_pmin, -ob_sp_cls.gen_pmax),
                 np.maximum(-ob_sp_cls.gen_pmin, +ob_sp_cls.gen_pmax),
                 (ob_sp_cls.n_gen,),
+                dt_float,
+            ),
+            "target_flex": (
+                np.minimum(0, -ob_sp_cls.load_size),
+                np.maximum(0, +ob_sp_cls.load_size),
+                (ob_sp_cls.n_load,),
+                dt_float,
+            ),
+            "actual_flex": (
+                np.minimum(0, -ob_sp_cls.load_size),
+                np.maximum(-0, +ob_sp_cls.load_size),
+                (ob_sp_cls.n_load,),
                 dt_float,
             ),
             "storage_charge": (

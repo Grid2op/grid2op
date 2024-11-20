@@ -209,7 +209,7 @@ class __AuxBoxGymActSpace:
                                      Literal["set_bus"],
                                      Literal["change_bus"],
                                      Literal["redispatch"],
-                                     # Literal["flexibility"],
+                                     Literal["flexibility"],
                                      Literal["set_storage"],
                                      Literal["curtail"],
                                      Literal["curtail_mw"],
@@ -255,6 +255,9 @@ class __AuxBoxGymActSpace:
         low_gen = -1.0 * act_sp_cls.gen_max_ramp_down[act_sp_cls.gen_redispatchable]
         high_gen = 1.0 * act_sp_cls.gen_max_ramp_up[act_sp_cls.gen_redispatchable]
         nb_redisp = act_sp_cls.gen_redispatchable.sum()
+        low_load = -1.0 * act_sp_cls.load_max_ramp_down[act_sp_cls.load_flexible]
+        high_load = 1.0 * act_sp_cls.load_max_ramp_up[act_sp_cls.load_flexible]
+        nb_flex = act_sp_cls.load_flexible.sum()
         nb_curtail = act_sp_cls.gen_renewable.sum()
         curtail = np.full(shape=(nb_curtail,), fill_value=0.0, dtype=dt_float)
         curtail_mw = np.full(shape=(nb_curtail,), fill_value=0.0, dtype=dt_float)
@@ -284,6 +287,7 @@ class __AuxBoxGymActSpace:
                 dt_int,
             ),
             "redispatch": (low_gen, high_gen, (nb_redisp,), dt_float),
+            "flexibility": (low_load, high_load, (nb_flex,), dt_float),
             "set_storage": (
                 -1.0 * act_sp_cls.storage_max_p_prod,
                 1.0 * act_sp_cls.storage_max_p_absorb,
@@ -321,6 +325,7 @@ class __AuxBoxGymActSpace:
             "set_bus": dt_int,
             "change_bus": dt_bool,
             "redispatch": dt_float,
+            "flexibility": dt_float,
             "set_storage": dt_float,
             "curtail": dt_float,
             "curtail_mw": dt_float,
@@ -539,6 +544,10 @@ class __AuxBoxGymActSpace:
         elif attr_nm == "redispatch":
             gym_act_this_ = np.zeros(self._act_space.n_gen, dtype=dt_float)
             gym_act_this_[self._act_space.gen_redispatchable] = gym_act_this
+            gym_act_this = gym_act_this_
+        elif attr_nm == "flexibility":
+            gym_act_this_ = np.zeros(self._act_space.n_load, dtype=dt_float)
+            gym_act_this_[self._act_space.load_flexible] = gym_act_this
             gym_act_this = gym_act_this_
 
         setattr(res, attr_nm, gym_act_this)
