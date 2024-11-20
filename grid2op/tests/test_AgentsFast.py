@@ -131,7 +131,6 @@ class TestAgentFaster(HelperTests, unittest.TestCase):
         expected_reward = dt_float(16441.488)
         expected_reward = dt_float(16331.4873046875 / 12.)
         expected_reward = dt_float(16331.54296875 / 12.)
-        expected_reward = dt_float(1358.7099609375) # NOTE: Temporary fix
         assert (
             np.abs(cum_reward - expected_reward, dtype=dt_float) <= self.tol_one
         ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"
