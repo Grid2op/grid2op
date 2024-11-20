@@ -71,9 +71,9 @@ class TestGymAlertCompat(unittest.TestCase):
 
     def test_print_alert(self):
         env_gym = GymEnv(self.env)
-        str_ = env_gym.action_space.__str__() 
-
-        assert str_ == str(Dict({'change_bus': MultiBinary(177), 'change_line_status': MultiBinary(59),
+        gym_act_str = env_gym.action_space.__str__() 
+        
+        expcted_act_str = str(Dict({'change_bus': MultiBinary(177), 'change_line_status': MultiBinary(59),
                             'curtail': Box(np.array([-1., 0., -1., -1., -1., 0., 0., 0., 0., 0., -1., 0., 0., -1., 0., 0., -1., 0.,
                                             0.,-1.,-1.,-1.], dtype=dt_float), 
                                             np.array([-1., 1., -1.,-1.,-1., 1., 1., 1., 1., 1.,-1., 1., 1.,-1., 1., 1.,-1., 1.,
@@ -87,8 +87,9 @@ class TestGymAlertCompat(unittest.TestCase):
                                             (22,), dt_float),
                             'set_bus': Box(-1, 2, (177,), dt_int),
                             'set_line_status': Box(-1, 1, (59,), dt_int)}))
-        
-        assert str_ == str(Dict({'_shunt_bus': Box(-2147483648, 2147483647, (6,), dt_int), 
+        assert gym_act_str == expcted_act_str
+        gym_obs_str = env_gym.observation_space.__str__()
+        expected_obs_str = str(Dict({'_shunt_bus': Box(-2147483648, 2147483647, (6,), dt_int), 
                                 '_shunt_p': Box(-np.inf, np.inf, (6,), dt_float), 
                                 '_shunt_q': Box(-np.inf, np.inf, (6,), dt_float),
                                 '_shunt_v': Box(-np.inf, np.inf, (6,), dt_float),
@@ -163,12 +164,14 @@ class TestGymAlertCompat(unittest.TestCase):
                                 'was_alert_used_after_attack': Box(-1, 1, (10,), dt_int),
                                 'year': Discrete(2100)
                                 }))
+        assert gym_obs_str == expected_obs_str
+        
         act = self.env.action_space()
         act.raise_alert = [2]
         act_gym = env_gym.action_space.to_gym(act)
-        act_str = act_gym.__str__()
+        gym_act_str = act_gym.__str__()
         
-        assert act_str == str(OrderedDict({'change_bus': array([False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+        expected_act_str = str(OrderedDict({'change_bus': array([False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False,
                                                             False, False, False, False, False, False, False, False, False, False, False, False, 
                                                             False, False, False, False, False, False, False, False, False, False, False, False, 
                                                             False, False, False, False, False, False, False, False, False, False, False, False,
@@ -206,6 +209,7 @@ class TestGymAlertCompat(unittest.TestCase):
                                         'set_line_status': array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=int32)}))
+        assert gym_act_str == expected_act_str
 
     def test_convert_alert_to_gym(self):
         """test i can create the env"""
@@ -223,7 +227,7 @@ class TestGymAlertCompat(unittest.TestCase):
                 for el in env_gym.observation_space.spaces
             ]
         )
-        size_th = 1718 # as of grid2Op 1.9.1 (where alerts are added)
+        size_th = 1792     # as of grid2Op 1.9.1 (where alerts are added)
                            # as of grid2Op 1.11.0 (where flexibility was added)
         assert (
             dim_obs_space == size_th
