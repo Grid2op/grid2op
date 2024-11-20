@@ -304,7 +304,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     #: this are the keys of the dictionnary `options`
     #: that can be used when calling `env.reset(..., options={})`
-    KEYS_RESET_OPTIONS = {"time serie id", "init state", "init ts", "max step", "thermal limit"}
+    KEYS_RESET_OPTIONS = {"time serie id",
+                          "init state",
+                          "init ts",
+                          "max step",
+                          "thermal limit",
+                          }
     
     def __init__(
         self,
@@ -1923,7 +1928,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             tmp = action._dict_inj["prod_p"]
             indx_ok = np.isfinite(tmp)
             new_p[indx_ok] = tmp[indx_ok]
-
+            
         # modification of the environment always override the modification of the agents (if any)
         # TODO have a flag there if this is the case.
         if "prod_p" in self._env_modification._dict_inj:

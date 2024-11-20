@@ -2033,6 +2033,7 @@ class BaseAction(GridObjects):
                                 elif len(el_ids) >= 2:
                                     raise AmbiguousAction(f"More than one element named {el_nm} for key {k} when trying to modify the injection")
                                 vals[el_ids[0]] = dt_float(el_val)
+                            self._dict_inj[k] = vals
                         else:
                             self._dict_inj[k] = np.array(tmp_d[k]).astype(dt_float)
                         # TODO check the size based on the input data !

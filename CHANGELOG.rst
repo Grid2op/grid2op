@@ -104,6 +104,7 @@ Native multi agents support:
   when creating the data.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
+- [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 

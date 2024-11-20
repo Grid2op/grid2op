@@ -1600,7 +1600,7 @@ class Backend(GridObjects, ABC):
         for el in mandatory_columns:
             if el not in df.columns:
                 warnings.warn(
-                    f"Impossible to load the redispatching data for this environment because"
+                    f"Impossible to load the redispatching data for this environment because "
                     f"one of the mandatory column is not present ({el}). Please check the file "
                     f'"{name}" contains all the mandatory columns: {mandatory_columns}'
                 )
