@@ -12,6 +12,7 @@ from pathlib import Path
 from grid2op.Environment import Environment, MultiMixEnvironment
 from grid2op.tests.helper_path_test import *
 import grid2op
+from grid2op.Space import GRID2OP_CLASSES_ENV_FOLDER
 import shutil
 
 import pdb
@@ -24,7 +25,7 @@ class TestGenerateFile(unittest.TestCase):
                 # self._aux_assert_exists_then_delete(mix)
             self._aux_assert_exists_then_delete(env.mix_envs[0])
         elif isinstance(env, Environment):
-            path = Path(env.get_path_env()) / "_grid2op_classes"
+            path = Path(env.get_path_env()) / GRID2OP_CLASSES_ENV_FOLDER
             assert path.exists(), f"path {path} does not exists"
             shutil.rmtree(path, ignore_errors=True)
         else:

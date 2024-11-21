@@ -136,6 +136,8 @@ Native multi agents support:
 - [IMPROVED] some type hints for some agent class
 - [IMPROVED] the `backend.update_from_obs` function to work even when observation
   does not have shunt information but there are not shunts on the grid.
+- [IMPROVED] consistency of `MultiMixEnv` in case of automatic_classes (only one
+  class is generated for all mixes)
 
 [1.10.4] - 2024-10-15
 -------------------------

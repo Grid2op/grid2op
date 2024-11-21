@@ -10,7 +10,7 @@ import os
 import time
 import copy
 import importlib.util
-from typing import Dict, Tuple, Type, Union
+from typing import Dict, Tuple, Type, Union, Optional
 import numpy as np
 import json
 import warnings
@@ -26,6 +26,7 @@ from grid2op.Chronics import (ChronicsHandler,
                               FromChronix2grid,
                               GridStateFromFile,
                               GridValue)
+from grid2op.Space import GRID2OP_CLASSES_ENV_FOLDER
 from grid2op.Action import BaseAction, DontAct
 from grid2op.Exceptions import EnvError
 from grid2op.Observation import CompleteObservation, BaseObservation
@@ -892,17 +893,21 @@ def make_from_dataset_path(
     # new in 1.11.0:
     if _add_cls_nm_bk:
         _add_to_name = backend.get_class_added_name() + _add_to_name
-        
+    do_not_erase_cls : Optional[bool] = None
     if use_class_in_files:
         # new behaviour
-        sys_path = os.path.join(os.path.split(grid_path_abs)[0], "_grid2op_classes")
-        if not os.path.exists(sys_path):
+        if _overload_name_multimix is None:
+            sys_path_cls = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
+        else:
+            sys_path_cls = os.path.join(_overload_name_multimix[1], GRID2OP_CLASSES_ENV_FOLDER)
+        if not os.path.exists(sys_path_cls):
             try:
-                os.mkdir(sys_path)
+                os.mkdir(sys_path_cls)
             except FileExistsError:
                 # if another process created it, no problem
                 pass
-        init_nm = os.path.join(sys_path, "__init__.py")
+            
+        init_nm = os.path.join(sys_path_cls, "__init__.py")
         if not os.path.exists(init_nm):
             try:
                 with open(init_nm, "w", encoding="utf-8") as f:
@@ -911,8 +916,14 @@ def make_from_dataset_path(
                 pass
             
         import tempfile
-        this_local_dir = tempfile.TemporaryDirectory(dir=sys_path)
-        
+        if _overload_name_multimix is None or _overload_name_multimix[0] is None:
+            this_local_dir = tempfile.TemporaryDirectory(dir=sys_path_cls)
+            this_local_dir_name = this_local_dir.name
+        else:
+            this_local_dir_name = _overload_name_multimix[0]
+            this_local_dir = None
+            do_not_erase_cls = True
+            
         if experimental_read_from_local_dir:
             warnings.warn("With the automatic class generation, we removed the possibility to "
                           "set `experimental_read_from_local_dir` to True.")
@@ -929,51 +940,57 @@ def make_from_dataset_path(
         if graph_layout is not None and graph_layout:
             type(backend).attach_layout(graph_layout)
             
-        if not os.path.exists(this_local_dir.name):
-            raise EnvError(f"Path {this_local_dir.name} has not been created by the tempfile package")
+        if not os.path.exists(this_local_dir_name):
+            raise EnvError(f"Path {this_local_dir_name} has not been created by the tempfile package")
+        if _overload_name_multimix is not None and _overload_name_multimix[0] is None:
+            # this is a multimix
+            # AND this is the first mix of a multi mix
+            # I change the env name to add the "add_to_name"
+            _overload_name_multimix.name_env = _overload_name_multimix.name_env + _add_to_name
+            _overload_name_multimix.add_to_name = ""
         init_env = Environment(init_env_path=os.path.abspath(dataset_path),
-                                init_grid_path=grid_path_abs,
-                                chronics_handler=data_feeding_fake,
-                                backend=backend,
-                                parameters=param,
-                                name=name_env + _add_to_name,
-                                names_chronics_to_backend=names_chronics_to_backend,
-                                actionClass=action_class,
-                                observationClass=observation_class,
-                                rewardClass=reward_class,
-                                legalActClass=gamerules_class,
-                                voltagecontrolerClass=volagecontroler_class,
-                                other_rewards=other_rewards,
-                                opponent_space_type=opponent_space_type,
-                                opponent_action_class=opponent_action_class,
-                                opponent_class=opponent_class,
-                                opponent_init_budget=opponent_init_budget,
-                                opponent_attack_duration=opponent_attack_duration,
-                                opponent_attack_cooldown=opponent_attack_cooldown,
-                                opponent_budget_per_ts=opponent_budget_per_ts,
-                                opponent_budget_class=opponent_budget_class,
-                                kwargs_opponent=kwargs_opponent,
-                                has_attention_budget=has_attention_budget,
-                                attention_budget_cls=attention_budget_class,
-                                kwargs_attention_budget=kwargs_attention_budget,
-                                logger=logger,
-                                n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
-                                _compat_glop_version=_compat_glop_version,
-                                _read_from_local_dir=None,  # first environment to generate the classes and save them
-                                _local_dir_cls=None,
-                                _overload_name_multimix=_overload_name_multimix,
-                                kwargs_observation=kwargs_observation,
-                                observation_bk_class=observation_backend_class,
-                                observation_bk_kwargs=observation_backend_kwargs
-                                )   
-        if not os.path.exists(this_local_dir.name):
-            raise EnvError(f"Path {this_local_dir.name} has not been created by the tempfile package")
-        init_env.generate_classes(local_dir_id=this_local_dir.name)
+                               init_grid_path=grid_path_abs,
+                               chronics_handler=data_feeding_fake,
+                               backend=backend,
+                               parameters=param,
+                               name=name_env + _add_to_name,
+                               names_chronics_to_backend=names_chronics_to_backend,
+                               actionClass=action_class,
+                               observationClass=observation_class,
+                               rewardClass=reward_class,
+                               legalActClass=gamerules_class,
+                               voltagecontrolerClass=volagecontroler_class,
+                               other_rewards=other_rewards,
+                               opponent_space_type=opponent_space_type,
+                               opponent_action_class=opponent_action_class,
+                               opponent_class=opponent_class,
+                               opponent_init_budget=opponent_init_budget,
+                               opponent_attack_duration=opponent_attack_duration,
+                               opponent_attack_cooldown=opponent_attack_cooldown,
+                               opponent_budget_per_ts=opponent_budget_per_ts,
+                               opponent_budget_class=opponent_budget_class,
+                               kwargs_opponent=kwargs_opponent,
+                               has_attention_budget=has_attention_budget,
+                               attention_budget_cls=attention_budget_class,
+                               kwargs_attention_budget=kwargs_attention_budget,
+                               logger=logger,
+                               n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
+                               _compat_glop_version=_compat_glop_version,
+                               _read_from_local_dir=None,  # first environment to generate the classes and save them
+                               _local_dir_cls=None,
+                               _overload_name_multimix=_overload_name_multimix,
+                               kwargs_observation=kwargs_observation,
+                               observation_bk_class=observation_backend_class,
+                               observation_bk_kwargs=observation_backend_kwargs
+                               )   
+        if not os.path.exists(this_local_dir_name):
+            raise EnvError(f"Path {this_local_dir_name} has not been created by the tempfile package")
+        init_env.generate_classes(local_dir_id=this_local_dir_name)
         # fix `my_bk_act_class` and `_complete_action_class`
         _aux_fix_backend_internal_classes(type(backend), this_local_dir)
         init_env.backend = None  # to avoid to close the backend when init_env is deleted
         init_env._local_dir_cls = None
-        classes_path = this_local_dir.name
+        classes_path = this_local_dir_name
         allow_loaded_backend = True
     else:
         # legacy behaviour (<= 1.10.1 behaviour)
@@ -983,13 +1000,13 @@ def make_from_dataset_path(
                 # I am in a multimix
                 if _overload_name_multimix[0] is None:
                     # first mix: path is correct
-                    sys_path = os.path.join(os.path.split(grid_path_abs)[0], "_grid2op_classes")
+                    sys_path = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
                 else:
                     # other mixes I need to retrieve the properties of the first mix
                     sys_path = _overload_name_multimix[0]
             else:
                 # I am not in a multimix
-                sys_path = os.path.join(os.path.split(grid_path_abs)[0], "_grid2op_classes")
+                sys_path = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
             if not os.path.exists(sys_path):
                 raise RuntimeError(
                     "Attempting to load the grid classes from the env path. Yet the directory "
@@ -1047,6 +1064,8 @@ def make_from_dataset_path(
         observation_bk_class=observation_backend_class,
         observation_bk_kwargs=observation_backend_kwargs
     )   
+    if do_not_erase_cls is not None:
+        env._do_not_erase_local_dir_cls = do_not_erase_cls
     # Update the thermal limit if any
     if thermal_limits is not None:
         env.set_thermal_limit(thermal_limits)

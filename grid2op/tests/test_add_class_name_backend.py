@@ -234,4 +234,4 @@ class TestAddClassNameBackend(unittest.TestCase):
             assert (type(el).load_pos_topo_vect == self.load_pos_topo_vect_multi_pp).all()
         
 # TODO and as always, add Runner, MaskedEnv and TimedOutEnv
-        
+# TODO check with "automatic class generation"
