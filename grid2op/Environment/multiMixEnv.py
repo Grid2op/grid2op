@@ -34,6 +34,7 @@ class _OverloadNameMultiMixInfo:
         self.path_env = path_env
         self.name_env = name_env
         self.add_to_name = add_to_name
+        self.local_dir_tmpfolder = None
         
     def __getitem__(self, arg):
         try:
@@ -245,10 +246,10 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         # Make sure GridObject class attributes are set from first env
         # Should be fine since the grid is the same for all envs
         if not _add_cls_nm_bk:
-            multi_env_name = _OverloadNameMultiMixInfo(None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
+            self.multi_env_name = _OverloadNameMultiMixInfo(None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
         else:
             _add_to_name = _added_bk_name + _add_to_name
-            multi_env_name = _OverloadNameMultiMixInfo(None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
+            self.multi_env_name = _OverloadNameMultiMixInfo(None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
                     
         env_for_init = self._aux_create_a_mix(envs_dir,
                                               li_mix_nms[0],
@@ -262,26 +263,27 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                                               n_busbar,
                                               _test,
                                               experimental_read_from_local_dir,
-                                              multi_env_name,
-                                              kwargs)
+                                              self.multi_env_name,
+                                              kwargs)    
         cls_res_me = self._aux_add_class_file(env_for_init)
+        self.multi_env_name.local_dir_tmpfolder = self._local_dir_cls
         if cls_res_me is not None:
             self.__class__ = cls_res_me
         else:
             self.__class__ = type(self).init_grid(type(env_for_init.backend), _local_dir_cls=env_for_init._local_dir_cls)
         self.mix_envs[li_mix_nms[0]] = env_for_init
         # TODO reuse same observation_space and action_space in all the envs maybe ?
-        multi_env_name.path_cls = type(env_for_init)._PATH_GRID_CLASSES
-        multi_env_name.name_env = env_for_init.env_name
+        self.multi_env_name.path_cls = type(env_for_init)._PATH_GRID_CLASSES
+        self.multi_env_name.name_env = env_for_init.env_name
         
         try:
-            for mix_name in li_mix_nms[1:]:
+            for i, mix_name in enumerate(li_mix_nms[1:]):
                 mix_path = os.path.join(envs_dir, mix_name)
                 if not os.path.isdir(mix_path):
                     continue
                 mix = self._aux_create_a_mix(envs_dir,
                                              mix_name,
-                                             False,
+                                             False,  # first mix
                                              logger,
                                              backendClass,
                                              backend_kwargs,
@@ -291,11 +293,11 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                                              n_busbar,
                                              _test,
                                              experimental_read_from_local_dir,
-                                             multi_env_name,
+                                             self.multi_env_name,
                                              kwargs)
                 self.mix_envs[mix_name] = mix
         except Exception as exc_:
-            err_msg = "MultiMix environment creation failed at the creation of the first mix. Error: {}".format(exc_)
+            err_msg = f"MultiMix environment creation failed at the creation of mix {mix_name} (mix {i+1+1} / {len(li_mix_nms)})"
             raise EnvError(err_msg) from exc_
 
         if len(self.mix_envs) == 0:
@@ -315,6 +317,9 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                 self._do_not_erase_local_dir_cls = True
         else:
             self._do_not_erase_local_dir_cls = True
+        
+        # to prevent the cleaning of this tmp folder
+        self.multi_env_name.local_dir_tmpfolder = None
 
     def _aux_aux_add_class_file(self, sys_path, env_for_init):
         # used for the old behaviour (setting experimental_read_from_local_dir=True in make)
@@ -397,7 +402,6 @@ class MultiMixEnvironment(GridObjects, RandomObject):
             experimental_read_from_local_dir=experimental_read_from_local_dir,
             _overload_name_multimix=multi_env_name,
             **kwargs)
-        
         if is_first_mix:
             # in the first mix either I need to create the backend, or
             # pass the backend given in argument
@@ -695,6 +699,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
     def generate_classes(self):
         mix_for_classes = self.mix_envs[self.all_names[0]]
         path_cls = os.path.join(mix_for_classes.get_path_env(), GRID2OP_CLASSES_ENV_FOLDER)
+        path_cls = self.multi_env_name.path_env
         if not os.path.exists(path_cls):
             try:
                 os.mkdir(path_cls)

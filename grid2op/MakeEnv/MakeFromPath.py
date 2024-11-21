@@ -894,6 +894,16 @@ def make_from_dataset_path(
     if _add_cls_nm_bk:
         _add_to_name = backend.get_class_added_name() + _add_to_name
     do_not_erase_cls : Optional[bool] = None
+    
+    # new in 1.11.0
+    if _overload_name_multimix is not None and _overload_name_multimix.local_dir_tmpfolder is not None:
+        # case of multimix
+        # this is not the first mix
+        # for the other mix I need to read the data from files and NOT
+        # create the classes
+        use_class_in_files = False
+        this_local_dir = _overload_name_multimix.local_dir_tmpfolder
+        
     if use_class_in_files:
         # new behaviour
         if _overload_name_multimix is None:
@@ -1004,6 +1014,7 @@ def make_from_dataset_path(
                 else:
                     # other mixes I need to retrieve the properties of the first mix
                     sys_path = _overload_name_multimix[0]
+                # sys_path = os.path.join(_overload_name_multimix[1], GRID2OP_CLASSES_ENV_FOLDER)
             else:
                 # I am not in a multimix
                 sys_path = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
@@ -1025,8 +1036,19 @@ def make_from_dataset_path(
             import sys
             sys.path.append(os.path.split(os.path.abspath(sys_path))[0])
             classes_path = sys_path
+
+    # new in 1.11.0
+    if _overload_name_multimix is not None and _overload_name_multimix.local_dir_tmpfolder is not None:
+        # case of multimix
+        # this is not the first mix
+        # for the other mix I need to read the data from files and NOT
+        # create the classes
+        use_class_in_files = False
+        this_local_dir = _overload_name_multimix.local_dir_tmpfolder
+        classes_path = this_local_dir.name
+        
     # Finally instantiate env from config & overrides
-    # including (if activated the new grid2op behaviour)    
+    # including (if activated the new grid2op behaviour)
     env = Environment(
         init_env_path=os.path.abspath(dataset_path),
         init_grid_path=grid_path_abs,

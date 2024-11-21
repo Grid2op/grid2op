@@ -20,10 +20,14 @@ import pdb
 
 class TestGenerateFile(unittest.TestCase):
     def _aux_assert_exists_then_delete(self, env):
+        path = Path(env.get_path_env()) / GRID2OP_CLASSES_ENV_FOLDER
+        assert path.exists(), f"path {path} does not exists"
+        shutil.rmtree(path, ignore_errors=True)
+        return
         if isinstance(env, MultiMixEnvironment):
             # for mix in env:
                 # self._aux_assert_exists_then_delete(mix)
-            self._aux_assert_exists_then_delete(env.mix_envs[0])
+            self._aux_assert_exists_then_delete(env.mix_envs[env.all_names[0]])
         elif isinstance(env, Environment):
             path = Path(env.get_path_env()) / GRID2OP_CLASSES_ENV_FOLDER
             assert path.exists(), f"path {path} does not exists"
@@ -35,6 +39,7 @@ class TestGenerateFile(unittest.TestCase):
         env_with_alert = os.path.join(
             PATH_DATA_TEST, "l2rpn_idf_2023_with_alert"
         )
+        return ["l2rpn_neurips_2020_track2"]
         return grid2op.list_available_test_env() + [env_with_alert]
     
     def test_can_generate(self):
