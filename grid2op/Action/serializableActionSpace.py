@@ -121,7 +121,7 @@ class SerializableActionSpace(SerializableSpace):
             rnd_types.append(cls.CHANGE_BUS_ID)
         if "redispatch" in self.actionClass.authorized_keys:
             rnd_types.append(cls.REDISPATCHING_ID)
-        if "flexibility" in self.actionClass.authorized_keys:
+        if "flexibility" in self.actionClass.authorized_keys and self.flexible_load_available:
             rnd_types.append(cls.FLEXIBILITY_ID)
         if cls.n_storage > 0 and "storage_power" in self.actionClass.authorized_keys:
             rnd_types.append(cls.STORAGE_POWER_ID)
