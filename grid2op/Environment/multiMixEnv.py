@@ -10,6 +10,7 @@ import os
 import warnings
 import numpy as np
 import copy
+import re
 from typing import Any, Dict, Tuple, Union, List, Literal, Optional
 
 from grid2op.dtypes import dt_int, dt_float
@@ -211,11 +212,11 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         RandomObject.__init__(self)
         self.current_env = None
         self.env_index = None
-        self.mix_envs = []
+        self.mix_envs = {}
         self._env_dir = os.path.abspath(envs_dir)
         self.__closed = False
         self._do_not_erase_local_dir_cls = False                
-        self._local_dir_cls = None
+        self._local_dir_cls = None        
         if not os.path.exists(envs_dir):
             raise EnvError(f"There is nothing at {envs_dir}")
         # Special case handling for backend
@@ -268,7 +269,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
             self.__class__ = cls_res_me
         else:
             self.__class__ = type(self).init_grid(type(env_for_init.backend), _local_dir_cls=env_for_init._local_dir_cls)
-        self.mix_envs.append(env_for_init)
+        self.mix_envs[li_mix_nms[0]] = env_for_init
         # TODO reuse same observation_space and action_space in all the envs maybe ?
         multi_env_name.path_cls = type(env_for_init)._PATH_GRID_CLASSES
         multi_env_name.name_env = env_for_init.env_name
@@ -292,7 +293,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                                              experimental_read_from_local_dir,
                                              multi_env_name,
                                              kwargs)
-                self.mix_envs.append(mix)
+                self.mix_envs[mix_name] = mix
         except Exception as exc_:
             err_msg = "MultiMix environment creation failed at the creation of the first mix. Error: {}".format(exc_)
             raise EnvError(err_msg) from exc_
@@ -303,10 +304,11 @@ class MultiMixEnvironment(GridObjects, RandomObject):
 
         # tell every mix the "MultiMix" is responsible for deleting the 
         # folder that stores the classes definition
-        for el in self.mix_envs:
+        for el in self.mix_envs.values():
             el._do_not_erase_local_dir_cls = True
         self.env_index = 0
-        self.current_env = self.mix_envs[self.env_index]
+        self.all_names = li_mix_nms
+        self.current_env = self.mix_envs[self.all_names[self.env_index]]
         # legacy behaviour (using experimental_read_from_local_dir kwargs in env.make)
         if self._read_from_local_dir is not None:
             if os.path.split(self._read_from_local_dir)[1] == GRID2OP_CLASSES_ENV_FOLDER:
@@ -412,15 +414,17 @@ class MultiMixEnvironment(GridObjects, RandomObject):
             # or a new backend from the kwargs
             if self._ptr_backend_obj_first_env._can_be_copied:
                 bk = self._ptr_backend_obj_first_env.copy()
+                bk._is_loaded = False
             elif backendClass is not None:
                 # Special case for backend
-                bk = self._aux_make_backend_from_cls(self.mix_envs[0]._raw_backend_class,
+                bk = self._aux_make_backend_from_cls(self.mix_envs[self.all_names[0]]._raw_backend_class,
                                                      self._ptr_backend_obj_first_env._my_kwargs)
-                kwargs_make["backend"] = bk
+            kwargs_make["backend"] = bk
         mix = make(
             mix_path,
             **kwargs_make
         )
+        mix.multimix_mix_name = mix_name
         if is_first_mix and self._ptr_backend_obj_first_env is None:
             # if the "backend" kwargs has not been provided in the user call to "make"
             # then I save a "pointer" to the backend of the first mix
@@ -468,7 +472,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
 
     def __next__(self):
         if self.env_index < len(self.mix_envs):
-            r = self.mix_envs[self.env_index]
+            r = self.mix_envs[self.all_names[self.env_index]]
             self.env_index = self.env_index + 1
             return r
         else:
@@ -482,16 +486,16 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         return getattr(self.current_env, name)
 
     def keys(self):
-        for mix in self.mix_envs:
-            yield mix.multimix_mix_name
+        for mix in self.mix_envs.keys():
+            yield mix
 
     def values(self):
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             yield mix
 
     def items(self):
-        for mix in self.mix_envs:
-            yield mix.multimix_mix_name, mix
+        for mix in self.mix_envs.items():
+            yield mix
 
     def copy(self):
         if self.__closed:
@@ -514,8 +518,8 @@ class MultiMixEnvironment(GridObjects, RandomObject):
                 continue
             setattr(res, k, copy.deepcopy(getattr(self, k)))
         # now deal with the mixes
-        res.mix_envs = [mix.copy() for mix in mix_envs]
-        res.current_env = res.mix_envs[res.env_index]
+        res.mix_envs = {el: mix.copy() for el, mix in mix_envs.items()}
+        res.current_env = res.mix_envs[res.all_names[res.env_index]]
         # finally deal with the ownership of the class folder
         res._local_dir_cls = _local_dir_cls
         res._do_not_erase_local_dir_cls = True
@@ -545,12 +549,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         if self.__closed:
             raise EnvError("This environment is closed, you cannot use it.")
         # Search for key
-        for mix in self.mix_envs:
-            if mix.multimix_mix_name == key:
-                return mix
-
-        # Not found by name
-        raise KeyError
+        return self.mix_envs[key]
 
     def reset(self, 
               *,
@@ -574,7 +573,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         else:
             self.env_index = (self.env_index + 1) % len(self.mix_envs)
 
-        self.current_env = self.mix_envs[self.env_index]
+        self.current_env = self.mix_envs[self.all_names[self.env_index]]
         return self.current_env.reset(seed=seed, options=options)
 
     def seed(self, seed=None):
@@ -608,7 +607,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         s = super().seed(seed)
         seeds = [s]
         max_dt_int = np.iinfo(dt_int).max
-        for env in self.mix_envs:
+        for env in self.mix_envs.values():
             env_seed = self.space_prng.randint(max_dt_int)
             env_seeds = env.seed(env_seed)
             seeds.append(env_seeds)
@@ -617,25 +616,25 @@ class MultiMixEnvironment(GridObjects, RandomObject):
     def set_chunk_size(self, new_chunk_size):
         if self.__closed:
             raise EnvError("This environment is closed, you cannot use it.")
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             mix.set_chunk_size(new_chunk_size)
 
     def set_id(self, id_):
         if self.__closed:
             raise EnvError("This environment is closed, you cannot use it.")
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             mix.set_id(id_)
 
     def deactivate_forecast(self):
         if self.__closed:
             raise EnvError("This environment is closed, you cannot use it.")
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             mix.deactivate_forecast()
 
     def reactivate_forecast(self):
         if self.__closed:
             raise EnvError("This environment is closed, you cannot use it.")
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             mix.reactivate_forecast()
 
     def set_thermal_limit(self, thermal_limit):
@@ -645,7 +644,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         """
         if self.__closed:
             raise EnvError("This environment is closed, you cannot use it.")
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             mix.set_thermal_limit(thermal_limit)
 
     def __enter__(self):
@@ -668,7 +667,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         if self.__closed:
             return
 
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             mix.close()
             
         self.__closed = True
@@ -685,7 +684,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
     def attach_layout(self, grid_layout):
         if self.__closed:
             raise EnvError("This environment is closed, you cannot use it.")
-        for mix in self.mix_envs:
+        for mix in self.mix_envs.values():
             mix.attach_layout(grid_layout)
 
     def __del__(self):
@@ -694,7 +693,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
             self.close()
             
     def generate_classes(self):
-        mix_for_classes = self.mix_envs[0]
+        mix_for_classes = self.mix_envs[self.all_names[0]]
         path_cls = os.path.join(mix_for_classes.get_path_env(), GRID2OP_CLASSES_ENV_FOLDER)
         if not os.path.exists(path_cls):
             try:

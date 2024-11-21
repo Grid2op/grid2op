@@ -175,7 +175,7 @@ class Environment(BaseEnv):
             # creation of a MultiMix.
             # So I use the base name instead.
             self.name = _overload_name_multimix.name_env + _overload_name_multimix.add_to_name
-            self.multimix_mix_name = name
+            self.multimix_mix_name = None  # set in creation of the MultiMixEnv instead
             self._overload_name_multimix = _overload_name_multimix
         else:
             self.name = name
