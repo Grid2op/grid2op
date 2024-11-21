@@ -89,6 +89,11 @@ class TestGymAlertCompat(unittest.TestCase):
                             'set_line_status': Box(-1, 1, (59,), dt_int)}))
         assert gym_act_str == expcted_act_str
         gym_obs_str = env_gym.observation_space.__str__()
+        """  'target_dispatch': Box([ -50.   -67.2  -50.  -250.   -50.   -33.6  -37.3  -37.3  -33.6  -74.7
+ -100.   -37.3  -37.3 -100.   -74.7  -74.7 -150.   -67.2  -74.7 -400.
+ -300.  -350. ], [ 50.   67.2  50.  250.   50.   33.6  37.3  37.3  33.6  74.7 100.   37.3
+  37.3 100.   74.7  74.7 150.   67.2  74.7 400.  300.  350. ], (22,), float32), 'target_flex': Box(-0.0, 0.0, (37,), float32), 'thermal_limit': Box(0.0, inf, (59,), float32), 'theta_ex': Box(-180.0, 180.0, (59,), float32), 'theta_or': Box(-180.0, 180.0, (59,), float32), 'time_before_cooldown_line': Box(0, 96, (59,), int32), 'time_before_cooldown_sub': Box(0, 3, (36,), int32), 'time_next_maintenance': Box(-1, 2147483647, (59,), int32), 'time_since_last_alarm': Box(-1, 2147483647, (1,), int32), 'time_since_last_alert': Box(-1, 2147483647, (10,), int32), 'time_since_last_attack': Box(-1, 2147483647, (10,), int32), 'timestep_overflow': Box(-2147483648, 2147483647, (59,), int32), 'topo_vect': Box(-1, 2, (177,), int32), 'total_number_of_alert': Box(0, 2147483647, (1,), int32), 'v_ex': Box(0.0, inf, (59,), float32), 'v_or': Box(0.0, inf, (59,), float32), 'was_alarm_used_after_game_over': Discrete(2), 'was_alert_used_after_attack': Box(-1, 1, (10,), int32), 'year': Discrete(2100))
+        """
         expected_obs_str = str(Dict({'_shunt_bus': Box(-2147483648, 2147483647, (6,), dt_int), 
                                 '_shunt_p': Box(-np.inf, np.inf, (6,), dt_float), 
                                 '_shunt_q': Box(-np.inf, np.inf, (6,), dt_float),
@@ -100,7 +105,7 @@ class TestGymAlertCompat(unittest.TestCase):
                                                         -37.3,-100.  ,-74.7  ,-74.7  ,-150.  ,-67.2  ,-74.7  ,-400.  ,-300.  ,-350.], dtype=dt_float),
                                                     np.array([50.,67.2,50.  ,250.  ,50.  ,33.6  ,37.3  ,37.3  ,33.6  ,74.7  ,100.  ,37.3, 
                                                         37.3,100.,74.7  ,74.7  ,150.  ,67.2  ,74.7  ,400.  ,300.  ,350.], dtype=dt_float), (22,), dt_float),
-                                'actual_flex': Box(-np.inf, np.inf, (37,), dt_float),
+                                'actual_flex': Box(-0.0, 0.0, (37,), dt_float),
                                 'alert_duration': Box(0, 2147483647, (10,), dt_int),
                                 'attack_under_alert': Box(-1, 1, (10,), dt_int),
                                 'attention_budget': Box(0.0, np.inf, (1,), dt_float),
@@ -145,7 +150,7 @@ class TestGymAlertCompat(unittest.TestCase):
                                                         -37.3 ,-37.3 ,-100. ,-74.7 ,-74.7 ,-150. ,-67.2 ,-74.7 ,-400. ,-300.,-350.], dtype=dt_float), 
                                                     np.array([50. ,67.2 ,50. ,250. ,50. ,33.6 ,37.3 ,37.3 ,33.6 ,74.7 ,100. ,37.3 ,37.3,
                                                         100. ,74.7 ,74.7 ,150. ,67.2 ,74.7 ,400. ,300. ,350.], dtype=dt_float), (22,), dt_float),
-                                'target_flex': Box(-np.inf, np.inf, (37,), dt_float),
+                                'target_flex': Box(-0.0, 0.0, (37,), dt_float),
                                 'thermal_limit': Box(0.0, np.inf, (59,), dt_float),
                                 'theta_ex': Box(-180.0, 180.0, (59,), dt_float),
                                 'theta_or': Box(-180.0, 180.0, (59,), dt_float),
