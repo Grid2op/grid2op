@@ -20,7 +20,7 @@ from grid2op.Chronics.handlers import CSVHandler, PerfectForecastHandler
 try: # Grid2Op available locally
     from ._aux_opponent_for_test_alerts import TestOpponent, _get_blackout
 except: # Grid2OP available as a package
-    from ._aux_opponent_for_test_alerts import TestOpponent, _get_blackout
+    from _aux_opponent_for_test_alerts import TestOpponent, _get_blackout
 class Alert_Blackout_Agent(BaseAgent):
     def __init__(self, action_space,do_Alerts=False,blackout_step=None):
         super().__init__(action_space)
