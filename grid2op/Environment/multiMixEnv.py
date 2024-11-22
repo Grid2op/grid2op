@@ -256,11 +256,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         
         # Make sure GridObject class attributes are set from first env
         # Should be fine since the grid is the same for all envs
-        if not _add_cls_nm_bk:
-            self.multi_env_name = _OverloadNameMultiMixInfo(None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
-        else:
-            _add_to_name = _added_bk_name + _add_to_name
-            self.multi_env_name = _OverloadNameMultiMixInfo(None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
+        self.multi_env_name = _OverloadNameMultiMixInfo(None, envs_dir, os.path.basename(os.path.abspath(envs_dir)), _add_to_name)
 
         env_for_init = self._aux_create_a_mix(envs_dir,
                                               li_mix_nms[0],
