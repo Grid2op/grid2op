@@ -37,7 +37,7 @@ class Issue418Tester(unittest.TestCase):
             obs = gymenv.reset(seed=42)
             curt = np.array([1,1.,0.18852758,0.5537014,0.43770432,1])
             curt = np.array([-1,-1.,0.18852758,0.5537014,0.43770432,-1])
-            if "actual_flex" in self.env.observation_space.attr_list_vect:
+            if "actual_flex" in gymenv.observation_space.spaces:
                 year = 229
                 day = 13
             else:
