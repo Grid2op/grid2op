@@ -169,7 +169,6 @@ class TestGymAlertCompat(unittest.TestCase):
                                 'was_alert_used_after_attack': Box(-1, 1, (10,), dt_int),
                                 'year': Discrete(2100)
                                 }))
-        print(f"Expected\n{expected_obs_str}\n\nOriginal\n{gym_obs_str}")
         assert gym_obs_str == expected_obs_str
         
         act = self.env.action_space()
