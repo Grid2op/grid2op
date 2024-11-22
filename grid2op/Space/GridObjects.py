@@ -4069,7 +4069,7 @@ class GridObjects:
                         res,
                         cls,
                         nm_attr,
-                        (lambda li: [type_attr(el) for el in li]) if as_list else None,
+                        (lambda li, type_attr=type_attr: [type_attr(el) for el in li]) if as_list else None,
                         copy_,
                     )
             else:
@@ -4087,7 +4087,7 @@ class GridObjects:
                         res,
                         cls,
                         nm_attr,
-                        (lambda li: [type_attr(el) for el in li]) if as_list else None,
+                        (lambda li, type_attr=type_attr: [type_attr(el) for el in li]) if as_list else None,
                         copy_,
                     )
             
@@ -4447,7 +4447,8 @@ class GridObjects:
                     cls,
                     nm_attr,
                     extract_from_dict(
-                        dict_, nm_attr, lambda x: np.array(x).astype(type_attr)
+                        dict_, nm_attr,
+                        lambda x, type_attr=type_attr: np.array(x).astype(type_attr)
                     ),
                 )
         
@@ -4466,7 +4467,8 @@ class GridObjects:
             for nm_attr, type_attr in zip(cls._li_attr_flex_load, type_attr_flex_load):
                 setattr(cls, nm_attr,
                     extract_from_dict(
-                        dict_, nm_attr, lambda x: np.array(x).astype(type_attr)
+                        dict_, nm_attr,
+                        lambda x, type_attr=type_attr: np.array(x).astype(type_attr)
                 ))
 
         cls.grid_layout = extract_from_dict(dict_, "grid_layout", lambda x: x)
