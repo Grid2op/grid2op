@@ -166,7 +166,7 @@ class TestGymAlertCompat(unittest.TestCase):
                                 }, **({
                                     'actual_flex': Box(-0.0, 0.0, (37,), dt_float),
                                     'target_flex': Box(-0.0, 0.0, (37,), dt_float),
-                                } if (np.array([attr in env_gym.observation_space.spaces for attr in ["actual_flex", "target_flex"]], dtype=bool)).all() else {})}))
+                                } if "actual_flex" in env_gym.observation_space.spaces else {})}))
         assert gym_obs_str == expected_obs_str, gym_obs_str
         
         act = self.env.action_space()
@@ -230,11 +230,10 @@ class TestGymAlertCompat(unittest.TestCase):
                 for el in env_gym.observation_space.spaces
             ]
         )
-        if (np.array([attr in env_gym.observation_space.spaces for attr in ["actual_flex", "target_flex"]], dtype=bool)).all():
-            size_th = 1792     # as of grid2Op 1.9.1 (where alerts are added)
-                            # as of grid2Op 1.11.0 (where flexibility was added)
+        if "actual_flex" in env_gym.observation_space.spaces:
+            size_th = 1792 # as of grid2Op 1.11.0 (where flexibility was added)
         else:
-            size_th = 1718
+            size_th = 1718 # as of grid2Op 1.9.1 (where alerts are added)
         assert (
             dim_obs_space == size_th
         ), f"Size should be {size_th} but is {dim_obs_space}"

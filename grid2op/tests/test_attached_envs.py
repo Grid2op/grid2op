@@ -184,7 +184,7 @@ class TestL2RPN_CASE14_SANDBOX(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        if np.array([attr in self.env.observation_space.attr_list_vect for attr in ["actual_flex", "target_flex"]], dtype=bool).all():
+        if "actual_flex" in self.env.observation_space.attr_list_vect:
             size_th = 489
         else:
             size_th = 467
