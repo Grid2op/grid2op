@@ -15,7 +15,7 @@ try: # Grid2OP available locally
                                     _AuxTestDiscreteGymActSpace,
                                     _AuxTestAllGymActSpaceWithAlarm,
                                     _AuxTestGOObsInRange)
-except: # Grid2OP available as a package
+except ImportError: # Grid2OP available as a package
     from _aux_test_gym_compat import (GYMNASIUM_AVAILABLE,
                                 _AuxTestGymCompatModule,
                                 _AuxTestBoxGymObsSpace,

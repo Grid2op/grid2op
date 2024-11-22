@@ -9,7 +9,7 @@
 import unittest
 try: # Grid2OP available locally
     from .aaa_test_backend_interface import AAATestBackendAPI
-except: # Grid2OP available as a package
+except ImportError: # Grid2OP available as a package
     from aaa_test_backend_interface import AAATestBackendAPI
 from grid2op.Backend import PandaPowerBackend
 from grid2op.Converter import BackendConverter

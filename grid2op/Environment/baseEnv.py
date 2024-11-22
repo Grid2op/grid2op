@@ -299,6 +299,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     ALARM_KEY = "fixed"
     ALERT_FILE_NAME = "alerts_info.json"
     ALERT_KEY = "by_line"
+    THERMAL_LIMIT = "thermal_limit"
     
     CAN_SKIP_TS = False  # each step is exactly one time step
 
@@ -308,7 +309,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                           "init state",
                           "init ts",
                           "max step",
-                          "thermal limit"}
+                          THERMAL_LIMIT}
     
     def __init__(
         self,
@@ -1495,8 +1496,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._observation_space.change_reward(self._reward_helper.template_reward)
             self.__new_reward_func = None
             
-        if options is not None and "thermal limit" in options:
-            self.set_thermal_limit(options["thermal limit"])
+        if options is not None and BaseEnv.THERMAL_LIMIT in options:
+            self.set_thermal_limit(options[BaseEnv.THERMAL_LIMIT])
             
         self._last_obs = None
 

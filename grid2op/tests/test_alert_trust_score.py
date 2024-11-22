@@ -28,7 +28,7 @@ try: # Grid2OP available locally
                                             TestOpponent,
                                             TestOpponentMultiLines,
                                             _get_blackout)
-except: # Grid2OP available as a package
+except ImportError: # Grid2OP available as a package
     from _aux_opponent_for_test_alerts import (_get_steps_attack,
                                         TestOpponent,
                                         TestOpponentMultiLines,

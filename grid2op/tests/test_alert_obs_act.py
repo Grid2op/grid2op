@@ -20,7 +20,7 @@ from grid2op.Action import PlayableAction
 
 try: # Grid2OP available locally
     from ._aux_opponent_for_test_alerts import OpponentForTestAlert
-except: # Grid2OP available as a package
+except ImportError: # Grid2OP available as a package
     from _aux_opponent_for_test_alerts import OpponentForTestAlert
 
 ALL_ATTACKABLE_LINES = [

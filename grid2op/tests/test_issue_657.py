@@ -12,7 +12,7 @@ import warnings
 
 try: # Grid2Op available locally
     from .helper_path_test import PATH_DATA_TEST
-except: # Grid2OP available as a package
+except ImportError: # Grid2OP available as a package
     from helper_path_test import PATH_DATA_TEST
 import grid2op
 from grid2op.Exceptions import ChronicsError, EnvError

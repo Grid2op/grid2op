@@ -26,7 +26,7 @@ try: # Grid2OP available locally
     from ._aux_opponent_for_test_alerts import (_get_steps_attack,
                                            TestOpponent
                                            )
-except: # Grid2OP available as a package
+except ImportError: # Grid2OP available as a package
     from _aux_opponent_for_test_alerts import (_get_steps_attack,
                                            TestOpponent
                                            )
