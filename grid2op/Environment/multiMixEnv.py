@@ -281,7 +281,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         # TODO reuse same observation_space and action_space in all the envs maybe ?
         self.multi_env_name.path_cls = type(env_for_init)._PATH_GRID_CLASSES
         self.multi_env_name.name_env = env_for_init.env_name
-        
+        i = -1
         try:
             for i, mix_name in enumerate(li_mix_nms[1:]):
                 mix_path = os.path.join(envs_dir, mix_name)
