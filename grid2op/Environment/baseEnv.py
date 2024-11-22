@@ -3193,15 +3193,16 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # same kind of limit for the storage
         res_exc_ = None
         action._redispatch[:] = 0.0
+        action._flexibility[:] = 0.0
         action._storage_power[:] = self._storage_power
         self._backend_action += action
         action._storage_power[:] = action_storage_power
         action._redispatch[:] = init_disp
+        action._flexibility[:] = init_flex
+        
         # TODO storage: check the original action, even when replaced by do nothing is not modified
         self._backend_action += self._env_modification
         self._backend_action.set_redispatch(self._actual_dispatch)
-        action._flexibility[:] = 0.0
-        action._flexibility[:] = init_flex
         self._backend_action.set_flexibility(self._actual_flex)
         return res_exc_
 
