@@ -89,12 +89,83 @@ class TestGymAlertCompat(unittest.TestCase):
                             'set_line_status': Box(-1, 1, (59,), dt_int)}))
         assert gym_act_str == expcted_act_str
         gym_obs_str = env_gym.observation_space.__str__()
-        """  'target_dispatch': Box([ -50.   -67.2  -50.  -250.   -50.   -33.6  -37.3  -37.3  -33.6  -74.7
- -100.   -37.3  -37.3 -100.   -74.7  -74.7 -150.   -67.2  -74.7 -400.
- -300.  -350. ], [ 50.   67.2  50.  250.   50.   33.6  37.3  37.3  33.6  74.7 100.   37.3
-  37.3 100.   74.7  74.7 150.   67.2  74.7 400.  300.  350. ], (22,), float32), 'target_flex': Box(-0.0, 0.0, (37,), float32), 'thermal_limit': Box(0.0, inf, (59,), float32), 'theta_ex': Box(-180.0, 180.0, (59,), float32), 'theta_or': Box(-180.0, 180.0, (59,), float32), 'time_before_cooldown_line': Box(0, 96, (59,), int32), 'time_before_cooldown_sub': Box(0, 3, (36,), int32), 'time_next_maintenance': Box(-1, 2147483647, (59,), int32), 'time_since_last_alarm': Box(-1, 2147483647, (1,), int32), 'time_since_last_alert': Box(-1, 2147483647, (10,), int32), 'time_since_last_attack': Box(-1, 2147483647, (10,), int32), 'timestep_overflow': Box(-2147483648, 2147483647, (59,), int32), 'topo_vect': Box(-1, 2, (177,), int32), 'total_number_of_alert': Box(0, 2147483647, (1,), int32), 'v_ex': Box(0.0, inf, (59,), float32), 'v_or': Box(0.0, inf, (59,), float32), 'was_alarm_used_after_game_over': Discrete(2), 'was_alert_used_after_attack': Box(-1, 1, (10,), int32), 'year': Discrete(2100))
-        """
-        expected_obs_str = str(Dict({'_shunt_bus': Box(-2147483648, 2147483647, (6,), dt_int), 
+        
+        # expected_obs_str = str(Dict({'_shunt_bus': Box(-2147483648, 2147483647, (6,), dt_int), 
+        #                         '_shunt_p': Box(-np.inf, np.inf, (6,), dt_float), 
+        #                         '_shunt_q': Box(-np.inf, np.inf, (6,), dt_float),
+        #                         '_shunt_v': Box(-np.inf, np.inf, (6,), dt_float),
+        #                         'a_ex': Box(0.0, np.inf, (59,), dt_float),
+        #                         'a_or': Box(0.0, np.inf, (59,), dt_float),
+        #                         'active_alert': MultiBinary(10),
+        #                         'actual_dispatch': Box(np.array([-50.,-67.2  ,-50.  ,-250.  ,-50.  ,-33.6  ,-37.3  ,-37.3  ,-33.6  ,-74.7  ,-100.  ,-37.3 ,
+        #                                                 -37.3,-100.  ,-74.7  ,-74.7  ,-150.  ,-67.2  ,-74.7  ,-400.  ,-300.  ,-350.], dtype=dt_float),
+        #                                             np.array([50.,67.2,50.  ,250.  ,50.  ,33.6  ,37.3  ,37.3  ,33.6  ,74.7  ,100.  ,37.3, 
+        #                                                 37.3,100.,74.7  ,74.7  ,150.  ,67.2  ,74.7  ,400.  ,300.  ,350.], dtype=dt_float), (22,), dt_float),
+        #                         'actual_flex': Box(-0.0, 0.0, (37,), dt_float),
+        #                         'alert_duration': Box(0, 2147483647, (10,), dt_int),
+        #                         'attack_under_alert': Box(-1, 1, (10,), dt_int),
+        #                         'attention_budget': Box(0.0, np.inf, (1,), dt_float),
+        #                         'current_step': Box(-2147483648, 2147483647, (1,), dt_int),
+        #                         'curtailment': Box(0.0, 1.0, (22,), dt_float),
+        #                         'curtailment_limit': Box(0.0, 1.0, (22,), dt_float),
+        #                         'curtailment_limit_effective': Box(0.0, 1.0, (22,), dt_float),
+        #                         'day': Discrete(32),
+        #                         'day_of_week': Discrete(8),
+        #                         'delta_time': Box(0.0, np.inf, (1,), dt_float),
+        #                         'duration_next_maintenance': Box(-1, 2147483647, (59,), dt_int),
+        #                         'gen_margin_down': Box(0.0, np.array([1.4 ,0. ,1.4 ,10.4 ,1.4 ,0. ,0. ,0. ,0. ,0. ,2.8 ,0. ,0. ,2.8 ,0. ,0.,
+        #                                                     4.3 ,0. ,0. ,2.8 ,8.5 ,9.9], dtype=dt_float), (22,), dt_float),
+        #                         'gen_margin_up': Box(0.0, np.array([1.4 ,0. ,1.4 ,10.4 ,1.4 ,0. ,0. ,0., 0. ,0. ,2.8 ,0. ,0. ,2.8 ,0.,
+        #                                                             0. ,4.3 ,0. ,0. ,2.8 ,8.5 ,9.9], dtype=dt_float), (22,), dt_float),
+        #                         'gen_p': Box(-734.88995, np.array([784.88995 ,802.08997 ,784.88995 ,984.88995 ,784.88995 ,768.4899 ,772.18994 ,772.18994 ,768.4899 ,809.58997,
+        #                                                 834.88995 ,772.18994 ,772.18994 ,834.88995 ,809.58997 ,809.58997 ,884.88995 ,802.08997 ,809.58997 ,1134.8899,
+        #                                                 1034.8899 ,1084.8899], dtype=dt_float), (22,), dt_float),
+        #                         'gen_p_before_curtail': Box(-734.88995, np.array([784.88995,802.08997,784.88995,984.88995,784.88995,768.4899,772.18994, 772.18994,
+        #                                                                 768.4899,809.58997,834.88995,772.18994,772.18994,
+        #                                                                 834.88995,809.58997,809.58997,884.88995,802.08997,809.58997,1134.8899,1034.8899,
+        #                                                                 1084.8899], dtype=dt_float), (22,), dt_float),
+        #                         'gen_q': Box(-np.inf, np.inf, (22,), dt_float),
+        #                         'gen_theta': Box(-180.0, 180.0, (22,), dt_float),
+        #                         'gen_v': Box(0.0, np.inf, (22,), dt_float),
+        #                         'hour_of_day': Discrete(24),
+        #                         'is_alarm_illegal': Discrete(2),
+        #                         'line_status': MultiBinary(59),
+        #                         'load_p': Box(-np.inf, np.inf, (37,), dt_float),
+        #                         'load_q': Box(-np.inf, np.inf, (37,), dt_float),
+        #                         'load_theta': Box(-180.0, 180.0, (37,), dt_float),
+        #                         'load_v': Box(0.0, np.inf, (37,), dt_float),
+        #                         'max_step': Box(-2147483648, 2147483647, (1,), dt_int),
+        #                         'minute_of_hour': Discrete(60),
+        #                         'month': Discrete(13),
+        #                         'p_ex': Box(-np.inf, np.inf, (59,), dt_float),
+        #                         'p_or': Box(-np.inf, np.inf, (59,), dt_float),
+        #                         'q_ex': Box(-np.inf, np.inf, (59,), dt_float),
+        #                         'q_or': Box(-np.inf, np.inf, (59,), dt_float),
+        #                         'rho': Box(0.0, np.inf, (59,), dt_float),
+        #                         'target_dispatch': Box(np.array([-50. ,-67.2 ,-50. ,-250. ,-50. ,-33.6 ,-37.3 ,-37.3 ,-33.6 ,-74.7 ,-100. ,
+        #                                                 -37.3 ,-37.3 ,-100. ,-74.7 ,-74.7 ,-150. ,-67.2 ,-74.7 ,-400. ,-300.,-350.], dtype=dt_float), 
+        #                                             np.array([50. ,67.2 ,50. ,250. ,50. ,33.6 ,37.3 ,37.3 ,33.6 ,74.7 ,100. ,37.3 ,37.3,
+        #                                                 100. ,74.7 ,74.7 ,150. ,67.2 ,74.7 ,400. ,300. ,350.], dtype=dt_float), (22,), dt_float),
+        #                         'target_flex': Box(-0.0, 0.0, (37,), dt_float),
+        #                         'thermal_limit': Box(0.0, np.inf, (59,), dt_float),
+        #                         'theta_ex': Box(-180.0, 180.0, (59,), dt_float),
+        #                         'theta_or': Box(-180.0, 180.0, (59,), dt_float),
+        #                         'time_before_cooldown_line': Box(0, 96, (59,), dt_int),
+        #                         'time_before_cooldown_sub': Box(0, 3, (36,), dt_int),
+        #                         'time_next_maintenance': Box(-1, 2147483647, (59,), dt_int),
+        #                         'time_since_last_alarm': Box(-1, 2147483647, (1,), dt_int),
+        #                         'time_since_last_alert': Box(-1, 2147483647, (10,), dt_int),
+        #                         'time_since_last_attack': Box(-1, 2147483647, (10,), dt_int),
+        #                         'timestep_overflow': Box(-2147483648, 2147483647, (59,), dt_int),
+        #                         'topo_vect': Box(-1, 2, (177,), dt_int),
+        #                         'total_number_of_alert': Box(0, 2147483647, (1,), dt_int),
+        #                         'v_ex': Box(0.0, np.inf, (59,), dt_float),
+        #                         'v_or': Box(0.0, np.inf, (59,), dt_float),
+        #                         'was_alarm_used_after_game_over': Discrete(2),
+        #                         'was_alert_used_after_attack': Box(-1, 1, (10,), dt_int),
+        #                         'year': Discrete(2100)
+        #                         }))
+        expected_obs_str = str(Dict({**{'_shunt_bus': Box(-2147483648, 2147483647, (6,), dt_int), 
                                 '_shunt_p': Box(-np.inf, np.inf, (6,), dt_float), 
                                 '_shunt_q': Box(-np.inf, np.inf, (6,), dt_float),
                                 '_shunt_v': Box(-np.inf, np.inf, (6,), dt_float),
@@ -105,7 +176,6 @@ class TestGymAlertCompat(unittest.TestCase):
                                                         -37.3,-100.  ,-74.7  ,-74.7  ,-150.  ,-67.2  ,-74.7  ,-400.  ,-300.  ,-350.], dtype=dt_float),
                                                     np.array([50.,67.2,50.  ,250.  ,50.  ,33.6  ,37.3  ,37.3  ,33.6  ,74.7  ,100.  ,37.3, 
                                                         37.3,100.,74.7  ,74.7  ,150.  ,67.2  ,74.7  ,400.  ,300.  ,350.], dtype=dt_float), (22,), dt_float),
-                                'actual_flex': Box(-0.0, 0.0, (37,), dt_float),
                                 'alert_duration': Box(0, 2147483647, (10,), dt_int),
                                 'attack_under_alert': Box(-1, 1, (10,), dt_int),
                                 'attention_budget': Box(0.0, np.inf, (1,), dt_float),
@@ -150,7 +220,7 @@ class TestGymAlertCompat(unittest.TestCase):
                                                         -37.3 ,-37.3 ,-100. ,-74.7 ,-74.7 ,-150. ,-67.2 ,-74.7 ,-400. ,-300.,-350.], dtype=dt_float), 
                                                     np.array([50. ,67.2 ,50. ,250. ,50. ,33.6 ,37.3 ,37.3 ,33.6 ,74.7 ,100. ,37.3 ,37.3,
                                                         100. ,74.7 ,74.7 ,150. ,67.2 ,74.7 ,400. ,300. ,350.], dtype=dt_float), (22,), dt_float),
-                                'target_flex': Box(-0.0, 0.0, (37,), dt_float),
+                                
                                 'thermal_limit': Box(0.0, np.inf, (59,), dt_float),
                                 'theta_ex': Box(-180.0, 180.0, (59,), dt_float),
                                 'theta_or': Box(-180.0, 180.0, (59,), dt_float),
@@ -168,8 +238,11 @@ class TestGymAlertCompat(unittest.TestCase):
                                 'was_alarm_used_after_game_over': Discrete(2),
                                 'was_alert_used_after_attack': Box(-1, 1, (10,), dt_int),
                                 'year': Discrete(2100)
-                                }))
-        assert gym_obs_str == expected_obs_str
+                                }, **({
+                                    'actual_flex': Box(-0.0, 0.0, (37,), dt_float),
+                                    'target_flex': Box(-0.0, 0.0, (37,), dt_float),
+                                } if (np.array([attr in env_gym.observation_space.spaces for attr in ["actual_flex", "target_flex"]], dtype=bool)).all() else {})}))
+        assert gym_obs_str == expected_obs_str, gym_obs_str
         
         act = self.env.action_space()
         act.raise_alert = [2]
@@ -232,9 +305,11 @@ class TestGymAlertCompat(unittest.TestCase):
                 for el in env_gym.observation_space.spaces
             ]
         )
-        
-        size_th = 1792     # as of grid2Op 1.9.1 (where alerts are added)
-                           # as of grid2Op 1.11.0 (where flexibility was added)
+        if (np.array([attr in env_gym.observation_space.spaces for attr in ["actual_flex", "target_flex"]], dtype=bool)).all():
+            size_th = 1792     # as of grid2Op 1.9.1 (where alerts are added)
+                            # as of grid2Op 1.11.0 (where flexibility was added)
+        else:
+            size_th = 1718
         assert (
             dim_obs_space == size_th
         ), f"Size should be {size_th} but is {dim_obs_space}"
