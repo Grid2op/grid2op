@@ -896,14 +896,21 @@ def make_from_dataset_path(
     do_not_erase_cls : Optional[bool] = None
     
     # new in 1.11.0
-    if _overload_name_multimix is not None and _overload_name_multimix.local_dir_tmpfolder is not None:
-        # case of multimix
-        # this is not the first mix
-        # for the other mix I need to read the data from files and NOT
-        # create the classes
-        use_class_in_files = False
-        this_local_dir = _overload_name_multimix.local_dir_tmpfolder
+    if _overload_name_multimix is not None:
+        # this is a multimix
+        # AND this is the first mix of a multi mix
+        # I change the env name to add the "add_to_name"
         
+        if  _overload_name_multimix.mix_id == 0:  
+            # this is the first mix I need to assign proper names
+            _overload_name_multimix.name_env = _overload_name_multimix.name_env + _add_to_name
+            _overload_name_multimix.add_to_name = ""
+        else:
+            # this is not the first mix
+            # for the other mix I need to read the data from files and NOT
+            # create the classes
+            use_class_in_files = False
+    
     if use_class_in_files:
         # new behaviour
         if _overload_name_multimix is None:
@@ -952,12 +959,6 @@ def make_from_dataset_path(
             
         if not os.path.exists(this_local_dir_name):
             raise EnvError(f"Path {this_local_dir_name} has not been created by the tempfile package")
-        if _overload_name_multimix is not None and _overload_name_multimix[0] is None:
-            # this is a multimix
-            # AND this is the first mix of a multi mix
-            # I change the env name to add the "add_to_name"
-            _overload_name_multimix.name_env = _overload_name_multimix.name_env + _add_to_name
-            _overload_name_multimix.add_to_name = ""
         init_env = Environment(init_env_path=os.path.abspath(dataset_path),
                                init_grid_path=grid_path_abs,
                                chronics_handler=data_feeding_fake,
@@ -1014,7 +1015,7 @@ def make_from_dataset_path(
                 else:
                     # other mixes I need to retrieve the properties of the first mix
                     sys_path = _overload_name_multimix[0]
-                # sys_path = os.path.join(_overload_name_multimix[1], GRID2OP_CLASSES_ENV_FOLDER)
+                sys_path = os.path.join(_overload_name_multimix[1], GRID2OP_CLASSES_ENV_FOLDER)
             else:
                 # I am not in a multimix
                 sys_path = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
@@ -1038,14 +1039,16 @@ def make_from_dataset_path(
             classes_path = sys_path
 
     # new in 1.11.0
-    if _overload_name_multimix is not None and _overload_name_multimix.local_dir_tmpfolder is not None:
+    if _overload_name_multimix is not None:
         # case of multimix
-        # this is not the first mix
-        # for the other mix I need to read the data from files and NOT
-        # create the classes
-        use_class_in_files = False
-        this_local_dir = _overload_name_multimix.local_dir_tmpfolder
-        classes_path = this_local_dir.name
+        _add_to_name = ''  # already defined in the first mix
+        name_env = _overload_name_multimix.name_env
+        if  _overload_name_multimix.mix_id >= 1 and _overload_name_multimix.local_dir_tmpfolder is not None:  
+            # this is not the first mix
+            # for the other mix I need to read the data from files and NOT
+            # create the classes
+            this_local_dir = _overload_name_multimix.local_dir_tmpfolder
+            classes_path = this_local_dir.name
         
     # Finally instantiate env from config & overrides
     # including (if activated the new grid2op behaviour)

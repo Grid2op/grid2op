@@ -4118,7 +4118,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         cls_res = getattr(module, cls_other.__name__)
         return str_import, cls_res
 
-    def generate_classes(self, *, local_dir_id=None, _guard=None, _is_base_env__=True, sys_path=None):
+    def generate_classes(self, *, local_dir_id=None, _guard=None, sys_path=None, _is_base_env__=True):
         """
         Use with care, but can be incredibly useful !
         

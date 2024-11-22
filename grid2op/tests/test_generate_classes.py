@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import re
 import unittest
 import warnings
 from pathlib import Path
@@ -39,7 +40,6 @@ class TestGenerateFile(unittest.TestCase):
         env_with_alert = os.path.join(
             PATH_DATA_TEST, "l2rpn_idf_2023_with_alert"
         )
-        return ["l2rpn_neurips_2020_track2"]
         return grid2op.list_available_test_env() + [env_with_alert]
     
     def test_can_generate(self):
@@ -62,6 +62,11 @@ class TestGenerateFile(unittest.TestCase):
                                    test=True,
                                    _add_to_name=_add_to_name)
             env.generate_classes()
+            cls_nm_tmp = f"PandaPowerBackend{_add_to_name}"
+            cls_nm_end = f"{cls_nm_tmp}$"
+            cls_nm_twice = f"{cls_nm_tmp}.+{cls_nm_end}"
+            assert re.search(cls_nm_end, type(env).__name__) is not None # name of the backend and "add_to_name" should appear once
+            assert re.search(cls_nm_twice, type(env).__name__) is None  # they should not appear twice !
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
                 try:
