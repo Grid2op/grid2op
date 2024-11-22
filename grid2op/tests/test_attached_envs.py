@@ -8,6 +8,7 @@
 
 import warnings
 import unittest
+import numpy as np
 import grid2op
 from packaging import version
 
@@ -183,7 +184,10 @@ class TestL2RPN_CASE14_SANDBOX(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 489
+        if np.array([attr in self.env.observation_space.attr_list_vect for attr in ["actual_flex", "target_flex"]], dtype=bool).all():
+            size_th = 489
+        else:
+            size_th = 467
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )

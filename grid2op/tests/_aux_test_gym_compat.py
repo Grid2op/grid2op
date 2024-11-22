@@ -153,8 +153,10 @@ class _AuxTestGymCompatModule:
                 for el in env_gym.observation_space.spaces
             ]
         )
-        size_th = 558  # as of grid2Op 1.7.1 (where all obs attributes are there)
-                       # as of grid2op 1.11.0 (where flexibility was added)
+        if (np.array([attr in env_gym.observation_space.spaces for attr in ["actual_flex", "target_flex"]], dtype=bool)).all():
+            size_th = 558 # as of grid2op 1.11.0 (where flexibility was added)
+        else:
+            size_th = 536 # as of grid2Op 1.7.1 (where all obs attributes are there)
         assert (
             dim_obs_space == size_th
         ), f"Size should be {size_th} but is {dim_obs_space}"
