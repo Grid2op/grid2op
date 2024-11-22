@@ -24,6 +24,8 @@ from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
 
 
 class _OverloadNameMultiMixInfo:
+    VALUE_ERROR_GETITEM : str = "You can only access member with integer and not with {}"
+    
     def __init__(self,
                  path_cls=None,
                  path_env=None,
@@ -39,16 +41,18 @@ class _OverloadNameMultiMixInfo:
         self.mix_id = mix_id
         
     def __getitem__(self, arg):
+        cls = type(self)
         try:
             arg_ = int(arg)
         except ValueError as exc_:
-            raise exc_
+            raise ValueError(cls.VALUE_ERROR_GETITEM.format(type(arg))) from exc_
             
         if arg_ != arg:
-            raise RuntimeError("you can only access this class with integer")
+            raise ValueError(cls.VALUE_ERROR_GETITEM.format(type(arg)))
         
         if arg_ < 0:
-            arg_ += 4
+            # for stuff like "overload[-1]"
+            arg_ += 6
             
         if arg_ == 0:
             return self.path_cls
@@ -58,7 +62,11 @@ class _OverloadNameMultiMixInfo:
             return self.name_env
         if arg_ == 3:
             return self.add_to_name
-        raise IndexError("_OverloadNameMultiMixInfo can only be used with index being 0, 1, 2 or 3")
+        if arg_ == 4:
+            return self.local_dir_tmpfolder
+        if arg_ == 5:
+            return self.mix_id
+        raise IndexError("_OverloadNameMultiMixInfo can only be used with index being 0, 1, 2, 3, 4 or 5")
 
 
 class MultiMixEnvironment(GridObjects, RandomObject):

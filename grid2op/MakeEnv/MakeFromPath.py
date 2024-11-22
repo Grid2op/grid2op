@@ -1009,13 +1009,7 @@ def make_from_dataset_path(
         if experimental_read_from_local_dir:
             if _overload_name_multimix is not None:
                 # I am in a multimix
-                if _overload_name_multimix[0] is None:
-                    # first mix: path is correct
-                    sys_path = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
-                else:
-                    # other mixes I need to retrieve the properties of the first mix
-                    sys_path = _overload_name_multimix[0]
-                sys_path = os.path.join(_overload_name_multimix[1], GRID2OP_CLASSES_ENV_FOLDER)
+                sys_path = os.path.join(_overload_name_multimix.path_env, GRID2OP_CLASSES_ENV_FOLDER)
             else:
                 # I am not in a multimix
                 sys_path = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)

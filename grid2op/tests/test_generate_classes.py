@@ -24,17 +24,6 @@ class TestGenerateFile(unittest.TestCase):
         path = Path(env.get_path_env()) / GRID2OP_CLASSES_ENV_FOLDER
         assert path.exists(), f"path {path} does not exists"
         shutil.rmtree(path, ignore_errors=True)
-        return
-        if isinstance(env, MultiMixEnvironment):
-            # for mix in env:
-                # self._aux_assert_exists_then_delete(mix)
-            self._aux_assert_exists_then_delete(env.mix_envs[env.all_names[0]])
-        elif isinstance(env, Environment):
-            path = Path(env.get_path_env()) / GRID2OP_CLASSES_ENV_FOLDER
-            assert path.exists(), f"path {path} does not exists"
-            shutil.rmtree(path, ignore_errors=True)
-        else:
-            raise RuntimeError("Unknown env type")
         
     def list_env(self):
         env_with_alert = os.path.join(
