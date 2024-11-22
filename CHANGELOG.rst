@@ -103,6 +103,10 @@ Native multi agents support:
   when creating the data.
 - [BREAKING] deprecation of `backend.check_kirchoff` in favor of `backend.check_kirchhoff` 
   (fix the typo in the name)
+- [BREAKING] change the name of the generated classes: now by default the backend class
+  name is added. This behaviour can be turned off by passing `_add_cls_nm_bk=False`
+  when calling `grid2op.make(...)`. If you develop a new Backend, you can also
+  customize the added name by overloading the `get_class_added_name` class method.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
@@ -114,7 +118,7 @@ Native multi agents support:
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
   or , `gridobj.get_storage_info(...)` 
 - [ADDED] codacy badge on the readme
-- [ADDED] a method to check the KCL (`obs.check_kirchoff`) directly from the observation
+- [ADDED] a method to check the KCL (`obs.check_kirchhoff`) directly from the observation
   (previously it was only possible to do it from the backend). This should 
   be used for testing purpose only
 - [IMPROVED] possibility to set the injections values with names
@@ -132,6 +136,8 @@ Native multi agents support:
 - [IMPROVED] some type hints for some agent class
 - [IMPROVED] the `backend.update_from_obs` function to work even when observation
   does not have shunt information but there are not shunts on the grid.
+- [IMPROVED] consistency of `MultiMixEnv` in case of automatic_classes (only one
+  class is generated for all mixes)
 
 [1.10.4] - 2024-10-15
 -------------------------

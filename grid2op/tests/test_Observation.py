@@ -107,7 +107,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "name_storage": [],
             "glop_version": grid2op.__version__,
             # "env_name": "rte_case14_test",
-            "env_name": "rte_case14_testTestBasisObsBehaviour",
+            "env_name": "rte_case14_testPandaPowerBackendTestBasisObsBehaviour",
             "sub_info": [3, 6, 4, 6, 5, 6, 3, 2, 5, 3, 3, 3, 4, 3],
             "load_to_subid": [1, 2, 13, 3, 4, 5, 8, 9, 10, 11, 12],
             "gen_to_subid": [1, 2, 5, 7, 0],

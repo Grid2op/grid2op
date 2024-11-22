@@ -63,3 +63,7 @@ N_BUSBAR_PER_SUB_TYPING = Union[int,           # one for all substation
                                 List[int],     # give info for all substations
                                 Dict[str, int] # give information for some substation
                                 ]
+
+#: possible config key / values in the config.py file
+# TODO improve that
+DICT_CONFIG_TYPING = Dict[str, Any]

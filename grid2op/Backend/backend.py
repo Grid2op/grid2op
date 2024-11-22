@@ -2245,3 +2245,22 @@ class Backend(GridObjects, ABC):
             raise EnvError(
                 'Some components of "backend.get_topo_vect()" are not finite. This should be integer.'
             )
+
+    def get_class_added_name(self) -> str:
+        """
+        .. versionadded: 1.11.0
+
+        This function allows to customize the name added in the generated classes
+        by default.
+        
+        It can be usefull for example if multiple instance of your backend can have different
+        ordering even if they are loaded with the same backend class.
+        
+        This should not be modified except if you code a specific backend class.
+        
+        Returns
+        -------
+        ``str``:
+            The added name added to the class
+        """
+        return type(self).__name__
