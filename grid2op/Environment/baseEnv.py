@@ -2118,22 +2118,19 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                        np.max(flex_mismatch) >= self._tol_poly)
         # If either redispatch or flexibility is active, we need to compute the dispact/flex vector
         if (disp_cond or flex_cond):
-            except_ = self._compute_dispatch_and_flex_vect(already_modified_gen, new_gen_p,
+            except_ = self._compute_dispatch(already_modified_gen, new_gen_p,
                                                            already_modified_load, new_load_p)
             valid = except_ is None
         return valid, except_
-
-    def _compute_dispatch_and_flex_vect(self, already_modified_gen:np.array, new_gen_p:np.array,
-                                              already_modified_load:np.array, new_load_p:np.array):        
-        except_ = None
-        
+    
+    def _compute_involved_in_dispatch(self, new_gen_p:np.array, new_load_p:np.array):
         # Handle the case where there are storage, flexibility, or redispatching
         # actions or curtailment actions on the "init state" of the grid
         if self.nb_time_step == 0:
             self._gen_activeprod_t_redisp[:] = new_gen_p
             self._load_demand_t_flex[:] = new_load_p
         
-        # First define the involved generators / flexible loads
+        # First find the involved generators / flexible loads
         # these are the generators / loads that will be adjusted
         gen_involved = (
             (new_gen_p > 0.0)
@@ -2150,6 +2147,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         )
         load_involved[~self.load_flexible] = False
         incr_in_load_chronics = new_load_p - (self._load_demand_t_flex - self._actual_flex)
+        return gen_involved, incr_in_gen_chronics, load_involved, incr_in_load_chronics
+    
+    def _compute_infeasible_dispatch(self, incr_in_gen_chronics:np.array, gen_involved:np.array,
+                                           incr_in_load_chronics:np.array, load_involved:np.array):
 
         # Check if the constraints are violated
         ## Total available "juice" to go down (incl ramping rates, pmin, pmax, and load size)
@@ -2204,32 +2205,26 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     load_involved = self.load_flexible
                     except_ = None
                 else:
-                    return except_tmp
+                    return except_tmp, None, None
             else:
-                return except_
-            
-        # Define the objective value
+                return except_, None, None
+        return None, gen_involved, load_involved
+    
+    def _compute_dispatch_targets(self, gen_involved, already_modified_gen,
+                                 load_involved, already_modified_load):
+        modded_involved_gens = already_modified_gen[gen_involved]
+        modded_involved_loads = already_modified_load[load_involved]
+        
         target_gen_vals = (self._target_dispatch[gen_involved] -
                            self._actual_dispatch[gen_involved])
-        modded_involved_gens = already_modified_gen[gen_involved]
         target_gen_vals_mi = target_gen_vals[modded_involved_gens]
+        
         target_load_vals = (self._target_flex[load_involved] -
                             self._actual_flex[load_involved])
-        modded_involved_loads = already_modified_load[load_involved]
         target_load_vals_mi = target_load_vals[modded_involved_loads]
         
-        nb_dispatchable = gen_involved.sum()
-        nb_flexible = load_involved.sum()
         
-        tmp_zeros = np.zeros((1, nb_dispatchable + nb_flexible), dtype=dt_float)
-        gen_coeffs = 1.0 / (self.gen_max_ramp_up +
-                            self.gen_max_ramp_down + self._epsilon_poly)
-        load_coeffs = 1.0 / (self.load_max_ramp_up +
-                             self.load_max_ramp_down + self._epsilon_poly)
-        coeffs = np.concatenate((gen_coeffs[gen_involved], load_coeffs[load_involved]))
-        weights = np.ones(nb_dispatchable + nb_flexible) * coeffs
-        weights /= weights.sum()
-
+        
         if target_gen_vals_mi.shape[0] == 0 and target_load_vals_mi.shape[0] == 0:
             # No dispatch and flex means all dispatchable and flexible
             # Otherwise will never get to 0
@@ -2237,37 +2232,28 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             modded_involved_loads[:] = True
             target_gen_vals_mi = target_gen_vals[modded_involved_gens]
             target_load_vals_mi = target_load_vals[modded_involved_loads]
-
+        modded_involved = np.concatenate((modded_involved_gens, modded_involved_loads))
+        
         # For numeric stability
         # To  also scale the input see:
         # https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
         scale_gen_x = max(np.max(np.abs(self._actual_dispatch)), 1.0)
         scale_load_x = max(np.max(np.abs(self._actual_flex)), 1.0)
         scale_x = dt_float(max(scale_gen_x, scale_load_x))
+        
         target_vals_mi = np.concatenate((target_gen_vals_mi, target_load_vals_mi))
         target_vals_mi_optim =  (1.0 * (target_vals_mi / scale_x)).astype(dt_float)
-
-        # See https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
-        # where it is advised to scale the function
-        scale_objective = max(0.5 * np.abs(target_vals_mi_optim).sum() ** 2, 1.0)
-        scale_objective = np.round(scale_objective, decimals=4)
-        scale_objective = dt_float(scale_objective)
-
-        # Add the "sum to 0"
-        mat_sum_0_no_turn_on = np.ones((1, nb_dispatchable+nb_flexible), dtype=dt_float)
         
-        # Take into account Energy Storage Systems (ESSs)
-        # Storages follow the "load convention" so we need to sum the amount of production to sum of storage
-        # hence the "+ self._amount_storage" below
-        # self._sum_curtailment_mw is "generator convention" hence the "-" there
-        const_sum_0_no_turn_on = (np.zeros(1, dtype=dt_float) +
-                                  self._amount_storage - self._sum_curtailment_mw)
+        return target_vals_mi_optim, scale_x, modded_involved
+    
+    def _compute_dispatch_constraints(self, gen_involved, new_gen_p, incr_in_gen_chronics,
+                                            load_involved, new_load_p, incr_in_load_chronics):
         # Gen increase in the chronics
         new_gen_p_th = new_gen_p[gen_involved] + self._actual_dispatch[gen_involved]
         
         # Load increase in the chronics
         new_load_p_th = new_load_p[load_involved] + self._actual_flex[load_involved]
-
+        
         # Minimum value available for dispatch
         ## 1st limit delta because of pmin
         p_min_gen_const = self.gen_pmin[gen_involved] - new_gen_p_th
@@ -2299,25 +2285,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         ## Take minimum of the 2
         max_disp = np.minimum(p_max_const, ramp_up_const).astype(dt_float)
-
-        # Add everything into a linear constraint (object equality)
-        added = 0.5 * self._epsilon_poly
-        equality_const = LinearConstraint(
-            mat_sum_0_no_turn_on, # Sum
-            ((const_sum_0_no_turn_on) / scale_x).item(), # Lower Bound
-            ((const_sum_0_no_turn_on) / scale_x).item(), # Upper Bound
-        )
-        mat_pmin_max_ramps = np.eye(nb_dispatchable + nb_flexible)
-        ineq_const = LinearConstraint(
-            mat_pmin_max_ramps,
-            (min_disp - added) / scale_x,
-            (max_disp + added) / scale_x,
-        )
-
+        return min_disp, max_disp
+    
+    def _compute_dispatch_x0(self, x0, weights, scale_x, gen_involved, already_modified_gen,
+                             load_involved, already_modified_load):
         # Choose a good initial point x0 (close to the solution)
         # Desired solution is one where the (sum of the) dispatch is split among 
         # the available generators / flexible loads)
-        x0 = np.zeros(nb_dispatchable + nb_flexible)
         disp_cond = ((np.abs(self._target_dispatch) >= 1e-7).any() or already_modified_gen.any())
         flex_cond = ((np.abs(self._target_flex) >= 1e-7).any() or already_modified_load.any())
         if disp_cond or flex_cond:
@@ -2355,15 +2329,91 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             dispatch = np.concatenate((self._actual_dispatch[gen_involved],
                                        self._actual_flex[load_involved]))
             x0 -= dispatch / scale_x
+        return x0
 
-        modded_involved = np.concatenate((modded_involved_gens, modded_involved_loads))
+    def _compute_dispatch(self, already_modified_gen:np.array, new_gen_p:np.array,
+                                              already_modified_load:np.array, new_load_p:np.array):        
+        except_ = None
         
+        (gen_involved, incr_in_gen_chronics, load_involved,
+         incr_in_load_chronics) = self._compute_involved_in_dispatch(new_gen_p, new_load_p)
+        
+        (exception, gen_involved,
+         load_involved) = self._compute_infeasible_dispatch(incr_in_gen_chronics, gen_involved,
+                                                            incr_in_load_chronics, load_involved)
+        if exception is not None:
+            return exception
+        
+        # >> Define the Optimization Objective <<
+        (target_vals_mi_optim, scale_x,
+         modded_involved) = self._compute_dispatch_targets(
+                                gen_involved, already_modified_gen,
+                                load_involved, already_modified_load)
+        
+        nb_dispatchable = gen_involved.sum()
+        nb_flexible = load_involved.sum()
+        
+        # >> Weights and Coefficients <<
+        tmp_zeros = np.zeros((1, nb_dispatchable + nb_flexible), dtype=dt_float)
+        gen_coeffs = 1.0 / (self.gen_max_ramp_up +
+                            self.gen_max_ramp_down + self._epsilon_poly)
+        load_coeffs = 1.0 / (self.load_max_ramp_up +
+                             self.load_max_ramp_down + self._epsilon_poly)
+        coeffs = np.concatenate((gen_coeffs[gen_involved], load_coeffs[load_involved]))
+        weights = np.ones(nb_dispatchable + nb_flexible) * coeffs
+        weights /= weights.sum()
+        
+        # >> START Dispatch Constraints <<
+        # Sets limits on how fast the dispatch can change (ramping)
+        # and how low / high it can be set (pmin-pmax for gens, 0-load_size for loads)
+        min_disp, max_disp = self._compute_dispatch_constraints(
+            gen_involved, new_gen_p, incr_in_gen_chronics,
+            load_involved, new_load_p, incr_in_load_chronics,
+        )
+        
+        # Add the "sum to 0"
+        mat_sum_0_no_turn_on = np.ones((1, nb_dispatchable+nb_flexible), dtype=dt_float)
+        
+        # Take into account Energy Storage Systems (ESSs)
+        # Storages follow the "load convention" so we need to sum the amount of production to sum of storage
+        # hence the "+ self._amount_storage" below
+        # self._sum_curtailment_mw is "generator convention" hence the "-" there
+        const_sum_0_no_turn_on = (np.zeros(1, dtype=dt_float) +
+                                  self._amount_storage - self._sum_curtailment_mw)
+        
+        # Add everything into a linear constraint (object equality)
+        added = 0.5 * self._epsilon_poly
+        equality_const = LinearConstraint(
+            mat_sum_0_no_turn_on, # Sum
+            ((const_sum_0_no_turn_on) / scale_x).item(), # Lower Bound
+            ((const_sum_0_no_turn_on) / scale_x).item(), # Upper Bound
+        )
+        mat_pmin_max_ramps = np.eye(nb_dispatchable + nb_flexible)
+        ineq_const = LinearConstraint(
+            mat_pmin_max_ramps,
+            (min_disp - added) / scale_x,
+            (max_disp + added) / scale_x,
+        )
+        # >> END Dispatch Constraints <<
+
+        # >> Initial point for Optimization <<
+        x0 = np.zeros(nb_dispatchable + nb_flexible)
+        x0 = self._compute_dispatch_x0(x0, weights, scale_x, 
+                                       gen_involved, already_modified_gen,
+                                       load_involved, already_modified_load)
+        
+        # >> START Solve Optimization <<
+        # Scale Objective, see why: 
+        # https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
+        scale_objective = max(0.5 * np.abs(target_vals_mi_optim).sum() ** 2, 1.0)
+        scale_objective = np.round(scale_objective, decimals=4)
+        scale_objective = dt_float(scale_objective)
         def target(actual_dispatchable):
             # Define objective (quadratic)
             quad_ = (actual_dispatchable[modded_involved] - target_vals_mi_optim) ** 2
             coeffs_quads = weights[modded_involved] * quad_
             coeffs_quads_const = coeffs_quads.sum()
-            coeffs_quads_const /= scale_objective  # scaling the function
+            coeffs_quads_const /= scale_objective  # Scaling
             return coeffs_quads_const
 
         def jac(actual_dispatchable):
@@ -2373,7 +2423,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 * weights[modded_involved]
                 * (actual_dispatchable[modded_involved] - target_vals_mi_optim)
             )
-            res_jac /= scale_objective  # scaling the function
+            res_jac /= scale_objective  # Scaling
             return res_jac
 
         # Objective function
@@ -2392,11 +2442,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             )
             return this_res
         res = f(x0)
+        # >> End Solvee Optimization <<
+        
         if res.success:
             optim_gen_dispatch = res.x[0:nb_dispatchable]
-            self._actual_dispatch[gen_involved] += optim_gen_dispatch * scale_gen_x
+            self._actual_dispatch[gen_involved] += optim_gen_dispatch * scale_x
             optim_load_flex = res.x[nb_dispatchable:]
-            self._actual_flex[load_involved] += optim_load_flex * scale_load_x
+            self._actual_flex[load_involved] += optim_load_flex * scale_x
         else:
             # Check if constraints are "approximately" met
             mat_const = np.concatenate((mat_sum_0_no_turn_on, mat_pmin_max_ramps))
@@ -2412,9 +2464,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             if ok_up and ok_down:
                 # Can tolerate "small" perturbations
                 optim_gen_dispatch = res.x[0:nb_dispatchable]
-                self._actual_dispatch[gen_involved] += optim_gen_dispatch * scale_gen_x
+                self._actual_dispatch[gen_involved] += optim_gen_dispatch * scale_x[0:nb_dispatchable]
                 optim_load_flex = res.x[nb_dispatchable:]
-                self._actual_flex[load_involved] += optim_load_flex * scale_load_x
+                self._actual_flex[load_involved] += optim_load_flex * scale_x[nb_dispatchable:]
             else:
                 # TODO try with another method here, maybe
                 error_dispatch = (
