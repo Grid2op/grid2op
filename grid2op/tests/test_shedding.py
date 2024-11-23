@@ -21,8 +21,8 @@ class TestShedding(unittest.TestCase):
         self.env.close()
 
     def test_shedding_parameter_is_true(self):
-        assert hasattr(self.env, "allow_shedding")
         assert self.env._allow_detachment is True
+        assert self.env.backend.detachment_is_allowed is True
 
     def test_shed_single_load(self):
         # Check that a single load can be shed
