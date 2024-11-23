@@ -1463,19 +1463,20 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     def reset(self, 
               *,
               seed: Union[int, None] = None,
-              options: RESET_OPTIONS_TYPING = {}):
+              options: RESET_OPTIONS_TYPING = None):
         """
         Reset the base environment (set the appropriate variables to correct initialization).
         It is (and must be) overloaded in other :class:`grid2op.Environment`
         """
         if self.__closed:
             raise EnvError("This environment is closed. You cannot use it anymore.")
-        for el in options:
-            if el not in type(self).KEYS_RESET_OPTIONS:
-                raise EnvError(f"You tried to customize the `reset` call with some "
-                                f"`options` using the key `{el}` which is invalid. "
-                                f"Only keys in {sorted(list(type(self).KEYS_RESET_OPTIONS))} "
-                                f"can be used.")
+        if options is not None:
+            for el in options:
+                if el not in type(self).KEYS_RESET_OPTIONS:
+                    raise EnvError(f"You tried to customize the `reset` call with some "
+                                    f"`options` using the key `{el}` which is invalid. "
+                                    f"Only keys in {sorted(list(type(self).KEYS_RESET_OPTIONS))} "
+                                    f"can be used.")
                     
         self.__is_init = True
         # current = None is an indicator that this is the first step of the environment
