@@ -5,10 +5,7 @@
 [![PyPi_Compat](https://img.shields.io/pypi/pyversions/grid2op.svg)](https://pypi.org/project/Grid2Op/)
 [![LICENSE](https://img.shields.io/pypi/l/grid2op.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Documentation Status](https://readthedocs.org/projects/grid2op/badge/?version=latest)](https://grid2op.readthedocs.io/en/latest/?badge=latest)
-<<<<<<< HEAD
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/3a4e666ba20f4f20b9131e9a6081622c)](https://app.codacy.com/gh/Grid2op/grid2op/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-=======
->>>>>>> 0a04e162 (fixing the url to point to Grid2op/grid2op instead of rte-france/grid2op [skip ci])
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/Grid2op/grid2op/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/Grid2op/grid2op/tree/master)
 [![discord](https://discord.com/api/guilds/698080905209577513/embed.png)](https://discord.gg/cYsYrPT)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/grid2op/grid2op.git/master)
