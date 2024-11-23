@@ -2331,7 +2331,7 @@ class GridObjects:
         # alert data
         cls._check_validity_alert_data()
         
-        assert isinstance(cls._allow_detachment, bool)
+        assert isinstance(cls.detachment_is_allowed, bool)
 
     @classmethod
     def _check_validity_alarm_data(cls):
