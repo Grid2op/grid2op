@@ -33,19 +33,19 @@ class TestFlexibility(unittest.TestCase):
         _ = self.env.reset()
 
         self.flex_max_ramp_up = self.env.action_space(
-            {"flexibility": [(el, self.env.load_max_ramp_up[el]) for el in np.where(self.env.load_flexible)[0]]}
+            {"flexibility": [(el, self.env.load_max_ramp_up[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
         )
         self.flex_max_ramp_down = self.env.action_space(
-            {"flexibility": [(el, -self.env.load_max_ramp_down[el]) for el in np.where(self.env.load_flexible)[0]]}
+            {"flexibility": [(el, -self.env.load_max_ramp_down[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
         )
         self.flex_all_zero = self.env.action_space(
-            {"flexibility": [(el, 0.0) for el in np.where(self.env.load_flexible)[0]]}
+            {"flexibility": [(el, 0.0) for el in np.nonzero(self.env.load_flexible)[0]]}
         )
         self.flex_small_up = self.env.action_space(
-            {"flexibility": [(el, 0.01) for el in np.where(self.env.load_flexible)[0]]}
+            {"flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
         )
         self.flex_small_down = self.env.action_space(
-            {"flexibility": [(el, 0.01) for el in np.where(self.env.load_flexible)[0]]}
+            {"flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
         )
 
     def test_zero_flex(self):
