@@ -1111,7 +1111,7 @@ class Backend(GridObjects, ABC):
             )
             
         # Post-Powerflow Check
-        if not self.detachment_is_allowed:
+        if not self.detachment_is_allowed and conv:
             resulting_act = self.get_action_to_set()
             load_buses_act_set = resulting_act._set_topo_vect[self.load_pos_topo_vect]
             gen_buses_act_set = resulting_act._set_topo_vect[self.gen_pos_topo_vect]
