@@ -5072,7 +5072,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     alertable_line_ids = {alertable_line_ids_str}
 
     # shedding
-    _allow_detachment = {cls._allow_detachment}
+    detachment_is_allowed = {cls.detachment_is_allowed}
 
 """
         return res

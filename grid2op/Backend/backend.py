@@ -1087,12 +1087,15 @@ class Backend(GridObjects, ABC):
                 topo_vect = self._get_topo_vect()
             else:
                 topo_vect = self.get_topo_vect()
+            
             load_buses = topo_vect[self.load_pos_topo_vect]
+            
             if not self.detachment_is_allowed and (load_buses == -1).any():
                 raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
 
             gen_buses = topo_vect[self.gen_pos_topo_vect]
+            
             if not self.detachment_is_allowed and (gen_buses == -1).any():
                 raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
@@ -1106,6 +1109,15 @@ class Backend(GridObjects, ABC):
                 "GAME OVER: Powerflow has diverged during computation "
                 "or a load has been disconnected or a generator has been disconnected."
             )
+            
+        # Post-Powerflow Check
+        if not self.detachment_is_allowed:
+            resulting_act = self.get_action_to_set()
+            load_buses_act_set = resulting_act._set_topo_vect[self.load_pos_topo_vect]
+            gen_buses_act_set = resulting_act._set_topo_vect[self.gen_pos_topo_vect]
+            if (load_buses_act_set == -1).any() or (gen_buses_act_set == -1).any():
+                exc_me = Grid2OpException(f"One or more generators or loads were detached in Backend {type(self).__name__}"
+                                           " as a result of a Grid2Op action, but this is not allowed or not supported (Game Over)")
         return exc_me
 
     def next_grid_state(self,
