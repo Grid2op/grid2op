@@ -4210,7 +4210,7 @@ class GridObjects:
             elif dict_["detachment_is_allowed"] == "False":
                 cls.detachment_is_allowed = False
             else:
-                raise ValueError(f"'detachment_is_allowed' (value: {dict_["detachment_is_allowed"]}'')" +
+                raise ValueError(f"'detachment_is_allowed' (value: {dict_['detachment_is_allowed']}'')" +
                                   "could not be converted to Boolean ")
         else: # Compatibility for older versions
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
