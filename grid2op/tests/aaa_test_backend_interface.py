@@ -1471,7 +1471,7 @@ class AAATestBackendAPI(MakeBackend):
                         key_: val  # move the line
                         }})
         bk_act = type(backend).my_bk_act_class()
-        bk_act += action
+        bk_act += action  # "compile" all the user action into one single action sent to the backend
         backend.apply_action(bk_act)  # apply the action
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after setting a {el_nm} on busbar {busbar_id}, error was {res[1]}"    

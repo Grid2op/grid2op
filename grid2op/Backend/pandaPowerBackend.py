@@ -909,11 +909,7 @@ class PandaPowerBackend(Backend):
             self._grid.storage.loc[stor_bus.changed & deactivated, "in_service"] = False
             self._grid.storage.loc[stor_bus.changed & ~deactivated, "in_service"] = True
             self._grid.storage["bus"] = new_bus_num
-            self._topo_vect[cls.storage_pos_topo_vect[stor_bus.changed]] = new_bus_id
-            self._topo_vect[
-                cls.storage_pos_topo_vect[deact_and_changed]
-            ] = -1
-
+        
         if type(backendAction).shunts_data_available:
             shunt_p, shunt_q, shunt_bus = shunts__
 
@@ -939,6 +935,8 @@ class PandaPowerBackend(Backend):
             if type_obj is not None:
                 # storage unit are handled elsewhere
                 self._type_to_bus_set[type_obj](new_bus, id_el_backend, id_topo)
+        
+        self._topo_vect.flags.writeable = False
 
     def _apply_load_bus(self, new_bus, id_el_backend, id_topo):
         new_bus_backend = type(self).local_bus_to_global_int(
@@ -1190,7 +1188,6 @@ class PandaPowerBackend(Backend):
             if not self._grid.converged:
                 raise pp.powerflow.LoadflowNotConverged("Divergence without specific reason (self._grid.converged is False)")
             self.div_exception = None
-            self._get_topo_vect()  # do that after (maybe useless)
             return True, None
 
         except pp.powerflow.LoadflowNotConverged as exc_:
@@ -1427,7 +1424,7 @@ class PandaPowerBackend(Backend):
         self._topo_vect[cls.gen_pos_topo_vect[~gen_status]] = -1
         # storage
         if cls.n_storage:
-            storage_status = 1 * self._grid.storage["in_service"].values
+            storage_status = self._grid.storage["in_service"].values
             self._topo_vect[cls.storage_pos_topo_vect] = cls.global_bus_to_local(self._grid.storage["bus"].values, cls.storage_to_subid)
             self._topo_vect[cls.storage_pos_topo_vect[~storage_status]] = -1
         self._topo_vect.flags.writeable = False

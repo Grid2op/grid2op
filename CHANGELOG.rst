@@ -140,7 +140,9 @@ Native multi agents support:
   does not have shunt information but there are not shunts on the grid.
 - [IMPROVED] consistency of `MultiMixEnv` in case of automatic_classes (only one
   class is generated for all mixes)
-
+- [IMRPOVED] handling of disconnected elements in the backend no more
+  raise error. The base `Backend` class does that.
+  
 [1.10.4] - 2024-10-15
 -------------------------
 - [FIXED] new pypi link (no change in code)
