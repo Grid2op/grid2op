@@ -2040,7 +2040,16 @@ class GridObjects:
         if isinstance(cls.n_busbar_per_sub, (int, dt_int, np.int32, np.int64)):
             cls.n_busbar_per_sub = dt_int(cls.n_busbar_per_sub)
         else:
-            raise EnvError("Grid2op cannot handle a different number of busbar per substations at the moment.")
+            raise EnvError("Grid2op cannot handle a different number "
+                           "of busbar per substations with provided input "
+                           "(make sure `n_busbar_per_sub` is an int)")
+        
+        if isinstance(cls.detachment_is_allowed, (bool, dt_bool)):
+            cls.detachment_is_allowed = dt_bool(cls.detachment_is_allowed)
+        else:
+            raise EnvError("Grid2op cannot handle disconnection of loads / generators "
+                           "at the moment (make sure `detachment_is_allowed` "
+                           "is a bool)")
         
         if (cls.n_busbar_per_sub < 1).any():
             raise EnvError(f"`n_busbar_per_sub` should be >= 1 found {cls.n_busbar_per_sub}")
@@ -3091,7 +3100,7 @@ class GridObjects:
             cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
             res = True
 
-        if glop_ver < version.parse("1.11.0.dev0"):
+        if glop_ver < version.parse("1.11.0.dev2"):
             # Detachment did not exist, default value should have
             # no effect
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
@@ -4211,7 +4220,7 @@ class GridObjects:
             elif dict_["detachment_is_allowed"] == "False":
                 cls.detachment_is_allowed = False
             else:
-                raise ValueError(f"'detachment_is_allowed' (value: {dict_['detachment_is_allowed']}'')" +
+                raise ValueError(f"'detachment_is_allowed' (value: {dict_['detachment_is_allowed']}'')"
                                   "could not be converted to Boolean ")
         else: # Compatibility for older versions
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
@@ -4984,7 +4993,6 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
 
     sub_info = {sub_info_str}
     dim_topo = {cls.dim_topo}
-    detachment_is_allowed = {cls.detachment_is_allowed}
     
     # to which substation is connected each element
     load_to_subid = {load_to_subid_str}

@@ -1081,26 +1081,22 @@ class Backend(GridObjects, ABC):
         exc_me = None
 
         try:
+            conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
+            
             # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
             # .. versionadded:: 1.11.0
-            if hasattr(self, "_get_topo_vect"):
-                topo_vect = self._get_topo_vect()
-            else:
-                topo_vect = self.get_topo_vect()
-            
-            load_buses = topo_vect[self.load_pos_topo_vect]
-            
+            cls = type(self)
+            topo_vect = self.get_topo_vect()
+            load_buses = topo_vect[cls.load_pos_topo_vect]
             if not self.detachment_is_allowed and (load_buses == -1).any():
                 raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
 
-            gen_buses = topo_vect[self.gen_pos_topo_vect]
-            
+            gen_buses = topo_vect[cls.gen_pos_topo_vect]
             if not self.detachment_is_allowed and (gen_buses == -1).any():
                 raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
             
-            conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
         except Grid2OpException as exc_:
             exc_me = exc_
             
