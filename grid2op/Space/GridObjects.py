@@ -34,6 +34,7 @@ from grid2op.Space.space_utils import extract_from_dict, save_to_dict
 # TODO tests of these methods and this class in general
 DEFAULT_N_BUSBAR_PER_SUB = 2
 DEFAULT_ALLOW_DETACHMENT = False
+GRID2OP_CLASSES_ENV_FOLDER = "_grid2op_classes"
 
 
 class GridObjects:
@@ -2886,7 +2887,7 @@ class GridObjects:
         # NB: these imports needs to be consistent with what is done in
         # base_env.generate_classes()
         super_module_nm, module_nm = os.path.split(gridobj._PATH_GRID_CLASSES)
-        if module_nm == "_grid2op_classes":
+        if module_nm == GRID2OP_CLASSES_ENV_FOLDER:
             # legacy "experimental_read_from_local_dir"
             # issue was the module "_grid2op_classes" had the same name
             # regardless of the environment, so grid2op was "confused"
@@ -4521,11 +4522,11 @@ class GridObjects:
             return None
         if not os.path.isdir(path_env):
             return None
-        if not os.path.exists(os.path.join(path_env, "_grid2op_classes")):
+        if not os.path.exists(os.path.join(path_env, GRID2OP_CLASSES_ENV_FOLDER)):
             return None
         sys.path.append(path_env)
         try:
-            module = importlib.import_module("_grid2op_classes")
+            module = importlib.import_module(GRID2OP_CLASSES_ENV_FOLDER)
             if hasattr(module, name_cls):
                 my_class = getattr(module, name_cls)
         except (ModuleNotFoundError, ImportError) as exc_:

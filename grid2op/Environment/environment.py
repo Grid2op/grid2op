@@ -176,8 +176,8 @@ class Environment(BaseEnv):
             # this means that the "make" call is issued from the 
             # creation of a MultiMix.
             # So I use the base name instead.
-            self.name = "".join(_overload_name_multimix[2:])
-            self.multimix_mix_name = name
+            self.name = _overload_name_multimix.name_env + _overload_name_multimix.add_to_name
+            self.multimix_mix_name = None  # set in creation of the MultiMixEnv instead
             self._overload_name_multimix = _overload_name_multimix
         else:
             self.name = name
@@ -952,6 +952,10 @@ class Environment(BaseEnv):
 
         self._backend_action = self._backend_action_class()
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
+        
+        if self._init_obs is not None:
+            self.backend.update_from_obs(self._init_obs)
+            
         init_action = None
         if not self._parameters.IGNORE_INITIAL_STATE_TIME_SERIE:
             # load the initial state from the time series (default)
@@ -1298,7 +1302,6 @@ class Environment(BaseEnv):
             if ambiguous:
                 raise Grid2OpException("You provided an invalid (ambiguous) action to set the 'init state'") from except_tmp
             init_state.remove_change()
-        
         super().reset(seed=seed, options=options)
         
         if options is not None and "max step" in options:                

@@ -95,6 +95,10 @@ class AutoClassInFileTester(unittest.TestCase):
     def get_env_name(self):
         return "l2rpn_case14_sandbox"
     
+    def get_env_name_cls(self):
+        # from grid2op 1.11.0 the backend name is in the class nameby default
+        return f"{self.get_env_name()}PandaPowerBackend"
+    
     def setUp(self) -> None:
         self.max_iter = 10
         return super().setUp()
@@ -131,7 +135,7 @@ class AutoClassInFileTester(unittest.TestCase):
                                    name_observation_cls=None,
                                    name_action_cls=None):
         if classes_name is None:
-            classes_name = self.get_env_name()
+            classes_name = self.get_env_name_cls()
         if name_observation_cls is None:
             name_observation_cls = self._aux_get_obs_cls().format(classes_name)
         if name_action_cls is None:
@@ -139,6 +143,7 @@ class AutoClassInFileTester(unittest.TestCase):
             
         name_action_cls = name_action_cls.format(classes_name)
         env = self._aux_make_env(env)
+            
         names_cls = [f"ActionSpace_{classes_name}",
                      f"_BackendAction_{classes_name}",
                      f"CompleteAction_{classes_name}",
@@ -163,7 +168,6 @@ class AutoClassInFileTester(unittest.TestCase):
                       "_actionClass",
                       None, # VoltageOnlyAction not in env
                       ]
-        
         # NB: these imports needs to be consistent with what is done in
         # base_env.generate_classes() and gridobj.init_grid(...)
         supermodule_nm, module_nm = os.path.split(env._read_from_local_dir)
@@ -366,8 +370,8 @@ class AutoClassInFileTester(unittest.TestCase):
         env = self._aux_make_env(env)
         this_agent = _ThisAgentTest(env.action_space,
                                     env._read_from_local_dir,
-                                    self._aux_get_obs_cls().format(self.get_env_name()),
-                                    self._aux_get_act_cls().format(self.get_env_name()),
+                                    self._aux_get_obs_cls().format(self.get_env_name_cls()),
+                                    self._aux_get_act_cls().format(self.get_env_name_cls()),
                                     )
         runner = Runner(**env.get_params_for_runner(),
                         agentClass=None,
@@ -385,8 +389,8 @@ class AutoClassInFileTester(unittest.TestCase):
         env = self._aux_make_env(env)
         this_agent = _ThisAgentTest(env.action_space,
                                     env._read_from_local_dir,
-                                    self._aux_get_obs_cls().format(self.get_env_name()),
-                                    self._aux_get_act_cls().format(self.get_env_name()),
+                                    self._aux_get_obs_cls().format(self.get_env_name_cls()),
+                                    self._aux_get_act_cls().format(self.get_env_name_cls()),
                                     )
         runner = Runner(**env.get_params_for_runner(),
                         agentClass=None,
@@ -408,8 +412,8 @@ class AutoClassInFileTester(unittest.TestCase):
         env = self._aux_make_env(env)
         this_agent = _ThisAgentTest(env.action_space,
                                     env._read_from_local_dir,
-                                    self._aux_get_obs_cls().format(self.get_env_name()),
-                                    self._aux_get_act_cls().format(self.get_env_name()),
+                                    self._aux_get_obs_cls().format(self.get_env_name_cls()),
+                                    self._aux_get_act_cls().format(self.get_env_name_cls()),
                                     )
         ctx = mp.get_context('fork')
         runner = Runner(**env.get_params_for_runner(),
@@ -432,8 +436,8 @@ class AutoClassInFileTester(unittest.TestCase):
         env = self._aux_make_env(env)
         this_agent = _ThisAgentTest(env.action_space,
                                     env._read_from_local_dir,
-                                    self._aux_get_obs_cls().format(self.get_env_name()),
-                                    self._aux_get_act_cls().format(self.get_env_name()),
+                                    self._aux_get_obs_cls().format(self.get_env_name_cls()),
+                                    self._aux_get_act_cls().format(self.get_env_name_cls()),
                                     )
         ctx = mp.get_context('spawn')
         runner = Runner(**env.get_params_for_runner(),
@@ -636,20 +640,20 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
         env = self._aux_make_env(env)
         try:
             super().test_all_classes_from_file(env,
-                                            classes_name=classes_name,
-                                            name_complete_obs_cls=name_complete_obs_cls,
-                                            name_observation_cls=name_observation_cls,
-                                            name_action_cls=name_action_cls
-                                            )
+                                               classes_name=classes_name,
+                                               name_complete_obs_cls=name_complete_obs_cls,
+                                               name_observation_cls=name_observation_cls,
+                                               name_action_cls=name_action_cls
+                                               )
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multi mix
                 for mix in env:
                     super().test_all_classes_from_file(mix,
-                                                    classes_name=classes_name,
-                                                    name_complete_obs_cls=name_complete_obs_cls,
-                                                    name_observation_cls=name_observation_cls,
-                                                    name_action_cls=name_action_cls
-                                                    )
+                                                       classes_name=classes_name,
+                                                       name_complete_obs_cls=name_complete_obs_cls,
+                                                       name_observation_cls=name_observation_cls,
+                                                       name_action_cls=name_action_cls
+                                                       )
         finally:
             if env_orig is None:
                 # need to clean the env I created
