@@ -613,6 +613,12 @@ class GymEnvAutoClassTester(unittest.TestCase):
         obs = async_vect_env.reset()
         
     def test_asynch_spawn(self):
+        # test I can reset everything on the same process
+        env1 = GymEnv(self.env)
+        env2 = GymEnv(self.env)
+        obs1, info1 = env1.reset()
+        obs2, info2 = env2.reset()
+        # now do the same in the same process
         async_vect_env = AsyncVectorEnv((lambda: GymEnv(self.env), lambda: GymEnv(self.env)),
                                         context="spawn")
         obs = async_vect_env.reset()

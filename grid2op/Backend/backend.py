@@ -1081,12 +1081,16 @@ class Backend(GridObjects, ABC):
         exc_me = None
 
         try:
+            conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
+            
+            if not conv:
+                if exc_me is not None:
+                    raise exc_me
+                raise BackendError("Divergence of the powerflow without further information.")
+            
             # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
             # .. versionadded:: 1.11.0
-            if hasattr(self, "_get_topo_vect"):
-                topo_vect = self._get_topo_vect()
-            else:
-                topo_vect = self.get_topo_vect()
+            topo_vect = self.get_topo_vect()
             
             load_buses = topo_vect[self.load_pos_topo_vect]
             
@@ -1099,8 +1103,6 @@ class Backend(GridObjects, ABC):
             if not self.detachment_is_allowed and (gen_buses == -1).any():
                 raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
-            
-            conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
         except Grid2OpException as exc_:
             exc_me = exc_
             
@@ -1109,15 +1111,6 @@ class Backend(GridObjects, ABC):
                 "GAME OVER: Powerflow has diverged during computation "
                 "or a load has been disconnected or a generator has been disconnected."
             )
-            
-        # Post-Powerflow Check
-        if not self.detachment_is_allowed and conv:
-            resulting_act = self.get_action_to_set()
-            load_buses_act_set = resulting_act._set_topo_vect[self.load_pos_topo_vect]
-            gen_buses_act_set = resulting_act._set_topo_vect[self.gen_pos_topo_vect]
-            if (load_buses_act_set == -1).any() or (gen_buses_act_set == -1).any():
-                exc_me = Grid2OpException(f"One or more generators or loads were detached in Backend {type(self).__name__}"
-                                           " as a result of a Grid2Op action, but this is not allowed or not supported (Game Over)")
         return exc_me
 
     def next_grid_state(self,
@@ -2047,6 +2040,11 @@ class Backend(GridObjects, ABC):
             )
         prod_p, _, prod_v = self.generators_info()
         load_p, load_q, _ = self.loads_info()
+        if type(self)._complete_action_class is None:
+            # some bug in multiprocessing, this was not set
+            # sub processes
+            from grid2op.Action.completeAction import CompleteAction
+            type(self)._complete_action_class = CompleteAction.init_grid(type(self))
         set_me = self._complete_action_class()
         dict_ = {
             "set_line_status": line_status,
