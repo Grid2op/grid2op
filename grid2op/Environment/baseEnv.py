@@ -50,6 +50,7 @@ from grid2op.Action._backendAction import _BackendAction
 from grid2op.Chronics import ChronicsHandler
 from grid2op.Rules import AlwaysLegal, BaseRules, AlwaysLegal
 from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
+from grid2op.VoltageControler import ControlVoltageFromFile
 
 # TODO put in a separate class the redispatching function
 
@@ -315,10 +316,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path: os.PathLike,
         init_grid_path: os.PathLike,
         parameters: Parameters,
-        voltagecontrolerClass: type,
+        voltagecontrolerClass: type=ControlVoltageFromFile,
         name="unknown",
         thermal_limit_a: Optional[np.ndarray] = None,
         epsilon_poly: float = 1e-4,  # precision of the redispatching algorithm

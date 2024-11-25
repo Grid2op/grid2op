@@ -79,6 +79,7 @@ class Environment(BaseEnv):
 
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path: str,
         init_grid_path: str,
         chronics_handler,
@@ -427,7 +428,7 @@ class Environment(BaseEnv):
             kwargs_observation=self._kwargs_observation,
             observation_bk_class=self._observation_bk_class,
             observation_bk_kwargs=self._observation_bk_kwargs,
-            _local_dir_cls=self._local_dir_cls
+            _local_dir_cls=self._local_dir_cls,
         )
 
         # test to make sure the backend is consistent with the chronics generator

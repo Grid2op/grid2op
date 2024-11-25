@@ -915,7 +915,44 @@ def make_from_dataset_path(
             # for the other mix I need to read the data from files and NOT
             # create the classes
             use_class_in_files = False
+            _add_to_name = ''  # already defined in the first mix
+            name_env = _overload_name_multimix.name_env
     
+    
+    default_kwargs = dict(
+        init_env_path=os.path.abspath(dataset_path),
+        init_grid_path=grid_path_abs,
+        backend=backend,
+        parameters=param,
+        name=name_env + _add_to_name,
+        names_chronics_to_backend=names_chronics_to_backend,
+        actionClass=action_class,
+        observationClass=observation_class,
+        rewardClass=reward_class,
+        legalActClass=gamerules_class,
+        voltagecontrolerClass=volagecontroler_class,
+        other_rewards=other_rewards,
+        opponent_space_type=opponent_space_type,
+        opponent_action_class=opponent_action_class,
+        opponent_class=opponent_class,
+        opponent_init_budget=opponent_init_budget,
+        opponent_attack_duration=opponent_attack_duration,
+        opponent_attack_cooldown=opponent_attack_cooldown,
+        opponent_budget_per_ts=opponent_budget_per_ts,
+        opponent_budget_class=opponent_budget_class,
+        kwargs_opponent=kwargs_opponent,
+        has_attention_budget=has_attention_budget,
+        attention_budget_cls=attention_budget_class,
+        kwargs_attention_budget=kwargs_attention_budget,
+        logger=logger,
+        n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
+        _compat_glop_version=_compat_glop_version,
+        _overload_name_multimix=_overload_name_multimix,
+        kwargs_observation=kwargs_observation,
+        observation_bk_class=observation_backend_class,
+        observation_bk_kwargs=observation_backend_kwargs,
+        allow_detachment=allow_detachment,
+    )
     if use_class_in_files:
         # new behaviour
         if _overload_name_multimix is None:
@@ -964,48 +1001,14 @@ def make_from_dataset_path(
             
         if not os.path.exists(this_local_dir_name):
             raise EnvError(f"Path {this_local_dir_name} has not been created by the tempfile package")
-        init_env = Environment(init_grid_path=grid_path_abs,
+        init_env = Environment(**default_kwargs,
                                chronics_handler=data_feeding_fake,
-                               backend=backend,
-                               parameters=param,
-                               name=name_env + _add_to_name,
-                               names_chronics_to_backend=names_chronics_to_backend,
-                               actionClass=action_class,
-                               observationClass=observation_class,
-                               rewardClass=reward_class,
-                               legalActClass=gamerules_class,
-                               voltagecontrolerClass=volagecontroler_class,
-                               other_rewards=other_rewards,
-                               opponent_space_type=opponent_space_type,
-                               opponent_action_class=opponent_action_class,
-                               opponent_class=opponent_class,
-                               opponent_init_budget=opponent_init_budget,
-                               opponent_attack_duration=opponent_attack_duration,
-                               opponent_attack_cooldown=opponent_attack_cooldown,
-                               opponent_budget_per_ts=opponent_budget_per_ts,
-                               opponent_budget_class=opponent_budget_class,
-                               kwargs_opponent=kwargs_opponent,
-                               has_attention_budget=has_attention_budget,
-                               attention_budget_cls=attention_budget_class,
-                               kwargs_attention_budget=kwargs_attention_budget,
-                               logger=logger,
-                               n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
-                               _compat_glop_version=_compat_glop_version,
                                _read_from_local_dir=None,  # first environment to generate the classes and save them
                                _local_dir_cls=None,
-                               _overload_name_multimix=_overload_name_multimix,
-                               kwargs_observation=kwargs_observation,
-                               observation_bk_class=observation_backend_class,
-                               observation_bk_kwargs=observation_backend_kwargs,
-                               allow_detachment=allow_detachment,
                                )   
         if not os.path.exists(this_local_dir.name):
             raise EnvError(f"Path {this_local_dir.name} has not been created by the tempfile package")
         init_env.generate_classes(local_dir_id=this_local_dir.name)
-                               
-        if not os.path.exists(this_local_dir_name):
-            raise EnvError(f"Path {this_local_dir_name} has not been created by the tempfile package")
-        init_env.generate_classes(local_dir_id=this_local_dir_name)
         # fix `my_bk_act_class` and `_complete_action_class`
         _aux_fix_backend_internal_classes(type(backend), this_local_dir)
         init_env.backend = None  # to avoid to close the backend when init_env is deleted
@@ -1044,8 +1047,6 @@ def make_from_dataset_path(
     # new in 1.11.0
     if _overload_name_multimix is not None:
         # case of multimix
-        _add_to_name = ''  # already defined in the first mix
-        name_env = _overload_name_multimix.name_env
         if  _overload_name_multimix.mix_id >= 1 and _overload_name_multimix.local_dir_tmpfolder is not None:  
             # this is not the first mix
             # for the other mix I need to read the data from files and NOT
@@ -1056,42 +1057,11 @@ def make_from_dataset_path(
     # Finally instantiate env from config & overrides
     # including (if activated the new grid2op behaviour)
     env = Environment(
-        init_env_path=os.path.abspath(dataset_path),
-        init_grid_path=grid_path_abs,
-        chronics_handler=data_feeding,
-        backend=backend,
-        parameters=param,
-        name=name_env + _add_to_name,
-        names_chronics_to_backend=names_chronics_to_backend,
-        actionClass=action_class,
-        observationClass=observation_class,
-        rewardClass=reward_class,
-        legalActClass=gamerules_class,
-        voltagecontrolerClass=volagecontroler_class,
-        other_rewards=other_rewards,
-        opponent_space_type=opponent_space_type,
-        opponent_action_class=opponent_action_class,
-        opponent_class=opponent_class,
-        opponent_init_budget=opponent_init_budget,
-        opponent_attack_duration=opponent_attack_duration,
-        opponent_attack_cooldown=opponent_attack_cooldown,
-        opponent_budget_per_ts=opponent_budget_per_ts,
-        opponent_budget_class=opponent_budget_class,
-        kwargs_opponent=kwargs_opponent,
-        has_attention_budget=has_attention_budget,
-        attention_budget_cls=attention_budget_class,
-        kwargs_attention_budget=kwargs_attention_budget,
-        logger=logger,
-        n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
-        allow_detachment=allow_detachment,
-        _compat_glop_version=_compat_glop_version,
+        **default_kwargs,
+         chronics_handler=data_feeding,
         _read_from_local_dir=classes_path,
         _allow_loaded_backend=allow_loaded_backend,
         _local_dir_cls=this_local_dir,
-        _overload_name_multimix=_overload_name_multimix,
-        kwargs_observation=kwargs_observation,
-        observation_bk_class=observation_backend_class,
-        observation_bk_kwargs=observation_backend_kwargs
     )   
     if do_not_erase_cls is not None:
         env._do_not_erase_local_dir_cls = do_not_erase_cls

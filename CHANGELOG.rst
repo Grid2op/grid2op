@@ -107,6 +107,8 @@ Native multi agents support:
   name is added. This behaviour can be turned off by passing `_add_cls_nm_bk=False`
   when calling `grid2op.make(...)`. If you develop a new Backend, you can also
   customize the added name by overloading the `get_class_added_name` class method.
+- [BREAKING] it is now forbidden to create environment with arguments.
+  Only key-word arguments are allowed.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
