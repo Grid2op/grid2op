@@ -724,10 +724,10 @@ class Backend(GridObjects, ABC):
         :return: an array with the line status of each powerline
         :rtype: np.array, dtype:bool
         """
+        cls = type(self)
         topo_vect = self.get_topo_vect()
-        return (topo_vect[self.line_or_pos_topo_vect] >= 0) & (
-            topo_vect[self.line_ex_pos_topo_vect] >= 0
-        )
+        return ((topo_vect[cls.line_or_pos_topo_vect] >= 0) & 
+                (topo_vect[cls.line_ex_pos_topo_vect] >= 0))
 
     def get_line_flow(self) -> np.ndarray:
         """
@@ -1090,10 +1090,8 @@ class Backend(GridObjects, ABC):
             
             # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
             # .. versionadded:: 1.11.0
-            topo_vect = self.get_topo_vect()
-            
+            topo_vect = self.get_topo_vect()            
             load_buses = topo_vect[self.load_pos_topo_vect]
-            
             if not self.detachment_is_allowed and (load_buses == -1).any():
                 raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")

@@ -67,8 +67,11 @@ class MakeBackend(ABC, HelperTests):
     def make_backend(self, detailed_infos_for_cascading_failures=False) -> Backend:
         pass
 
-    def make_backend_with_glue_code(self, detailed_infos_for_cascading_failures=False, extra_name="",
-                                    n_busbar=2, allow_detachment=False) -> Backend:
+    def make_backend_with_glue_code(self,
+                                    detailed_infos_for_cascading_failures=False,
+                                    extra_name="",
+                                    n_busbar=2,
+                                    allow_detachment=False) -> Backend:
         Backend._clear_class_attribute()
         bk = self.make_backend(detailed_infos_for_cascading_failures=detailed_infos_for_cascading_failures)
         type(bk)._clear_grid_dependant_class_attributes()
