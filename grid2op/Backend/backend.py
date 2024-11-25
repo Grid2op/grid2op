@@ -182,7 +182,7 @@ class Backend(GridObjects, ABC):
 
         # .. versionadded: 1.11.0
         self._missing_detachment_support:bool = True
-        self._allow_detachment:bool = DEFAULT_ALLOW_DETACHMENT
+        self.detachment_is_allowed:bool = DEFAULT_ALLOW_DETACHMENT
     
     def can_handle_more_than_2_busbar(self):
         """
@@ -271,7 +271,7 @@ class Backend(GridObjects, ABC):
             At least, at time of writing there is no good reason to do so.
         """
         self._missing_detachment_support = False
-        self._allow_detachment = type(self)._allow_detachment
+        self.detachment_is_allowed = type(self).detachment_is_allowed
 
     def cannot_handle_detachment(self):
         """
@@ -298,10 +298,10 @@ class Backend(GridObjects, ABC):
             At least, at time of writing there is no good reason to do so.
         """
         self._missing_detachment_support = False
-        if type(self._allow_detachment != DEFAULT_ALLOW_DETACHMENT):
+        if type(self).detachment_is_allowed != DEFAULT_ALLOW_DETACHMENT:
             warnings.warn("You asked in 'make' function to allow shedding. This is"
                           f"not possible with a backend of type {type(self)}.")
-        self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
+        self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
 
     def make_complete_path(self,
                            path : Union[os.PathLike, str],
@@ -1087,13 +1087,16 @@ class Backend(GridObjects, ABC):
                 topo_vect = self._get_topo_vect()
             else:
                 topo_vect = self.get_topo_vect()
+            
             load_buses = topo_vect[self.load_pos_topo_vect]
-            if not self._allow_detachment and (load_buses == -1).any():
+            
+            if not self.detachment_is_allowed and (load_buses == -1).any():
                 raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
 
             gen_buses = topo_vect[self.gen_pos_topo_vect]
-            if not self._allow_detachment and (gen_buses == -1).any():
+            
+            if not self.detachment_is_allowed and (gen_buses == -1).any():
                 raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
                                         "but this is not allowed or not supported (Game Over)")
             
@@ -1106,6 +1109,15 @@ class Backend(GridObjects, ABC):
                 "GAME OVER: Powerflow has diverged during computation "
                 "or a load has been disconnected or a generator has been disconnected."
             )
+            
+        # Post-Powerflow Check
+        if not self.detachment_is_allowed and conv:
+            resulting_act = self.get_action_to_set()
+            load_buses_act_set = resulting_act._set_topo_vect[self.load_pos_topo_vect]
+            gen_buses_act_set = resulting_act._set_topo_vect[self.gen_pos_topo_vect]
+            if (load_buses_act_set == -1).any() or (gen_buses_act_set == -1).any():
+                exc_me = Grid2OpException(f"One or more generators or loads were detached in Backend {type(self).__name__}"
+                                           " as a result of a Grid2Op action, but this is not allowed or not supported (Game Over)")
         return exc_me
 
     def next_grid_state(self,
@@ -2175,10 +2187,10 @@ class Backend(GridObjects, ABC):
                             "of your backend cannot handle detachment then change it :-)\n"
                             "Your backend will behave as if it did not support it.")
                 self._missing_detachment_support = False
-                self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
+                self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
         else:
             self._missing_detachment_support = False
-            self._allow_detachment = DEFAULT_ALLOW_DETACHMENT
+            self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
             warnings.warn("Your backend is missing the `_missing_detachment_support` "
                           "attribute.")
         

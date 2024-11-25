@@ -53,6 +53,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         self.dict_ = {
             "name_gen": ["gen_1_0", "gen_2_1", "gen_5_2", "gen_7_3", "gen_0_4"],
             "n_busbar_per_sub": "2",
+            "detachment_is_allowed": "False",
             "name_load": [
                 "load_1_0",
                 "load_2_1",

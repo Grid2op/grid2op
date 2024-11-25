@@ -280,6 +280,7 @@ class Environment(BaseEnv):
             # this is due to the class attribute
             type(self.backend).set_env_name(self.name)
             type(self.backend).set_n_busbar_per_sub(self._n_busbar)
+            type(self.backend).set_detachment_is_allowed(self._allow_detachment)
             
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version

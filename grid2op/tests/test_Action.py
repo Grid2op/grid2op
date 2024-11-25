@@ -108,7 +108,7 @@ def _get_action_grid_class():
     json_ = {
         "glop_version": grid2op.__version__,
         "n_busbar_per_sub": "2",
-        "_allow_detachment": "False",
+        "detachment_is_allowed": "False",
         "name_gen": ["gen_0", "gen_1", "gen_2", "gen_3", "gen_4"],
         "name_load": [
             "load_0",
