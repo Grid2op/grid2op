@@ -234,8 +234,6 @@ class TestCompatMode_WhenStorage(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        import pdb
-        pdb.set_trace()
         assert self.env.observation_space.n == 420, f"{self.env.observation_space.n}"
 
     def test_same_env_as_no_storage(self):
