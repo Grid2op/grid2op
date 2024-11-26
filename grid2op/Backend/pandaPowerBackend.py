@@ -829,6 +829,9 @@ class PandaPowerBackend(Backend):
         self.storage_p = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
         self.storage_q = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
         self.storage_v = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
+        self._topo_vect.flags.writeable = True
+        self._topo_vect.resize(cls.dim_topo)
+        self._topo_vect.flags.writeable = False
         self._get_topo_vect()
 
     def _convert_id_topo(self, id_big_topo):
@@ -899,7 +902,6 @@ class PandaPowerBackend(Backend):
             tmp_stor_p = self._grid.storage["p_mw"]
             if (storage.changed).any():
                 tmp_stor_p.iloc[storage.changed] = storage.values[storage.changed]
-
             # topology of the storage
             stor_bus = backendAction.get_storages_bus()
             new_bus_num = dt_int(1) * self._grid.storage["bus"].values
@@ -1183,11 +1185,8 @@ class PandaPowerBackend(Backend):
                 self.storage_v[:],
                 self.storage_theta[:],
             ) = self._storages_info()
+            
             deact_storage = ~np.isfinite(self.storage_v)
-            if (np.abs(self.storage_p[deact_storage]) > self.tol).any():
-                raise pp.powerflow.LoadflowNotConverged(
-                    "Isolated storage set to absorb / produce something"
-                )
             self.storage_p[deact_storage] = 0.0
             self.storage_q[deact_storage] = 0.0
             self.storage_v[deact_storage] = 0.0
@@ -1336,7 +1335,7 @@ class PandaPowerBackend(Backend):
         res._in_service_trafo_col_id = self._in_service_trafo_col_id
         
         res._missing_two_busbars_support_info = self._missing_two_busbars_support_info
-        res._missing_detachment_support = self._missing_detachment_support
+        res._missing_detachment_support_info = self._missing_detachment_support_info
         res.div_exception = self.div_exception
         return res
 
@@ -1552,8 +1551,10 @@ class PandaPowerBackend(Backend):
         if self.n_storage:
             # this is because we support "backward comaptibility" feature. So the storage can be
             # deactivated from the Environment...
-            p_storage = self._grid.res_storage["p_mw"].values.astype(dt_float)
-            q_storage = self._grid.res_storage["q_mvar"].values.astype(dt_float)
+            # p_storage = self._grid.res_storage["p_mw"].values.astype(dt_float)
+            # q_storage = self._grid.res_storage["q_mvar"].values.astype(dt_float)
+            p_storage = self._grid.storage["p_mw"].values.astype(dt_float)
+            q_storage = self._grid.storage["q_mvar"].values.astype(dt_float)
             v_storage = (
                 self._grid.res_bus.loc[self._grid.storage["bus"].values][
                     "vm_pu"

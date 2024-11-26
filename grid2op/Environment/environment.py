@@ -265,7 +265,7 @@ class Environment(BaseEnv):
         need_process_backend = False    
         if not self.backend.is_loaded:
             if hasattr(self.backend, "init_pp_backend") and self.backend.init_pp_backend is not None:
-                # hack for lightsim2grid ...
+                # hack for legacy lightsim2grid ...
                 if type(self.backend.init_pp_backend)._INIT_GRID_CLS is not None:
                     type(self.backend.init_pp_backend)._INIT_GRID_CLS._clear_grid_dependant_class_attributes()
                 type(self.backend.init_pp_backend)._clear_grid_dependant_class_attributes()
@@ -282,7 +282,6 @@ class Environment(BaseEnv):
             type(self.backend).set_env_name(self.name)
             type(self.backend).set_n_busbar_per_sub(self._n_busbar)
             type(self.backend).set_detachment_is_allowed(self._allow_detachment)
-            
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version
             
@@ -296,8 +295,8 @@ class Environment(BaseEnv):
             except BackendError as exc_:
                 self.backend.redispatching_unit_commitment_availble = False
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
-                            f"to use all grid2op functionalities. "
-                            f"The error was: \"{exc_}\"")
+                              f"to use all grid2op functionalities. "
+                              f"The error was: \"{exc_}\"")
             exc_ = self.backend.load_grid_layout(self.get_path_env())
             if exc_ is not None:
                 warnings.warn(

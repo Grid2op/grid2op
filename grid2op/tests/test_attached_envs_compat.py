@@ -12,6 +12,7 @@ import unittest
 import grid2op
 import numpy as np
 
+from grid2op.Backend import Backend, PandaPowerBackend
 from grid2op.Space import GridObjects
 from grid2op.Action import PowerlineSetAction, DontAct, PlayableAction
 from grid2op.Observation import CompleteObservation
@@ -46,11 +47,11 @@ class TestL2RPNNEURIPS2020_Track1Compat(unittest.TestCase):
 
     def test_action_space(self):
         assert issubclass(self.env.action_space.subtype, PlayableAction)
-        assert self.env.action_space.n == 494
+        assert self.env.action_space.n == 494, f"{self.env.action_space.n}"
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        assert self.env.observation_space.n == 1266
+        assert self.env.observation_space.n == 1266, f"{self.env.observation_space.n}"
 
     def test_random_action(self):
         """test i can perform some step (random)"""
@@ -91,14 +92,14 @@ class TestL2RPNNEURIPS2020_Track2Compat(unittest.TestCase):
 
     def test_action_space(self):
         assert issubclass(self.env.action_space.subtype, PlayableAction)
-        assert self.env.action_space.n == 1500
+        assert self.env.action_space.n == 1500, f"{self.env.action_space.n}"
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
         assert (
             "curtailment" not in self.env.observation_space.subtype.attr_list_vect
         ), "curtailment should not be there"
-        assert self.env.observation_space.n == 3868
+        assert self.env.observation_space.n == 3868, f"{self.env.observation_space.n}"
 
     def test_random_action(self):
         """test i can perform some step (random)"""
@@ -139,11 +140,11 @@ class TestL2RPN_CASE14_SANDBOXCompat(unittest.TestCase):
 
     def test_action_space(self):
         assert issubclass(self.env.action_space.subtype, PlayableAction)
-        assert self.env.action_space.n == 160
+        assert self.env.action_space.n == 160, f"{self.env.action_space.n}"
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        assert self.env.observation_space.n == 420
+        assert self.env.observation_space.n == 420, f"{self.env.observation_space.n}"
 
     def test_random_action(self):
         """test i can perform some step (random)"""
@@ -184,11 +185,11 @@ class TestEDUC_CASE14_REDISPCompat(unittest.TestCase):
 
     def test_action_space(self):
         assert issubclass(self.env.action_space.subtype, PlayableAction)
-        assert self.env.action_space.n == 26
+        assert self.env.action_space.n == 26, f"{self.env.action_space.n}"
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        assert self.env.observation_space.n == 420
+        assert self.env.observation_space.n == 420, f"{self.env.observation_space.n}"
 
     def test_random_action(self):
         """test i can perform some step (random)"""
@@ -225,15 +226,17 @@ class TestCompatMode_WhenStorage(unittest.TestCase):
 
     def test_opponent(self):
         assert issubclass(self.env._opponent_action_class, DontAct)
-        assert self.env._opponent_action_space.n == 0
+        assert self.env._opponent_action_space.n == 0, f"{self.env._opponent_action_space.n}"
 
     def test_action_space(self):
         assert issubclass(self.env.action_space.subtype, PlayableAction)
-        assert self.env.action_space.n == 26
+        assert self.env.action_space.n == 26, f"{self.env.action_space.n}"
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        assert self.env.observation_space.n == 420
+        import pdb
+        pdb.set_trace()
+        assert self.env.observation_space.n == 420, f"{self.env.observation_space.n}"
 
     def test_same_env_as_no_storage(self):
         res = 0

@@ -1254,7 +1254,10 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 assert self.env.backend._grid.bus.loc[global_bus]["in_service"]
             else:
                 assert not self.env.backend._grid.line.iloc[line_id]["in_service"]
-            self.env.backend.line_status[:] = self.env.backend._get_line_status()  # otherwise it's not updated
+            tmp = self.env.backend._get_line_status()  # otherwise it's not updated
+            self.env.backend.line_status.flags.writeable = True
+            self.env.backend.line_status[:] = tmp
+            self.env.backend.line_status.flags.writeable = False
             topo_vect = self.env.backend._get_topo_vect()
             assert topo_vect[cls.line_or_pos_topo_vect[line_id]] == new_bus, f"{topo_vect[cls.line_or_pos_topo_vect[line_id]]} vs {new_bus}"
                 
@@ -1272,7 +1275,10 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 assert self.env.backend._grid.bus.loc[global_bus]["in_service"]
             else:
                 assert not self.env.backend._grid.line.iloc[line_id]["in_service"]
-            self.env.backend.line_status[:] = self.env.backend._get_line_status()  # otherwise it's not updated
+            tmp = self.env.backend._get_line_status()  # otherwise it's not updated
+            self.env.backend.line_status.flags.writeable = True
+            self.env.backend.line_status[:] = tmp
+            self.env.backend.line_status.flags.writeable = False
             topo_vect = self.env.backend._get_topo_vect()
             assert topo_vect[cls.line_ex_pos_topo_vect[line_id]] == new_bus, f"{topo_vect[cls.line_ex_pos_topo_vect[line_id]]} vs {new_bus}"
             
