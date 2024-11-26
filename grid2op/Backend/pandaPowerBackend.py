@@ -327,8 +327,8 @@ class PandaPowerBackend(Backend):
             warnings.simplefilter("ignore", FutureWarning)
             self._grid = copy.deepcopy(self.__pp_backend_initial_grid)
         self._reset_all_nan()
+        self._get_line_status()
         self._get_topo_vect()
-        self.line_status[:] = self._get_line_status()
         self.comp_time = 0.0
 
     def load_grid(self,
@@ -771,7 +771,6 @@ class PandaPowerBackend(Backend):
         self.q_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
         self.v_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
         self.a_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.line_status = np.full(self.n_line, dtype=dt_bool, fill_value=np.NaN)
         self.load_p = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
         self.load_q = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
         self.load_v = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
@@ -782,6 +781,9 @@ class PandaPowerBackend(Backend):
         self.storage_q = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
         self.storage_v = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
         self._nb_bus_before = None
+        
+        self.line_status = np.full(self.n_line, dtype=dt_bool, fill_value=np.NaN)
+        self.line_status.flags.writeable = False
 
         # store the topoid -> objid
         self._init_topoid_objid()
@@ -1084,8 +1086,14 @@ class PandaPowerBackend(Backend):
         in case of "do nothing" action applied.
         """
         try:
-            self._get_topo_vect()  # do that before any possible divergence
+            # as pandapower does not modify the topology or the status of 
+            # powerline, then we can compute the topology (and the line status)
+            # at the beginning
+            # This is also interesting in case of divergence :-)
+            self._get_line_status()
+            self._get_topo_vect()
             self._aux_runpf_pp(is_dc)
+            
             cls = type(self)     
             # if a connected bus has a no voltage, it's a divergence (grid was not connected)
             if self._grid.res_bus.loc[self._grid.bus["in_service"]]["va_degree"].isnull().any():
@@ -1131,7 +1139,6 @@ class PandaPowerBackend(Backend):
                                 self.load_v[l_id] = self.prod_v[g_id]
                                 break
             
-            self.line_status[:] = self._get_line_status()
             # I retrieve the data once for the flows, so has to not re read multiple dataFrame
             self.p_or[:] = self._aux_get_line_info("p_from_mw", "p_hv_mw")
             self.q_or[:] = self._aux_get_line_info("q_from_mvar", "q_hv_mvar")
@@ -1225,8 +1232,9 @@ class PandaPowerBackend(Backend):
         self._topo_vect.flags.writeable = True
         self._topo_vect[:] = -1
         self._topo_vect.flags.writeable = False
+        self.line_status.flags.writeable = True
         self.line_status[:] = False
-
+        self.line_status.flags.writeable = False
     def copy(self) -> "PandaPowerBackend":
         """
         INTERNAL
@@ -1372,12 +1380,15 @@ class PandaPowerBackend(Backend):
         return self.line_status
 
     def _get_line_status(self):
-        return np.concatenate(
+        self.line_status.flags.writeable = True
+        self.line_status[:] = np.concatenate(
             (
                 self._grid.line["in_service"].values,
                 self._grid.trafo["in_service"].values,
             )
         ).astype(dt_bool)
+        self.line_status.flags.writeable = False
+        return self.line_status
 
     def get_line_flow(self) -> np.ndarray:
         return self.a_or
@@ -1391,19 +1402,33 @@ class PandaPowerBackend(Backend):
         self._topo_vect[self.line_or_pos_topo_vect[id_]] = -1
         self._topo_vect[self.line_ex_pos_topo_vect[id_]] = -1
         self._topo_vect.flags.writeable = False
+        self.line_status.flags.writeable = True
         self.line_status[id_] = False
+        self.line_status.flags.writeable = False
 
     def _reconnect_line(self, id_):
         if id_ < self._number_true_line:
             self._grid.line.iloc[id_, self._in_service_line_col_id] = True
         else:
             self._grid.trafo.iloc[id_ - self._number_true_line, self._in_service_trafo_col_id] = True
+        self.line_status.flags.writeable = True
         self.line_status[id_] = True
+        self.line_status.flags.writeable = False
 
     def get_topo_vect(self) -> np.ndarray:
         return self._topo_vect
 
     def _get_topo_vect(self):
+        """
+        .. danger:: 
+            you should have called `self._get_line_status` before otherwise it might
+            not behave correctly !
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
         cls = type(self)
         
         # lines / trafo

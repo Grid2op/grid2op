@@ -77,7 +77,7 @@ class MakeBackend(ABC, HelperTests):
         type(bk)._clear_grid_dependant_class_attributes()
         type(bk).set_env_name(type(self).__name__ + extra_name)
         type(bk).set_n_busbar_per_sub(n_busbar)
-        type(bk)._allow_detachment = allow_detachment
+        type(bk).set_detachment_is_allowed(allow_detachment)
         return bk
     
     def get_path(self) -> str:

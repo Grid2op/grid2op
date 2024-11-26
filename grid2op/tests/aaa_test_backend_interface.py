@@ -14,6 +14,7 @@ from grid2op.Backend import Backend
 from grid2op.dtypes import dt_int
 from grid2op.tests.helper_path_test import HelperTests, MakeBackend, PATH_DATA
 from grid2op.Exceptions import BackendError, Grid2OpException
+from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
 
 
 class AAATestBackendAPI(MakeBackend):
@@ -39,21 +40,36 @@ class AAATestBackendAPI(MakeBackend):
         """do not run nor modify ! (used for this test class only)"""
         return "BasicTest_load_grid_" + type(self).__name__
 
-    def aux_make_backend(self, n_busbar=2) -> Backend:
+    def aux_make_backend(self,
+                         n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+                         allow_detachment=DEFAULT_ALLOW_DETACHMENT,
+                         extra_name=None) -> Backend:
         """do not run nor modify ! (used for this test class only)"""
-        backend = self.make_backend_with_glue_code(n_busbar=n_busbar)
+        
+        if extra_name is None:
+            extra_name = self.aux_get_env_name()
+        backend = self.make_backend_with_glue_code(n_busbar=n_busbar,
+                                                   allow_detachment=allow_detachment,
+                                                   extra_name=extra_name)
         backend.load_grid(self.get_path(), self.get_casefile())
         backend.load_redispacthing_data("tmp")  # pretend there is no generator
         backend.load_storage_data(self.get_path())
-        env_name = self.aux_get_env_name()
-        backend.env_name = env_name
-        backend.assert_grid_correct()  
+        backend.assert_grid_correct()
         return backend
     
     def test_00create_backend(self):
         """Tests the backend can be created (not integrated in a grid2op environment yet)"""
         self.skip_if_needed()
         backend = self.make_backend_with_glue_code()
+        if not backend._missing_two_busbars_support_info:
+            warnings.warn("You should call either `self.can_handle_more_than_2_busbar()` "
+                          "or `self.cannot_handle_more_than_2_busbar()` in the `load_grid` "
+                          "method of your backend. Please refer to documentation for more information.")
+    
+        if not backend._missing_detachment_support:
+            warnings.warn("You should call either `self.can_handle_detachment()` "
+                          "or `self.cannot_handle_detachment()` in the `load_grid` "
+                          "method of your backend. Please refer to documentation for more information.")
     
     def test_01load_grid(self):
         """Tests the grid can be loaded (supposes that your backend can read the grid.json in educ_case14_storage)*
