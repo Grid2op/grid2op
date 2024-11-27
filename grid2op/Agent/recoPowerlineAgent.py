@@ -5,7 +5,11 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
-import numpy as np
+
+from typing import List
+from grid2op.Observation import BaseObservation
+from grid2op.Action import BaseAction, ActionSpace
+
 from grid2op.Agent.greedyAgent import GreedyAgent
 
 
@@ -17,10 +21,10 @@ class RecoPowerlineAgent(GreedyAgent):
 
     """
 
-    def __init__(self, action_space):
-        GreedyAgent.__init__(self, action_space)
+    def __init__(self, action_space: ActionSpace, simulated_time_step : int =1):
+        GreedyAgent.__init__(self, action_space, simulated_time_step=simulated_time_step)
 
-    def _get_tested_action(self, observation):
+    def _get_tested_action(self, observation: BaseObservation) -> List[BaseAction]:
         res = [self.action_space({})]  # add the do nothing
         line_stat_s = observation.line_status
         cooldown = observation.time_before_cooldown_line

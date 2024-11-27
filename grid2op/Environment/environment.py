@@ -79,6 +79,7 @@ class Environment(BaseEnv):
 
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path: str,
         init_grid_path: str,
         chronics_handler,
@@ -176,8 +177,8 @@ class Environment(BaseEnv):
             # this means that the "make" call is issued from the 
             # creation of a MultiMix.
             # So I use the base name instead.
-            self.name = "".join(_overload_name_multimix[2:])
-            self.multimix_mix_name = name
+            self.name = _overload_name_multimix.name_env + _overload_name_multimix.add_to_name
+            self.multimix_mix_name = None  # set in creation of the MultiMixEnv instead
             self._overload_name_multimix = _overload_name_multimix
         else:
             self.name = name
@@ -264,7 +265,7 @@ class Environment(BaseEnv):
         need_process_backend = False    
         if not self.backend.is_loaded:
             if hasattr(self.backend, "init_pp_backend") and self.backend.init_pp_backend is not None:
-                # hack for lightsim2grid ...
+                # hack for legacy lightsim2grid ...
                 if type(self.backend.init_pp_backend)._INIT_GRID_CLS is not None:
                     type(self.backend.init_pp_backend)._INIT_GRID_CLS._clear_grid_dependant_class_attributes()
                 type(self.backend.init_pp_backend)._clear_grid_dependant_class_attributes()
@@ -281,7 +282,6 @@ class Environment(BaseEnv):
             type(self.backend).set_env_name(self.name)
             type(self.backend).set_n_busbar_per_sub(self._n_busbar)
             type(self.backend).set_detachment_is_allowed(self._allow_detachment)
-            
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version
             
@@ -295,8 +295,8 @@ class Environment(BaseEnv):
             except BackendError as exc_:
                 self.backend.redispatching_unit_commitment_availble = False
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
-                            f"to use all grid2op functionalities. "
-                            f"The error was: \"{exc_}\"")
+                              f"to use all grid2op functionalities. "
+                              f"The error was: \"{exc_}\"")
             exc_ = self.backend.load_grid_layout(self.get_path_env())
             if exc_ is not None:
                 warnings.warn(
@@ -427,7 +427,7 @@ class Environment(BaseEnv):
             kwargs_observation=self._kwargs_observation,
             observation_bk_class=self._observation_bk_class,
             observation_bk_kwargs=self._observation_bk_kwargs,
-            _local_dir_cls=self._local_dir_cls
+            _local_dir_cls=self._local_dir_cls,
         )
 
         # test to make sure the backend is consistent with the chronics generator
@@ -952,11 +952,17 @@ class Environment(BaseEnv):
 
         self._backend_action = self._backend_action_class()
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
+        
+        if self._init_obs is not None:
+            self.backend.update_from_obs(self._init_obs)
+            
         init_action = None
         if not self._parameters.IGNORE_INITIAL_STATE_TIME_SERIE:
             # load the initial state from the time series (default)
             # TODO logger: log that
-            init_action : BaseAction = self.chronics_handler.get_init_action(self._names_chronics_to_backend)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
+                init_action : BaseAction = self.chronics_handler.get_init_action(self._names_chronics_to_backend)
         else:
             # do as if everything was connected to busbar 1
             # TODO logger: log that
@@ -1283,7 +1289,9 @@ class Environment(BaseEnv):
                 if "method" in act_as_dict:
                     method = act_as_dict["method"]
                     del act_as_dict["method"]
-                init_state : BaseAction = self._helper_action_env(act_as_dict)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("error")
+                    init_state : BaseAction = self._helper_action_env(act_as_dict)
             elif isinstance(act_as_dict, BaseAction):
                 init_state = act_as_dict
             else:
@@ -1294,7 +1302,6 @@ class Environment(BaseEnv):
             if ambiguous:
                 raise Grid2OpException("You provided an invalid (ambiguous) action to set the 'init state'") from except_tmp
             init_state.remove_change()
-        
         super().reset(seed=seed, options=options)
         
         if options is not None and "max step" in options:                
@@ -2130,7 +2137,7 @@ class Environment(BaseEnv):
         else:
             msg_ = ("You are probably using a legacy backend class that cannot "
                     "be copied properly. Please upgrade your backend to the latest version.")
-            self.logger.warn(msg_)
+            self.logger.warning(msg_)
             warnings.warn(msg_)
             res["backend_kwargs"] = None
             

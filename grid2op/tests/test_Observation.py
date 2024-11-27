@@ -108,7 +108,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "name_storage": [],
             "glop_version": grid2op.__version__,
             # "env_name": "rte_case14_test",
-            "env_name": "rte_case14_testTestBasisObsBehaviour",
+            "env_name": "rte_case14_testPandaPowerBackendTestBasisObsBehaviour",
             "sub_info": [3, 6, 4, 6, 5, 6, 3, 2, 5, 3, 3, 3, 4, 3],
             "load_to_subid": [1, 2, 13, 3, 4, 5, 8, 9, 10, 11, 12],
             "gen_to_subid": [1, 2, 5, 7, 0],
@@ -1101,8 +1101,8 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 else:
                     p_line += graph.edges[(k1, k2)]["p_ex"]
                     q_line += graph.edges[(k1, k2)]["q_ex"]
-            assert abs(p_line - p_) <= 1e-5, "error for kirchoff's law for graph for P"
-            assert abs(q_line - q_) <= 1e-5, "error for kirchoff's law for graph for Q"
+            assert abs(p_line - p_) <= 1e-5, "error for Kirchhoff's law for graph for P"
+            assert abs(q_line - q_) <= 1e-5, "error for Kirchhoff's law for graph for Q"
 
     def test_bus_conn_mat_csr(self):
         self.aux_test_bus_conn_mat(as_csr=True)
@@ -1864,7 +1864,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert mat.shape == (15, 15)
         assert ind_lor[7] == 14
         assert ind_lor[8] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         if active_flow:
             assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one
@@ -1889,7 +1889,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert ind_lor[8] == 15
         assert ind_lor[2] == 14
         assert ind_lex[0] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         if active_flow:
             assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one
@@ -1953,7 +1953,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert mat.shape == (15, 15)
         assert ind_lor[7] == 14
         assert ind_lor[8] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         if active_flow:
             assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one
@@ -1983,7 +1983,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert ind_lor[8] == 15
         assert ind_lor[2] == 14
         assert ind_lex[0] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
         if active_flow:
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one

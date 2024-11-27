@@ -1254,7 +1254,10 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 assert self.env.backend._grid.bus.loc[global_bus]["in_service"]
             else:
                 assert not self.env.backend._grid.line.iloc[line_id]["in_service"]
-            self.env.backend.line_status[:] = self.env.backend._get_line_status()  # otherwise it's not updated
+            tmp = self.env.backend._get_line_status()  # otherwise it's not updated
+            self.env.backend.line_status.flags.writeable = True
+            self.env.backend.line_status[:] = tmp
+            self.env.backend.line_status.flags.writeable = False
             topo_vect = self.env.backend._get_topo_vect()
             assert topo_vect[cls.line_or_pos_topo_vect[line_id]] == new_bus, f"{topo_vect[cls.line_or_pos_topo_vect[line_id]]} vs {new_bus}"
                 
@@ -1272,7 +1275,10 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 assert self.env.backend._grid.bus.loc[global_bus]["in_service"]
             else:
                 assert not self.env.backend._grid.line.iloc[line_id]["in_service"]
-            self.env.backend.line_status[:] = self.env.backend._get_line_status()  # otherwise it's not updated
+            tmp = self.env.backend._get_line_status()  # otherwise it's not updated
+            self.env.backend.line_status.flags.writeable = True
+            self.env.backend.line_status[:] = tmp
+            self.env.backend.line_status.flags.writeable = False
             topo_vect = self.env.backend._get_topo_vect()
             assert topo_vect[cls.line_ex_pos_topo_vect[line_id]] == new_bus, f"{topo_vect[cls.line_ex_pos_topo_vect[line_id]]} vs {new_bus}"
             
@@ -1306,7 +1312,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 else:
                     assert not self.env.backend._grid.line.iloc[line_ex_id]["in_service"]
     
-    def test_check_kirchoff(self):
+    def test_check_kirchhoff(self):
         cls = type(self.env)            
         res = self._aux_find_sub(self.env, cls.LOA_COL)
         if res is None:
@@ -1325,7 +1331,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
             self.env.backend.apply_action(bk_act)
             conv, maybe_exc = self.env.backend.runpf()
             assert conv, f"error : {maybe_exc}"
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchoff()
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchhoff()
             # assert laws are met
             assert np.abs(p_subs).max() <= 1e-5, f"error for busbar {new_bus}: {np.abs(p_subs).max():.2e}"
             assert np.abs(q_subs).max() <= 1e-5, f"error for busbar {new_bus}: {np.abs(q_subs).max():.2e}"

@@ -28,7 +28,11 @@ from grid2op.Observation import (BaseObservation,
                                  HighResSimCounter)
 from grid2op.Backend import Backend
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Space import GridObjects, RandomObject, DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import (GridObjects,
+                           RandomObject,
+                           DEFAULT_ALLOW_DETACHMENT,
+                           DEFAULT_N_BUSBAR_PER_SUB,
+                           GRID2OP_CLASSES_ENV_FOLDER)
 from grid2op.typing_variables import N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import (Grid2OpException,
                                 EnvError,
@@ -46,6 +50,7 @@ from grid2op.Action._backendAction import _BackendAction
 from grid2op.Chronics import ChronicsHandler
 from grid2op.Rules import AlwaysLegal, BaseRules, AlwaysLegal
 from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
+from grid2op.VoltageControler import ControlVoltageFromFile
 
 # TODO put in a separate class the redispatching function
 
@@ -302,14 +307,20 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     #: this are the keys of the dictionnary `options`
     #: that can be used when calling `env.reset(..., options={})`
-    KEYS_RESET_OPTIONS = {"time serie id", "init state", "init ts", "max step", "thermal limit"}
+    KEYS_RESET_OPTIONS = {"time serie id",
+                          "init state",
+                          "init ts",
+                          "max step",
+                          "thermal limit",
+                          }
     
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path: os.PathLike,
         init_grid_path: os.PathLike,
         parameters: Parameters,
-        voltagecontrolerClass: type,
+        voltagecontrolerClass: type=ControlVoltageFromFile,
         name="unknown",
         thermal_limit_a: Optional[np.ndarray] = None,
         epsilon_poly: float = 1e-4,  # precision of the redispatching algorithm
@@ -350,7 +361,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._local_dir_cls = _local_dir_cls  # suppose it's the second path to the environment, so the classes are already in the files
         self._read_from_local_dir = _read_from_local_dir
         if self._read_from_local_dir is not None:
-            if os.path.split(self._read_from_local_dir)[1] == "_grid2op_classes":
+            if os.path.split(self._read_from_local_dir)[1] == GRID2OP_CLASSES_ENV_FOLDER:
                 # legacy behaviour (using experimental_read_from_local_dir kwargs in env.make)
                 self._do_not_erase_local_dir_cls = True
         else:
@@ -785,7 +796,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj.chronics_handler = copy.deepcopy(self.chronics_handler)
         # retrieve the "pointer" to the new_obj action space (for initializing the grid)
         new_obj.chronics_handler.cleanup_action_space()
-        new_obj.chronics_handler.action_space = new_obj._helper_action_env
+        if isinstance(new_obj.chronics_handler, ChronicsHandler):
+            new_obj.chronics_handler.action_space = new_obj._helper_action_env
         
         # action space
         new_obj._action_space = self._action_space.copy()
@@ -1886,7 +1898,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             tmp = action._dict_inj["prod_p"]
             indx_ok = np.isfinite(tmp)
             new_p[indx_ok] = tmp[indx_ok]
-
+            
         # modification of the environment always override the modification of the agents (if any)
         # TODO have a flag there if this is the case.
         if "prod_p" in self._env_modification._dict_inj:
@@ -4080,7 +4092,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             sys.path.append(sub_repo)
             
         sub_repo_mod = None
-        if tmp_nm == "_grid2op_classes":
+        if tmp_nm == GRID2OP_CLASSES_ENV_FOLDER:
             # legacy "experimental_read_from_local_dir"
             # issue was the module "_grid2op_classes" had the same name
             # regardless of the environment, so grid2op was "confused"
@@ -4117,7 +4129,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         cls_res = getattr(module, cls_other.__name__)
         return str_import, cls_res
 
-    def generate_classes(self, *, local_dir_id=None, _guard=None, _is_base_env__=True, sys_path=None):
+    def generate_classes(self, *, local_dir_id=None, _guard=None, sys_path=None, _is_base_env__=True):
         """
         Use with care, but can be incredibly useful !
         
@@ -4202,9 +4214,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                    "(eg no the top level env) if I don't know the path of "
                                    "the top level environment.")
             if local_dir_id is not None:
-                sys_path = os.path.join(self.get_path_env(), "_grid2op_classes", local_dir_id)
+                sys_path = os.path.join(self.get_path_env(), GRID2OP_CLASSES_ENV_FOLDER, local_dir_id)
             else:
-                sys_path = os.path.join(self.get_path_env(), "_grid2op_classes")
+                sys_path = os.path.join(self.get_path_env(), GRID2OP_CLASSES_ENV_FOLDER)
                 
         if _is_base_env__:
             if os.path.exists(sys_path):
