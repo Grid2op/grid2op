@@ -1085,8 +1085,9 @@ class PandaPowerBackend(Backend):
                 self.load_theta[:],
             ) = self._loads_info()
             
+            load_in_service = self._grid.res_load["in_service"]
             if not is_dc:
-                if not np.isfinite(self.load_v).all():
+                if not np.isfinite(self.load_v[load_in_service]).all():
                     # TODO see if there is a better way here
                     # some loads are disconnected: it's a game over case!
                     raise pp.powerflow.LoadflowNotConverged(f"Isolated load: check loads {np.isfinite(self.load_v).nonzero()[0]}")
