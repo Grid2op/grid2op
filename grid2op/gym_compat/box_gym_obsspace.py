@@ -628,6 +628,7 @@ class __AuxBoxGymObsSpace:
 
         # handle the "functional" part
         self._template_obs = ob_sp._template_obj.copy()
+        self._template_obs.reset()
         self.__func = {}
 
         self._dims = None
