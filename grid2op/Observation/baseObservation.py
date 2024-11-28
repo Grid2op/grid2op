@@ -1253,10 +1253,10 @@ class BaseObservation(GridObjects):
         self.rho[:] = np.NaN
 
         # cool down and reconnection time after hard overflow, soft overflow or cascading failure
-        self.time_before_cooldown_line[:] = -1
-        self.time_before_cooldown_sub[:] = -1
-        self.time_next_maintenance[:] = -1
-        self.duration_next_maintenance[:] = -1
+        self.time_before_cooldown_line[:] = 0
+        self.time_before_cooldown_sub[:] = 0
+        self.time_next_maintenance[:] = 0
+        self.duration_next_maintenance[:] = 0
         self.timestep_overflow[:] = 0
 
         # calendar data
@@ -1318,6 +1318,13 @@ class BaseObservation(GridObjects):
         self.current_step = dt_int(0)
         self.max_step = dt_int(np.iinfo(dt_int).max)
         self.delta_time = dt_float(5.0)
+        
+        self._thermal_limit[:] = 0.
+        self.curtailment_limit[:] = 0.
+        self.gen_margin_up[:] = 0.
+        self.gen_margin_down[:] = 0.
+        self.curtailment_limit_effective[:] = 0.
+        self.curtailment[:] = 0. 
 
     def set_game_over(self,
                       env: Optional["grid2op.Environment.Environment"]=None) -> None:
