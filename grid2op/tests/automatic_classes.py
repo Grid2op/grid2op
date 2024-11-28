@@ -154,7 +154,8 @@ class AutoClassInFileTester(unittest.TestCase):
                      f"ObservationSpace_{classes_name}",
                      f"PandaPowerBackend_{classes_name}",
                      name_action_cls,
-                     f"VoltageOnlyAction_{classes_name}"
+                     f"VoltageOnlyAction_{classes_name}",
+                     f"_ForecastEnv_{classes_name}",
                      ]
         names_attr = ["action_space",
                       "_backend_action_class",
@@ -167,6 +168,7 @@ class AutoClassInFileTester(unittest.TestCase):
                       "backend",
                       "_actionClass",
                       None, # VoltageOnlyAction not in env
+                      None, # _ForecastEnv_ not in env
                       ]
         # NB: these imports needs to be consistent with what is done in
         # base_env.generate_classes() and gridobj.init_grid(...)
@@ -611,6 +613,12 @@ class GymEnvAutoClassTester(unittest.TestCase):
         obs = async_vect_env.reset()
         
     def test_asynch_spawn(self):
+        # test I can reset everything on the same process
+        env1 = GymEnv(self.env)
+        env2 = GymEnv(self.env)
+        obs1, info1 = env1.reset()
+        obs2, info2 = env2.reset()
+        # now do the same in the same process
         async_vect_env = AsyncVectorEnv((lambda: GymEnv(self.env), lambda: GymEnv(self.env)),
                                         context="spawn")
         obs = async_vect_env.reset()

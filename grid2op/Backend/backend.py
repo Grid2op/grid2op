@@ -121,6 +121,9 @@ class Backend(GridObjects, ABC):
     _complete_action_class : "Optional[grid2op.Action.CompleteAction]"= None
 
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
+    ERR_DETACHMENT : str = ("One or more {} were isolated from the grid "
+                            "but this is not allowed or not supported (Game Over) (detachment_is_allowed is False), "
+                            "check {} {}")
     def __init__(self,
                  detailed_infos_for_cascading_failures:bool=False,
                  can_be_copied:bool=True,
@@ -180,9 +183,9 @@ class Backend(GridObjects, ABC):
         #: You should not worry about the class attribute of the backend in :func:`Backend.apply_action`
         self.n_busbar_per_sub: int = DEFAULT_N_BUSBAR_PER_SUB
 
-        # .. versionadded: 1.11.0
-        self._missing_detachment_support:bool = True
-        self.detachment_is_allowed:bool = DEFAULT_ALLOW_DETACHMENT
+        #: .. versionadded: 1.11.0
+        self._missing_detachment_support_info : bool = True
+        self.detachment_is_allowed : bool = DEFAULT_ALLOW_DETACHMENT
     
     def can_handle_more_than_2_busbar(self):
         """
@@ -270,7 +273,7 @@ class Backend(GridObjects, ABC):
             We highly recommend you do not try to override this function. 
             At least, at time of writing there is no good reason to do so.
         """
-        self._missing_detachment_support = False
+        self._missing_detachment_support_info = False
         self.detachment_is_allowed = type(self).detachment_is_allowed
 
     def cannot_handle_detachment(self):
@@ -297,7 +300,7 @@ class Backend(GridObjects, ABC):
             We highly recommend you do not try to override this function. 
             At least, at time of writing there is no good reason to do so.
         """
-        self._missing_detachment_support = False
+        self._missing_detachment_support_info = False
         if type(self).detachment_is_allowed != DEFAULT_ALLOW_DETACHMENT:
             warnings.warn("You asked in 'make' function to allow shedding. This is"
                           f"not possible with a backend of type {type(self)}.")
@@ -724,10 +727,10 @@ class Backend(GridObjects, ABC):
         :return: an array with the line status of each powerline
         :rtype: np.array, dtype:bool
         """
+        cls = type(self)
         topo_vect = self.get_topo_vect()
-        return (topo_vect[self.line_or_pos_topo_vect] >= 0) & (
-            topo_vect[self.line_ex_pos_topo_vect] >= 0
-        )
+        return ((topo_vect[cls.line_or_pos_topo_vect] >= 0) & 
+                (topo_vect[cls.line_ex_pos_topo_vect] >= 0))
 
     def get_line_flow(self) -> np.ndarray:
         """
@@ -1079,41 +1082,43 @@ class Backend(GridObjects, ABC):
         """
         conv = False
         exc_me = None
-
+        cls = type(self)
         try:
             conv, exc_me = self.runpf(is_dc=is_dc)  # run powerflow
             
+            if not conv:
+                if exc_me is not None:
+                    raise exc_me
+                raise BackendError("Divergence of the powerflow without further information.")
+            
             # Check if loads/gens have been detached and if this is allowed, otherwise raise an error
             # .. versionadded:: 1.11.0
-            cls = type(self)
-            topo_vect = self.get_topo_vect()
+            topo_vect = self.get_topo_vect()            
             load_buses = topo_vect[cls.load_pos_topo_vect]
-            if not self.detachment_is_allowed and (load_buses == -1).any():
-                raise Grid2OpException(f"One or more loads were detached before powerflow in Backend {type(self).__name__}"
-                                        "but this is not allowed or not supported (Game Over)")
+            if not cls.detachment_is_allowed and (load_buses == -1).any():
+                raise BackendError(cls.ERR_DETACHMENT.format("loads", "loads",  (load_buses == -1).nonzero()[0]))
 
             gen_buses = topo_vect[cls.gen_pos_topo_vect]
-            if not self.detachment_is_allowed and (gen_buses == -1).any():
-                raise Grid2OpException(f"One or more generators were detached before powerflow in Backend {type(self).__name__}"
-                                        "but this is not allowed or not supported (Game Over)")
+            if not cls.detachment_is_allowed and (gen_buses == -1).any():
+                raise BackendError(cls.ERR_DETACHMENT.format("gens", "gens",  (gen_buses == -1).nonzero()[0]))
             
+            if cls.n_storage > 0:
+                storage_buses = topo_vect[cls.storage_pos_topo_vect]
+                storage_p, *_ = self.storages_info()
+                sto_maybe_error = (storage_buses == -1) & (np.abs(storage_p) >= 1e-6)
+                if not cls.detachment_is_allowed and sto_maybe_error.any():
+                    raise BackendError((cls.ERR_DETACHMENT.format("storages", "storages", sto_maybe_error.nonzero()[0]) + 
+                                        " NB storage units are allowed to be disconnected even if "
+                                        "`detachment_is_allowed` is False but only if the don't produce active power."))
+                
         except Grid2OpException as exc_:
             exc_me = exc_
             
         if not conv and exc_me is None:
-            exc_me = DivergingPowerflow(
+            exc_me = BackendError(
                 "GAME OVER: Powerflow has diverged during computation "
                 "or a load has been disconnected or a generator has been disconnected."
             )
-            
-        # Post-Powerflow Check
-        if not self.detachment_is_allowed and conv:
-            resulting_act = self.get_action_to_set()
-            load_buses_act_set = resulting_act._set_topo_vect[self.load_pos_topo_vect]
-            gen_buses_act_set = resulting_act._set_topo_vect[self.gen_pos_topo_vect]
-            if (load_buses_act_set == -1).any() or (gen_buses_act_set == -1).any():
-                exc_me = Grid2OpException(f"One or more generators or loads were detached in Backend {type(self).__name__}"
-                                           " as a result of a Grid2Op action, but this is not allowed or not supported (Game Over)")
         return exc_me
 
     def next_grid_state(self,
@@ -2043,6 +2048,11 @@ class Backend(GridObjects, ABC):
             )
         prod_p, _, prod_v = self.generators_info()
         load_p, load_q, _ = self.loads_info()
+        if type(self)._complete_action_class is None:
+            # some bug in multiprocessing, this was not set
+            # sub processes
+            from grid2op.Action.completeAction import CompleteAction
+            type(self)._complete_action_class = CompleteAction.init_grid(type(self))
         set_me = self._complete_action_class()
         dict_ = {
             "set_line_status": line_status,
@@ -2181,8 +2191,8 @@ class Backend(GridObjects, ABC):
                           "attribute. This is known issue in lightims2grid <= 0.7.5. Please "
                           "upgrade your backend. This will raise an error in the future.")
             
-        if hasattr(self, "_missing_detachment_support"):
-            if self._missing_detachment_support:
+        if hasattr(self, "_missing_detachment_support_info"):
+            if self._missing_detachment_support_info:
                 warnings.warn("The backend implementation you are using is probably too old to take advantage of the "
                             "new feature added in grid2op 1.11.0: the possibility "
                             "to detach loads or generators without leading to an immediate game over. "
@@ -2194,12 +2204,12 @@ class Backend(GridObjects, ABC):
                             "\nAnd of course, ideally, if the current implementation "
                             "of your backend cannot handle detachment then change it :-)\n"
                             "Your backend will behave as if it did not support it.")
-                self._missing_detachment_support = False
+                self._missing_detachment_support_info = False
                 self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
         else:
-            self._missing_detachment_support = False
+            self._missing_detachment_support_info = False
             self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
-            warnings.warn("Your backend is missing the `_missing_detachment_support` "
+            warnings.warn("Your backend is missing the `_missing_detachment_support_info` "
                           "attribute.")
         
         orig_type = type(self)

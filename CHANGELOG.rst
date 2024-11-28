@@ -107,6 +107,8 @@ Native multi agents support:
   name is added. This behaviour can be turned off by passing `_add_cls_nm_bk=False`
   when calling `grid2op.make(...)`. If you develop a new Backend, you can also
   customize the added name by overloading the `get_class_added_name` class method.
+- [BREAKING] it is now forbidden to create environment with arguments.
+  Only key-word arguments are allowed.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
@@ -138,7 +140,9 @@ Native multi agents support:
   does not have shunt information but there are not shunts on the grid.
 - [IMPROVED] consistency of `MultiMixEnv` in case of automatic_classes (only one
   class is generated for all mixes)
-
+- [IMRPOVED] handling of disconnected elements in the backend no more
+  raise error. The base `Backend` class does that.
+  
 [1.10.4] - 2024-10-15
 -------------------------
 - [FIXED] new pypi link (no change in code)
