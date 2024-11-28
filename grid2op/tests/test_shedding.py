@@ -127,7 +127,10 @@ class TestShedding(unittest.TestCase):
             act4 = self.env.action_space()
             act4.detach_load = {k}
             assert act4._detach_load[v]
-
+    # TODO shedding: test act.to_dict
+    # TODO shedding: test act.from_dict
+    # TODO shedding test.act.to_json
+    
 # TODO Shedding: test when backend does not support it is not set
 # TODO shedding: test when user deactivates it it is not set
 

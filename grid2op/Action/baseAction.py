@@ -371,6 +371,8 @@ class BaseAction(GridObjects):
         "raise_alarm",
         "raise_alert",
         "detach_load",  # new in 1.11.0
+        "detach_gen",  # new in 1.11.0
+        "detach_storage",  # new in 1.11.0
     }
 
     attr_list_vect = [
@@ -390,6 +392,8 @@ class BaseAction(GridObjects):
         "_raise_alarm",
         "_raise_alert",
         "_detach_load",  # new in 1.11.0
+        "_detach_gen",  # new in 1.11.0
+        "_detach_storage",  # new in 1.11.0
     ]
     attr_nan_list_set = set()
 
@@ -485,8 +489,12 @@ class BaseAction(GridObjects):
 
         if cls.detachment_is_allowed:
             self._detach_load = np.full(cls.n_load, dtype=dt_bool, fill_value=False)
+            self._detach_gen = np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
+            self._detach_storage = np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
         else:
             self._detach_load = None
+            self._detach_gen = None
+            self._detach_storage = None
         
         # change the stuff
         self._modif_inj = False
@@ -500,6 +508,8 @@ class BaseAction(GridObjects):
         self._modif_alarm = False
         self._modif_alert = False
         self._modif_detach_load = False
+        self._modif_detach_gen = False
+        self._modif_detach_storage = False
 
     @classmethod
     def process_shunt_static_data(cls):
@@ -540,6 +550,8 @@ class BaseAction(GridObjects):
             "_modif_alarm",
             "_modif_alert",
             "_modif_detach_load",
+            "_modif_detach_gen",
+            "_modif_detach_storage",
             "_single_act",
         ]
 
@@ -556,6 +568,8 @@ class BaseAction(GridObjects):
             "_raise_alarm",
             "_raise_alert",
             "_detach_load",
+            "_detach_gen",
+            "_detach_storage",
         ]
 
         if type(self).shunts_data_available:
@@ -756,11 +770,15 @@ class BaseAction(GridObjects):
                 del res["shunt"]
                 
         if cls.detachment_is_allowed:
-            res["loads_detached"] = {}
-            if self._detach_load.any():
-                res["loads_detached"] = [int(el) for el in self._detach_load.nonzero()[0]]
-            if not res["loads_detached"]:
-                del res["loads_detached"]
+            for el in ["load", "gen", "storage"]:
+                attr_key = f"{el}s_detached"
+                attr_vect = f"_detach_{el}"
+                res[attr_key] = {}
+                vect_ = getattr(self, attr_vect)
+                if vect_.any():
+                    res[attr_key] = [int(el) for el in vect_.nonzero()[0]]
+                if not res[attr_key]:
+                    del res[attr_key]
         return res
 
     @classmethod
@@ -861,10 +879,13 @@ class BaseAction(GridObjects):
             cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
             
-            if "detach_load" in cls.authorized_keys:
-                cls.authorized_keys.remove("detach_load")
-            if "_detach_load" in cls.attr_list_vect:
-                cls.attr_list_vect.remove("_detach_load")
+            for el in ["load", "gen", "storage"]:
+                attr_key = f"detach_{el}"
+                attr_vect = f"_{attr_key}"
+                if attr_key in cls.authorized_keys:
+                    cls.authorized_keys.remove(attr_key)
+                if attr_vect in cls.attr_list_vect:
+                    cls.attr_list_vect.remove(attr_vect)
 
         if (cls.n_busbar_per_sub >= 3) or (cls.n_busbar_per_sub == 1):
             # only relevant for grid2op >= 1.10.0
@@ -889,6 +910,8 @@ class BaseAction(GridObjects):
         self._modif_alarm = False
         self._modif_alert = False
         self._modif_detach_load = False
+        self._modif_detach_gen = False
+        self._modif_detach_storage = False
 
     def can_affect_something(self) -> bool:
         """
@@ -910,6 +933,8 @@ class BaseAction(GridObjects):
             or self._modif_alarm
             or self._modif_alert
             or self._modif_detach_load
+            or self._modif_detach_gen
+            or self._modif_detach_storage
         )
 
     def _get_array_from_attr_name(self, attr_name):
@@ -943,7 +968,9 @@ class BaseAction(GridObjects):
         self._modif_curtailment = (np.abs(self._curtail + 1.0) >= 1e-7).any()
         self._modif_alarm = self._raise_alarm.any()
         self._modif_alert = self._raise_alert.any()
-        self._modif_change_bus = (self._detach_load).any()
+        self._modif_detach_load = (self._detach_load).any()
+        self._modif_detach_gen = (self._detach_gen).any()
+        self._modif_detach_storage = (self._detach_storage).any()
 
     def _assign_attr_from_name(self, attr_nm, vect):
         if hasattr(self, attr_nm):
@@ -1017,6 +1044,38 @@ class BaseAction(GridObjects):
 
         """
         return np.full(shape=self.n_line, fill_value=False, dtype=dt_bool)
+    
+    def _aux_eq_detachment_aux_both_ok(self, other, el_nm: Literal["load", "gen", "storage"]) -> bool:
+        attr_chgt = f"_modif_detach_{el_nm}"
+        attr_vect = f"_detach_{el_nm}"
+        # what I want to do:
+        # if ((self._modif_detach_load != other._modif_detach_load) or
+        #     (self._detach_load != other._detach_load).any()
+        # ):
+        #     return False
+        # but for all attribute related to "detach" feature
+        
+        if ((getattr(self, attr_chgt) != getattr(other, attr_chgt)) or
+            (getattr(self, attr_vect) != getattr(other, attr_vect)).any()
+        ):
+            return False
+        return True
+    
+    def _aux_eq_detachment_aux_one_not_ok(self, obj_detach_unsupported, el_nm: Literal["load", "gen", "storage"]) -> bool:
+        # self supports detachment but not other
+        # they are equal if an only if self did not
+        # modify any loads with detachment
+        # if self._modif_detach_load:
+        #     return False
+        # if self._detach_load.any():
+        #     return False
+        attr_chgt = f"_modif_detach_{el_nm}"
+        attr_vect = f"_detach_{el_nm}"
+        if getattr(obj_detach_unsupported, attr_chgt):
+            return False
+        if getattr(obj_detach_unsupported, attr_vect):
+            return False
+        return True
         
     def _aux_eq_detachment(self,  other: "BaseAction") -> bool:
         cls = type(self)
@@ -1024,18 +1083,16 @@ class BaseAction(GridObjects):
         if cls.detachment_is_allowed:
             if cls_oth.detachment_is_allowed:
                 # easy case, both detachement allowed
-                if ((self._modif_detach_load != other._modif_detach_load) or
-                    (self._detach_load != other._detach_load).any()
-                ):
-                    return False
+                for el in ["load", "gen", "storage"]:
+                    if not self._aux_eq_detachment_aux_both_ok(other, el):
+                        return False
             else:
                 # self supports detachment but not other
                 # they are equal if an only if self did not
                 # modify any loads with detachment
-                if self._modif_detach_load:
-                    return False
-                if self._detach_load.any():
-                    return False
+                for el in ["load", "gen", "storage"]:
+                    if not self._aux_eq_detachment_aux_one_not_ok(self, el):
+                        return False
         else:
             # detachment is not allowed on self
             # check if it's allowed on other
@@ -1044,12 +1101,11 @@ class BaseAction(GridObjects):
                 # oth does.
                 # they can be equal if oth does not modify this
                 # attribute
-                if other._modif_detach_load:
-                    return False
-                if other._detach_load.any():
-                    return False
+                for el in ["load", "gen", "storage"]:
+                    if not self._aux_eq_detachment_aux_one_not_ok(other, el):
+                        return False
             else:
-                # easy case, None supports detachment
+                # if None support detachment, they are both equal concerning the detachment
                 return True
         return True
     
@@ -1202,6 +1258,8 @@ class BaseAction(GridObjects):
             and (not self._modif_set_status)
             and (not self._modif_change_status)
             and (not self._modif_detach_load)
+            and (not self._modif_detach_gen)
+            and (not self._modif_detach_storage)
         )
 
     def get_topological_impact(self, powerline_status=None) -> Tuple[np.ndarray, np.ndarray]:
@@ -1674,6 +1732,8 @@ class BaseAction(GridObjects):
         self._modif_alarm = self._modif_alarm or other._modif_alarm
         self._modif_alert = self._modif_alert or other._modif_alert
         self._modif_detach_load = self._modif_detach_load or other._modif_detach_load
+        self._modif_detach_gen = self._modif_detach_gen or other._modif_detach_gen
+        self._modif_detach_storage = self._modif_detach_storage or other._modif_detach_storage
         
     def _aux_iadd_shunt(self, other):
         if not type(other).shunts_data_available:
@@ -2192,15 +2252,12 @@ class BaseAction(GridObjects):
             if dict_["change_line_status"] is not None:
                 self.line_change_status = dict_["change_line_status"]
 
-    def _digest_detach_load(self, dict_):
-        if "detach_load" in dict_:
-            # the action will switch the status of the powerline
-            # for each element equal to 1 in this dict_["change_line_status"]
-            # if the status is "disconnected" it will be transformed into "connected"
-            # and if the status is "connected" it will be switched to "disconnected"
-            # Lines with "0" in this vector are not impacted.
-            if dict_["detach_load"] is not None:
-                self.detach_load = dict_["detach_load"]
+    def _digest_detach_eltype(self, el : Literal["load", "gen", "storage"], dict_):
+        attr_key = f'detach_{el}'
+        if attr_key in dict_:
+            if dict_[attr_key] is not None:
+                setattr(self, attr_key, dict_[attr_key])
+                # eg self.detach_load = dict_["detach_load"]
 
     def _digest_redispatching(self, dict_):
         if "redispatch" in dict_:
@@ -2352,6 +2409,9 @@ class BaseAction(GridObjects):
             - "curtail" : TODO
             - "raise_alarm" : TODO
             - "raise_alert": TODO
+            - "detach_load": TODO
+            - "detach_gen": TODO
+            - "detach_storage": TODO
 
             **NB**: CHANGES: you can reconnect a powerline without specifying on each bus you reconnect it at both its
             ends. In that case the last known bus id for each its end is used.
@@ -2505,7 +2565,8 @@ class BaseAction(GridObjects):
             self._digest_alarm(dict_)
             self._digest_alert(dict_)
             if cls.detachment_is_allowed:
-                self._digest_detach_load(dict_)
+                for el in ["load", "gen", "storage"]:
+                    self._digest_detach_eltype(el, dict_)
         return self
 
     def is_ambiguous(self) -> Tuple[bool, AmbiguousAction]:
@@ -2635,14 +2696,18 @@ class BaseAction(GridObjects):
                 raise IllegalAction("You illegally send an alert.")
         
         if cls.detachment_is_allowed:
-            if (self._detach_load).any():
-                if not self._modif_detach_load:
-                    raise AmbiguousAction(
-                        "Incorrect way to detach some loads, the appropriate flag is not "
-                        "modified properly."
-                    )
-                if "detach_load" not in self.authorized_keys:
-                    raise IllegalAction("You illegally detached a load.")
+            for el in ["load", "gen", "storage"]:
+                attr_auth = f"detach_{el}"
+                attr_modif = f"_modif_detach_{el}"
+                attr_vect = f"_detach_{el}"
+                if (getattr(self, attr_vect)).any():
+                    if not getattr(self, attr_modif):
+                        raise AmbiguousAction(
+                            f"Incorrect way to detach some {el}, the appropriate flag is not "
+                            f"modified properly."
+                        )
+                    if attr_auth not in self.authorized_keys:
+                        raise IllegalAction(f"You illegally detached a {el}.")
         
     def _check_for_ambiguity(self):
         """
@@ -5582,7 +5647,7 @@ class BaseAction(GridObjects):
     def detach_load(self, values):
         cls = type(self)
         if "detach_load" not in cls.authorized_keys:
-            raise IllegalAction("Impossible to send alerts with this action type.")
+            raise IllegalAction("Impossible detach loads with this action type.")
         orig_ = self.detach_load
         try:
             self._aux_affect_object_bool(
@@ -5598,6 +5663,120 @@ class BaseAction(GridObjects):
             self._detach_load[:] = orig_
             raise IllegalAction(
                 f"Impossible to detach a load with your input."
+            ) from exc_
+            
+    @property
+    def detach_gen(self) -> np.ndarray:
+        """
+        
+        ..versionadded:: 1.11.0
+        
+        Allows to retrieve (and affect) the status (connected / disconnected) of generators.
+        
+        .. note::
+            It is only available after grid2op version 1.11.0 and if the backend
+            allows it.
+
+        Returns
+        -------
+        res:
+            A vector of bool, of size `act.n_gen` indicating whether this generator
+            is detached or not. 
+
+            * ``False`` this generator is not affected by any "detach" action
+            * ``True`` this generator will be deactivated.
+
+        Examples
+        --------
+
+        See examples in the :attr:`BaseAction.detach_load` for more information
+
+        Notes
+        -----
+        See notes in the :attr:`BaseAction.detach_load` for more information
+
+        """
+        res = copy.deepcopy(self._detach_gen)
+        res.flags.writeable = False
+        return res
+
+    @detach_gen.setter
+    def detach_gen(self, values):
+        cls = type(self)
+        if "detach_gen" not in cls.authorized_keys:
+            raise IllegalAction("Impossible to detach generator with this action type.")
+        orig_ = self.detach_gen
+        try:
+            self._aux_affect_object_bool(
+                values,
+                "detach gens",
+                cls.n_gen,
+                cls.name_gen,
+                np.arange(cls.n_gen),
+                self._detach_gen,
+            )
+            self._modif_alert = True
+        except Exception as exc_:
+            self._detach_gen[:] = orig_
+            raise IllegalAction(
+                f"Impossible to detach a generator with your input."
+            ) from exc_
+            
+    @property
+    def detach_storage(self) -> np.ndarray:
+        """
+        
+        ..versionadded:: 1.11.0
+        
+        Allows to retrieve (and affect) the status (connected / disconnected) of storage units.
+        
+        .. note::
+            It is only available after grid2op version 1.11.0 and if the backend
+            allows it.
+
+        Returns
+        -------
+        res:
+            A vector of bool, of size `act.n_storage` indicating whether this generator
+            is detached or not. 
+
+            * ``False`` this storage unit is not affected by any "detach" action
+            * ``True`` this storage unit will be deactivated.
+
+        Examples
+        --------
+
+        See examples in the :attr:`BaseAction.detach_load` for more information
+
+        Notes
+        -----
+        See notes in the :attr:`BaseAction.detach_load` for more information
+
+        """
+        res = copy.deepcopy(self._detach_storage)
+        res.flags.writeable = False
+        return res
+
+    @detach_storage.setter
+    def detach_storage(self, values):
+        cls = type(self)
+        if "detach_storage" not in cls.authorized_keys:
+            raise IllegalAction("Impossible to detach a storage unit with this action type.")
+        orig_ = self.detach_storage
+        try:
+            self._aux_affect_object_bool(
+                values,
+                "detach storage units",
+                cls.n_storage,
+                cls.name_storage,
+                np.arange(cls.n_storage),
+                self._detach_storage,
+            )
+            self._modif_alert = True
+        except Exception as exc_:
+            self._detach_storage[:] = orig_
+            raise IllegalAction(
+                f"Impossible to detach a storage unit with your input."
             ) from exc_
 
     def _aux_affect_object_float(
