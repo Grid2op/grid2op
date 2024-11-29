@@ -291,7 +291,7 @@ class MultifolderWithCache(Multifolder):
         """
         res = super().seed(seed)
         max_int = np.iinfo(dt_int).max
-        self._cached_seeds = np.empty(len(shape=self._cached_data), dtype=dt_int)
+        self._cached_seeds = np.empty(len(self._cached_data), dtype=dt_int)
         for i in self._order:
             data = self._cached_data[i]
             seed_ts = self.space_prng.randint(max_int)
