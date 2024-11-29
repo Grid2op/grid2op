@@ -730,15 +730,15 @@ class BaseAction(GridObjects):
             res["shunt"] = {}
             if np.isfinite(self.shunt_p).any():
                 res["shunt"]["shunt_p"] = [
-                    (int(sh_id), float(val)) for sh_id, val in enumerate(self.shunt_p) if np.isfinite(val)
+                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self.shunt_p) if np.isfinite(val)
                 ]
             if np.isfinite(self.shunt_q).any():
                 res["shunt"]["shunt_q"] = [
-                    (int(sh_id), float(val)) for sh_id, val in enumerate(self.shunt_q) if np.isfinite(val)
+                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self.shunt_q) if np.isfinite(val)
                 ]
             if (self.shunt_bus != 0).any():
                 res["shunt"]["shunt_bus"] = [
-                    (int(sh_id), int(val))
+                    (str(cls.name_shunt[sh_id]), int(val))
                     for sh_id, val in enumerate(self.shunt_bus)
                     if val != 0
                 ]
@@ -1901,37 +1901,6 @@ class BaseAction(GridObjects):
                     np.arange(cls.n_shunt),
                     vect_self
                 )
-                    
-                # if isinstance(tmp, np.ndarray):
-                #     # complete shunt vector is provided
-                #     vect_self[:] = tmp
-                # elif isinstance(tmp, list):
-                #     # expected a list: (id shunt, new bus)
-                #     for (sh_id, new_bus) in tmp:
-                #         if sh_id < 0:
-                #             raise AmbiguousAction(
-                #                 "Invalid shunt id {}. Shunt id should be positive".format(
-                #                     sh_id
-                #                 )
-                #             )
-                #         if sh_id >= cls.n_shunt:
-                #             raise AmbiguousAction(
-                #                 "Invalid shunt id {}. Shunt id should be less than the number "
-                #                 "of shunt {}".format(sh_id, cls.n_shunt)
-                #             )
-                #         if key_n == "shunt_bus" or key_n == "set_bus":
-                #             if new_bus <= -2:
-                #                 raise IllegalAction(
-                #                     f"Cannot ask for a shunt bus <= -2, found {new_bus} for shunt id {sh_id}"
-                #                 )
-                #             elif new_bus > cls.n_busbar_per_sub:
-                #                 raise IllegalAction(
-                #                     f"Cannot ask for a shunt bus > {cls.n_busbar_per_sub} "
-                #                     f"the maximum number of busbar per substations"
-                #                     f", found {new_bus} for shunt id {sh_id}"
-                #                 )
-                            
-                #         vect_self[sh_id] = new_bus
                 else:
                     raise AmbiguousAction(
                         "Invalid way to modify {} for shunts. It should be a numpy array or a "
