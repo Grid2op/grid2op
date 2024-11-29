@@ -13,10 +13,6 @@ from grid2op.Chronics import MultifolderWithCache
 import unittest
 import warnings
 
-module_name = MultifolderWithCache.__module__
-module = __import__(module_name)
-file_path = module.__file__
-print(f"Library path: \n{file_path}")
 
 class TestMultifolderWithCacheSeed(unittest.TestCase):
     def test_box_action_space(self):
