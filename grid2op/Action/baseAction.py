@@ -592,13 +592,13 @@ class BaseAction(GridObjects):
 
         return res
 
-    def _aux_serialize_add_key_change(self, attr_nm, dict_key, res):
-            tmp_ = [int(id_) for id_, val in enumerate(getattr(self, attr_nm)) if val]
+    def _aux_serialize_add_key_change(self, attr_nm, dict_key, res, vect_id_to_name):
+            tmp_ = [str(vect_id_to_name[id_]) for id_, val in enumerate(getattr(self, attr_nm)) if val]
             if tmp_:
                 res[dict_key] = tmp_
 
-    def _aux_serialize_add_key_set(self, attr_nm, dict_key, res):            
-            tmp_ = [(int(id_), int(val)) for id_, val in enumerate(getattr(self, attr_nm)) if np.abs(val) >= 1e-7]
+    def _aux_serialize_add_key_set(self, attr_nm, dict_key, res, vect_id_to_name):            
+            tmp_ = [(str(vect_id_to_name[id_]), int(val)) for id_, val in enumerate(getattr(self, attr_nm)) if np.abs(val) >= 1e-7]
             if tmp_:
                 res[dict_key] = tmp_
                 
@@ -651,18 +651,18 @@ class BaseAction(GridObjects):
                 
         if self._modif_change_bus:
             res["change_bus"] = {}
-            self._aux_serialize_add_key_change("load_change_bus", "loads_id", res["change_bus"])
-            self._aux_serialize_add_key_change("gen_change_bus", "generators_id", res["change_bus"])
-            self._aux_serialize_add_key_change("line_or_change_bus", "lines_or_id", res["change_bus"])
-            self._aux_serialize_add_key_change("line_ex_change_bus", "lines_ex_id", res["change_bus"])
+            self._aux_serialize_add_key_change("load_change_bus", "loads_id", res["change_bus"], cls.name_load)
+            self._aux_serialize_add_key_change("gen_change_bus", "generators_id", res["change_bus"], cls.name_gen)
+            self._aux_serialize_add_key_change("line_or_change_bus", "lines_or_id", res["change_bus"], cls.name_line)
+            self._aux_serialize_add_key_change("line_ex_change_bus", "lines_ex_id", res["change_bus"], cls.name_line)
             if hasattr(cls, "n_storage") and cls.n_storage:
-                self._aux_serialize_add_key_change("storage_change_bus", "storages_id", res["change_bus"])
+                self._aux_serialize_add_key_change("storage_change_bus", "storages_id", res["change_bus"], cls.name_storage)
             if not res["change_bus"]:
                 del res["change_bus"]
             
         if self._modif_change_status:
             res["change_line_status"] = [
-                int(id_) for id_, val in enumerate(self._switch_line_status) if val
+                str(cls.name_line[id_]) for id_, val in enumerate(self._switch_line_status) if val
             ]
             if not res["change_line_status"]:
                 del res["change_line_status"]
@@ -670,18 +670,18 @@ class BaseAction(GridObjects):
         # int elements
         if self._modif_set_bus:
             res["set_bus"] = {}
-            self._aux_serialize_add_key_set("load_set_bus", "loads_id", res["set_bus"])
-            self._aux_serialize_add_key_set("gen_set_bus", "generators_id", res["set_bus"])
-            self._aux_serialize_add_key_set("line_or_set_bus", "lines_or_id", res["set_bus"])
-            self._aux_serialize_add_key_set("line_ex_set_bus", "lines_ex_id", res["set_bus"])
+            self._aux_serialize_add_key_set("load_set_bus", "loads_id", res["set_bus"], cls.name_load)
+            self._aux_serialize_add_key_set("gen_set_bus", "generators_id", res["set_bus"], cls.name_gen)
+            self._aux_serialize_add_key_set("line_or_set_bus", "lines_or_id", res["set_bus"], cls.name_line)
+            self._aux_serialize_add_key_set("line_ex_set_bus", "lines_ex_id", res["set_bus"], cls.name_line)
             if hasattr(cls, "n_storage") and cls.n_storage:
-                self._aux_serialize_add_key_set("storage_set_bus", "storages_id", res["set_bus"])
+                self._aux_serialize_add_key_set("storage_set_bus", "storages_id", res["set_bus"], cls.name_storage)
             if not res["set_bus"]:
                 del res["set_bus"]
             
         if self._modif_set_status:
             res["set_line_status"] = [
-                (int(id_), int(val))
+                (str(cls.name_line[id_]), int(val))
                 for id_, val in enumerate(self._set_line_status)
                 if val != 0
             ]
@@ -691,7 +691,7 @@ class BaseAction(GridObjects):
         # float elements
         if self._modif_redispatch:
             res["redispatch"] = [
-                (int(id_), float(val))
+                (str(cls.name_gen[id_]), float(val))
                 for id_, val in enumerate(self._redispatch)
                 if np.abs(val) >= 1e-7
             ]
@@ -700,7 +700,7 @@ class BaseAction(GridObjects):
                 
         if self._modif_storage:
             res["set_storage"] = [
-                (int(id_), float(val))
+                (str(cls.name_storage[id_]), float(val))
                 for id_, val in enumerate(self._storage_power)
                 if np.abs(val) >= 1e-7
             ]
@@ -709,7 +709,7 @@ class BaseAction(GridObjects):
                 
         if self._modif_curtailment:
             res["curtail"] = [
-                (int(id_), float(val))
+                (str(cls.name_gen[id_]), float(val))
                 for id_, val in enumerate(self._curtail)
                 if np.abs(val + 1.) >= 1e-7
             ]
@@ -719,9 +719,10 @@ class BaseAction(GridObjects):
         # more advanced options
         if self._modif_inj:
             res["injection"] = {}
-            for ky in ["prod_p", "prod_v", "load_p", "load_q"]:
+            for ky, vect_nm in zip(["prod_p", "prod_v", "load_p", "load_q"],
+                                   [cls.name_gen, cls.name_gen, cls.name_load, cls.name_load]):
                 if ky in self._dict_inj:
-                    res["injection"][ky] = [float(val) for val in self._dict_inj[ky]]
+                    res["injection"][ky] = {str(vect_nm[i]): float(val) for i, val in enumerate(self._dict_inj[ky])}
             if not res["injection"]:
                 del res["injection"]
 
@@ -729,15 +730,15 @@ class BaseAction(GridObjects):
             res["shunt"] = {}
             if np.isfinite(self.shunt_p).any():
                 res["shunt"]["shunt_p"] = [
-                    (int(sh_id), float(val)) for sh_id, val in enumerate(self.shunt_p) if np.isfinite(val)
+                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self.shunt_p) if np.isfinite(val)
                 ]
             if np.isfinite(self.shunt_q).any():
                 res["shunt"]["shunt_q"] = [
-                    (int(sh_id), float(val)) for sh_id, val in enumerate(self.shunt_q) if np.isfinite(val)
+                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self.shunt_q) if np.isfinite(val)
                 ]
             if (self.shunt_bus != 0).any():
                 res["shunt"]["shunt_bus"] = [
-                    (int(sh_id), int(val))
+                    (str(cls.name_shunt[sh_id]), int(val))
                     for sh_id, val in enumerate(self.shunt_bus)
                     if val != 0
                 ]
@@ -1860,60 +1861,51 @@ class BaseAction(GridObjects):
 
     def _digest_shunt(self, dict_):
         cls = type(self)
-        if "shunt" in dict_:
-            ddict_ = dict_["shunt"]
+        if "shunt" not in dict_:
+            return
+        ddict_ = dict_["shunt"]
 
-            key_shunt_reco = {"set_bus", "shunt_p", "shunt_q", "shunt_bus"}
-            for k in ddict_:
-                if k not in key_shunt_reco:
-                    warn = "The key {} is not recognized by BaseAction when trying to modify the shunt.".format(
-                        k
+        key_shunt_reco = {"set_bus", "shunt_p", "shunt_q", "shunt_bus"}
+        for k in ddict_:
+            if k not in key_shunt_reco:
+                warn = "The key {} is not recognized by BaseAction when trying to modify the shunt.".format(
+                    k
+                )
+                warn += " Recognized keys are {}".format(sorted(key_shunt_reco))
+                warnings.warn(warn)
+                
+        for key_n, vect_self in zip(
+            ["shunt_bus", "shunt_p", "shunt_q", "set_bus"],
+            [self.shunt_bus, self.shunt_p, self.shunt_q, self.shunt_bus],
+        ):
+            if key_n in ddict_:
+                tmp = ddict_[key_n]
+                if tmp is None:
+                    pass
+                elif key_n == "shunt_bus" or key_n == "set_bus":
+                    self._aux_affect_object_int(
+                    tmp,
+                    key_n,
+                    cls.n_shunt,
+                    cls.name_shunt,
+                    np.arange(cls.n_shunt),
+                    vect_self,
+                    max_val=cls.n_busbar_per_sub
+                )
+                elif key_n == "shunt_p" or key_n == "shunt_q":
+                    self._aux_affect_object_float(
+                    tmp,
+                    key_n,
+                    cls.n_shunt,
+                    cls.name_shunt,
+                    np.arange(cls.n_shunt),
+                    vect_self
+                )
+                else:
+                    raise AmbiguousAction(
+                        "Invalid way to modify {} for shunts. It should be a numpy array or a "
+                        "list, found {}.".format(key_n, type(tmp))
                     )
-                    warn += " Recognized keys are {}".format(sorted(key_shunt_reco))
-                    warnings.warn(warn)
-            for key_n, vect_self in zip(
-                ["shunt_bus", "shunt_p", "shunt_q", "set_bus"],
-                [self.shunt_bus, self.shunt_p, self.shunt_q, self.shunt_bus],
-            ):
-                if key_n in ddict_:
-                    tmp = ddict_[key_n]
-                    if isinstance(tmp, np.ndarray):
-                        # complete shunt vector is provided
-                        vect_self[:] = tmp
-                    elif isinstance(tmp, list):
-                        # expected a list: (id shunt, new bus)
-                        for (sh_id, new_bus) in tmp:
-                            if sh_id < 0:
-                                raise AmbiguousAction(
-                                    "Invalid shunt id {}. Shunt id should be positive".format(
-                                        sh_id
-                                    )
-                                )
-                            if sh_id >= cls.n_shunt:
-                                raise AmbiguousAction(
-                                    "Invalid shunt id {}. Shunt id should be less than the number "
-                                    "of shunt {}".format(sh_id, cls.n_shunt)
-                                )
-                            if key_n == "shunt_bus" or key_n == "set_bus":
-                                if new_bus <= -2:
-                                    raise IllegalAction(
-                                        f"Cannot ask for a shunt bus <= -2, found {new_bus} for shunt id {sh_id}"
-                                    )
-                                elif new_bus > cls.n_busbar_per_sub:
-                                    raise IllegalAction(
-                                        f"Cannot ask for a shunt bus > {cls.n_busbar_per_sub} "
-                                        f"the maximum number of busbar per substations"
-                                        f", found {new_bus} for shunt id {sh_id}"
-                                    )
-                                
-                            vect_self[sh_id] = new_bus
-                    elif tmp is None:
-                        pass
-                    else:
-                        raise AmbiguousAction(
-                            "Invalid way to modify {} for shunts. It should be a numpy array or a "
-                            "dictionary.".format(key_n)
-                        )
 
     def _digest_injection(self, dict_):
         # I update the action
@@ -2265,6 +2257,7 @@ class BaseAction(GridObjects):
             - "curtail" : TODO
             - "raise_alarm" : TODO
             - "raise_alert": TODO
+            - "shunt": TODO
 
             **NB**: CHANGES: you can reconnect a powerline without specifying on each bus you reconnect it at both its
             ends. In that case the last known bus id for each its end is used.
@@ -4059,7 +4052,7 @@ class BaseAction(GridObjects):
             if len(values) == nb_els:
                 # 2 cases: either i set all loads in the form [(0,..), (1,..), (2,...)]
                 # or i should have converted the list to np array
-                if isinstance(values[0], tuple):
+                if isinstance(values[0], (tuple, list)):
                     # list of tuple, handled below
                     # TODO can be somewhat "hacked" if the type of the object on the list is not always the same
                     pass
@@ -5492,7 +5485,7 @@ class BaseAction(GridObjects):
                     raise IllegalAction(
                         f"Impossible to set {name_el} values with a single float."
                     )
-                elif isinstance(values[0], tuple):
+                elif isinstance(values[0], (tuple, list)):
                     # list of tuple, handled below
                     # TODO can be somewhat "hacked" if the type of the object on the list is not always the same
                     pass
