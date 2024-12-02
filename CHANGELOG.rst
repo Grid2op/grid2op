@@ -121,6 +121,8 @@ Native multi agents support:
   object you tried to modified (for example a list with a size of `n_load` that affected the loads))
 - [FIXED] a bug when using the `DoNothingHandler` for the maintenance and the 
   environment data
+- [FIXED] an issue preventing to set the thermal limit in the options
+  if the last simulated action lead to a game over
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
