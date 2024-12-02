@@ -280,7 +280,7 @@ class FromHandlers(GridValue):
                 maintenance_time, maintenance_duration = self.maintenance_handler.load_next_maintenance()
         if maintenance_time is None:
             maintenance_time = self._no_mh_time
-        if self.maintenance_duration is None:
+        if maintenance_duration is None:
             maintenance_duration = self._no_mh_duration
             
         # load hazards
