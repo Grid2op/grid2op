@@ -731,8 +731,8 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
             <= self.tol_one
         )
 
-    def _aux_test_kirchoff(self):
-        p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchoff()
+    def _aux_test_kirchhoff(self):
+        p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchhoff()
         assert np.all(
             np.abs(p_subs) <= self.tol_one
         ), "error with active value at some substations"
@@ -756,7 +756,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - array_modif) <= self.tol_one)
         assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         array_modif = np.array([2, 8], dtype=dt_float)
         act = self.env.action_space({"set_storage": array_modif})
@@ -765,7 +765,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - array_modif) <= self.tol_one)
         assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # illegal action
         array_modif = np.array([2, 12], dtype=dt_float)
@@ -775,7 +775,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - [0.0, 0.0]) <= self.tol_one)
         assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # full discharge now
         array_modif = np.array([-1.5, -10.0], dtype=dt_float)
@@ -790,7 +790,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
             assert np.all(
                 np.abs(storage_q - 0.0) <= self.tol_one
             ), f"error for Q for time step {nb_ts}"
-            self._aux_test_kirchoff()
+            self._aux_test_kirchhoff()
 
         obs, reward, done, info = self.env.step(act)
         assert not info["exception"]
@@ -800,7 +800,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
             <= self.tol_one
         )
         assert np.all(np.abs(obs.storage_charge[1] - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         obs, reward, done, info = self.env.step(act)
         assert not info["exception"]
@@ -810,7 +810,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
             <= self.tol_one
         )
         assert np.all(np.abs(obs.storage_charge[1] - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
     def test_storage_action_topo(self):
         """test the modification of the bus of a storage unit"""
@@ -851,7 +851,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         assert obs.storage_bus[0] == 2
         assert obs.line_or_bus[8] == 2
         assert obs.gen_bus[3] == 2
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # second case, still standard modification (set to orig)
         array_modif = np.array([1.5, 10.0], dtype=dt_float)
@@ -873,7 +873,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         assert obs.storage_bus[0] == 1
         assert obs.line_or_bus[8] == 1
         assert obs.gen_bus[3] == 1
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # THIS IS EXPECTED THAT IT DOES NOT PASS FROM GRID2OP 1.9.6 !
         # fourth case: isolated storage on a busbar (so it is disconnected, but with 0. production => so thats fine)
@@ -899,7 +899,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         # assert storage_v[0] == 0.0, "storage 0 should be disconnected"
         # assert obs.line_or_bus[8] == 1
         # assert obs.gen_bus[3] == 1
-        # self._aux_test_kirchoff()
+        # self._aux_test_kirchhoff()
 
         # # check that if i don't touch it it's set to 0
         # act = self.env.action_space()
@@ -916,7 +916,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         # assert storage_v[0] == 0.0, "storage 0 should be disconnected"
         # assert obs.line_or_bus[8] == 1
         # assert obs.gen_bus[3] == 1
-        # self._aux_test_kirchoff()
+        # self._aux_test_kirchhoff()
 
         # # trying to act on a disconnected storage => illegal)
         # array_modif = np.array([2.0, 7.0], dtype=dt_float)
@@ -924,7 +924,7 @@ class TestStorageEnv(HelperTests, unittest.TestCase):
         # obs, reward, done, info = self.env.step(act)
         # assert info["exception"]  # action should be illegal
         # assert not done  # this is fine, as it's illegal it's replaced by do nothing
-        # self._aux_test_kirchoff()
+        # self._aux_test_kirchhoff()
 
         # # trying to reconnect a storage alone on a bus => game over, not connected bus
         # array_modif = np.array([1.0, 7.0], dtype=dt_float)

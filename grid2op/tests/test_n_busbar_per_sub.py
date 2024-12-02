@@ -1306,7 +1306,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 else:
                     assert not self.env.backend._grid.line.iloc[line_ex_id]["in_service"]
     
-    def test_check_kirchoff(self):
+    def test_check_kirchhoff(self):
         cls = type(self.env)            
         res = self._aux_find_sub(self.env, cls.LOA_COL)
         if res is None:
@@ -1325,7 +1325,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
             self.env.backend.apply_action(bk_act)
             conv, maybe_exc = self.env.backend.runpf()
             assert conv, f"error : {maybe_exc}"
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchoff()
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchhoff()
             # assert laws are met
             assert np.abs(p_subs).max() <= 1e-5, f"error for busbar {new_bus}: {np.abs(p_subs).max():.2e}"
             assert np.abs(q_subs).max() <= 1e-5, f"error for busbar {new_bus}: {np.abs(q_subs).max():.2e}"

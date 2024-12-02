@@ -670,11 +670,11 @@ class AAATestBackendAPI(MakeBackend):
         if not cls.shunts_data_available:
             warnings.warn(f"{type(self).__name__} test_14change_topology: This test is not performed in depth as your backend does not support shunts")
         else:
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchoff()
-            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
-            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
-            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
-            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchhoff()
+            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
+            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
+            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
+            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
             assert np.allclose(diff_v_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): some nodes have two different voltages. Check the accessor for voltage in all the `***_info()` (*eg* `loads_info()`)"
             
         p_or, q_or, v_or, a_or = backend.lines_or_info()
@@ -693,11 +693,11 @@ class AAATestBackendAPI(MakeBackend):
         if not cls.shunts_data_available:
             warnings.warn(f"{type(self).__name__} test_14change_topology: This test is not performed in depth as your backend does not support shunts")
         else:
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchoff()
-            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for q (creation or suppression of reactive)."
-            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for q (creation or suppression of reactive)."
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchhoff()
+            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
+            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
             assert np.allclose(diff_v_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow: some nodes have two different voltages. Check the accessor for voltage in all the `***_info()` (*eg* `loads_info()`)"
         
         p_after_or, q_after_or, v_after_or, a_after_or = backend.lines_or_info()
@@ -719,11 +719,11 @@ class AAATestBackendAPI(MakeBackend):
         if not cls.shunts_data_available:
             warnings.warn(f"{type(self).__name__} test_14change_topology: This test is not performed in depth as your backend does not support shunts")
         else:
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchoff()
-            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for q (creation or suppression of reactive)."
-            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for q (creation or suppression of reactive)."
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchhoff()
+            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
+            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
             assert np.allclose(diff_v_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow: some nodes have two different voltages. Check the accessor for voltage in all the `***_info()` (*eg* `loads_info()`)"
         
         p_after_or, q_after_or, v_after_or, a_after_or = backend.lines_or_info()
