@@ -272,15 +272,17 @@ class FromHandlers(GridValue):
         res["injection"] = dict_inj
         
         # load maintenance
+        maintenance_time, maintenance_duration = None, None
         if self.maintenance_handler is not None:
             tmp_ = self.maintenance_handler.load_next(res)
             if tmp_ is not None:
                 res["maintenance"] = tmp_
                 maintenance_time, maintenance_duration = self.maintenance_handler.load_next_maintenance()
-        else:
+        if maintenance_time is None:
             maintenance_time = self._no_mh_time
+        if self.maintenance_duration is None:
             maintenance_duration = self._no_mh_duration
-        
+            
         # load hazards
         if self.hazard_duration is not None:
             res["hazards"] = self.hazards_handler.load_next(res)

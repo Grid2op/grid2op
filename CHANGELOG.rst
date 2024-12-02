@@ -119,6 +119,8 @@ Native multi agents support:
   was not correctly implemented AND the `_aux_affect_object_int` and `_aux_affect_object_float`
   have been also fixed - weird behaviour when you give them a list with the exact length of the
   object you tried to modified (for example a list with a size of `n_load` that affected the loads))
+- [FIXED] a bug when using the `DoNothingHandler` for the maintenance and the 
+  environment data
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -148,7 +150,9 @@ Native multi agents support:
   it nows tries to use the name of the elements in the json output
 - [IMPROVED] the way shunt data are digested in the `BaseAction` class (it is now 
   possible to use the same things as for the other types of element)
-
+- [IMPROVED] grid2op does not require the `chronics` folder when using the `FromHandlers`
+  class
+  
 [1.10.4] - 2024-10-15
 -------------------------
 - [FIXED] new pypi link (no change in code)

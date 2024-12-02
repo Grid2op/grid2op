@@ -25,6 +25,7 @@ from grid2op.Chronics import (ChronicsHandler,
                               FromNPY,
                               FromChronix2grid,
                               GridStateFromFile,
+                              FromHandlers,
                               GridValue)
 from grid2op.Space import GRID2OP_CLASSES_ENV_FOLDER
 from grid2op.Action import BaseAction, DontAct
@@ -342,7 +343,7 @@ def make_from_dataset_path(
         print(exc_)
         raise EnvError(
             "Invalid dataset config file: {}".format(config_path_abs)
-        ) from None
+        ) from exc_
 
     # Get graph layout
     graph_layout = None
@@ -558,7 +559,6 @@ def make_from_dataset_path(
     chronics_class_cfg = ChangeNothing
     if "chronics_class" in config_data and config_data["chronics_class"] is not None:
         chronics_class_cfg = config_data["chronics_class"]
-        
     # Get default Grid class
     grid_value_class_cfg = GridStateFromFile
     if (
@@ -605,7 +605,9 @@ def make_from_dataset_path(
     if (
         ((chronics_class_used != ChangeNothing) and 
          (chronics_class_used != FromNPY) and 
-         (chronics_class_used != FromChronix2grid))
+         (chronics_class_used != FromChronix2grid) and
+         (chronics_class_used != FromHandlers)
+         )
     ) and exc_chronics is not None:
         raise EnvError(
             f"Impossible to find the chronics for your environment. Please make sure to provide "
