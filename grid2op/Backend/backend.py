@@ -1567,10 +1567,10 @@ class Backend(GridObjects, ABC):
         # for example, if two powerlines are such that line_or_to_subid is equal (eg both connected to substation 0)
         # then numpy do not guarantee that `p_subs[self.line_or_to_subid] += p_or` will add the two "corresponding p_or"
         # TODO this can be vectorized with matrix product, see example in obs.flow_bus_matrix (BaseObervation.py)
-        info = Backend._check_kirchhoff_lines(info)
-        info = Backend._check_kirchhoff_gens(info)
-        info = Backend._check_kirchhoff_loads(info)
-        info = Backend._check_kirchhoff_storage(info)
+        info = Backend._check_kirchhoff_lines(cls, info)
+        info = Backend._check_kirchhoff_gens(cls, info)
+        info = Backend._check_kirchhoff_loads(cls, info)
+        info = Backend._check_kirchhoff_storage(cls, info)
         if cls.shunts_data_available:
             info = Backend._check_kirchhoff_shunt(info)
         diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
