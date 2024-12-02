@@ -132,7 +132,7 @@ class TestL2RPNIDF2023Tester(unittest.TestCase):
             assert box_act2.shape[0] == 69, f'{box_act2.shape[0]} vs 69'
             
             box_obs = BoxGymObsSpace(self.env.observation_space)
-            assert box_obs.shape[0] == 5125, f'{box_obs.shape[0]} vs 5125'
+            assert box_obs.shape[0] == 5323, f'{box_obs.shape[0]} vs 5323'
             disc_act = DiscreteActSpace(self.env.action_space)
             assert disc_act.n == 147878, f'{disc_act.n} vs 147878'
             

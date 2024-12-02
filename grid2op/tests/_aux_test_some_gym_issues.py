@@ -25,8 +25,7 @@ from test_defaultgym_compat import (TestGymCompatModule,
                              TestMultiDiscreteGymActSpace,
                              TestDiscreteGymActSpace,
                              TestAllGymActSpaceWithAlarm,
-                             TestGOObsInRange
-                             )
+                             TestGOObsInRange)
 from test_gym_env_renderer import TestGymEnvRenderer
 from test_GymConverter import (TestWithoutConverterWCCI,
                                TestIdToAct,

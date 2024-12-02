@@ -146,14 +146,17 @@ class _AuxTestGymCompatModule:
                 for el in env_gym.action_space.spaces
             ]
         )
-        assert dim_act_space == 166, f"{dim_act_space} != 166"
+        assert dim_act_space == 177, f"{dim_act_space} != 177"
         dim_obs_space = np.sum(
             [
                 np.sum(env_gym.observation_space[el].shape).astype(int)
                 for el in env_gym.observation_space.spaces
             ]
         )
-        size_th = 536  # as of grid2Op 1.7.1 (where all obs attributes are there)
+        if "actual_flex" in env_gym.observation_space.spaces:
+            size_th = 558 # as of grid2op 1.11.0 (where flexibility was added)
+        else:
+            size_th = 536 # as of grid2Op 1.7.1 (where all obs attributes are there)
         assert (
             dim_obs_space == size_th
         ), f"Size should be {size_th} but is {dim_obs_space}"
@@ -182,7 +185,7 @@ class _AuxTestGymCompatModule:
                 for el in env_gym.action_space.spaces
             ]
         )
-        assert dim_act_space == 89, f"{dim_act_space=} != 89"
+        assert dim_act_space == 100, f"{dim_act_space=} != 100"
 
     def test_keep_only(self):
         """test the keep_only_attr method"""
@@ -268,16 +271,8 @@ class _AuxTestGymCompatModule:
         act_gym = env_gym.action_space.sample()
         if _IS_WINDOWS:
             res = (7, 9, 0, 0, 0, 9)
-        else:
-            # it's linux
-            if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res = (1, 2, 0, 0, 0, 0)
-                res = (5, 3, 0, 0, 0, 1)
-                res = (2, 2, 0, 0, 0, 9)
-                res = (10, 3, 0, 0, 0, 7)
-            else:
-                res = (0, 6, 0, 0, 0, 5)
-                res = (10, 3, 0, 0, 0, 7)
+        else: # Linux
+            res = (6, 10, 0, 0, 0, 0)
         
         assert np.all(
             act_gym["redispatch"] == res
@@ -285,16 +280,8 @@ class _AuxTestGymCompatModule:
         act_gym = env_gym.action_space.sample()
         if _IS_WINDOWS:
             res = (2, 9, 0, 0, 0, 1)
-        else:
-            # it's linux
-            if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res = (0, 1, 0, 0, 0, 4)
-                res = (5, 5, 0, 0, 0, 9)
-                res = (0, 9, 0, 0, 0, 7)
-                res = (7, 5, 0, 0, 0, 8)
-            else:
-                res = (2, 9, 0, 0, 0, 1)
-                res = (7, 5, 0, 0, 0, 8)
+        else: # Linux
+            res = (1, 9, 0, 0, 0, 6)
         assert np.all(
             act_gym["redispatch"] == res
         ), f'wrong action: {act_gym["redispatch"]}'
@@ -313,31 +300,11 @@ class _AuxTestGymCompatModule:
         if _IS_WINDOWS:
             res_tup = (6, 5, 0, 0, 0, 9)
             res_disp = np.array([0.833333, 0.0, 0.0, 0.0, 0.0, 10.0], dtype=dt_float)
-        else:
-            # it's linux
-            if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res_tup = (1, 4, 0, 0, 0, 8)
-                res_disp = np.array(
-                    [-3.3333333, -1.666667, 0.0, 0.0, 0.0, 7.5], dtype=dt_float
-                )
-                res_tup = (7, 4, 0, 0, 0, 0)
-                res_disp = np.array(
-                    [1.666667, -1.666667, 0.0, 0.0, 0.0, -12.5], dtype=dt_float
-                )
-                res_tup = (8, 5, 0, 0, 0, 8)
-                res_tup = (8, 2, 0, 0, 0, 9)
-                res_disp = np.array(
-                    [2.5, 0.0, 0.0, 0.0, 0.0, 7.5], dtype=dt_float
-                )
-                res_disp = np.array(
-                    [2.5, -5., 0., 0., 0., 10.], dtype=dt_float
-                )
-            else:
-                res_tup = (8, 9, 0, 0, 0, 2)
-                res_tup = (8, 2, 0, 0, 0, 9)
-                res_disp = np.array(
-                    [2.5, -5., 0., 0., 0., 10.], dtype=dt_float
-                )
+        else: # Linux
+            res_tup = (3, 2, 0, 0, 0, 7)
+            res_disp = np.array(
+                [-1.6666665, -5., 0., 0., 0., 5.], dtype=dt_float
+            )
             
         assert (
             act_gym["redispatch"] == res_tup
@@ -354,34 +321,21 @@ class _AuxTestGymCompatModule:
         else:
             # it's linux
             if GYM_VERSION <= _MAX_GYM_VERSION_RANDINT:
-                res_tup = (3, 9, 0, 0, 0, 0)
                 res_disp = np.array(
-                    [-1.6666665, 6.666666, 0.0, 0.0, 0.0, -12.5], dtype=dt_float
+                    [-0.8333335,-1.666667,0.,0.,0.,2.5], dtype=dt_float
                 )
-                res_tup = (8, 6, 0, 0, 0, 0)
-                res_disp = np.array(
-                    [2.5, 1.666666, 0.0, 0.0, 0.0, -12.5], dtype=dt_float
-                )
-                res_tup = (7, 6, 0, 0, 0, 4)
-                res_disp = np.array(
-                    [1.666667, 1.666666, 0.0, 0.0, 0.0, -2.5], dtype=dt_float
-                )
-                res_tup = (3, 8, 0, 0, 0, 8)
-                res_disp = np.array(
-                    [-1.6666665, 5., 0.0, 0.0, 0.0, 7.5], dtype=dt_float
-                )
+                res_tup = (4, 4, 0, 0, 0, 6)
             else:
-                res_tup = (4, 2, 0, 0, 0, 5)
-                res_tup = (3, 8, 0, 0, 0, 8)
+                res_tup = (4, 4, 0, 0, 0, 6)
                 res_disp = np.array(
-                    [-1.6666665, 5., 0.0, 0.0, 0.0, 7.5], dtype=dt_float
+                    [-0.8333335,-1.666667,0.,0.,0.,2.5], dtype=dt_float
                 )
         assert (
             act_gym["redispatch"] == res_tup
         ), f'error. redispatch is {act_gym["redispatch"]}'
         act_glop = env_gym.action_space.from_gym(act_gym)
         assert np.allclose(
-            act_glop._redispatch, res_disp, atol=1e-5
+            act_glop._redispatch, res_disp, atol = 1e-5
         ), f"error. redispatch is {act_glop._redispatch}"
 
     def test_all_together(self):

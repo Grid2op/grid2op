@@ -278,8 +278,16 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 "sub_8": [-64.0, 270.0],
                 "sub_9": [222.0, 216.0],
             },
+            # Flexibility
+            "load_size":[0.0]*self.env.n_load,
+            "load_flexible":[False]*self.env.n_load,
+            "load_max_ramp_up":[0.0]*self.env.n_load,
+            "load_max_ramp_down":[0.0]*self.env.n_load,
+            "load_cost_per_MW":[0.0]*self.env.n_load,
+            # Shunts
             "name_shunt": ["shunt_8_0"],
             "shunt_to_subid": [8],
+            # Storage
             "storage_type": [],
             "storage_Emax": [],
             "storage_Emin": [],
@@ -290,6 +298,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "storage_charging_efficiency": [],
             "storage_discharging_efficiency": [],
             "_init_subtype": "grid2op.Observation.completeObservation.CompleteObservation",
+            # Alarms / Alerts
             "dim_alarms": 0,
             "dim_alerts": 0,
             "alarms_area_names": [],
@@ -731,6 +740,8 @@ class TestBasisObsBehaviour(unittest.TestCase):
             ],
             "target_dispatch": [0.0, 0.0, 0.0, 0.0, 0.0],
             "actual_dispatch": [0.0, 0.0, 0.0, 0.0, 0.0],
+            "target_flex": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "actual_flex": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             "_shunt_p": [0.0],
             "_shunt_q": [-17.923625946044922],
             "_shunt_v": [0.20202238857746124],
@@ -878,8 +889,13 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 dt_int,
                 dt_int,
                 dt_int,
+                # Redispatch
                 dt_float,
                 dt_float,
+                # Flexibility
+                dt_float,
+                dt_float,
+                # Storage
                 dt_float,
                 dt_float,
                 dt_float,
@@ -951,8 +967,12 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 14,
                 20,
                 20,
+                # Redispatch
                 5,
                 5,
+                # Flexibility
+                11,
+                11,
                 0,
                 0,
                 0,
@@ -985,7 +1005,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 0
             ]
         )
-        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0
+        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 11 + 11
 
     def tearDown(self):
         self.env.close()

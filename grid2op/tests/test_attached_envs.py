@@ -8,7 +8,9 @@
 
 import warnings
 import unittest
+import numpy as np
 import grid2op
+from packaging import version
 
 from grid2op.Action import (PowerlineSetAction, PlayableAction, DontAct)
 from grid2op.Observation import CompleteObservation
@@ -178,11 +180,14 @@ class TestL2RPN_CASE14_SANDBOX(unittest.TestCase):
 
     def test_action_space(self):
         assert issubclass(self.env.action_space.subtype, PlayableAction)
-        assert self.env.action_space.n == 166, f"{self.env.action_space.n} instead of 166"
+        assert self.env.action_space.n == 177, f"{self.env.action_space.n} instead of 166"
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 467
+        if "actual_flex" in self.env.observation_space.attr_list_vect:
+            size_th = 489
+        else:
+            size_th = 467
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )
@@ -226,7 +231,7 @@ class TestEDUC_CASE14_REDISP(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 467
+        size_th = 489
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )
@@ -270,7 +275,7 @@ class TestEDUC_STORAGE(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 475
+        size_th = 497
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )

@@ -114,6 +114,14 @@ class InvalidRedispatching(AmbiguousAction):
 
     pass
 
+class InvalidFlexibility(AmbiguousAction):
+    """
+    This is a more precise exception than :class:`AmbiguousAction` indicating that
+    the :class:`grid2op.BaseAction.BaseAction`
+    tried to apply an invalid flexibility strategy.
+    """
+
+    pass
 
 class InvalidCurtailment(AmbiguousAction):
     """

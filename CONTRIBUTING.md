@@ -22,7 +22,11 @@ If you want to contribute but are not sure were to start you can, for example:
 
 - tackle an opened issue tagged as `good first issue` 
 - try to solve an opened issue marked with `helps wanted`
+<<<<<<< HEAD
 - there are also some contribution ideas written in the `Work "in progress"` section of the `CHANGELOG.rst`
+=======
+- there are also some contribution ideas written in the `[TODO]` and `Next few releases` of the `CHANGELOG.rst`
+>>>>>>> 0a04e162 (fixing the url to point to Grid2op/grid2op instead of rte-france/grid2op [skip ci])
   at the top level of the github repo.
 
 In any case, if you are not sure about what is written here, feel free to ask in the grid2op [github discussion](https://github.com/orgs/Grid2op/discussions), 
