@@ -6,6 +6,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from typing import List
+from grid2op.Observation import BaseObservation
+from grid2op.Action import BaseAction, ActionSpace
 from grid2op.Agent.greedyAgent import GreedyAgent
 
 
@@ -22,11 +25,11 @@ class TopologyGreedy(GreedyAgent):
 
     """
 
-    def __init__(self, action_space):
-        GreedyAgent.__init__(self, action_space)
-        self.tested_action = None
+    def __init__(self, action_space: ActionSpace, simulated_time_step : int =1):
+        GreedyAgent.__init__(self, action_space, simulated_time_step=simulated_time_step)
+        self.tested_action : List[BaseAction]= None
 
-    def _get_tested_action(self, observation):
+    def _get_tested_action(self, observation: BaseObservation) -> List[BaseAction]:
         if self.tested_action is None:
             res = [self.action_space({})]  # add the do nothing
             # better use "get_all_unitary_topologies_set" and not "get_all_unitary_topologies_change"

@@ -7,9 +7,13 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 from abc import abstractmethod
+from typing import List
 import numpy as np
-from grid2op.Agent.baseAgent import BaseAgent
+from grid2op.Action import BaseAction, ActionSpace
+from grid2op.Observation import BaseObservation
 from grid2op.dtypes import dt_float
+
+from grid2op.Agent.baseAgent import BaseAgent
 
 
 class GreedyAgent(BaseAgent):
@@ -23,12 +27,13 @@ class GreedyAgent(BaseAgent):
     override this class. Examples are provided with :class:`PowerLineSwitch` and :class:`TopologyGreedy`.
     """
 
-    def __init__(self, action_space):
+    def __init__(self, action_space: ActionSpace, simulated_time_step : int =1):
         BaseAgent.__init__(self, action_space)
         self.tested_action = None
         self.resulting_rewards = None
+        self.simulated_time_step = int(simulated_time_step)
 
-    def act(self, observation, reward, done=False):
+    def act(self, observation: BaseObservation, reward: float, done : bool=False) -> BaseAction:
         """
         By definition, all "greedy" agents are acting the same way. The only thing that can differentiate multiple
         agents is the actions that are tested.
@@ -64,7 +69,7 @@ class GreedyAgent(BaseAgent):
                     simul_reward,
                     simul_has_error,
                     simul_info,
-                ) = observation.simulate(action)
+                ) = observation.simulate(action, time_step=self.simulated_time_step)
                 self.resulting_rewards[i] = simul_reward
             reward_idx = int(
                 np.argmax(self.resulting_rewards)
@@ -75,7 +80,7 @@ class GreedyAgent(BaseAgent):
         return best_action
 
     @abstractmethod
-    def _get_tested_action(self, observation):
+    def _get_tested_action(self, observation: BaseObservation) -> List[BaseAction]:
         """
         Returns the list of all the candidate actions.
 

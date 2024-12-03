@@ -575,7 +575,47 @@ class PandaPowerBackend(Backend):
                     raise pp.powerflow.LoadflowNotConverged
             except pp.powerflow.LoadflowNotConverged:
                 self._aux_runpf_pp(True)
-        
+    
+    def _init_big_topo_to_bk(self):
+        self._big_topo_to_backend = [(None, None, None) for _ in range(self.dim_topo)]
+        for load_id, pos_big_topo in enumerate(self.load_pos_topo_vect):
+            self._big_topo_to_backend[pos_big_topo] = (load_id, load_id, 0)
+        for gen_id, pos_big_topo in enumerate(self.gen_pos_topo_vect):
+            self._big_topo_to_backend[pos_big_topo] = (gen_id, gen_id, 1)
+        for l_id, pos_big_topo in enumerate(self.line_or_pos_topo_vect):
+            if l_id < self.__nb_powerline:
+                self._big_topo_to_backend[pos_big_topo] = (l_id, l_id, 2)
+            else:
+                self._big_topo_to_backend[pos_big_topo] = (
+                    l_id,
+                    l_id - self.__nb_powerline,
+                    3,
+                )
+        for l_id, pos_big_topo in enumerate(self.line_ex_pos_topo_vect):
+            if l_id < self.__nb_powerline:
+                self._big_topo_to_backend[pos_big_topo] = (l_id, l_id, 4)
+            else:
+                self._big_topo_to_backend[pos_big_topo] = (
+                    l_id,
+                    l_id - self.__nb_powerline,
+                    5,
+                )
+    
+    def _init_topoid_objid(self):
+        self._big_topo_to_obj = [(None, None) for _ in range(self.dim_topo)]
+        nm_ = "load"
+        for load_id, pos_big_topo in enumerate(self.load_pos_topo_vect):
+            self._big_topo_to_obj[pos_big_topo] = (load_id, nm_)
+        nm_ = "gen"
+        for gen_id, pos_big_topo in enumerate(self.gen_pos_topo_vect):
+            self._big_topo_to_obj[pos_big_topo] = (gen_id, nm_)
+        nm_ = "lineor"
+        for l_id, pos_big_topo in enumerate(self.line_or_pos_topo_vect):
+            self._big_topo_to_obj[pos_big_topo] = (l_id, nm_)
+        nm_ = "lineex"
+        for l_id, pos_big_topo in enumerate(self.line_ex_pos_topo_vect):
+            self._big_topo_to_obj[pos_big_topo] = (l_id, nm_)
+            
     def _init_private_attrs(self) -> None:
         #  number of elements per substation
         self.sub_info = np.zeros(self.n_sub, dtype=dt_int)
@@ -740,6 +780,7 @@ class PandaPowerBackend(Backend):
         self._nb_bus_before = None
 
         # store the topoid -> objid
+        self._init_topoid_objid()
         self._big_topo_to_obj = [(None, None) for _ in range(self.dim_topo)]
         nm_ = "load"
         for load_id, pos_big_topo in enumerate(self.load_pos_topo_vect):
@@ -755,29 +796,7 @@ class PandaPowerBackend(Backend):
             self._big_topo_to_obj[pos_big_topo] = (l_id, nm_)
 
         # store the topoid -> objid
-        self._big_topo_to_backend = [(None, None, None) for _ in range(self.dim_topo)]
-        for load_id, pos_big_topo in enumerate(self.load_pos_topo_vect):
-            self._big_topo_to_backend[pos_big_topo] = (load_id, load_id, 0)
-        for gen_id, pos_big_topo in enumerate(self.gen_pos_topo_vect):
-            self._big_topo_to_backend[pos_big_topo] = (gen_id, gen_id, 1)
-        for l_id, pos_big_topo in enumerate(self.line_or_pos_topo_vect):
-            if l_id < self.__nb_powerline:
-                self._big_topo_to_backend[pos_big_topo] = (l_id, l_id, 2)
-            else:
-                self._big_topo_to_backend[pos_big_topo] = (
-                    l_id,
-                    l_id - self.__nb_powerline,
-                    3,
-                )
-        for l_id, pos_big_topo in enumerate(self.line_ex_pos_topo_vect):
-            if l_id < self.__nb_powerline:
-                self._big_topo_to_backend[pos_big_topo] = (l_id, l_id, 4)
-            else:
-                self._big_topo_to_backend[pos_big_topo] = (
-                    l_id,
-                    l_id - self.__nb_powerline,
-                    5,
-                )
+        self._init_big_topo_to_bk()
 
         self.theta_or = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
         self.theta_ex = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)

@@ -1253,10 +1253,10 @@ class BaseObservation(GridObjects):
         self.rho[:] = np.NaN
 
         # cool down and reconnection time after hard overflow, soft overflow or cascading failure
-        self.time_before_cooldown_line[:] = -1
-        self.time_before_cooldown_sub[:] = -1
-        self.time_next_maintenance[:] = -1
-        self.duration_next_maintenance[:] = -1
+        self.time_before_cooldown_line[:] = 0
+        self.time_before_cooldown_sub[:] = 0
+        self.time_next_maintenance[:] = 0
+        self.duration_next_maintenance[:] = 0
         self.timestep_overflow[:] = 0
 
         # calendar data
@@ -1318,6 +1318,13 @@ class BaseObservation(GridObjects):
         self.current_step = dt_int(0)
         self.max_step = dt_int(np.iinfo(dt_int).max)
         self.delta_time = dt_float(5.0)
+        
+        self._thermal_limit[:] = 0.
+        self.curtailment_limit[:] = 0.
+        self.gen_margin_up[:] = 0.
+        self.gen_margin_down[:] = 0.
+        self.curtailment_limit_effective[:] = 0.
+        self.curtailment[:] = 0. 
 
     def set_game_over(self,
                       env: Optional["grid2op.Environment.Environment"]=None) -> None:
@@ -2391,7 +2398,7 @@ class BaseObservation(GridObjects):
 
         Examples
         --------
-        The following code explains how to check that a grid meet the kirchoffs law (conservation of energy)
+        The following code explains how to check that a grid meet the Kirchhoffs law (conservation of energy)
 
         .. code-block:: python
 
@@ -2428,8 +2435,8 @@ class BaseObservation(GridObjects):
                         # the current node is the largest, so on the "extremity" side
                         p_lines += graph.edges[(k1, k2)]["p_ex"]
                         q_lines += graph.edges[(k1, k2)]["q_ex"]
-                assert abs(p_line - p_) <= 1e-5, "error for kirchoff's law for graph for P"
-                assert abs(q_line - q_) <= 1e-5, "error for kirchoff's law for graph for Q"
+                assert abs(p_line - p_) <= 1e-5, "error for Kirchhoff's law for graph for P"
+                assert abs(q_line - q_) <= 1e-5, "error for Kirchhoff's law for graph for Q"
 
         """
         cls = type(self)
@@ -2920,7 +2927,7 @@ class BaseObservation(GridObjects):
         Examples
         ---------
         
-        You can use, for example to "check" Kirchoff Current Law (or at least that no energy is created
+        You can use, for example to "check" Kirchhoff Current Law (or at least that no energy is created
         at none of the buses):
         
         .. code-block:: python
@@ -4845,3 +4852,178 @@ class BaseObservation(GridObjects):
         if self._is_done:
             raise Grid2OpException("Cannot use this function in a 'done' state.")
         return self.action_helper.get_back_to_ref_state(self, storage_setpoint, precision)
+
+    def _aux_kcl(self,
+                 n_el, # cst eg. cls.n_gen
+                 el_to_subid, # cst eg. cls.gen_to_subid
+                 el_bus,  # cst eg. gen_bus
+                 el_p,  # cst, eg. gen_p
+                 el_q,  # cst, eg. gen_q
+                 el_v,  # cst, eg. gen_v
+                 p_subs, q_subs,
+                 p_bus, q_bus,
+                 v_bus,
+                 load_conv=True  # whether the object is load convention (True) or gen convention (False)
+                 ):
+        
+        # bellow i'm "forced" to do a loop otherwise, numpy do not compute the "+=" the way I want it to.
+        # for example, if two powerlines are such that line_or_to_subid is equal (eg both connected to substation 0)
+        # then numpy do not guarantee that `p_subs[self.line_or_to_subid] += p_or` will add the two "corresponding p_or"
+        # TODO this can be vectorized with matrix product, see example in obs.flow_bus_matrix (BaseObervation.py)
+        for i in range(n_el):
+            psubid = el_to_subid[i]
+            if el_bus[i] == -1:
+                # el is disconnected
+                continue
+            
+            # for substations
+            if load_conv:
+                p_subs[psubid] += el_p[i]
+                q_subs[psubid] += el_q[i]
+            else:
+                p_subs[psubid] -= el_p[i]
+                q_subs[psubid] -= el_q[i]
+
+            # for bus
+            loc_bus = el_bus[i] - 1
+            if load_conv:
+                p_bus[psubid, loc_bus] += el_p[i]
+                q_bus[psubid, loc_bus] += el_q[i]
+            else:
+                p_bus[psubid, loc_bus] -= el_p[i]
+                q_bus[psubid, loc_bus] -= el_q[i]
+
+            # compute max and min values
+            if el_v is not None and el_v[i]:
+                # but only if gen is connected
+                v_bus[psubid, loc_bus][0] = min(
+                    v_bus[psubid, loc_bus][0],
+                    el_v[i],
+                )
+                v_bus[psubid, loc_bus][1] = max(
+                    v_bus[psubid, loc_bus][1],
+                    el_v[i],
+                )
+                
+    def check_kirchhoff(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Analogous to "backend.check_kirchhoff" but from the observation
+
+        .. versionadded:: 1.11.0
+        
+        Returns
+        -------
+        p_subs ``numpy.ndarray``
+            sum of injected active power at each substations (MW)
+        q_subs ``numpy.ndarray``
+            sum of injected reactive power at each substations (MVAr)
+        p_bus ``numpy.ndarray``
+            sum of injected active power at each buses. It is given in form of a matrix, with number of substations as
+            row, and number of columns equal to the maximum number of buses for a substation (MW)
+        q_bus ``numpy.ndarray``
+            sum of injected reactive power at each buses. It is given in form of a matrix, with number of substations as
+            row, and number of columns equal to the maximum number of buses for a substation (MVAr)
+        diff_v_bus: ``numpy.ndarray`` (2d array)
+            difference between maximum voltage and minimum voltage (computed for each elements)
+            at each bus. It is an array of two dimension:
+
+            - first dimension represents the the substation (between 1 and self.n_sub)
+            - second element represents the busbar in the substation (0 or 1 usually)
+
+        """
+        cls = type(self)
+        
+        # fist check the "substation law" : nothing is created at any substation
+        p_subs = np.zeros(cls.n_sub, dtype=dt_float)
+        q_subs = np.zeros(cls.n_sub, dtype=dt_float)
+
+        # check for each bus
+        p_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        q_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        v_bus = (
+            np.zeros((cls.n_sub, cls.n_busbar_per_sub, 2), dtype=dt_float) - 1.0
+        )  # sub, busbar, [min,max]
+        some_kind_of_inf = 1_000_000_000.
+        v_bus[:,:,0] = some_kind_of_inf
+        v_bus[:,:,1] = -1 * some_kind_of_inf
+        
+        self._aux_kcl(
+            cls.n_line, # cst eg. cls.n_gen
+            cls.line_or_to_subid, # cst eg. cls.gen_to_subid
+            self.line_or_bus,
+            self.p_or,  # cst, eg. gen_p
+            self.q_or,  # cst, eg. gen_q
+            self.v_or,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        self._aux_kcl(
+            cls.n_line, # cst eg. cls.n_gen
+            cls.line_ex_to_subid, # cst eg. cls.gen_to_subid
+            self.line_ex_bus,
+            self.p_ex,  # cst, eg. gen_p
+            self.q_ex,  # cst, eg. gen_q
+            self.v_ex,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        self._aux_kcl(
+            cls.n_load, # cst eg. cls.n_gen
+            cls.load_to_subid, # cst eg. cls.gen_to_subid
+            self.load_bus,
+            self.load_p,  # cst, eg. gen_p
+            self.load_q,  # cst, eg. gen_q
+            self.load_v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        self._aux_kcl(
+            cls.n_gen, # cst eg. cls.n_gen
+            cls.gen_to_subid, # cst eg. cls.gen_to_subid
+            self.gen_bus,  # cst eg. self.gen_bus
+            self.gen_p,  # cst, eg. gen_p
+            self.gen_q,  # cst, eg. gen_q
+            self.gen_v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            load_conv=False
+            )
+        if cls.n_storage:
+            self._aux_kcl(
+                cls.n_storage, # cst eg. cls.n_gen
+                cls.storage_to_subid, # cst eg. cls.gen_to_subid
+                self.storage_bus,
+                self.storage_power,  # cst, eg. gen_p
+                np.zeros(cls.n_storage),  # cst, eg. gen_q
+                None,  # cst, eg. gen_v
+                p_subs, q_subs,
+                p_bus, q_bus,
+                v_bus,
+                )
+
+        if cls.shunts_data_available:
+            self._aux_kcl(
+                cls.n_shunt, # cst eg. cls.n_gen
+                cls.shunt_to_subid, # cst eg. cls.gen_to_subid
+                self._shunt_bus,
+                self._shunt_p,  # cst, eg. gen_p
+                self._shunt_q,  # cst, eg. gen_q
+                self._shunt_v,  # cst, eg. gen_v
+                p_subs, q_subs,
+                p_bus, q_bus,
+                v_bus,
+                )
+        else:
+            warnings.warn(
+                "Observation.check_kirchhoff Impossible to get shunt information. Reactive information might be "
+                "incorrect."
+            )
+        diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        diff_v_bus[:, :] = v_bus[:, :, 1] - v_bus[:, :, 0]
+        diff_v_bus[np.abs(diff_v_bus - -2. * some_kind_of_inf) <= 1e-5 ] = 0.  # disconnected bus
+        return p_subs, q_subs, p_bus, q_bus, diff_v_bus
+    
