@@ -8,9 +8,9 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 """
-Grid2Op
-
+Grid2Op a testbed platform to model sequential decision making in power systems.
 """
+
 __version__ = '1.11.0.dev2'
 
 __all__ = [
