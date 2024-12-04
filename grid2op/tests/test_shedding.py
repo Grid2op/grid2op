@@ -6,10 +6,14 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import json
 import warnings
 import unittest
 import numpy as np
+import tempfile
+
 import grid2op
+from grid2op.Exceptions import AmbiguousAction
 from grid2op.Action import CompleteAction
 from grid2op.Parameters import Parameters
 
@@ -108,28 +112,82 @@ class TestShedding(unittest.TestCase):
         assert not done
         assert obs.topo_vect[load_pos] == -1
 
-    def test_action_property(self):
+    def test_action_property_load(self):
         act = self.env.action_space()
         assert "detach_load" in type(act).authorized_keys
         act.detach_load = np.ones(act.n_load, dtype=bool)
         assert act._detach_load.all()
+        assert act._modif_detach_load
         
         act2 = self.env.action_space()
         act2.detach_load = 1
         assert act2._detach_load[1]
+        assert act2._modif_detach_load
         
         act3 = self.env.action_space()
         act3.detach_load = [0, 2]
         assert act3._detach_load[0]
         assert act3._detach_load[2]
+        assert act3._modif_detach_load
         
         for k, v in self.load_lookup.items():
             act4 = self.env.action_space()
             act4.detach_load = {k}
             assert act4._detach_load[v]
-    # TODO shedding: test act.to_dict
-    # TODO shedding: test act.from_dict
-    # TODO shedding test.act.to_json
+            assert act4._modif_detach_load
+        
+        # change and disconnect
+        act = self.env.action_space()
+        act.load_change_bus = [0]
+        act.detach_load = [0]
+        is_amb, exc_ = act.is_ambiguous()
+        assert is_amb
+        assert isinstance(exc_, AmbiguousAction)
+        
+        # set_bus and disconnect
+        act = self.env.action_space()
+        act.load_set_bus = [(0, 1)]
+        act.detach_load = [0]
+        is_amb, exc_ = act.is_ambiguous()
+        assert is_amb
+        assert isinstance(exc_, AmbiguousAction)
+        
+        # flag not set
+        act = self.env.action_space()
+        act._detach_load[0] = True
+        is_amb, exc_ = act.is_ambiguous()
+        assert is_amb
+        assert isinstance(exc_, AmbiguousAction)
+        
+        # test to / from dict
+        act = self.env.action_space()
+        act.detach_load = [0]
+        dict_ = act.as_serializable_dict()  # you can save this dict with the json library
+        act2 = self.env.action_space(dict_)
+        act == act2
+        
+        # test to / from json
+        act = self.env.action_space()
+        act.detach_load = [0]
+        dict_ = act.to_json()
+        with tempfile.NamedTemporaryFile() as f_tmp:
+            with open(f_tmp.name, "w", encoding="utf-8") as f:
+                json.dump(obj=dict_, fp=f)
+                
+            with open(f_tmp.name, "r", encoding="utf-8") as f:
+                dict_reload = json.load(fp=f)
+        
+        act_reload = self.env.action_space()
+        act_reload.from_json(dict_reload)
+        assert act == act_reload
+        
+        # test to / from vect
+        act = self.env.action_space()
+        act.detach_load = [0]
+        vect_ = act.to_vect()        
+        act_reload = self.env.action_space()
+        act_reload.from_vect(vect_)
+        assert act == act_reload
     
 # TODO Shedding: test when backend does not support it is not set
 # TODO shedding: test when user deactivates it it is not set

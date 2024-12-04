@@ -109,6 +109,9 @@ Native multi agents support:
   customize the added name by overloading the `get_class_added_name` class method.
 - [BREAKING] it is now forbidden to create environment with arguments.
   Only key-word arguments are allowed.
+- [BREAKING] the way actions is serialized has been changed with respect to the `from_vect` /
+  `to_vect` method. This might introduce some issues when loading previously saved actions
+  with this methods.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
@@ -125,6 +128,7 @@ Native multi agents support:
   environment data
 - [FIXED] an issue preventing to set the thermal limit in the options
   if the last simulated action lead to a game over
+- [FIXED] some bugs in `act.from_json(...)` due to the handling of the injection modifications.
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 

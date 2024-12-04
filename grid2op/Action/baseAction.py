@@ -395,7 +395,10 @@ class BaseAction(GridObjects):
         "_detach_gen",  # new in 1.11.0
         "_detach_storage",  # new in 1.11.0
     ]
-    attr_nan_list_set = set()
+    attr_nan_list_set = set(["prod_p",
+                            "prod_v",
+                            "load_p",
+                            "load_q"])
 
     attr_list_set = set(attr_list_vect)
     shunt_added = False
@@ -436,7 +439,7 @@ class BaseAction(GridObjects):
         )
 
         # injection change
-        self._dict_inj = {}
+        self._dict_inj : Dict[Literal["prod_p", "prod_v", "load_p", "load_q"], np.ndarray] = {}
 
         # topology changed
         self._set_topo_vect = np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int)
@@ -772,12 +775,13 @@ class BaseAction(GridObjects):
                 
         if cls.detachment_is_allowed:
             for el in ["load", "gen", "storage"]:
-                attr_key = f"{el}s_detached"
+                attr_key = f"detach_{el}"
                 attr_vect = f"_detach_{el}"
+                xxx_name = getattr(cls, f"name_{el}")
                 res[attr_key] = {}
                 vect_ = getattr(self, attr_vect)
                 if vect_.any():
-                    res[attr_key] = [int(el) for el in vect_.nonzero()[0]]
+                    res[attr_key] = [str(xxx_name[el]) for el in vect_.nonzero()[0]]
                 if not res[attr_key]:
                     del res[attr_key]
         return res
@@ -941,23 +945,60 @@ class BaseAction(GridObjects):
     def _get_array_from_attr_name(self, attr_name):
         if hasattr(self, attr_name):
             res = super()._get_array_from_attr_name(attr_name)
-        else:
-            if attr_name in self._dict_inj:
-                res = self._dict_inj[attr_name]
-            else:
-                if attr_name == "prod_p" or attr_name == "prod_v":
-                    res = np.full(self.n_gen, fill_value=0.0, dtype=dt_float)
-                elif attr_name == "load_p" or attr_name == "load_q":
-                    res = np.full(self.n_load, fill_value=0.0, dtype=dt_float)
-                else:
-                    raise Grid2OpException(
-                        'Impossible to find the attribute "{}" '
-                        'into the BaseAction of type "{}"'.format(attr_name, type(self))
-                    )
-        return res
+            return res
+        
+        if attr_name in self._dict_inj:
+            res = self._dict_inj[attr_name]
+            return res
+        
+        cls = type(self)
+        if attr_name == "prod_p" or attr_name == "prod_v":
+            res = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+            return res
+        if attr_name == "load_p" or attr_name == "load_q":
+            res = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+            return res
+        raise Grid2OpException(
+            'Impossible to find the attribute "{}" '
+            'into the BaseAction of type "{}"'.format(attr_name, cls)
+        )
 
+    def _set_array_from_attr_name(self, allowed_keys, key: str, array_) -> None:
+        """used for `from_json` please see `_assign_attr_from_name` for from_vect"""
+        if key in self._dict_inj:
+            if np.isfinite(array_).any(): 
+                # because it is used elsewhere, to / from json stores also injection even if it's all nan
+                # so i need to check in this case or if it's a real injection modification
+                self._dict_inj[key][:] = array_
+                self._post_process_from_vect()  # set the correct flags
+            return
+        
+        if key == "prod_p" or key == "prod_v" or key == "load_p" or key == "load_q":
+            if np.isfinite(array_).any():
+                # because it is used elsewhere, to / from json stores also injection even if it's all nan
+                # so i need to check in this case or if it's a real injection modification
+                self._dict_inj[key] = np.asarray(array_).astype(dt_float)
+                self._post_process_from_vect()  # set the correct flags
+            return
+        
+        if key in allowed_keys:
+            # regular stuff
+            super()._set_array_from_attr_name(allowed_keys, key, array_)
+            self._post_process_from_vect()  # set the correct flags
+            return
+        
+        raise Grid2OpException(
+            'Impossible to find the attribute "{}" '
+            'into the BaseAction of type "{}"'.format(key, type(self))
+        )
+            
     def _post_process_from_vect(self):
-        self._modif_inj = self._dict_inj != {}
+        modif_inj = False
+        if self._dict_inj != {}:
+            for k, v in self._dict_inj:
+                if np.isfinite(v).any():
+                    modif_inj = True
+        self._modif_inj = modif_inj 
         self._modif_set_bus = (self._set_topo_vect != 0).any()
         self._modif_change_bus = (self._change_bus_vect).any()
         self._modif_set_status = (self._set_line_status != 0).any()
@@ -974,6 +1015,7 @@ class BaseAction(GridObjects):
         self._modif_detach_storage = (self._detach_storage).any()
 
     def _assign_attr_from_name(self, attr_nm, vect):
+        """used for from_vect, for from_json please see `_set_array_from_attr_name`"""
         if hasattr(self, attr_nm):
             if attr_nm not in type(self).attr_list_set:
                 raise AmbiguousAction(
@@ -982,8 +1024,14 @@ class BaseAction(GridObjects):
             super()._assign_attr_from_name(attr_nm, vect)
             self._post_process_from_vect()
         else:
+            if attr_nm != "load_p" and attr_nm != "load_q" and attr_nm != "prod_p" and attr_nm != "prod_v":
+                raise AmbiguousAction(f"Unknown action attribute with name {attr_nm}")
             if np.isfinite(vect).any() and (np.abs(vect) >= 1e-7).any():
-                self._dict_inj[attr_nm] = vect
+                if attr_nm in self._dict_inj:
+                    self._dict_inj[attr_nm][:] = vect
+                else:
+                    self._dict_inj[attr_nm] = vect.astype(dt_float)
+                self._post_process_from_vect()
 
     def check_space_legit(self):
         """
@@ -2907,22 +2955,6 @@ class BaseAction(GridObjects):
                 "request on github if you need this feature."
             )
 
-        if False:
-            # TODO find an elegant way to disable that
-            # now it's possible.
-            for q_id, status in enumerate(self._set_line_status):
-                if status == 1:
-                    # i reconnect a powerline, i need to check that it's connected on both ends
-                    if (
-                        self._set_topo_vect[self.line_or_pos_topo_vect[q_id]] == 0
-                        or self._set_topo_vect[self.line_ex_pos_topo_vect[q_id]] == 0
-                    ):
-
-                        raise InvalidLineStatus(
-                            "You ask to reconnect powerline {} yet didn't tell on"
-                            " which bus.".format(q_id)
-                        )
-
         if self._modif_set_bus:
             disco_or = self._set_topo_vect[cls.line_or_pos_topo_vect] == -1
             if (self._set_topo_vect[cls.line_ex_pos_topo_vect][disco_or] > 0).any():
@@ -3060,6 +3092,38 @@ class BaseAction(GridObjects):
                     "as doing so. Expect wrong behaviour."
                 )
 
+        self._is_detachment_ambiguous()
+    
+    def _is_detachment_ambiguous(self):
+        """check if any of the detachment action is ambiguous"""
+        cls = type(self)
+        if (not self._modif_detach_gen) and self._detach_gen.any():
+            raise AmbiguousAction("Invalid flag for gen detachment, please use standard grid2op API for action.")
+        if (not self._modif_detach_load) and self._detach_load.any():
+            raise AmbiguousAction("Invalid flag for load detachment, please use standard grid2op API for action.")
+        if (not self._modif_detach_storage) and self._detach_storage.any():
+            raise AmbiguousAction("Invalid flag for load detachment, please use standard grid2op API for action.")
+        if self._modif_detach_load and "detach_load" not in cls.authorized_keys:
+            raise IllegalAction("It's forbidden to do a load detachment with this action type")
+        if self._modif_detach_gen and "detach_gen" not in cls.authorized_keys:
+            raise IllegalAction("It's forbidden to do a generator detachment with this action type")
+        if self._modif_detach_storage and "detach_storage" not in cls.authorized_keys:
+            raise IllegalAction("It's forbidden to do a storage detachment with this action type")
+        for el_nm in ["load", "gen", "storage"]:
+            _modif_detach_xxx = getattr(self, f"_modif_detach_{el_nm}")
+            xxx_pos_topo_vect = getattr(cls, f"{el_nm}_pos_topo_vect")
+            _detach_xxx = getattr(self, f"_detach_{el_nm}")
+            name_xxx = getattr(cls, f"name_{el_nm}")
+            if _modif_detach_xxx:
+                issue_xxx = self._change_bus_vect[xxx_pos_topo_vect] & _detach_xxx
+                if (issue_xxx).any():
+                    raise AmbiguousAction(f"Trying to both change a {el_nm} of busbar (change_bus) AND detach it from the grid. "
+                                         f"Check {el_nm}: {name_xxx[issue_xxx]}")
+                issue_xxx = self._set_topo_vect[xxx_pos_topo_vect] & _detach_xxx
+                if (issue_xxx).any():
+                    raise AmbiguousAction(f"Trying to both set a {el_nm} of busbar (set_bus) AND detach it from the grid. "
+                                         f"Check {el_nm}: {name_xxx[issue_xxx]}")
+                    
     def _is_storage_ambiguous(self):
         """check if storage actions are ambiguous"""
         cls = type(self)
@@ -5663,7 +5727,7 @@ class BaseAction(GridObjects):
                 np.arange(cls.n_load),
                 self._detach_load,
             )
-            self._modif_alert = True
+            self._modif_detach_load = True
         except Exception as exc_:
             self._detach_load[:] = orig_
             raise IllegalAction(
@@ -5720,7 +5784,7 @@ class BaseAction(GridObjects):
                 np.arange(cls.n_gen),
                 self._detach_gen,
             )
-            self._modif_alert = True
+            self._modif_detach_gen = True
         except Exception as exc_:
             self._detach_gen[:] = orig_
             raise IllegalAction(
@@ -5777,7 +5841,7 @@ class BaseAction(GridObjects):
                 np.arange(cls.n_storage),
                 self._detach_storage,
             )
-            self._modif_alert = True
+            self._modif_detach_storage = True
         except Exception as exc_:
             self._detach_storage[:] = orig_
             raise IllegalAction(

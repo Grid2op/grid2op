@@ -901,6 +901,20 @@ class GridObjects:
         """
         return np.array(getattr(self, attr_name)).flatten()
 
+    def _set_array_from_attr_name(self, allowed_keys, key: str, array_) -> None:
+        """used for `from_json` please see `_assign_attr_from_name` for `from_vect`"""
+        if key not in allowed_keys:
+            raise AmbiguousAction(f'Impossible to recognize the key "{key}"')
+        my_attr = getattr(self, key)
+        if isinstance(my_attr, np.ndarray):
+            # the regular instance is an array, so i just need to assign the right values to it
+            my_attr[:] = array_
+        else:
+            # normal values is a scalar. So i need to convert the array received as a scalar, and
+            # convert it to the proper type
+            type_ = type(my_attr)
+            setattr(self, key, type_(array_[0]))
+
     def to_vect(self) -> np.ndarray:
         """
         Convert this instance of GridObjects to a numpy ndarray.
@@ -996,19 +1010,10 @@ class GridObjects:
 
         """
         # TODO optimization for action or observation, to reduce json size, for example using the see `to_json`
-        all_keys = type(self).attr_list_vect + type(self).attr_list_json
+        cls = type(self)
+        all_keys = cls.attr_list_vect + cls.attr_list_json
         for key, array_ in dict_.items():
-            if key not in all_keys:
-                raise AmbiguousAction(f'Impossible to recognize the key "{key}"')
-            my_attr = getattr(self, key)
-            if isinstance(my_attr, np.ndarray):
-                # the regular instance is an array, so i just need to assign the right values to it
-                my_attr[:] = array_
-            else:
-                # normal values is a scalar. So i need to convert the array received as a scalar, and
-                # convert it to the proper type
-                type_ = type(my_attr)
-                setattr(self, key, type_(array_[0]))
+            self._set_array_from_attr_name(all_keys, key, array_)
 
     @classmethod
     def _convert_to_json(cls, dict_: Dict[str, Any]) -> None:
@@ -1129,6 +1134,8 @@ class GridObjects:
 
         If this function is overloaded, then the _get_array_from_attr_name must be too.
 
+        Used for `from_vect`, please see `_set_array_from_attr_name` for `from_json`
+        
         Parameters
         ----------
         attr_nm
