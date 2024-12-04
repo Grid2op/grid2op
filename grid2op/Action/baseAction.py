@@ -395,10 +395,12 @@ class BaseAction(GridObjects):
         "_detach_gen",  # new in 1.11.0
         "_detach_storage",  # new in 1.11.0
     ]
+    # new in 1.11.0 (was not set to nan before in serialization)
     attr_nan_list_set = set(["prod_p",
                             "prod_v",
                             "load_p",
                             "load_q"])
+    # attr_nan_list_set = set()
 
     attr_list_set = set(attr_list_vect)
     shunt_added = False
@@ -527,9 +529,29 @@ class BaseAction(GridObjects):
                         cls.attr_list_vect.remove(el)
                     except ValueError:
                         pass
-            cls.attr_list_set = set(cls.attr_list_vect)
+            cls._update_value_set()
         return super().process_shunt_static_data()
     
+    @classmethod
+    def process_detachment_compat(cls):
+        if not cls.detachment_is_allowed:
+            # this is really important, otherwise things from grid2op base types will be affected
+            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+            cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
+            # remove the detachment from the list to vector
+            for el in ["_detach_load", "_detach_gen", "_detach_storage"]:
+                if el in cls.attr_list_vect:
+                    try:
+                        cls.attr_list_vect.remove(el)
+                    except ValueError:
+                        pass
+            # remove the detachment from the allowed action
+            for el in ["detach_load", "detach_gen", "detach_storage"]:
+                if el in cls.authorized_keys:
+                    cls.authorized_keys.remove(el)
+            cls._update_value_set()
+        return super().process_detachment_compat()
+            
     def copy(self) -> "BaseAction":
         # sometimes this method is used...
         return self.__deepcopy__()
@@ -570,14 +592,15 @@ class BaseAction(GridObjects):
             "_curtail",
             "_raise_alarm",
             "_raise_alert",
-            "_detach_load",
-            "_detach_gen",
-            "_detach_storage",
         ]
 
-        if type(self).shunts_data_available:
+        cls = type(self)
+        if cls.shunts_data_available:
             attr_vect += ["shunt_p", "shunt_q", "shunt_bus"]
 
+        if cls.detachment_is_allowed:
+            attr_vect += ["_detach_load", "_detach_gen", "_detach_storage"]
+            
         for attr_nm in attr_simple:
             setattr(other, attr_nm, getattr(self, attr_nm))
 
@@ -599,10 +622,6 @@ class BaseAction(GridObjects):
         res._subs_impacted = self._subs_impacted
 
         return res
-
-    @classmethod
-    def process_shunt_static_data(cls):
-        return super().process_shunt_static_data()
     
     def __deepcopy__(self, memodict={}) -> "BaseAction":
         res = type(self)()
@@ -1311,11 +1330,16 @@ class BaseAction(GridObjects):
             and (not self._modif_detach_storage)
         )
 
-    def get_topological_impact(self, powerline_status=None) -> Tuple[np.ndarray, np.ndarray]:
+    def get_topological_impact(self,
+                               powerline_status : Optional[np.ndarray]=None,
+                               _store_in_cache : bool =False,
+                               _read_from_cache : bool =True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Gives information about the element being impacted by this action.
+        
         **NB** The impacted elements can be used by :class:`grid2op.BaseRules` to determine whether or not an action
         is legal or not.
+        
         **NB** The impacted are the elements that can potentially be impacted by the action. This does not mean they
         will be impacted. For examples:
 
@@ -1335,6 +1359,41 @@ class BaseAction(GridObjects):
         Any such "change" that would be illegal is declared as "illegal" regardless of the real impact of this action
         on the powergrid.
 
+        Parameters
+        -----------
+        powerline_status: Optional[np.ndarray]
+            The impact of a powerline can change depending on the status (connected or disconnected) of 
+            the powerlines of the grid (see section :ref:`action_powerline_status` of the documentation).
+            This argument gives this information to this function. It should be read from the current observation.
+            
+        _store_in_cache: ``bool``
+            Whether to store the result of this processing in a cache. This is for example used by the 
+            :class:`grid2op.Environment.Environment` especially in the :func:`grid2op.Environment.BaseEnv.step`
+            to avoid to compute this result over and over again.
+            
+            By default its ``False`` and we don't recommend to set it to ``True``. Indeed, if set to ``True`` 
+            then the argument `powerline_status` might be ignored in future calls where `_read_from_cache` is
+            ``True``
+            
+            .. newinversion:: 1.11.0
+            
+            .. warning:: 
+                Use with extra care, it's private API.
+        
+        _read_from_cache: ``bool``
+            Whether to read from the cache.
+            
+            If the cache has been set by a previous calls to this same function
+            by explicitly setting `_store_in_cache = True` it will skip all the computation and returns the
+            values stored in the cache, *de facto* ignoring the argument `powerline_status`.
+            
+            If the cache has not been set up then this has no effect (which is the default behaviour).
+            
+            By default it's ``True``, but by default no cache is not set up. This means that by default
+            the argument `powerline_status` is in fact used. 
+            
+            .. newinversion:: 1.11.0
+            
         Returns
         -------
         lines_impacted: :class:`numpy.ndarray`, dtype:dt_bool
@@ -1358,35 +1417,49 @@ class BaseAction(GridObjects):
             env_name = "l2rpn_case14_sandbox"  # or any other name
             env = grid2op.make(env_name)
 
+            obs = env.reset()
             # get an action
             action = env.action_space.sample()
             # inspect its impact
-            lines_impacted, subs_impacted = action.get_topological_impact()
+            lines_impacted, subs_impacted = action.get_topological_impact(obs.line_status)
 
             for line_id in np.where(lines_impacted)[0]:
                 print(f"The line {env.name_line[line_id]} with id {line_id} is impacted by this action")
 
             print(action)
+            
         """
+        if (_read_from_cache and 
+            self._lines_impacted is not None and
+            self._subs_impacted is not None):
+            # cache is set and I ask to read it
+            # no need to recompute this
+            return True & self._lines_impacted, True & self._subs_impacted
+        
+        cls = type(self)
         if self._dont_affect_topology():
             # action is not impacting the topology
             # so it does not modified anything concerning the topology
-            self._lines_impacted = np.full(
-                shape=self.n_line, fill_value=False, dtype=dt_bool
+            _lines_impacted = np.full(
+                shape=cls.n_line, fill_value=False, dtype=dt_bool
             )
-            self._subs_impacted = np.full(
-                shape=self.sub_info.shape, fill_value=False, dtype=dt_bool
+            _subs_impacted = np.full(
+                shape=cls.n_sub, fill_value=False, dtype=dt_bool
             )
-            return self._lines_impacted, self._subs_impacted
+            if _store_in_cache:
+                # store the result in cache is asked too
+                self._lines_impacted = _lines_impacted
+                self._subs_impacted = _subs_impacted
+            return _lines_impacted, _subs_impacted
 
         if powerline_status is None:
-            isnotconnected = np.full(self.n_line, fill_value=True, dtype=dt_bool)
+            isnotconnected = np.full(cls.n_line, fill_value=True, dtype=dt_bool)
         else:
             isnotconnected = ~powerline_status
 
-        self._lines_impacted = self._switch_line_status | (self._set_line_status != 0)
-        self._subs_impacted = np.full(
-            shape=self.sub_info.shape, fill_value=False, dtype=dt_bool
+        _lines_impacted = self._switch_line_status | (self._set_line_status != 0)
+        _subs_impacted = np.full(
+            shape=cls.n_sub, fill_value=False, dtype=dt_bool
         )
 
         # compute the changes of the topo vector
@@ -1394,10 +1467,10 @@ class BaseAction(GridObjects):
 
         # remove the change due to powerline only
         effective_change[
-            self.line_or_pos_topo_vect[self._lines_impacted & isnotconnected]
+            self.line_or_pos_topo_vect[_lines_impacted & isnotconnected]
         ] = False
         effective_change[
-            self.line_ex_pos_topo_vect[self._lines_impacted & isnotconnected]
+            self.line_ex_pos_topo_vect[_lines_impacted & isnotconnected]
         ] = False
         
         # i can change also the status of a powerline by acting on its extremity
@@ -1406,36 +1479,50 @@ class BaseAction(GridObjects):
             # if we don't know the state of the grid, we don't consider
             # these "improvments": we consider a powerline is never
             # affected if its bus is modified at any of its ends.
-            connect_set_or = (self._set_topo_vect[self.line_or_pos_topo_vect] > 0) & (
+            connect_set_or = (self._set_topo_vect[cls.line_or_pos_topo_vect] > 0) & (
                 isnotconnected
             )
-            self._lines_impacted |= connect_set_or
-            effective_change[self.line_or_pos_topo_vect[connect_set_or]] = False
-            effective_change[self.line_ex_pos_topo_vect[connect_set_or]] = False
-            connect_set_ex = (self._set_topo_vect[self.line_ex_pos_topo_vect] > 0) & (
+            _lines_impacted |= connect_set_or
+            effective_change[cls.line_or_pos_topo_vect[connect_set_or]] = False
+            effective_change[cls.line_ex_pos_topo_vect[connect_set_or]] = False
+            connect_set_ex = (self._set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & (
                 isnotconnected
             )
-            self._lines_impacted |= connect_set_ex
-            effective_change[self.line_or_pos_topo_vect[connect_set_ex]] = False
-            effective_change[self.line_ex_pos_topo_vect[connect_set_ex]] = False
+            _lines_impacted |= connect_set_ex
+            effective_change[cls.line_or_pos_topo_vect[connect_set_ex]] = False
+            effective_change[cls.line_ex_pos_topo_vect[connect_set_ex]] = False
             
             # second sub case i disconnected the powerline by setting origin or extremity to negative stuff
-            disco_set_or = (self._set_topo_vect[self.line_or_pos_topo_vect] < 0) & (
+            disco_set_or = (self._set_topo_vect[cls.line_or_pos_topo_vect] < 0) & (
                 powerline_status
             )
-            self._lines_impacted |= disco_set_or
-            effective_change[self.line_or_pos_topo_vect[disco_set_or]] = False
-            effective_change[self.line_ex_pos_topo_vect[disco_set_or]] = False
-            disco_set_ex = (self._set_topo_vect[self.line_ex_pos_topo_vect] < 0) & (
+            _lines_impacted |= disco_set_or
+            effective_change[cls.line_or_pos_topo_vect[disco_set_or]] = False
+            effective_change[cls.line_ex_pos_topo_vect[disco_set_or]] = False
+            disco_set_ex = (self._set_topo_vect[cls.line_ex_pos_topo_vect] < 0) & (
                 powerline_status
             )
-            self._lines_impacted |= disco_set_ex
-            effective_change[self.line_or_pos_topo_vect[disco_set_ex]] = False
-            effective_change[self.line_ex_pos_topo_vect[disco_set_ex]] = False
+            _lines_impacted |= disco_set_ex
+            effective_change[cls.line_or_pos_topo_vect[disco_set_ex]] = False
+            effective_change[cls.line_ex_pos_topo_vect[disco_set_ex]] = False
         
-        self._subs_impacted[self._topo_vect_to_sub[effective_change]] = True
-        return self._lines_impacted, self._subs_impacted
+        _subs_impacted[cls._topo_vect_to_sub[effective_change]] = True
+            
+        if _store_in_cache:
+            # store the results in cache if asked too
+            self._lines_impacted = _lines_impacted
+            self._subs_impacted = _subs_impacted
+        return _lines_impacted, _subs_impacted
 
+    def reset_cache_topological_impact(self) -> None:
+        """INTERNAL 
+        
+        .. versionadded:: 1.11.0
+        
+        """
+        self._lines_impacted = None
+        self._subs_impacted = None
+        
     def remove_line_status_from_topo(self,
                                      obs: "grid2op.Observation.BaseObservation" = None,
                                      check_cooldown: bool = True):
@@ -3097,6 +3184,23 @@ class BaseAction(GridObjects):
     def _is_detachment_ambiguous(self):
         """check if any of the detachment action is ambiguous"""
         cls = type(self)
+        if not cls.detachment_is_allowed:
+            # detachment is not allowed
+            if self._modif_detach_gen:
+                raise IllegalAction("Generators cannot be detached with this environment")
+            if self._modif_detach_load:
+                raise IllegalAction("Loads cannot be detached with this environment")
+            if self._modif_detach_storage:
+                raise IllegalAction("Storage units cannot be detached with this environment")
+            if self._detach_gen is not None:
+                raise IllegalAction("Generators cannot be detached with this environment")
+            if self._detach_load is not None:
+                raise IllegalAction("Loads cannot be detached with this environment")
+            if self._detach_storage is not None:
+                raise IllegalAction("Storage units cannot be detached with this environment")
+            return
+        
+        # here detachment is allowed, I check consistency between everything
         if (not self._modif_detach_gen) and self._detach_gen.any():
             raise AmbiguousAction("Invalid flag for gen detachment, please use standard grid2op API for action.")
         if (not self._modif_detach_load) and self._detach_load.any():
@@ -3119,7 +3223,7 @@ class BaseAction(GridObjects):
                 if (issue_xxx).any():
                     raise AmbiguousAction(f"Trying to both change a {el_nm} of busbar (change_bus) AND detach it from the grid. "
                                          f"Check {el_nm}: {name_xxx[issue_xxx]}")
-                issue_xxx = self._set_topo_vect[xxx_pos_topo_vect] & _detach_xxx
+                issue_xxx = (self._set_topo_vect[xxx_pos_topo_vect] >= 1) & _detach_xxx
                 if (issue_xxx).any():
                     raise AmbiguousAction(f"Trying to both set a {el_nm} of busbar (set_bus) AND detach it from the grid. "
                                          f"Check {el_nm}: {name_xxx[issue_xxx]}")

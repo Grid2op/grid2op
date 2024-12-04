@@ -2953,7 +2953,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._backend_action += attack
         return lines_attacked, subs_attacked, attack_duration
 
-    def _aux_apply_redisp(self, action, new_p, new_p_th, gen_curtailed, except_):
+    def _aux_apply_redisp(self, action, new_p, new_p_th, gen_curtailed, except_, powerline_status):
         is_illegal_redisp = False
         is_done = False
         is_illegal_reco = False
@@ -2969,7 +2969,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         if except_tmp is not None:
             orig_action = action
+            action.reset_cache_topological_impact()
             action = self._action_space({})
+            _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             if type(self).dim_alerts:
                 action.raise_alert = orig_action.raise_alert
             is_illegal_redisp = True
@@ -3001,7 +3003,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         if not valid_disp or except_tmp is not None:
             # game over case (divergence of the scipy routine to compute redispatching)
+            action.reset_cache_topological_impact()
             res_action = self._action_space({})
+            _ = res_action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             if type(self).dim_alerts:
                 res_action.raise_alert = action.raise_alert
             is_illegal_redisp = True
@@ -3023,7 +3027,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         except_tmp = self._handle_updown_times(gen_up_before, self._actual_dispatch)
         if except_tmp is not None:
             is_illegal_reco = True
+            action.reset_cache_topological_impact()
             res_action = self._action_space({})
+            _ = res_action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             if type(self).dim_alerts:
                 res_action.raise_alert = action.raise_alert
             except_.append(except_tmp)
@@ -3115,7 +3121,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._timestep_overflow[~overflow_lines] = 0
 
         # build the topological action "cooldown"
-        aff_lines, aff_subs = action.get_topological_impact(init_line_status)
+        aff_lines, aff_subs = action.get_topological_impact(_read_from_cache=True)
         if self._max_timestep_line_status_deactivated > 0:
             # i update the cooldown only when this does not impact the line disconnected for the
             # opponent or by maintenance for example
@@ -3342,11 +3348,22 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     else:
                         action.raise_alert = init_alert
                 except_.append(except_tmp)
-
+                
+            # speed optimization: during all the "env.step" the "topological impact"
+            # of an action is called multiple times, I cache the results
+            # at first iteration, self.current_obs is None so I cannot use self.current_obs.line_status
+            powerline_status = self.get_current_line_status()
+            # explicitly store in cache the topological impact (not to recompute it again and again)
+            # and this regardless of the 
+            _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
+            
             is_legal, reason = self._game_rules(action=action, env=self)
             if not is_legal:
                 # action is replace by do nothing
+                action.reset_cache_topological_impact()
                 action = self._action_space({})
+                _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
+                
                 init_disp = 1.0 * action._redispatch  # dispatching action
                 action_storage_power = (
                     1.0 * action._storage_power
@@ -3390,7 +3407,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 # and it is also in this function that the limiting of the curtailment / storage actions
                 # is perform to make the state "feasible"
                 res_disp = self._aux_apply_redisp(
-                    action, new_p, new_p_th, gen_curtailed, except_
+                    action, new_p, new_p_th, gen_curtailed, except_, powerline_status
                 )
                 action, is_illegal_redisp, is_illegal_reco, is_done = res_disp
                 
@@ -3488,7 +3505,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if self._update_obs_after_reward and self.current_obs is not None:
             # transfer some information computed in the reward into the obs (if any)
             self.current_obs.update_after_reward(self)
-            
+        
+        action.reset_cache_topological_impact()
         # TODO documentation on all the possible way to be illegal now
         if self.done:
             self.__is_init = False

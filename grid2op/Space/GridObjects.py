@@ -3034,6 +3034,7 @@ class GridObjects:
         res_cls._compute_pos_big_topo_cls()
         res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
+        res_cls.process_detachment_compat()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
@@ -4410,7 +4411,9 @@ class GridObjects:
             # cls.set_env_name(f"{cls.env_name}_{cls.glop_version}")
             # and now post process the class attributes for that
             cls.process_grid2op_compat()
-
+        
+        cls.process_detachment_compat()
+        
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]
         else:
@@ -4452,6 +4455,10 @@ class GridObjects:
     @classmethod
     def process_shunt_static_data(cls):
         """remove possible shunts data from the classes, if shunts are deactivated"""
+        pass
+    
+    @classmethod
+    def process_detachment_compat(cls):
         pass
     
     @classmethod

@@ -112,83 +112,120 @@ class TestShedding(unittest.TestCase):
         assert not done
         assert obs.topo_vect[load_pos] == -1
 
-    def test_action_property_load(self):
-        act = self.env.action_space()
-        assert "detach_load" in type(act).authorized_keys
-        act.detach_load = np.ones(act.n_load, dtype=bool)
-        assert act._detach_load.all()
-        assert act._modif_detach_load
+class TestSheddingActions(unittest.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        p = Parameters()
+        p.MAX_SUB_CHANGED = 999999
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    param=p,
+                                    action_class=CompleteAction,
+                                    allow_detachment=True,
+                                    test=True,
+                                    _add_to_name=type(self).__name__)
+        obs = self.env.reset(seed=0, options={"time serie id": 0}) # Reproducibility
+
+    def tearDown(self) -> None:
+        self.env.close()
+        
+    def aux_test_action_property_xxx(self, el_type):
+        detach_xxx = f"detach_{el_type}"
+        _detach_xxx = f"_detach_{el_type}"
+        _modif_detach_xxx = f"_modif_detach_{el_type}"
+        n_xxx = getattr(type(self.env), f"n_{el_type}")
+        name_xxx = getattr(type(self.env), f"name_{el_type}")
+        xxx_change_bus = f"{el_type}_change_bus"
+        xxx_set_bus = f"{el_type}_set_bus"
+        
+        act1 = self.env.action_space()
+        assert detach_xxx in type(act1).authorized_keys
+        setattr(act1, detach_xxx, np.ones(n_xxx, dtype=bool))
+        assert getattr(act1, _detach_xxx).all()
+        assert getattr(act1, _modif_detach_xxx)
         
         act2 = self.env.action_space()
-        act2.detach_load = 1
-        assert act2._detach_load[1]
-        assert act2._modif_detach_load
+        setattr(act2, detach_xxx, 1)
+        assert getattr(act2, _detach_xxx)[1]
+        assert getattr(act2, _modif_detach_xxx)
         
         act3 = self.env.action_space()
-        act3.detach_load = [0, 2]
-        assert act3._detach_load[0]
-        assert act3._detach_load[2]
-        assert act3._modif_detach_load
+        setattr(act3, detach_xxx, [0, 1])
+        assert getattr(act3, _detach_xxx)[0]
+        assert getattr(act3, _detach_xxx)[1]
+        assert getattr(act3, _modif_detach_xxx)
         
-        for k, v in self.load_lookup.items():
+        for el_id, el_nm in enumerate(name_xxx):
             act4 = self.env.action_space()
-            act4.detach_load = {k}
-            assert act4._detach_load[v]
-            assert act4._modif_detach_load
+            setattr(act4, detach_xxx, {el_nm})
+            assert getattr(act4, _detach_xxx)[el_id]
+            assert getattr(act4, _modif_detach_xxx)
         
         # change and disconnect
-        act = self.env.action_space()
-        act.load_change_bus = [0]
-        act.detach_load = [0]
-        is_amb, exc_ = act.is_ambiguous()
-        assert is_amb
-        assert isinstance(exc_, AmbiguousAction)
+        act5 = self.env.action_space()
+        setattr(act5, xxx_change_bus, [0])
+        setattr(act5, detach_xxx, [0])
+        is_amb, exc_ = act5.is_ambiguous()
+        assert is_amb, f"error for {el_type}"
+        assert isinstance(exc_, AmbiguousAction), f"error for {el_type}"
         
         # set_bus and disconnect
-        act = self.env.action_space()
-        act.load_set_bus = [(0, 1)]
-        act.detach_load = [0]
-        is_amb, exc_ = act.is_ambiguous()
-        assert is_amb
-        assert isinstance(exc_, AmbiguousAction)
+        act6 = self.env.action_space()
+        setattr(act6, xxx_set_bus, [(0, 1)])
+        setattr(act6, detach_xxx, [0])
+        is_amb, exc_ = act6.is_ambiguous()
+        assert is_amb, f"error for {el_type}"
+        assert isinstance(exc_, AmbiguousAction), f"error for {el_type}"
         
         # flag not set
-        act = self.env.action_space()
-        act._detach_load[0] = True
-        is_amb, exc_ = act.is_ambiguous()
-        assert is_amb
-        assert isinstance(exc_, AmbiguousAction)
+        act7 = self.env.action_space()
+        getattr(act7, _detach_xxx)[0] = True
+        is_amb, exc_ = act7.is_ambiguous()
+        assert is_amb, f"error for {el_type}"
+        assert isinstance(exc_, AmbiguousAction), f"error for {el_type}"
         
-        # test to / from dict
-        act = self.env.action_space()
-        act.detach_load = [0]
-        dict_ = act.as_serializable_dict()  # you can save this dict with the json library
-        act2 = self.env.action_space(dict_)
-        act == act2
-        
-        # test to / from json
-        act = self.env.action_space()
-        act.detach_load = [0]
-        dict_ = act.to_json()
-        with tempfile.NamedTemporaryFile() as f_tmp:
-            with open(f_tmp.name, "w", encoding="utf-8") as f:
-                json.dump(obj=dict_, fp=f)
-                
-            with open(f_tmp.name, "r", encoding="utf-8") as f:
-                dict_reload = json.load(fp=f)
-        
-        act_reload = self.env.action_space()
-        act_reload.from_json(dict_reload)
-        assert act == act_reload
-        
-        # test to / from vect
-        act = self.env.action_space()
-        act.detach_load = [0]
-        vect_ = act.to_vect()        
-        act_reload = self.env.action_space()
-        act_reload.from_vect(vect_)
-        assert act == act_reload
+        for el_id in range(n_xxx):
+            # test to / from dict
+            act8 = self.env.action_space()
+            setattr(act8, detach_xxx, [el_id])
+            dict_ = act8.as_serializable_dict()  # you can save this dict with the json library
+            act8_reloaded = self.env.action_space(dict_)
+            assert act8 == act8_reloaded, f"error for {el_type} for id {el_id}"
+            
+            # test to / from json
+            act9 = self.env.action_space()
+            setattr(act9, detach_xxx, [el_id])
+            dict_ = act9.to_json()
+            with tempfile.NamedTemporaryFile() as f_tmp:
+                with open(f_tmp.name, "w", encoding="utf-8") as f:
+                    json.dump(obj=dict_, fp=f)
+                    
+                with open(f_tmp.name, "r", encoding="utf-8") as f:
+                    dict_reload = json.load(fp=f)
+            act9_reloaded = self.env.action_space()
+            act9_reloaded.from_json(dict_reload)
+            assert act9 == act9_reloaded, f"error for {el_type} for id {el_id}"
+            
+            # test to / from vect
+            act10 = self.env.action_space()
+            setattr(act10, detach_xxx, [el_id])
+            vect_ = act10.to_vect()        
+            act10_reloaded = self.env.action_space()
+            act10_reloaded.from_vect(vect_)
+            assert act10 == act10_reloaded, f"error for {el_type} for id {el_id}"
     
+    def test_action_property_load(self):
+        self.aux_test_action_property_xxx("load")
+        
+    def test_action_property_gen(self):
+        self.aux_test_action_property_xxx("gen")
+        
+    def test_action_property_storage(self):
+        self.aux_test_action_property_xxx("storage")
+
+# TODO Shedding: test the affected_lines, affected_subs of the action 
+
 # TODO Shedding: test when backend does not support it is not set
 # TODO shedding: test when user deactivates it it is not set
 

@@ -162,7 +162,10 @@ Native multi agents support:
   possible to use the same things as for the other types of element)
 - [IMPROVED] grid2op does not require the `chronics` folder when using the `FromHandlers`
   class
-  
+- [IMPROVED] the function `action.get_topological_impact(...)` has now a "caching" mechanism
+  that allows not to recompute it over and over again (this is internal API please do not change 
+  it... unless you know what you are doing)
+    
 [1.10.4] - 2024-10-15
 -------------------------
 - [FIXED] new pypi link (no change in code)
