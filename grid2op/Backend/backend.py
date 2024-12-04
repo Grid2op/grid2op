@@ -35,7 +35,7 @@ from grid2op.Exceptions import (
     DivergingPowerflow,
     Grid2OpException,
 )
-from grid2op.Space import GridObjects, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -1252,53 +1252,6 @@ class Backend(GridObjects, ABC):
         """
         warnings.warn(message="please use backend.check_kirchhoff() instead", category=DeprecationWarning)
         return self.check_kirchhoff()
-    
-    def _aux_check_kirchhoff(self,
-                             n_elt:int, # cst eg. cls.n_gen
-                             el_to_subid:np.ndarray, # cst eg. cls.gen_to_subid
-                             el_bus:np.ndarray,  # cst eg. gen_bus
-                             el_p:np.ndarray,  # cst, eg. gen_p
-                             el_q:np.ndarray,  # cst, eg. gen_q
-                             el_v:np.ndarray,  # cst, eg. gen_v
-                             p_subs:np.ndarray, q_subs:np.ndarray,
-                             p_bus:np.ndarray, q_bus:np.ndarray,
-                             v_bus:np.ndarray,
-                             # whether the object is load convention (True) or gen convention (False)
-                             load_conv:np.ndarray=True):
-        for i in range(n_elt):
-            psubid = el_to_subid[i]
-            if el_bus[i] == -1:
-                # el is disconnected
-                continue
-            
-            # for substations
-            if load_conv:
-                p_subs[psubid] += el_p[i]
-                q_subs[psubid] += el_q[i]
-            else:
-                p_subs[psubid] -= el_p[i]
-                q_subs[psubid] -= el_q[i]
-
-            # for bus
-            loc_bus = el_bus[i] - 1
-            if load_conv:
-                p_bus[psubid, loc_bus] += el_p[i]
-                q_bus[psubid, loc_bus] += el_q[i]
-            else:
-                p_bus[psubid, loc_bus] -= el_p[i]
-                q_bus[psubid, loc_bus] -= el_q[i]
-
-            # compute max and min values
-            if el_v is not None and el_v[i]:
-                # but only if gen is connected
-                v_bus[psubid, loc_bus][0] = min(
-                    v_bus[psubid, loc_bus][0],
-                    el_v[i],
-                )
-                v_bus[psubid, loc_bus][1] = max(
-                    v_bus[psubid, loc_bus][1],
-                    el_v[i],
-                )
 
     def check_kirchhoff(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -1343,78 +1296,53 @@ class Backend(GridObjects, ABC):
         p_ex, q_ex, v_ex, *_ = self.lines_ex_info()
         p_gen, q_gen, v_gen = self.generators_info()
         p_load, q_load, v_load = self.loads_info()
-        
-        if cls.n_storage > 0:
-            p_storage, q_storage, v_storage = self.storages_info()
-            
-        if cls.shunts_data_available:
-            p_s, q_s, v_s, bus_s = self.shunt_info()
-
-        # fist check the "substation law" : nothing is created at any substation
-        p_subs = np.zeros(cls.n_sub, dtype=dt_float)
-        q_subs = np.zeros(cls.n_sub, dtype=dt_float)
-
-        # check for each bus
-        p_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
-        q_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
-        v_bus = (
-            np.zeros((cls.n_sub, cls.n_busbar_per_sub, 2), dtype=dt_float) - 1.0
-        )  # sub, busbar, [min,max]
         topo_vect = self.get_topo_vect()
-
-        self._aux_check_kirchhoff(
-            cls.n_line,
-            cls.line_or_to_subid,
+        lineor_info = ElTypeInfo(
             topo_vect[cls.line_or_pos_topo_vect],
-            p_or, q_or, v_or,
-            p_subs, q_subs,
-            p_bus, q_bus, v_bus)
-        self._aux_check_kirchhoff(
-            cls.n_line,
-            cls.line_ex_to_subid,
+            p_or,
+            q_or,
+            v_or,
+            )
+        lineex_info = ElTypeInfo(
             topo_vect[cls.line_ex_pos_topo_vect],
-            p_ex, q_ex, v_ex,
-            p_subs, q_subs,
-            p_bus, q_bus, v_bus)
-        self._aux_check_kirchhoff(
-            cls.n_load,
-            cls.load_to_subid,
+            p_ex,
+            q_ex,
+            v_ex,
+            )
+        load_info = ElTypeInfo(
             topo_vect[cls.load_pos_topo_vect],
-            p_load, q_load, v_load,
-            p_subs, q_subs,
-            p_bus, q_bus, v_bus)
-        self._aux_check_kirchhoff(
-            cls.n_gen,
-            cls.gen_to_subid,
+            p_load,
+            q_load,
+            v_load,
+            )
+        gen_info = ElTypeInfo(
             topo_vect[cls.gen_pos_topo_vect],
             p_gen, q_gen, v_gen,
-            p_subs, q_subs,
-            p_bus, q_bus, v_bus,
-            load_conv=False)
-        if cls.n_storage:
-            self._aux_check_kirchhoff(
-                cls.n_storage,
-                cls.storage_to_subid,
+            )
+        if cls.n_storage > 0:
+            p_storage, q_storage, v_storage = self.storages_info()
+            storage_info = ElTypeInfo(
                 topo_vect[cls.storage_pos_topo_vect],
                 p_storage, q_storage, v_storage,
-                p_subs, q_subs,
-                p_bus, q_bus, v_bus)
+            )
+        else:
+            storage_info = None
 
         if cls.shunts_data_available:
-            self._aux_check_kirchhoff(
-                cls.n_shunt,
-                cls.shunt_to_subid,
+            p_s, q_s, v_s, bus_s = self.shunt_info()
+            shunt_info = ElTypeInfo(
                 bus_s,
                 p_s, q_s, v_s,
-                p_subs, q_subs,
-                p_bus, q_bus, v_bus)
-        else:
-            warnings.warn(
-                "Observation.check_kirchhoff Impossible to get shunt information. Reactive information might be "
-                "incorrect."
             )
-        diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
-        diff_v_bus[:, :] = v_bus[:, :, 1] - v_bus[:, :, 0]
+        else:
+            shunt_info = None
+        
+        p_subs, q_subs, p_bus, q_bus, diff_v_bus = cls._aux_check_kirchhoff(lineor_info,
+                                                                            lineex_info,
+                                                                            load_info,
+                                                                            gen_info,
+                                                                            storage_info,
+                                                                            shunt_info)
         return p_subs, q_subs, p_bus, q_bus, diff_v_bus
 
     def _fill_names_obj(self):
