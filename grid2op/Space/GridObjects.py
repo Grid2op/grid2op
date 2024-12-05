@@ -29,7 +29,7 @@ import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import *
-from grid2op.Space.space_utils import extract_from_dict, save_to_dict
+from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
 
 # TODO tests of these methods and this class in general
 DEFAULT_N_BUSBAR_PER_SUB = 2
@@ -5261,3 +5261,214 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
                                                  obj_name=storage_name)
         sub_id = cls.storage_to_subid[storage_id]
         return storage_id, storage_name, sub_id
+    
+    
+    @classmethod
+    def _aux_kcl_eltype(cls,
+                        n_el : int, # cst eg. cls.n_gen
+                        el_to_subid : np.ndarray, # cst eg. cls.gen_to_subid
+                        el_bus : np.ndarray,  # cst eg. gen_bus
+                        el_p : np.ndarray,  # cst, eg. gen_p
+                        el_q : np.ndarray,  # cst, eg. gen_q
+                        el_v : np.ndarray,  # cst, eg. gen_v
+                        p_subs : np.ndarray, q_subs : np.ndarray,
+                        p_bus : np.ndarray, q_bus : np.ndarray,
+                        v_bus : np.ndarray,
+                        load_conv: bool=True  # whether the object is load convention (True) or gen convention (False)
+                        ):
+        """This function is used as an auxilliary function in the function :func:`grid2op.Observation.BaseObservation.check_kirchhoff`
+        and :func:`grid2op.Backend.Backend.check_kirchhoff`
+
+        Parameters
+        ----------
+        n_el : int
+            number of this element type (*eg* cls.n_gen)
+        el_to_subid : np.ndarray
+            for each element of this element type, on which substation this element is connected (*eg* cls.gen_to_subid)
+        el_bus : np.ndarray
+            for each element of this element type, on which busbar this element is connected (*eg* obs.gen_bus)
+        el_p : np.ndarray
+            for each element of this element type, it gives the active power value consumed / produced by this element (*eg* obs.gen_p)
+        el_q : np.ndarray
+            for each element of this element type, it gives the reactive power value consumed / produced by this element (*eg* obs.gen_q)
+        el_v : np.ndarray
+           for each element of this element type, it gives the voltage magnitude of the bus to which this element (*eg* obs.gen_v)
+           is connected
+        p_subs : np.ndarray
+            results, modified in place: p absorbed at each substation
+        q_subs : np.ndarray
+            results, modified in place: q absorbed at each substation
+        p_bus : np.ndarray
+            results, modified in place: p absorbed at each bus (shape nb_sub, max_nb_busbar_per_sub)
+        q_bus : np.ndarray
+            results, modified in place: q absorbed at each bus (shape nb_sub, max_nb_busbar_per_sub)
+        v_bus : np.ndarray
+            results, modified in place: min voltage and max voltage found per bus (shape nb_sub, max_nb_busbar_per_sub, 2)
+        load_conv : _type_, optional
+            Whetherthis object type use the "load convention" or "generator convention" for p and q, by default True
+        """
+        # bellow i'm "forced" to do a loop otherwise, numpy do not compute the "+=" the way I want it to.
+        # for example, if two powerlines are such that line_or_to_subid is equal (eg both connected to substation 0)
+        # then numpy do not guarantee that `p_subs[self.line_or_to_subid] += p_or` will add the two "corresponding p_or"
+        # TODO this can be vectorized with matrix product, see example in obs.flow_bus_matrix (BaseObervation.py)
+        for i in range(n_el):
+            psubid = el_to_subid[i]
+            if el_bus[i] == -1:
+                # el is disconnected
+                continue
+            
+            # for substations
+            if load_conv:
+                p_subs[psubid] += el_p[i]
+                q_subs[psubid] += el_q[i]
+            else:
+                p_subs[psubid] -= el_p[i]
+                q_subs[psubid] -= el_q[i]
+
+            # for bus
+            loc_bus = el_bus[i] - 1
+            if load_conv:
+                p_bus[psubid, loc_bus] += el_p[i]
+                q_bus[psubid, loc_bus] += el_q[i]
+            else:
+                p_bus[psubid, loc_bus] -= el_p[i]
+                q_bus[psubid, loc_bus] -= el_q[i]
+
+            # compute max and min values
+            if el_v is not None and el_v[i]:
+                # but only if gen is connected
+                v_bus[psubid, loc_bus][0] = min(
+                    v_bus[psubid, loc_bus][0],
+                    el_v[i],
+                )
+                v_bus[psubid, loc_bus][1] = max(
+                    v_bus[psubid, loc_bus][1],
+                    el_v[i],
+                )
+
+    @classmethod
+    def _aux_check_kirchhoff(cls,
+                             lineor_info : ElTypeInfo,
+                             lineex_info: ElTypeInfo, 
+                             load_info: ElTypeInfo, 
+                             gen_info: ElTypeInfo,
+                             storage_info: Optional[ElTypeInfo] = None,
+                             shunt_info : Optional[ElTypeInfo] = None,
+                             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Analogous to "backend.check_kirchhoff" but from the observation
+
+        .. versionadded:: 1.11.0
+        
+        Returns
+        -------
+        p_subs ``numpy.ndarray``
+            sum of injected active power at each substations (MW)
+        q_subs ``numpy.ndarray``
+            sum of injected reactive power at each substations (MVAr)
+        p_bus ``numpy.ndarray``
+            sum of injected active power at each buses. It is given in form of a matrix, with number of substations as
+            row, and number of columns equal to the maximum number of buses for a substation (MW)
+        q_bus ``numpy.ndarray``
+            sum of injected reactive power at each buses. It is given in form of a matrix, with number of substations as
+            row, and number of columns equal to the maximum number of buses for a substation (MVAr)
+        diff_v_bus: ``numpy.ndarray`` (2d array)
+            difference between maximum voltage and minimum voltage (computed for each elements)
+            at each bus. It is an array of two dimension:
+
+            - first dimension represents the the substation (between 1 and self.n_sub)
+            - second element represents the busbar in the substation (0 or 1 usually)
+
+        """        
+        # fist check the "substation law" : nothing is created at any substation
+        p_subs = np.zeros(cls.n_sub, dtype=dt_float)
+        q_subs = np.zeros(cls.n_sub, dtype=dt_float)
+
+        # check for each bus
+        p_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        q_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        v_bus = (
+            np.zeros((cls.n_sub, cls.n_busbar_per_sub, 2), dtype=dt_float) - 1.0
+        )  # sub, busbar, [min,max]
+        some_kind_of_inf = 1_000_000_000.
+        v_bus[:,:,0] = some_kind_of_inf
+        v_bus[:,:,1] = -1 * some_kind_of_inf
+        cls._aux_kcl_eltype(
+            cls.n_line, # cst eg. cls.n_gen
+            cls.line_or_to_subid, # cst eg. cls.gen_to_subid
+            lineor_info._bus, # cst eg. self.gen_bus
+            lineor_info._p,  # cst, eg. gen_p
+            lineor_info._q,  # cst, eg. gen_q
+            lineor_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        cls._aux_kcl_eltype(
+            cls.n_line, # cst eg. cls.n_gen
+            cls.line_ex_to_subid, # cst eg. cls.gen_to_subid
+            lineex_info._bus, # cst eg. self.gen_bus
+            lineex_info._p,  # cst, eg. gen_p
+            lineex_info._q,  # cst, eg. gen_q
+            lineex_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        cls._aux_kcl_eltype(
+            cls.n_load, # cst eg. cls.n_gen
+            cls.load_to_subid, # cst eg. cls.gen_to_subid
+            load_info._bus, # cst eg. self.gen_bus
+            load_info._p,  # cst, eg. gen_p
+            load_info._q,  # cst, eg. gen_q
+            load_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        cls._aux_kcl_eltype(
+            cls.n_gen, # cst eg. cls.n_gen
+            cls.gen_to_subid, # cst eg. cls.gen_to_subid
+            gen_info._bus, # cst eg. self.gen_bus
+            gen_info._p,  # cst, eg. gen_p
+            gen_info._q,  # cst, eg. gen_q
+            gen_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            load_conv=False
+            )
+        if storage_info is not None:
+            cls._aux_kcl_eltype(
+                cls.n_storage, # cst eg. cls.n_gen
+                cls.storage_to_subid, # cst eg. cls.gen_to_subid
+                storage_info._bus, # cst eg. self.gen_bus
+                storage_info._p,  # cst, eg. gen_p
+                storage_info._q,  # cst, eg. gen_q
+                storage_info._v,  # cst, eg. gen_v
+                p_subs, q_subs,
+                p_bus, q_bus,
+                v_bus,
+                )
+
+        if shunt_info is not None:
+            GridObjects._aux_kcl_eltype(
+                cls.n_shunt, # cst eg. cls.n_gen
+                cls.shunt_to_subid, # cst eg. cls.gen_to_subid
+                shunt_info._bus, # cst eg. self.gen_bus
+                shunt_info._p,  # cst, eg. gen_p
+                shunt_info._q,  # cst, eg. gen_q
+                shunt_info._v,  # cst, eg. gen_v
+                p_subs, q_subs,
+                p_bus, q_bus,
+                v_bus,
+                )
+        else:
+            warnings.warn(
+                f"{cls.__name__}.check_kirchhoff Impossible to get shunt information. Reactive information might be "
+                "incorrect."
+            )
+        diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        diff_v_bus[:, :] = v_bus[:, :, 1] - v_bus[:, :, 0]
+        diff_v_bus[np.abs(diff_v_bus - -2. * some_kind_of_inf) <= 1e-5 ] = 0.  # disconnected bus
+        return p_subs, q_subs, p_bus, q_bus, diff_v_bus
