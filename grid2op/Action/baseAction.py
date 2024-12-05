@@ -1014,7 +1014,7 @@ class BaseAction(GridObjects):
     def _post_process_from_vect(self):
         modif_inj = False
         if self._dict_inj != {}:
-            for k, v in self._dict_inj:
+            for k, v in self._dict_inj.items():
                 if np.isfinite(v).any():
                     modif_inj = True
         self._modif_inj = modif_inj 
@@ -1029,9 +1029,10 @@ class BaseAction(GridObjects):
         self._modif_curtailment = (np.abs(self._curtail + 1.0) >= 1e-7).any()
         self._modif_alarm = self._raise_alarm.any()
         self._modif_alert = self._raise_alert.any()
-        self._modif_detach_load = (self._detach_load).any()
-        self._modif_detach_gen = (self._detach_gen).any()
-        self._modif_detach_storage = (self._detach_storage).any()
+        if type(self).detachment_is_allowed:
+            self._modif_detach_load = (self._detach_load).any()
+            self._modif_detach_gen = (self._detach_gen).any()
+            self._modif_detach_storage = (self._detach_storage).any()
 
     def _assign_attr_from_name(self, attr_nm, vect):
         """used for from_vect, for from_json please see `_set_array_from_attr_name`"""
