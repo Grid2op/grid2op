@@ -690,9 +690,6 @@ class GridObjects:
 
         This clear the class as if it was defined in grid2op directly.
         """        
-        cls.shunts_data_available = False
-        cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
-        cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
         
         # for redispatching / unit commitment
         cls._li_attr_disp = [
@@ -724,6 +721,13 @@ class GridObjects:
             float,
             bool,
         ]
+
+        cls.SUB_COL = 0
+        cls.LOA_COL = 1
+        cls.GEN_COL = 2
+        cls.LOR_COL = 3
+        cls.LEX_COL = 4
+        cls.STORAGE_COL = 5
         
         cls._clear_grid_dependant_class_attributes()
         
@@ -734,14 +738,11 @@ class GridObjects:
         cls._INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
         cls._PATH_GRID_CLASSES = None  # especially do not modify that
         
+        cls.shunts_data_available = False
+        cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
+        cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
+        
         cls.glop_version = grid2op.__version__
-
-        cls.SUB_COL = 0
-        cls.LOA_COL = 1
-        cls.GEN_COL = 2
-        cls.LOR_COL = 3
-        cls.LEX_COL = 4
-        cls.STORAGE_COL = 5
 
         cls.attr_list_vect = None
         cls.attr_list_set = {}

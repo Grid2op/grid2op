@@ -112,6 +112,7 @@ class TestShedding(unittest.TestCase):
         assert not done
         assert obs.topo_vect[load_pos] == -1
 
+
 class TestSheddingActions(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -126,7 +127,10 @@ class TestSheddingActions(unittest.TestCase):
                                     test=True,
                                     _add_to_name=type(self).__name__)
         obs = self.env.reset(seed=0, options={"time serie id": 0}) # Reproducibility
-
+        assert type(self.env).detachment_is_allowed
+        assert type(obs).detachment_is_allowed
+        assert type(self.env.action_space()).detachment_is_allowed
+        
     def tearDown(self) -> None:
         self.env.close()
         
