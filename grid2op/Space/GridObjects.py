@@ -691,6 +691,10 @@ class GridObjects:
         This clear the class as if it was defined in grid2op directly.
         """        
         
+        #: this has to be here and not in _clear_grid_dependant_class_attributes
+        # otherwise it breaks some lightsim2grid versions
+        cls.shunts_data_available = False
+        
         # for redispatching / unit commitment
         cls._li_attr_disp = [
             "gen_type",
@@ -738,7 +742,6 @@ class GridObjects:
         cls._INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
         cls._PATH_GRID_CLASSES = None  # especially do not modify that
         
-        cls.shunts_data_available = False
         cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
         cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
         
