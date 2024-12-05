@@ -879,7 +879,8 @@ class TestActionBase(ABC):
             th_res[-action.n_gen :] = -1
         # set to nan the first elements
         # corresponding to prod_p, prod_v, load_p and load_q
-        th_res[:(2 * (act_cls.n_gen + act_cls.n_load))] = np.nan
+        if "injection" in act_cls.authorized_keys:
+            th_res[:(2 * (act_cls.n_gen + act_cls.n_load))] = np.nan
         # compute the "set_bus" vect
         id_set = np.nonzero(np.array(act_cls.attr_list_vect) == "_set_topo_vect")[0][0]
         size_before = 0
