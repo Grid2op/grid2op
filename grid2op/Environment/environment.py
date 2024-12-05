@@ -1302,6 +1302,8 @@ class Environment(BaseEnv):
             if ambiguous:
                 raise Grid2OpException("You provided an invalid (ambiguous) action to set the 'init state'") from except_tmp
             init_state.remove_change()
+        if self.observation_space.obs_env is not None:
+            self.observation_space.obs_env.reset()
         super().reset(seed=seed, options=options)
         
         if options is not None and "max step" in options:                

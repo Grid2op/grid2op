@@ -115,6 +115,16 @@ Native multi agents support:
 - [FIXED] the `obs.get_forecast_env` : in some cases the resulting first
   observation (obtained from `for_env.reset()`) did not have the correct
   topology.
+- [FIXED] issue https://github.com/Grid2op/grid2op/issues/665 (`obs.reset()`
+  was not correctly implemented: some attributes were forgotten)
+- [FIXED] issue https://github.com/Grid2op/grid2op/issues/667 (`act.as_serializable_dict()`
+  was not correctly implemented AND the `_aux_affect_object_int` and `_aux_affect_object_float`
+  have been also fixed - weird behaviour when you give them a list with the exact length of the
+  object you tried to modified (for example a list with a size of `n_load` that affected the loads))
+- [FIXED] a bug when using the `DoNothingHandler` for the maintenance and the 
+  environment data
+- [FIXED] an issue preventing to set the thermal limit in the options
+  if the last simulated action lead to a game over
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -142,6 +152,12 @@ Native multi agents support:
   class is generated for all mixes)
 - [IMRPOVED] handling of disconnected elements in the backend no more
   raise error. The base `Backend` class does that.
+- [IMPROVED] the `act.as_serializable_dict()` to be more 'backend agnostic'as
+  it nows tries to use the name of the elements in the json output
+- [IMPROVED] the way shunt data are digested in the `BaseAction` class (it is now 
+  possible to use the same things as for the other types of element)
+- [IMPROVED] grid2op does not require the `chronics` folder when using the `FromHandlers`
+  class
   
 [1.10.4] - 2024-10-15
 -------------------------
