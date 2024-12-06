@@ -2965,12 +2965,7 @@ class GridObjects:
             it does not initialize it. Setting "force=True" will bypass this check and update it accordingly.
 
         """
-        # nothing to do now that the value are class member
-            
-        from grid2op.Action import BaseAction
-        if issubclass(cls, BaseAction):
-            print(f"\t-{BaseAction.authorized_keys = }\n")
-            
+        # nothing to do now that the value are class member            
         name_res = "{}_{}".format(cls.__name__, gridobj.env_name)
         if gridobj.glop_version != grid2op.__version__:
             name_res += f"_{gridobj.glop_version}"
