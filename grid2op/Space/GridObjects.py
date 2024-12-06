@@ -479,6 +479,7 @@ class GridObjects:
     """
 
     BEFORE_COMPAT_VERSION : ClassVar[str] = "neurips_2020_compat"
+    MIN_VERSION_DETACH : ClassVar[str] = version.parse("1.11.0.dev2")
     glop_version : ClassVar[str] = grid2op.__version__
     
     _INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
@@ -2965,6 +2966,11 @@ class GridObjects:
 
         """
         # nothing to do now that the value are class member
+            
+        from grid2op.Action import BaseAction
+        if issubclass(cls, BaseAction):
+            print(f"\t-{BaseAction.authorized_keys = }\n")
+            
         name_res = "{}_{}".format(cls.__name__, gridobj.env_name)
         if gridobj.glop_version != grid2op.__version__:
             name_res += f"_{gridobj.glop_version}"
@@ -3032,13 +3038,12 @@ class GridObjects:
         else:
             # i am the original class from grid2op
             res_cls._INIT_GRID_CLS = cls
-        
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
         res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
-        res_cls.process_detachment_compat()
+        res_cls.process_detachment()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
@@ -3110,7 +3115,7 @@ class GridObjects:
             cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
             res = True
 
-        if glop_ver < version.parse("1.11.0.dev2"):
+        if glop_ver < cls.MIN_VERSION_DETACH:
             # Detachment did not exist, default value should have
             # no effect
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
@@ -4416,7 +4421,7 @@ class GridObjects:
             # and now post process the class attributes for that
             cls.process_grid2op_compat()
         
-        cls.process_detachment_compat()
+        cls.process_detachment()
         
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]
@@ -4462,7 +4467,7 @@ class GridObjects:
         pass
     
     @classmethod
-    def process_detachment_compat(cls):
+    def process_detachment(cls):
         pass
     
     @classmethod

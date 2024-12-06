@@ -397,9 +397,9 @@ class BaseAction(GridObjects):
     ]
     # new in 1.11.0 (was not set to nan before in serialization)
     attr_nan_list_set = set(["prod_p",
-                            "prod_v",
-                            "load_p",
-                            "load_q"])
+                             "prod_v",
+                             "load_p",
+                             "load_q"])
     # attr_nan_list_set = set()
 
     attr_list_set = set(attr_list_vect)
@@ -533,11 +533,11 @@ class BaseAction(GridObjects):
         return super().process_shunt_static_data()
     
     @classmethod
-    def process_detachment_compat(cls):
+    def process_detachment(cls):
         if not cls.detachment_is_allowed:
             # this is really important, otherwise things from grid2op base types will be affected
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
-            cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
+            cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
             # remove the detachment from the list to vector
             for el in ["_detach_load", "_detach_gen", "_detach_storage"]:
                 if el in cls.attr_list_vect:
@@ -550,8 +550,21 @@ class BaseAction(GridObjects):
                 if el in cls.authorized_keys:
                     cls.authorized_keys.remove(el)
             cls._update_value_set()
-        return super().process_detachment_compat()
-            
+        # else:
+        #     # I support detachment, I need to make sure this is registered
+        #     cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+        #     cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
+        #     # add the detachment from the list to vector
+        #     for el in ["_detach_load", "_detach_gen", "_detach_storage"]:
+        #         if el not in cls.attr_list_vect:
+        #             cls.attr_list_vect.append(el)
+        #     # add the detachment from the allowed action
+        #     for el in ["detach_load", "detach_gen", "detach_storage"]:
+        #         if el not in cls.authorized_keys:
+        #             cls.authorized_keys.add(el)
+        #     cls._update_value_set()
+        return super().process_detachment()
+        
     def copy(self) -> "BaseAction":
         # sometimes this method is used...
         return self.__deepcopy__()
@@ -898,7 +911,7 @@ class BaseAction(GridObjects):
             # this feature did not exist before.
             cls.dim_alerts = 0
             
-        if glop_ver < version.parse("1.11.0.dev2"):
+        if glop_ver < cls.MIN_VERSION_DETACH:
             # this feature did not exist before.
             cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)

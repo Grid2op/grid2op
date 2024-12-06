@@ -13,6 +13,7 @@ import numpy as np
 import tempfile
 
 import grid2op
+from grid2op.Action.baseAction import BaseAction
 from grid2op.Exceptions import AmbiguousAction
 from grid2op.Action import CompleteAction
 from grid2op.Parameters import Parameters
@@ -133,6 +134,7 @@ class TestSheddingActions(unittest.TestCase):
         
     def tearDown(self) -> None:
         self.env.close()
+        super().tearDown()
         
     def aux_test_action_property_xxx(self, el_type):
         detach_xxx = f"detach_{el_type}"
@@ -144,7 +146,7 @@ class TestSheddingActions(unittest.TestCase):
         xxx_set_bus = f"{el_type}_set_bus"
         
         act1 = self.env.action_space()
-        assert detach_xxx in type(act1).authorized_keys
+        assert detach_xxx in type(act1).authorized_keys, f"{detach_xxx} not in {type(act1).authorized_keys}"
         setattr(act1, detach_xxx, np.ones(n_xxx, dtype=bool))
         assert getattr(act1, _detach_xxx).all()
         assert getattr(act1, _modif_detach_xxx)
