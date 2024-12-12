@@ -306,6 +306,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                           "init ts",
                           "max step",
                           "thermal limit",
+                          "init datetime",
                           }
     
     def __init__(
@@ -3848,7 +3849,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             if self._opponent_action_space is not None:
                 self._opponent_action_space.attach_layout(res)
 
-    def fast_forward_chronics(self, nb_timestep):
+    def fast_forward_chronics(self, nb_timestep, init_dt=None):
         """
         This method allows you to skip some time step at the beginning of the chronics.
 
@@ -3940,7 +3941,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._times_before_topology_actionable[:] = np.maximum(
             ff_time_topo_act, min_time_topo
         )
-
+        if init_dt is not None:
+            self.chronics_handler.set_current_datetime(init_dt) 
         # Update to the fast forward state using a do nothing action
         self.step(self._action_space({}))
 

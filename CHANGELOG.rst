@@ -123,6 +123,7 @@ Native multi agents support:
   environment data
 - [FIXED] an issue preventing to set the thermal limit in the options
   if the last simulated action lead to a game over
+- [FIXED] logos now have the correct URL
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -131,6 +132,8 @@ Native multi agents support:
 - [ADDED] a method to check the KCL (`obs.check_kirchhoff`) directly from the observation
   (previously it was only possible to do it from the backend). This should 
   be used for testing purpose only
+- [ADDED] possibility to set the initial time stamp of the observation in the `env.reset`
+  kwargs by using `env.reset(..., options={"init datetime": XXX})`
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
@@ -154,7 +157,7 @@ Native multi agents support:
   possible to use the same things as for the other types of element)
 - [IMPROVED] grid2op does not require the `chronics` folder when using the `FromHandlers`
   class
-  
+
 [1.10.4] - 2024-10-15
 -------------------------
 - [FIXED] new pypi link (no change in code)
