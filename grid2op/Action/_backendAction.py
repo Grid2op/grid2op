@@ -760,13 +760,15 @@ class _BackendAction(GridObjects):
         
         """
 
-        set_status = other._set_line_status
+        set_status = 1 * other._set_line_status
         switch_status = other._switch_line_status
-        set_topo_vect = other._set_topo_vect
+        set_topo_vect = 1 * other._set_topo_vect
         switcth_topo_vect = other._change_bus_vect
         redispatching = other._redispatch
         storage_power = other._storage_power
-
+        modif_set_bus = other._modif_set_bus
+        cls = type(self)
+        
         # I deal with injections
         # Ia set the injection
         if other._modif_inj:
@@ -781,8 +783,15 @@ class _BackendAction(GridObjects):
             self.storage_power.set_val(storage_power)
 
         # II shunts
-        if type(self).shunts_data_available:
+        if cls.shunts_data_available:
             self._aux_iadd_shunt(other)
+        
+        # III detachment (before all else)
+        if cls.detachment_is_allowed and other.has_element_detached():
+            set_topo_vect[cls.load_pos_topo_vect[other._detach_load]] = -1
+            set_topo_vect[cls.gen_pos_topo_vect[other._detach_gen]] = -1
+            set_topo_vect[cls.storage_pos_topo_vect[other._detach_storage]] = -1
+            modif_set_bus = True
             
         # III line status
         # this need to be done BEFORE the topology, as a connected powerline will be connected to their old bus.
@@ -813,7 +822,7 @@ class _BackendAction(GridObjects):
         # IV topo
         if other._modif_change_bus:
             self.current_topo.change_val(switcth_topo_vect)
-        if other._modif_set_bus:
+        if modif_set_bus:
             self.current_topo.set_val(set_topo_vect)
 
         # V Force disconnected status

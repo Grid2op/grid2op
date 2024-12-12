@@ -17,6 +17,7 @@ from grid2op.Action.baseAction import BaseAction
 from grid2op.Exceptions import AmbiguousAction
 from grid2op.Action import CompleteAction
 from grid2op.Parameters import Parameters
+from grid2op.Action._backendAction import _BackendAction
 
 
 class TestShedding(unittest.TestCase):
@@ -144,29 +145,42 @@ class TestSheddingActions(unittest.TestCase):
         name_xxx = getattr(type(self.env), f"name_{el_type}")
         xxx_change_bus = f"{el_type}_change_bus"
         xxx_set_bus = f"{el_type}_set_bus"
+        xxx_to_subid = getattr(type(self.env),f"{el_type}_to_subid")
         
         act1 = self.env.action_space()
         assert detach_xxx in type(act1).authorized_keys, f"{detach_xxx} not in {type(act1).authorized_keys}"
         setattr(act1, detach_xxx, np.ones(n_xxx, dtype=bool))
         assert getattr(act1, _detach_xxx).all()
         assert getattr(act1, _modif_detach_xxx)
+        lines_imp, subs_imp = act1.get_topological_impact(_read_from_cache=False)
+        assert subs_imp[xxx_to_subid].all()
+        assert (~lines_imp).all()
         
         act2 = self.env.action_space()
         setattr(act2, detach_xxx, 1)
         assert getattr(act2, _detach_xxx)[1]
         assert getattr(act2, _modif_detach_xxx)
+        lines_imp, subs_imp = act2.get_topological_impact(_read_from_cache=False)
+        assert subs_imp[xxx_to_subid[1]].all()
+        assert (~lines_imp).all()
         
         act3 = self.env.action_space()
         setattr(act3, detach_xxx, [0, 1])
         assert getattr(act3, _detach_xxx)[0]
         assert getattr(act3, _detach_xxx)[1]
         assert getattr(act3, _modif_detach_xxx)
+        lines_imp, subs_imp = act3.get_topological_impact(_read_from_cache=False)
+        assert subs_imp[xxx_to_subid[[0, 1]]].all()
+        assert (~lines_imp).all()
         
         for el_id, el_nm in enumerate(name_xxx):
             act4 = self.env.action_space()
             setattr(act4, detach_xxx, {el_nm})
             assert getattr(act4, _detach_xxx)[el_id]
             assert getattr(act4, _modif_detach_xxx)
+            lines_imp, subs_imp = act4.get_topological_impact(_read_from_cache=False)
+            assert subs_imp[xxx_to_subid[el_id]].all()
+            assert (~lines_imp).all()
         
         # change and disconnect
         act5 = self.env.action_space()
@@ -230,7 +244,51 @@ class TestSheddingActions(unittest.TestCase):
     def test_action_property_storage(self):
         self.aux_test_action_property_xxx("storage")
 
-# TODO Shedding: test the affected_lines, affected_subs of the action 
+    def test_backend_action(self):
+        for load_id in range(self.env.n_load):
+            bk_act :_BackendAction = self.env.backend.my_bk_act_class()
+            act = self.env.action_space()
+            act.detach_load = load_id
+            assert act._detach_load[load_id]
+            bk_act += act
+            (
+                active_bus,
+                (prod_p, prod_v, load_p, load_q, storage),
+                topo__,
+                shunts__,
+            ) = bk_act()
+            assert topo__.changed[self.env.load_pos_topo_vect[load_id]], f"error for load {load_id}"
+            assert topo__.values[self.env.load_pos_topo_vect[load_id]] == -1, f"error for load {load_id}"
+            
+        for gen_id in range(self.env.n_gen):
+            bk_act :_BackendAction = self.env.backend.my_bk_act_class()
+            act = self.env.action_space()
+            act.detach_gen = gen_id
+            assert act._detach_gen[gen_id]
+            bk_act += act
+            (
+                active_bus,
+                (prod_p, prod_v, load_p, load_q, storage),
+                topo__,
+                shunts__,
+            ) = bk_act()
+            assert topo__.changed[self.env.gen_pos_topo_vect[gen_id]], f"error for gen {gen_id}"
+            assert topo__.values[self.env.gen_pos_topo_vect[gen_id]] == -1, f"error for gen {gen_id}"
+            
+        for sto_id in range(self.env.n_storage):
+            bk_act :_BackendAction = self.env.backend.my_bk_act_class()
+            act = self.env.action_space()
+            act.detach_storage = sto_id
+            assert act._detach_storage[sto_id]
+            bk_act += act
+            (
+                active_bus,
+                (prod_p, prod_v, load_p, load_q, storage),
+                topo__,
+                shunts__,
+            ) = bk_act()
+            assert topo__.changed[self.env.storage_pos_topo_vect[sto_id]], f"error for storage {sto_id}"
+            assert topo__.values[self.env.storage_pos_topo_vect[sto_id]] == -1, f"error for storage {sto_id}"
 
 # TODO Shedding: test when backend does not support it is not set
 # TODO shedding: test when user deactivates it it is not set

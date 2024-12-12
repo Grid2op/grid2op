@@ -1521,6 +1521,12 @@ class BaseAction(GridObjects):
             effective_change[cls.line_ex_pos_topo_vect[disco_set_ex]] = False
         
         _subs_impacted[cls._topo_vect_to_sub[effective_change]] = True
+        
+        if cls.detachment_is_allowed:
+            # added for detachment: it can also affect substations
+            _subs_impacted[cls.load_to_subid[self._detach_load]] = True
+            _subs_impacted[cls.gen_to_subid[self._detach_gen]] = True
+            _subs_impacted[cls.storage_to_subid[self._detach_storage]] = True
             
         if _store_in_cache:
             # store the results in cache if asked too
@@ -7248,3 +7254,9 @@ class BaseAction(GridObjects):
             self._switch_line_status[:] = False
             self._modif_change_status = False
         return self
+
+    def has_element_detached(self):
+        """Return whether or not this action impact some elements with `detach`, for example 
+        `detach_load`, `detach_gen` or `detach_storage`
+        """
+        return self._modif_detach_gen or self._modif_detach_load or self._modif_detach_storage
