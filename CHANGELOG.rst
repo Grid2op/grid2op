@@ -129,6 +129,7 @@ Native multi agents support:
 - [FIXED] an issue preventing to set the thermal limit in the options
   if the last simulated action lead to a game over
 - [FIXED] some bugs in `act.from_json(...)` due to the handling of the injection modifications.
+- [FIXED] logos now have the correct URL
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -141,6 +142,8 @@ Native multi agents support:
   (see `params.ENV_DOES_REDISPATCHING`)
 - [ADDED] parameters to stop the episode when one of the constraints of one of the 
   generators is not met (see `params.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`)
+- [ADDED] possibility to set the initial time stamp of the observation in the `env.reset`
+  kwargs by using `env.reset(..., options={"init datetime": XXX})`
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
@@ -170,6 +173,7 @@ Native multi agents support:
   that allows not to recompute it over and over again (this is internal API please do not change 
   it... unless you know what you are doing)
     
+
 [1.10.4] - 2024-10-15
 -------------------------
 - [FIXED] new pypi link (no change in code)

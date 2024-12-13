@@ -1116,13 +1116,7 @@ class PandaPowerBackend(Backend):
                 self.load_theta[:],
             ) = self._loads_info()
             
-            load_in_service = self._grid.load["in_service"]
-            if not is_dc:
-                if not np.isfinite(self.load_v[load_in_service]).all():
-                    # TODO see if there is a better way here
-                    # some loads are disconnected: it's a game over case!
-                    raise pp.powerflow.LoadflowNotConverged(f"Isolated load: check loads {np.isfinite(self.load_v).nonzero()[0]}")
-            else:
+            if is_dc:
                 # fix voltages magnitude that are always "nan" for dc case
                 # self._grid.res_bus["vm_pu"] is always nan when computed in DC
                 self.load_v[:] = self.load_pu_to_kv  # TODO
