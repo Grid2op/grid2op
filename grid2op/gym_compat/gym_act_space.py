@@ -108,9 +108,9 @@ class __AuxGymActionSpace:
         "_curtail": "curtail",
         "_raise_alarm": "raise_alarm",
         "_raise_alert": "raise_alert",
-        "shunt_p": "shunt_p",
-        "_shunt_q": "shunt_q",
-        "_shunt_bus": "shunt_bus",
+        "shunt_p": "_shunt_p",
+        "shunt_q": "_shunt_q",
+        "shunt_bus": "_shunt_bus",
         "_detach_load": "detach_load",  # new in 1.11.0
         "_detach_gen": "detach_gen",  # new in 1.11.0
         "_detach_storage": "detach_storage",  # new in 1.11.0

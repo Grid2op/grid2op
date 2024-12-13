@@ -533,7 +533,8 @@ class GymEnvAutoClassTester(unittest.TestCase):
             warnings.filterwarnings("ignore")
             self.env = grid2op.make("l2rpn_case14_sandbox",
                                     test=True,
-                                    class_in_file=True)
+                                    class_in_file=True,
+                                    )
         self.line_id = 3
         th_lim = self.env.get_thermal_limit() * 2.  # avoid all problem in general
         th_lim[self.line_id] /= 10.  # make sure to get trouble in line 3

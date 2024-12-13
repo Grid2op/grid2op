@@ -23,7 +23,7 @@ import os
 import numpy as np
 import sys
 from packaging import version
-from typing import Dict, Union, Literal, Any, List, Optional, ClassVar, Tuple
+from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
     
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -4553,11 +4553,14 @@ class GridObjects:
         try:
             module = importlib.import_module(GRID2OP_CLASSES_ENV_FOLDER)
             if hasattr(module, name_cls):
-                my_class = getattr(module, name_cls)
+                my_class : Type["GridObjects"] = getattr(module, name_cls)
         except (ModuleNotFoundError, ImportError) as exc_:
             # normal behaviour i don't do anything there
             # TODO explain why
             pass
+        my_class.process_grid2op_compat()
+        my_class.process_detachment()
+        my_class.process_shunt_static_data()
         return my_class
 
     @staticmethod
@@ -4594,6 +4597,7 @@ class GridObjects:
             if res_cls.glop_version != grid2op.__version__:
                 res_cls.process_grid2op_compat()
             res_cls.process_shunt_static_data()
+            res_cls.process_detachment()
             # add the class in the "globals" for reuse later
             globals()[name_res] = res_cls
 
