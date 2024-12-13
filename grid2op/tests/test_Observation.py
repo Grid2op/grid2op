@@ -18,7 +18,7 @@ from grid2op.tests.helper_path_test import *
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import *
-from grid2op.Observation import ObservationSpace
+from grid2op.Observation import ObservationSpace, CompleteObservation
 from grid2op.Reward import (
     L2RPNReward,
     CloseToOverflowReward,
@@ -848,6 +848,14 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "time_since_last_attack": [],
             "was_alert_used_after_attack": [],
             "attack_under_alert": [],
+            "gen_p_slack": [0.0, 0.0, 0.0, 0.0, 2.2990264892578125],
+            "load_detached": [False, False, False, False, False, False, False, False, False, False, False],
+            "gen_detached": [False, False, False, False, False],
+            "storage_detached": [],
+            "load_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "load_q_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "gen_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0],
+            "storage_p_detached": [],
         }
         self.dtypes = np.array(
             [
@@ -916,6 +924,16 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 dt_int,
                 dt_int,
                 dt_int,
+                # slack (>= 1.11.0)
+                dt_float,
+                # detachment (>= 1.11.0)
+                dt_bool,
+                dt_bool,
+                dt_bool,
+                dt_float,
+                dt_float,
+                dt_float,
+                dt_float,
             ],
             dtype=object,
         )
@@ -983,10 +1001,20 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 0,
                 0,
                 0,
-                0
+                0,
+                # slack (>= 1.11.0)
+                5,
+                # detachment (>= 1.11.0)
+                11,
+                5,
+                0,
+                11,
+                11,
+                5,
+                0,
             ]
         )
-        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0
+        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 + 11 + 5 + 0 + 11 + 11 + 5
 
     def tearDown(self):
         self.env.close()
@@ -2304,10 +2332,9 @@ class TestBasisObsBehaviour(unittest.TestCase):
 
     def test_to_from_json(self):
         """test the to_json, and from_json and make sure these are all  json serializable"""
-        obs = self.env.observation_space(self.env)
-        obs2 = self.env.observation_space(self.env)
-        dict_ = obs.to_json()
-
+        obs : CompleteObservation = self.env.observation_space(self.env)
+        obs2 : CompleteObservation = self.env.observation_space(self.env)
+        dict_ = obs.to_json()        
         # test that the right dictionary is returned
         for k in dict_:
             assert (
@@ -2328,7 +2355,9 @@ class TestBasisObsBehaviour(unittest.TestCase):
         # test i can initialize an observation from it
         obs2.reset()
         obs2.from_json(dict_realoaded)
-        assert obs == obs2
+        if obs != obs2:
+            diff_, attr_diff = obs2.where_different(obs)
+            raise AssertionError(f"Following attributes are different: {attr_diff}")
 
 
 class TestUpdateEnvironement(unittest.TestCase):

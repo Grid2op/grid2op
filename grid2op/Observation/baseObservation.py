@@ -417,6 +417,23 @@ class BaseObservation(GridObjects):
         - obs.attack_under_alert[i] = +1 => attackable line i has been attacked and (before
           the attack) an alert was sent (so your agent expects to "game over" within the next 
           `env.parameters.ALERT_TIME_WINDOW` steps)  
+
+
+    gen_p_slack: :class:`numpy.ndarray`, dtype:float
+     
+    load_detached: :class:`numpy.ndarray`, dtype:bool
+    
+    gen_detached: :class:`numpy.ndarray`, dtype:bool
+    
+    storage_detached: :class:`numpy.ndarray`, dtype:bool
+    
+    load_p_detached: :class:`numpy.ndarray`, dtype:float
+    
+    load_q_detached: :class:`numpy.ndarray`, dtype:float
+    
+    gen_p_detached: :class:`numpy.ndarray`, dtype:float
+    
+    storage_p_detached: :class:`numpy.ndarray`, dtype:float
         
     _shunt_p: :class:`numpy.ndarray`, dtype:float
         Shunt active value (only available if shunts are available) (in MW)
@@ -1281,7 +1298,7 @@ class BaseObservation(GridObjects):
             # alert attributes have been added in 1.9.1
             cls._aux_process_grid2op_compat_191()
             
-        if glop_ver < version.parse("1.11.0"):
+        if glop_ver < cls.MIN_VERSION_DETACH:
             # alert attributes have been added in 1.9.1
             cls._aux_process_grid2op_compat_1_11_0()
             

@@ -195,6 +195,16 @@ class CompleteObservation(BaseObservation):
         "total_number_of_alert",
         "time_since_last_attack",
         "was_alert_used_after_attack",
+        # slack (>= 1.11.0)
+        "gen_p_slack",
+        # detachment (>= 1.11.0)
+        "load_detached",
+        "gen_detached",
+        "storage_detached",
+        "load_p_detached",
+        "load_q_detached",
+        "gen_p_detached",
+        "storage_p_detached",
     ]
     attr_list_json = [
         "_thermal_limit",
