@@ -1226,6 +1226,8 @@ class Backend(GridObjects, ABC):
             raise BackendError(
                 "storages_info method is not implemented yet there is batteries on the grid."
             )
+        empty_ = np.array([])
+        return empty_, empty_, empty_
 
     def storage_deact_for_backward_comaptibility(self) -> None:
         """

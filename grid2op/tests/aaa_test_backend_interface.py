@@ -1001,7 +1001,9 @@ class AAATestBackendAPI(MakeBackend):
         
     def test_20_disconnected_load_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         """
-        Tests that a disconnected load unit will be caught by the `_runpf_with_diverging_exception` method.
+        Tests that a disconnected load unit will be caught by the `_runpf_with_diverging_exception` method
+        if loads are not allowed to be "detached" from the grid (or if your backend does not support 
+        the "detachment" feature.)
         
         This test supposes that :
         
@@ -1009,8 +1011,6 @@ class AAATestBackendAPI(MakeBackend):
         - backend.runpf() (AC and DC mode) is implemented
         - backend.apply_action() for topology modification
         - backend.reset() is implemented
-        
-        NB: this test is skipped if your backend does not (yet :-) ) supports storage units
         
         .. note::
             Currently this stops the computation of the environment and lead to a game over. 
@@ -1041,6 +1041,8 @@ class AAATestBackendAPI(MakeBackend):
     def test_21_disconnected_gen_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         """
         Tests that a disconnected generator will be caught by the `_runpf_with_diverging_exception` method
+        if generators are not allowed to be "detached" from the grid (or if your backend does not support 
+        the "detachment" feature.)
         
         This test supposes that :
         
@@ -1048,8 +1050,6 @@ class AAATestBackendAPI(MakeBackend):
         - backend.runpf() (AC and DC mode) is implemented
         - backend.apply_action() for topology modification
         - backend.reset() is implemented
-        
-        NB: this test is skipped if your backend does not (yet :-) ) supports storage units
         
         .. note::
             Currently this stops the computation of the environment and lead to a game over. 
@@ -1090,8 +1090,6 @@ class AAATestBackendAPI(MakeBackend):
         - backend.runpf() (AC and DC mode) is implemented
         - backend.apply_action() for topology modification
         - backend.reset() is implemented
-        
-        NB: this test is skipped if your backend does not (yet :-) ) supports storage units
         
         .. note::
             Currently this stops the computation of the environment and lead to a game over. 
@@ -1721,7 +1719,7 @@ class AAATestBackendAPI(MakeBackend):
             Currently this stops the computation of the environment and lead to a game over. 
             
         .. note::
-            This test is also used in `attr:AAATestBackendAPI.test_31_allow_detachment`
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
             
         """
         self.skip_if_needed()
