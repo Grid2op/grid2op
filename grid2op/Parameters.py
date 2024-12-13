@@ -431,7 +431,7 @@ class Parameters:
         if "ENV_DOES_REDISPATCHING" in dict_:
             self.ENV_DOES_REDISPATCHING = Parameters._isok_txt(dict_["ENV_DOES_REDISPATCHING"])
         if "STOP_EP_IF_SLACK_BREAK_CONSTRAINTS" in dict_:
-            self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = Parameters._isok_txt(dict_["BACKEND_DOES_REDISPATCHING"])
+            self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = Parameters._isok_txt(dict_["STOP_EP_IF_SLACK_BREAK_CONSTRAINTS"])
         
         authorized_keys = set(self.__dict__.keys())
         authorized_keys = authorized_keys | {
