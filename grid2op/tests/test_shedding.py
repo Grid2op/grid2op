@@ -13,6 +13,7 @@ import numpy as np
 import tempfile
 
 import grid2op
+from grid2op.dtypes import dt_float
 from grid2op.Action.baseAction import BaseAction
 from grid2op.Exceptions import AmbiguousAction
 from grid2op.Action import CompleteAction
@@ -259,6 +260,8 @@ class TestSheddingActions(unittest.TestCase):
             ) = bk_act()
             assert topo__.changed[self.env.load_pos_topo_vect[load_id]], f"error for load {load_id}"
             assert topo__.values[self.env.load_pos_topo_vect[load_id]] == -1, f"error for load {load_id}"
+            assert bk_act.get_load_detached()[load_id], f"error for load {load_id}"
+            assert bk_act.get_load_detached().sum() == 1, f"error for load {load_id}"
             
         for gen_id in range(self.env.n_gen):
             bk_act :_BackendAction = self.env.backend.my_bk_act_class()
@@ -274,6 +277,8 @@ class TestSheddingActions(unittest.TestCase):
             ) = bk_act()
             assert topo__.changed[self.env.gen_pos_topo_vect[gen_id]], f"error for gen {gen_id}"
             assert topo__.values[self.env.gen_pos_topo_vect[gen_id]] == -1, f"error for gen {gen_id}"
+            assert bk_act.get_gen_detached()[gen_id], f"error for gen {gen_id}"
+            assert bk_act.get_gen_detached().sum() == 1, f"error for gen {gen_id}"
             
         for sto_id in range(self.env.n_storage):
             bk_act :_BackendAction = self.env.backend.my_bk_act_class()
@@ -289,11 +294,159 @@ class TestSheddingActions(unittest.TestCase):
             ) = bk_act()
             assert topo__.changed[self.env.storage_pos_topo_vect[sto_id]], f"error for storage {sto_id}"
             assert topo__.values[self.env.storage_pos_topo_vect[sto_id]] == -1, f"error for storage {sto_id}"
+            assert bk_act.get_sto_detached()[sto_id], f"error for storage {sto_id}"
+            assert bk_act.get_sto_detached().sum() == 1, f"error for storage {sto_id}"
+    
+    
+class TestSheddingEnv(unittest.TestCase):
+    def get_parameters(self):
+        params = Parameters()
+        params.MAX_SUB_CHANGED = 999999
+        return params
+        
+    def setUp(self):
+        params = self.get_parameters()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    param=params,
+                                    action_class=CompleteAction,
+                                    allow_detachment=True,
+                                    test=True,
+                                    _add_to_name=type(self).__name__)
+        obs = self.env.reset(seed=0, options={"time serie id": 0}) # Reproducibility
+        assert type(self.env).detachment_is_allowed
+        assert type(obs).detachment_is_allowed
+        assert type(self.env.action_space()).detachment_is_allowed
+    
+    def tearDown(self):
+        self.env.close()
+        return super().tearDown()
+    
+    def test_no_shedding(self):
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert (np.abs(self.env._prev_load_p - obs.load_p) <= 1e-7).all()
+        assert (np.abs(self.env._prev_load_q - obs.load_q) <= 1e-7).all()
+        assert (np.abs(self.env._prev_gen_p - obs.gen_p) <= 1e-7).all()
+        # for env
+        assert (~self.env._loads_detached).all()
+        assert (~self.env._gens_detached).all()
+        assert (~self.env._storages_detached).all()
+        assert (np.abs(self.env._load_p_detached) <= 1e-7).all()
+        assert (np.abs(self.env._load_q_detached) <= 1e-7).all()
+        assert (np.abs(self.env._gen_p_detached) <= 1e-7).all()
+        assert (np.abs(self.env._storage_p_detached) <= 1e-7).all()
+        # for obs
+        assert (~obs.load_detached).all()
+        assert (~obs.gen_detached).all()
+        assert (~obs.storage_detached).all()
+        assert (np.abs(obs.load_p_detached) <= 1e-7).all()
+        assert (np.abs(obs.load_q_detached) <= 1e-7).all()
+        assert (np.abs(obs.gen_p_detached) <= 1e-7).all()
+        assert (np.abs(obs.storage_p_detached) <= 1e-7).all()
+        
+        # slack ok
+        assert np.abs(self.env._slack_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
+        
+    def test_shedding_load_step(self):
+        # NB warning this test does not pass if STOP_EP_IF_SLACK_BREAK_CONSTRAINTS (slack breaks its rampdown !)
+        obs, reward, done, info = self.env.step(self.env.action_space({"detach_load": 0}))
+        # env converged
+        assert not done
+        # load properly disconnected
+        assert obs.topo_vect[obs.load_pos_topo_vect[0]] == -1
+        # 0 in the observation for this load
+        assert np.abs(obs.load_p[0]) <= 1e-7
+        assert np.abs(obs.load_q[0]) <= 1e-7
+        
+        # all other loads ok
+        assert (np.abs(self.env._prev_load_p[1:] - obs.load_p[1:]) <= 1e-7).all()
+        assert (np.abs(self.env._prev_load_q[1:] - obs.load_q[1:]) <= 1e-7).all()
+        assert (~self.env._loads_detached[1:]).all()
+        assert (np.abs(self.env._load_p_detached[1:]) <= 1e-7).all()
+        assert (np.abs(self.env._load_q_detached[1:]) <= 1e-7).all()
+        assert (~obs.load_detached[1:]).all()
+        assert (np.abs(obs.load_p_detached[1:]) <= 1e-7).all()
+        assert (np.abs(obs.load_q_detached[1:]) <= 1e-7).all()
+        
+        # load properly written as detached
+        normal_load_p = dt_float(21.9)
+        normal_load_q = dt_float(15.3)
+        assert np.abs(self.env._load_p_detached[0] - normal_load_p) <= 1e-7
+        assert np.abs(self.env._load_q_detached[0] - normal_load_q) <= 1e-7
+        assert np.abs(obs.load_p_detached[0] - normal_load_p) <= 1e-7
+        assert np.abs(obs.load_q_detached[0] - normal_load_q) <= 1e-7
+        
+        # rest is ok
+        assert (np.abs(self.env._prev_gen_p - obs.gen_p) <= 1e-7).all()
+        assert (~self.env._gens_detached).all()
+        assert (~self.env._storages_detached).all()
+        assert (np.abs(self.env._gen_p_detached) <= 1e-7).all()
+        assert (np.abs(self.env._storage_p_detached) <= 1e-7).all()
+        
+        assert (~obs.gen_detached).all()
+        assert (~obs.storage_detached).all()
+        assert (np.abs(obs.gen_p_detached) <= 1e-7).all()
+        assert (np.abs(obs.storage_p_detached) <= 1e-7).all()
+        
+        # slack completely "messed up"
+        assert self.env._slack_gen_p.sum() <= -normal_load_p
+        assert obs.gen_p_slack.sum() <= -normal_load_p
+        
+        # another step
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        # env converged
+        assert not done
+        # load properly disconnected
+        assert obs.topo_vect[obs.load_pos_topo_vect[0]] == -1
+        # load properly written as detached
+        normal_load_p = dt_float(22.0)
+        normal_load_q = dt_float(15.2)
+        assert np.abs(self.env._load_p_detached[0] - normal_load_p) <= 1e-7
+        assert np.abs(self.env._load_q_detached[0] - normal_load_q) <= 1e-7
+        assert self.env._slack_gen_p.sum() <= -normal_load_p
+        
+        # another step
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        # env converged
+        assert not done
+        # load properly disconnected
+        assert obs.topo_vect[obs.load_pos_topo_vect[0]] == -1
+        # load properly written as detached
+        normal_load_p = dt_float(21.6)
+        normal_load_q = dt_float(15.1)
+        assert np.abs(self.env._load_p_detached[0] - normal_load_p) <= 1e-7
+        assert np.abs(self.env._load_q_detached[0] - normal_load_q) <= 1e-7
+        assert self.env._slack_gen_p.sum() <= -normal_load_p
+        
+        # now attached it again
+        obs, reward, done, info = self.env.step(self.env.action_space({"set_bus": {"loads_id": [(0, 1)]}}))
+        # env converged
+        assert not done
+        # load properly disconnected
+        assert obs.topo_vect[obs.load_pos_topo_vect[0]] == 1
+        # load properly written as detached
+        assert np.abs(self.env._load_p_detached[0] - 0.) <= 1e-7
+        assert np.abs(self.env._load_q_detached[0] - 0.) <= 1e-7
+        # slack ok
+        assert np.abs(self.env._slack_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
+        
+        
+        
+        
+
+# TODO with the env parameters STOP_EP_IF_SLACK_BREAK_CONSTRAINTS and ENV_DOES_REDISPATCHING
+# TODO when something is "re attached" on the grid
+# TODO check gen detached does not participate in redisp
+
+# TODO shedding in simulate
+# TODO shedding in Simulator !
 
 # TODO Shedding: test when backend does not support it is not set
 # TODO shedding: test when user deactivates it it is not set
 
 # TODO Shedding: Runner
+
 # TODO Shedding: environment copied
 # TODO Shedding: MultiMix environment
 # TODO Shedding: TimedOutEnvironment

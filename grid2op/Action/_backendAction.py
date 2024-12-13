@@ -767,8 +767,43 @@ class _BackendAction(GridObjects):
         redispatching = other._redispatch
         storage_power = other._storage_power
         modif_set_bus = other._modif_set_bus
+        modif_inj = other._modif_inj
         cls = type(self)
         
+        # III detachment (before all else)
+        if cls.detachment_is_allowed and other.has_element_detached():
+            if other._modif_detach_load:
+                set_topo_vect[cls.load_pos_topo_vect[other._detach_load]] = -1
+                modif_set_bus = True
+            if other._modif_detach_gen:
+                set_topo_vect[cls.gen_pos_topo_vect[other._detach_gen]] = -1
+                modif_set_bus = True
+            if other._modif_detach_storage:
+                set_topo_vect[cls.storage_pos_topo_vect[other._detach_storage]] = -1
+                modif_set_bus = True
+            if modif_inj:
+                for key, vect_ in other._dict_inj.items():
+                    if key == "load_p" or key == "load_q":
+                        vect_[other._detach_load] = 0.
+                    elif key == "prod_p":
+                        vect_[other._detach_gen] = 0.
+                    elif key == "prod_v":
+                        vect_[other._detach_gen] = np.nan
+                    else:
+                        raise NotImplementedError(f"Unknown key {key} for injection found.")
+            else:
+                # TODO when injection is not modified by the action (eg change nothing)
+                if other._modif_detach_load:
+                    modif_inj = True
+                    other._dict_inj["load_p"] = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+                    other._dict_inj["load_q"] = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+                    other._dict_inj["load_p"][other._detach_load] = 0.
+                    other._dict_inj["load_q"][other._detach_load] = 0.
+                if other._modif_detach_gen:
+                    modif_inj = True
+                    other._dict_inj["prod_p"] = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+                    other._dict_inj["prod_p"][other._detach_gen] = 0.
+            
         # I deal with injections
         # Ia set the injection
         if other._modif_inj:
@@ -785,13 +820,6 @@ class _BackendAction(GridObjects):
         # II shunts
         if cls.shunts_data_available:
             self._aux_iadd_shunt(other)
-        
-        # III detachment (before all else)
-        if cls.detachment_is_allowed and other.has_element_detached():
-            set_topo_vect[cls.load_pos_topo_vect[other._detach_load]] = -1
-            set_topo_vect[cls.gen_pos_topo_vect[other._detach_gen]] = -1
-            set_topo_vect[cls.storage_pos_topo_vect[other._detach_storage]] = -1
-            modif_set_bus = True
             
         # III line status
         # this need to be done BEFORE the topology, as a connected powerline will be connected to their old bus.
@@ -1453,3 +1481,15 @@ class _BackendAction(GridObjects):
             )
         self.last_topo_registered.update_connected(self.current_topo)
         self.current_topo.reset()
+
+    def get_load_detached(self):
+        cls = type(self)
+        return self.current_topo.values[cls.load_pos_topo_vect] == -1
+    
+    def get_gen_detached(self):
+        cls = type(self)
+        return self.current_topo.values[cls.gen_pos_topo_vect] == -1
+    
+    def get_sto_detached(self):
+        cls = type(self)
+        return self.current_topo.values[cls.storage_pos_topo_vect] == -1

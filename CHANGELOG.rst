@@ -137,6 +137,10 @@ Native multi agents support:
 - [ADDED] a method to check the KCL (`obs.check_kirchhoff`) directly from the observation
   (previously it was only possible to do it from the backend). This should 
   be used for testing purpose only
+- [ADDED] parameters to disable the "redispatching routine" of the environment 
+  (see `params.ENV_DOES_REDISPATCHING`)
+- [ADDED] parameters to stop the episode when one of the constraints of one of the 
+  generators is not met (see `params.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`)
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections

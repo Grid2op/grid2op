@@ -161,6 +161,42 @@ class Parameters:
             `env.reset(options={"init state": ...})` (see doc of :func:`grid2op.Environment.Environment.reset` 
             for more information)
 
+    ENV_DOES_REDISPATCHING: ``bool``
+        Whether to let the environment do the redispatching instead of relying on
+        the backend internal implementation (usually done with the "slack buses").
+        
+        It is ``True`` by default and for all grid2op environment before version 1.11.0
+        
+        .. versionadded: 1.11.0
+        
+        .. note::
+            Disabling this feature might speed up the `env.step` computation, but the result
+            will be highly dependant on the backend (for example results might differ
+            between using lightsim2grid or pypowsybl2grid) and more importantly between the
+            parameters of the backend
+            
+        Setting this parameter to `False` is not advised if your agent really depends on redispatching, curtailment
+        or actions on storage units OR if your backend does not have a distributed slack (at least). (note
+        that we do not recommend to use it even if your backend has a distributed slack).
+        
+        Furthermore, if you consider doing a lot of "detachment" / "shedding" / "curtailment"
+        on the loads or generator, it's best to avoid setting this flag to `False`.
+        
+        If you don't know what a "distributed slack" is you probably should not set this to `False`.
+        
+        And to be somewhat realistic, you might also consider setting the flag 
+        :attr:`Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS` to avoid simulating unrealistic
+        episode.
+    
+    STOP_EP_IF_SLACK_BREAK_CONSTRAINTS: ``bool``
+        Whether to stop the episode when a constraint on the slack generator(s) are violated.
+        
+        In grid2op < 1.11.0 these were not checked at all. But from grid2op 1.11.0 you have the option
+        to check whether some slack generators would absorb / produce too much between two consecutive 
+        steps which would be unrealistic in practice.
+        
+        It defaults to ``False``.
+        
     """
 
     def __init__(self, parameters_path=None):
@@ -242,6 +278,10 @@ class Parameters:
                 warnings.warn(warn_msg.format(parameters_path))
                 
         self.IGNORE_INITIAL_STATE_TIME_SERIE = False
+        
+        # Added in 1.11.0 with detachement
+        self.ENV_DOES_REDISPATCHING = True
+        self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = False
 
     @staticmethod
     def _isok_txt(arg):
@@ -387,7 +427,12 @@ class Parameters:
             self.IGNORE_INITIAL_STATE_TIME_SERIE = Parameters._isok_txt(
                 dict_["IGNORE_INITIAL_STATE_TIME_SERIE"]
             )
-            
+        
+        if "ENV_DOES_REDISPATCHING" in dict_:
+            self.ENV_DOES_REDISPATCHING = Parameters._isok_txt(dict_["ENV_DOES_REDISPATCHING"])
+        if "STOP_EP_IF_SLACK_BREAK_CONSTRAINTS" in dict_:
+            self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = Parameters._isok_txt(dict_["BACKEND_DOES_REDISPATCHING"])
+        
         authorized_keys = set(self.__dict__.keys())
         authorized_keys = authorized_keys | {
             "NB_TIMESTEP_POWERFLOW_ALLOWED",
@@ -437,6 +482,8 @@ class Parameters:
         res["MAX_SIMULATE_PER_STEP"] = int(self.MAX_SIMULATE_PER_STEP)
         res["MAX_SIMULATE_PER_EPISODE"] = int(self.MAX_SIMULATE_PER_EPISODE)
         res["IGNORE_INITIAL_STATE_TIME_SERIE"] = int(self.IGNORE_INITIAL_STATE_TIME_SERIE)
+        res["ENV_DOES_REDISPATCHING"] = bool(self.ENV_DOES_REDISPATCHING)
+        res["STOP_EP_IF_SLACK_BREAK_CONSTRAINTS"] = bool(self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS)
         return res
 
     def init_from_json(self, json_path):
@@ -740,4 +787,21 @@ class Parameters:
         except Exception as exc_:
             raise RuntimeError(
                 f'Impossible to convert IGNORE_INITIAL_STATE_TIME_SERIE to bool with error \n:"{exc_}"'
+            ) from exc_
+            
+        try:
+            if not isinstance(self.ENV_DOES_REDISPATCHING, (bool, dt_bool)):
+                raise RuntimeError("ENV_DOES_REDISPATCHING should be a boolean")
+            self.ENV_DOES_REDISPATCHING = dt_bool(self.ENV_DOES_REDISPATCHING)
+        except Exception as exc_:
+            raise RuntimeError(
+                f'Impossible to convert ENV_DOES_REDISPATCHING to bool with error \n:"{exc_}"'
+            ) from exc_
+        try:
+            if not isinstance(self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS, (bool, dt_bool)):
+                raise RuntimeError("STOP_EP_IF_SLACK_BREAK_CONSTRAINTS should be a boolean")
+            self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = dt_bool(self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS)
+        except Exception as exc_:
+            raise RuntimeError(
+                f'Impossible to convert STOP_EP_IF_SLACK_BREAK_CONSTRAINTS to bool with error \n:"{exc_}"'
             ) from exc_
