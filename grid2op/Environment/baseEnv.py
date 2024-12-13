@@ -665,7 +665,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._storage_p_detached = None
         
         # slack (1.11.0)
-        self._slack_gen_p = None
+        self._delta_gen_p = None
     
     @property
     def highres_sim_counter(self):
@@ -984,7 +984,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj._storage_p_detached = 1. * self._storage_p_detached
         
         # slack (1.11.0)
-        new_obj._slack_gen_p = 1. * self._slack_gen_p
+        new_obj._delta_gen_p = 1. * self._delta_gen_p
         
     def get_path_env(self):
         """
@@ -1454,7 +1454,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._storage_p_detached =  np.zeros(bk_type.n_storage, dtype=dt_float)
         
         # slack (1.11.0)
-        self._slack_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
+        self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
 
     def _update_parameters(self):
         """update value for the new parameters"""
@@ -1557,7 +1557,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._gen_p_detached[:] = 0.
         self._storage_p_detached[:] = 0.
         
-        self._slack_gen_p[:] = 0.
+        self._delta_gen_p[:] = 0.
         
     def _reset_alert(self):
         self._last_alert[:] = False
@@ -3256,8 +3256,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # for detachment remember previous loads and generation
         self._prev_load_p[:], self._prev_load_q[:], *_ = self.backend.loads_info()
-        self._slack_gen_p[:] = self._gen_activeprod_t - self._gen_activeprod_t_redisp
-        self._slack_gen_p[self._gens_detached] = 0.
+        self._delta_gen_p[:] = self._gen_activeprod_t - self._gen_activeprod_t_redisp
+        self._delta_gen_p[self._gens_detached] = 0.
         self._prev_gen_p[:] = self._gen_activeprod_t
         
         # finally, build the observation (it's a different one at each step, we cannot reuse the same one)

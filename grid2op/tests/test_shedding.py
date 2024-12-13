@@ -346,7 +346,7 @@ class TestSheddingEnv(unittest.TestCase):
         assert (np.abs(obs.storage_p_detached) <= 1e-7).all()
         
         # slack ok
-        assert np.abs(self.env._slack_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
+        assert np.abs(self.env._delta_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
         
     def test_shedding_load_step(self):
         # NB warning this test does not pass if STOP_EP_IF_SLACK_BREAK_CONSTRAINTS (slack breaks its rampdown !)
@@ -390,8 +390,8 @@ class TestSheddingEnv(unittest.TestCase):
         assert (np.abs(obs.storage_p_detached) <= 1e-7).all()
         
         # slack completely "messed up"
-        assert self.env._slack_gen_p.sum() <= -normal_load_p
-        assert obs.gen_p_slack.sum() <= -normal_load_p
+        assert self.env._delta_gen_p.sum() <= -normal_load_p
+        assert obs.gen_p_delta.sum() <= -normal_load_p
         
         # another step
         obs, reward, done, info = self.env.step(self.env.action_space())
@@ -404,7 +404,7 @@ class TestSheddingEnv(unittest.TestCase):
         normal_load_q = dt_float(15.2)
         assert np.abs(self.env._load_p_detached[0] - normal_load_p) <= 1e-7
         assert np.abs(self.env._load_q_detached[0] - normal_load_q) <= 1e-7
-        assert self.env._slack_gen_p.sum() <= -normal_load_p
+        assert self.env._delta_gen_p.sum() <= -normal_load_p
         
         # another step
         obs, reward, done, info = self.env.step(self.env.action_space())
@@ -417,7 +417,7 @@ class TestSheddingEnv(unittest.TestCase):
         normal_load_q = dt_float(15.1)
         assert np.abs(self.env._load_p_detached[0] - normal_load_p) <= 1e-7
         assert np.abs(self.env._load_q_detached[0] - normal_load_q) <= 1e-7
-        assert self.env._slack_gen_p.sum() <= -normal_load_p
+        assert self.env._delta_gen_p.sum() <= -normal_load_p
         
         # now attached it again
         obs, reward, done, info = self.env.step(self.env.action_space({"set_bus": {"loads_id": [(0, 1)]}}))
@@ -429,7 +429,7 @@ class TestSheddingEnv(unittest.TestCase):
         assert np.abs(self.env._load_p_detached[0] - 0.) <= 1e-7
         assert np.abs(self.env._load_q_detached[0] - 0.) <= 1e-7
         # slack ok
-        assert np.abs(self.env._slack_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
+        assert np.abs(self.env._delta_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
         
         
         

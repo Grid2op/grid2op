@@ -418,8 +418,7 @@ class BaseObservation(GridObjects):
           the attack) an alert was sent (so your agent expects to "game over" within the next 
           `env.parameters.ALERT_TIME_WINDOW` steps)  
 
-
-    gen_p_slack: :class:`numpy.ndarray`, dtype:float
+    gen_p_delta: :class:`numpy.ndarray`, dtype:float
      
     load_detached: :class:`numpy.ndarray`, dtype:bool
     
@@ -505,7 +504,7 @@ class BaseObservation(GridObjects):
         "gen_margin_up",
         "gen_margin_down",
         # slack (>= 1.11.0)
-        "gen_p_slack",
+        "gen_p_delta",
         # detachment (>= 1.11.0)
         "load_detached",
         "gen_detached",
@@ -648,16 +647,16 @@ class BaseObservation(GridObjects):
         self.delta_time = dt_float(5.0)
 
         # slack (1.11.0)
-        self.gen_p_slack = np.empty(shape=cls.n_gen, dtype=dt_float)
+        self.gen_p_delta = np.empty(shape=cls.n_gen, dtype=dt_float)
         
         # detachment (>= 1.11.0)
-        self.load_detached = np.empty(shape=cls.n_load, dtype=dt_bool)
-        self.gen_detached = np.empty(shape=cls.n_gen, dtype=dt_bool)
-        self.storage_detached = np.empty(shape=cls.n_storage, dtype=dt_bool)
-        self.load_p_detached = np.empty(shape=cls.n_load, dtype=dt_float)
-        self.load_q_detached = np.empty(shape=cls.n_load, dtype=dt_float)
-        self.gen_p_detached = np.empty(shape=cls.n_gen, dtype=dt_float)
-        self.storage_p_detached = np.empty(shape=cls.n_storage, dtype=dt_float)
+        self.load_detached = np.ones(shape=cls.n_load, dtype=dt_bool)
+        self.gen_detached = np.ones(shape=cls.n_gen, dtype=dt_bool)
+        self.storage_detached = np.ones(shape=cls.n_storage, dtype=dt_bool)
+        self.load_p_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
+        self.load_q_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
+        self.gen_p_detached = np.zeros(shape=cls.n_gen, dtype=dt_float)
+        self.storage_p_detached = np.zeros(shape=cls.n_storage, dtype=dt_float)
         
     def _aux_copy(self, other : Self) -> None:
         attr_simple = [
@@ -729,7 +728,7 @@ class BaseObservation(GridObjects):
             "gen_margin_down",
             "curtailment_limit_effective",
             # slack (>= 1.11.0)
-            "gen_p_slack",
+            "gen_p_delta",
             # detachment (>= 1.11.0)
             "load_detached",
             "gen_detached",
@@ -877,9 +876,12 @@ class BaseObservation(GridObjects):
                 - "theta" (optional) the voltage angle (in degree) of the bus to which the load is connected
                 - "bus" on which bus the load is connected in the substation
                 - "sub_id" the id of the substation to which the load is connected
-                - "detached" (>= 1.11.0) whether this load is detached from the grid
-                - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by the detachment of this load
-                - "q_detached" (>= 1.11.0) amount of MVAr detached from the grid cause by the detachment of this load
+                - "detached" (>= 1.11.0) whether this load is detached from the grid 
+                  (if detachement is allowed in the environment)
+                - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by 
+                  the detachment of this load (if detachement is allowed in the environment)
+                - "q_detached" (>= 1.11.0) amount of MVAr detached from the grid cause by 
+                  the detachment of this load (if detachement is allowed in the environment)
 
             - if a generator is inspected, then the keys are:
 
@@ -901,9 +903,12 @@ class BaseObservation(GridObjects):
                   and the next (in MW). It's 0. for renewable generators.
                 - "margin_down": by how much this generateur can see its production decrease between this step 
                   and the next (in MW). It's 0. for renewable generators.
-                - "p_slack" (>= 1.11.0) slack participation (in MW) for this generator
-                - "detached" (>= 1.11.0) whether this generator is detached from the grid
-                - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by the detachment of this generator
+                - "p_delta" (>= 1.11.0) difference (in MW) between what the environment ask this generator to produce
+                  and what it actually produces (difference is not caused by grid2op but by the Backend)
+                - "detached" (>= 1.11.0) whether this generator is detached from the 
+                  grid (if detachement is allowed in the environment)
+                - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by the 
+                  detachment of this generator (if detachement is allowed in the environment)
 
             - if a powerline is inspected then the keys are "origin" and "extremity" each being dictionary with keys:
 
@@ -932,7 +937,9 @@ class BaseObservation(GridObjects):
                 - "bus": the bus (1 or 2) to which the storage unit is connected
                 - "sub_id" : the id of the substation to which the sotrage unit is connected
                 - "detached" (>= 1.11.0) whether this storage is detached from the grid
+                  (if detachement is allowed in the environment)
                 - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by the detachment of this storage
+                  (if detachement is allowed in the environment)
 
 
             - if a substation is inspected, it returns the topology to this substation in a dictionary with keys:
@@ -993,12 +1000,13 @@ class BaseObservation(GridObjects):
                 "v": self.load_v[load_id],
                 "bus": self.topo_vect[self.load_pos_topo_vect[load_id]],
                 "sub_id": cls.load_to_subid[load_id],
-                "detached": self.load_detached[load_id],
-                "p_detached": self.load_p_detached[load_id],
-                "q_detached": self.load_q_detached[load_id],
             }
             if self.support_theta:
                 res["theta"] = self.load_theta[load_id]
+            if cls.detachment_is_allowed:
+                res["detached"] = self.load_detached[load_id]
+                res["p_detached"] = self.load_p_detached[load_id]
+                res["q_detached"] = self.load_q_detached[load_id]
         elif gen_id is not None:
             if (
                 line_id is not None
@@ -1029,12 +1037,13 @@ class BaseObservation(GridObjects):
                 "p_before_curtail": self.gen_p_before_curtail[gen_id],
                 "margin_up": self.gen_margin_up[gen_id],
                 "margin_down": self.gen_margin_down[gen_id],
-                "gen_p_slack": self.gen_p_slack[gen_id],
-                "detached": self.gen_detached[gen_id],
-                "p_detached": self.gen_p_detached[gen_id],
+                "gen_p_delta": self.gen_p_delta[gen_id],
             }
             if self.support_theta:
                 res["theta"] = self.gen_theta[gen_id]
+            if cls.detachment_is_allowed:
+                res["detached"] = self.gen_detached[gen_id]
+                res["p_detached"] = self.gen_p_detached[gen_id]
         elif line_id is not None:
             if substation_id is not None or storage_id is not None:
                 raise Grid2OpException(ERROR_ONLY_SINGLE_EL)
@@ -1099,10 +1108,11 @@ class BaseObservation(GridObjects):
             res["storage_power_target"] = self.storage_power_target[storage_id]
             res["bus"] = self.topo_vect[cls.storage_pos_topo_vect[storage_id]]
             res["sub_id"] = cls.storage_to_subid[storage_id]
-            res["detached"] = self.storage_detached[storage_id],
-            res["p_detached"] = self.storage_p_detached[storage_id],
             if self.support_theta:
                 res["theta"] = self.storage_theta[storage_id]
+            if cls.detachment_is_allowed:
+                res["detached"] = self.storage_detached[storage_id]
+                res["p_detached"] = self.storage_p_detached[storage_id]
         else:
             if substation_id >= len(cls.sub_info):
                 raise Grid2OpException(
@@ -1253,7 +1263,7 @@ class BaseObservation(GridObjects):
 
         for el in [
             # slack (>= 1.11.0)
-            "gen_p_slack",
+            "gen_p_delta",
             # detachment (>= 1.11.0)
             "load_detached",
             "gen_detached",
@@ -1428,16 +1438,17 @@ class BaseObservation(GridObjects):
         self.curtailment[:] = 0. 
 
         # slack (>= 1.11.0)
-        self.gen_p_slack[:] = 0.
+        self.gen_p_delta[:] = 0.
         
         # detachment (>= 1.11.0)
-        self.load_detached[:] = True
-        self.gen_detached[:] = True
-        self.storage_detached[:] = True
-        self.load_p_detached[:] = 0.
-        self.load_q_detached[:] = 0.
-        self.gen_p_detached[:] = 0.
-        self.storage_p_detached[:] = 0.
+        if type(self).detachment_is_allowed:
+            self.load_detached[:] = True
+            self.gen_detached[:] = True
+            self.storage_detached[:] = True
+            self.load_p_detached[:] = 0.
+            self.load_q_detached[:] = 0.
+            self.gen_p_detached[:] = 0.
+            self.storage_p_detached[:] = 0.
         
     def set_game_over(self,
                       env: Optional["grid2op.Environment.Environment"]=None) -> None:
@@ -1577,16 +1588,17 @@ class BaseObservation(GridObjects):
         # attack_under_alert not updated here in this case
 
         # slack (>= 1.11.0)
-        self.gen_p_slack[:] = 0.
+        self.gen_p_delta[:] = 0.
         
         # detachment (>= 1.11.0)
-        self.load_detached[:] = True
-        self.gen_detached[:] = True
-        self.storage_detached[:] = True
-        self.load_p_detached[:] = 0.
-        self.load_q_detached[:] = 0.
-        self.gen_p_detached[:] = 0.
-        self.storage_p_detached[:] = 0.
+        if type(self).detachment_is_allowed:
+            self.load_detached[:] = True
+            self.gen_detached[:] = True
+            self.storage_detached[:] = True
+            self.load_p_detached[:] = 0.
+            self.load_q_detached[:] = 0.
+            self.gen_p_detached[:] = 0.
+            self.storage_p_detached[:] = 0.
         
     def __compare_stats(self, other: Self, name: str) -> bool:
         attr_me = getattr(self, name)
@@ -2831,11 +2843,15 @@ class BaseObservation(GridObjects):
         return bus_ids
         
     def _aux_add_loads(self, graph, cls, first_id):
-        nodes_prop = [
-            ("detached", self.load_detached),
-            ("p_detached", self.load_p_detached),
-            ("q_detached", self.load_q_detached),
-        ]
+        if type(self).detachment_is_allowed:
+            nodes_prop = [
+                ("detached", self.load_detached),
+                ("p_detached", self.load_p_detached),
+                ("q_detached", self.load_q_detached),
+            ]
+        else:
+            nodes_prop = None
+            
         edges_prop=[
             ("p", self.load_p),
             ("q", self.load_q),
@@ -2845,7 +2861,7 @@ class BaseObservation(GridObjects):
             edges_prop.append(("theta", self.load_theta))
 
         # slack (>= 1.11.0)
-        self.gen_p_slack[:] = 0.
+        self.gen_p_delta[:] = 0.
         
         if "load_detached" in self.attr_list_set:
             edges_prop.append(("is_detached", self.load_detached))
@@ -2869,10 +2885,8 @@ class BaseObservation(GridObjects):
                       ("curtailment_limit", self.curtailment_limit),
                       ("gen_margin_up", self.gen_margin_up),
                       ("gen_margin_down", self.gen_margin_down),
-                      ("p_slack", self.gen_p_slack),
-                      ("detached", self.gen_detached),
-                      ("p_detached", self.gen_p_detached),
-                      ]  # todo class attributes gen_max_ramp_up etc.
+                      ("p_delta", self.gen_p_delta)]
+                       # todo class attributes gen_max_ramp_up etc.
         edges_prop=[
             ("p", - self.gen_p),
             ("q", - self.gen_q),
@@ -2880,6 +2894,11 @@ class BaseObservation(GridObjects):
         ]
         if self.support_theta:
             edges_prop.append(("theta", self.gen_theta))
+        
+        if type(self).detachment_is_allowed:
+            nodes_prop.append(("detached", self.gen_detached))
+            nodes_prop.append(("p_detached", self.gen_p_detached))
+            
         gen_ids = self._aux_add_el_to_comp_graph(graph,
                                                  first_id,
                                                  cls.name_gen,
@@ -2894,13 +2913,16 @@ class BaseObservation(GridObjects):
     def _aux_add_storages(self, graph, cls, first_id):
         nodes_prop = [("storage_charge", self.storage_charge),
                       ("storage_power_target", self.storage_power_target),
-                      ("detached", self.storage_detached),
-                      ("p_detached", self.storage_p_detached),]  
+                      ]  
         
         # TODO class attr in nodes_prop: storageEmax etc.
         edges_prop=[("p", self.storage_power)]
         if self.support_theta:
             edges_prop.append(("theta", self.storage_theta))
+        
+        if type(self).detachment_is_allowed:
+            nodes_prop.append(("detached", self.storage_detached))
+            nodes_prop.append(("p_detached", self.storage_p_detached))
         sto_ids = self._aux_add_el_to_comp_graph(graph,
                                                  first_id,
                                                  cls.name_storage,
@@ -4413,16 +4435,17 @@ class BaseObservation(GridObjects):
         self.delta_time = dt_float(1.0 * env.delta_time_seconds / 60.0)
 
         # slack (1.11.0)
-        self.gen_p_slack[:] = env._slack_gen_p
+        self.gen_p_delta[:] = env._delta_gen_p
         
         # detachment (>= 1.11.0)
-        self.load_detached[:] = env._loads_detached
-        self.gen_detached[:] = env._gens_detached
-        self.storage_detached[:] = env._storages_detached
-        self.load_p_detached[:] = env._load_p_detached
-        self.load_q_detached[:] = env._load_q_detached
-        self.gen_p_detached[:] = env._gen_p_detached
-        self.storage_p_detached[:] = env._storage_p_detached
+        if type(self).detachment_is_allowed:
+            self.load_detached[:] = env._loads_detached
+            self.gen_detached[:] = env._gens_detached
+            self.storage_detached[:] = env._storages_detached
+            self.load_p_detached[:] = env._load_p_detached
+            self.load_q_detached[:] = env._load_q_detached
+            self.gen_p_detached[:] = env._gen_p_detached
+            self.storage_p_detached[:] = env._storage_p_detached
         
         # handles forecasts here
         self._update_forecast(env, with_forecast)
@@ -5092,4 +5115,24 @@ class BaseObservation(GridObjects):
                                                                             storage_info,
                                                                             shunt_info)
         return p_subs, q_subs, p_bus, q_bus, diff_v_bus
-    
+
+    @classmethod
+    def process_detachment(cls):
+        if not cls.detachment_is_allowed:
+            # this is really important, otherwise things from grid2op base types will be affected
+            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+            # remove the detachment from the list to vector
+            for el in ["load_detached",
+                       "gen_detached",
+                       "storage_detached",
+                       "load_p_detached",
+                       "load_q_detached",
+                       "gen_p_detached",
+                       "storage_p_detached",]:
+                if el in cls.attr_list_vect:
+                    try:
+                        cls.attr_list_vect.remove(el)
+                    except ValueError:
+                        pass
+            cls._update_value_set()
+        return super().process_detachment()

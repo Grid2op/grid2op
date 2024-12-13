@@ -848,14 +848,14 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "time_since_last_attack": [],
             "was_alert_used_after_attack": [],
             "attack_under_alert": [],
-            "gen_p_slack": [0.0, 0.0, 0.0, 0.0, 2.2990264892578125],
-            "load_detached": [False, False, False, False, False, False, False, False, False, False, False],
-            "gen_detached": [False, False, False, False, False],
-            "storage_detached": [],
-            "load_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            "load_q_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            "gen_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0],
-            "storage_p_detached": [],
+            "gen_p_delta": [0.0, 0.0, 0.0, 0.0, 2.2990264892578125],
+            # "load_detached": [False, False, False, False, False, False, False, False, False, False, False],
+            # "gen_detached": [False, False, False, False, False],
+            # "storage_detached": [],
+            # "load_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            # "load_q_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            # "gen_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0],
+            # "storage_p_detached": [],
         }
         self.dtypes = np.array(
             [
@@ -927,13 +927,13 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 # slack (>= 1.11.0)
                 dt_float,
                 # detachment (>= 1.11.0)
-                dt_bool,
-                dt_bool,
-                dt_bool,
-                dt_float,
-                dt_float,
-                dt_float,
-                dt_float,
+                # dt_bool,
+                # dt_bool,
+                # dt_bool,
+                # dt_float,
+                # dt_float,
+                # dt_float,
+                # dt_float,
             ],
             dtype=object,
         )
@@ -1004,17 +1004,17 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 0,
                 # slack (>= 1.11.0)
                 5,
-                # detachment (>= 1.11.0)
-                11,
-                5,
-                0,
-                11,
-                11,
-                5,
-                0,
+                # # detachment (>= 1.11.0)
+                # 11,
+                # 5,
+                # 0,
+                # 11,
+                # 11,
+                # 5,
+                # 0,
             ]
         )
-        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 + 11 + 5 + 0 + 11 + 11 + 5
+        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 # + 11 + 5 + 0 + 11 + 11 + 5
 
     def tearDown(self):
         self.env.close()

@@ -196,7 +196,7 @@ class CompleteObservation(BaseObservation):
         "time_since_last_attack",
         "was_alert_used_after_attack",
         # slack (>= 1.11.0)
-        "gen_p_slack",
+        "gen_p_delta",
         # detachment (>= 1.11.0)
         "load_detached",
         "gen_detached",
