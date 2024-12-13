@@ -493,7 +493,7 @@ class BaseAction(GridObjects):
         self._modif_alert = False
 
     @classmethod
-    def process_shunt_satic_data(cls):
+    def process_shunt_static_data(cls):
         if not cls.shunts_data_available:
             # this is really important, otherwise things from grid2op base types will be affected
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
@@ -506,7 +506,7 @@ class BaseAction(GridObjects):
                     except ValueError:
                         pass
             cls.attr_list_set = set(cls.attr_list_vect)
-        return super().process_shunt_satic_data()
+        return super().process_shunt_static_data()
     
     def copy(self) -> "BaseAction":
         # sometimes this method is used...
@@ -573,8 +573,8 @@ class BaseAction(GridObjects):
         return res
 
     @classmethod
-    def process_shunt_satic_data(cls):
-        return super().process_shunt_satic_data()
+    def process_shunt_static_data(cls):
+        return super().process_shunt_static_data()
     
     def __deepcopy__(self, memodict={}) -> "BaseAction":
         res = type(self)()
@@ -846,7 +846,7 @@ class BaseAction(GridObjects):
             # if there are only one busbar, the "set_bus" action can still be used
             # to disconnect the element, this is why it's not removed
             cls._aux_process_n_busbar_per_sub()
-                
+         
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
         cls.attr_list_set = set(cls.attr_list_vect)
                 
@@ -1099,7 +1099,7 @@ class BaseAction(GridObjects):
             self._change_bus_vect == other._change_bus_vect
         ):
             return False
-
+        
         # shunts are the same
         if type(self).shunts_data_available:
             if self.n_shunt != other.n_shunt:
@@ -2163,6 +2163,34 @@ class BaseAction(GridObjects):
         self._vectorized = None
         self._subs_impacted = None
         self._lines_impacted = None
+        
+    @staticmethod
+    def _check_keys_exist(action_cls:GridObjects, act_dict):
+        """
+        Checks whether an action has the same keys in its
+        action space as are present in the provided dictionary.
+        
+        Args:
+            action_cls (GridObjects): A Grid2Op action
+            act_dict (str:Any): Dictionary representation of an action
+        """
+        for kk in act_dict.keys():
+            if kk not in action_cls.authorized_keys:
+                if kk == "shunt" and not action_cls.shunts_data_available:
+                    # no warnings are raised in this case because if a warning
+                    # were raised it could crash some environment
+                    # with shunt in "init_state.json" with a backend that does not
+                    # handle shunt
+                    continue
+                if kk == "set_storage" and action_cls.n_storage == 0:
+                    # no warnings are raised in this case because if a warning
+                    # were raised it could crash some environment
+                    # with storage in "init_state.json" but if the backend did not
+                    # handle storage units
+                    continue
+                warnings.warn(
+                    f"The key '{kk}' used to update an action will be ignored. Valid keys are {action_cls.authorized_keys}"
+                )
 
     def update(self,
                dict_: DICT_ACT_TYPING
@@ -2374,23 +2402,7 @@ class BaseAction(GridObjects):
         cls = type(self)
         
         if dict_ is not None:
-            for kk in dict_.keys():
-                if kk not in cls.authorized_keys:
-                    if kk == "shunt" and not cls.shunts_data_available:
-                        # no warnings are raised in this case because if a warning
-                        # were raised it could crash some environment
-                        # with shunt in "init_state.json" with a backend that does not
-                        # handle shunt
-                        continue
-                    if kk == "set_storage" and cls.n_storage == 0:
-                        # no warnings are raised in this case because if a warning
-                        # were raised it could crash some environment
-                        # with storage in "init_state.json" but if the backend did not
-                        # handle storage units
-                        continue
-                    warn = 'The key "{}" used to update an action will be ignored. Valid keys are {}'
-                    warn = warn.format(kk, cls.authorized_keys)
-                    warnings.warn(warn)
+            BaseAction._check_keys_exist(cls, dict_)
 
             if cls.shunts_data_available:
                 # do not digest shunt when backend does not support it

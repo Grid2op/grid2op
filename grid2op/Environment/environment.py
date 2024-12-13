@@ -32,7 +32,7 @@ from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageControll
 from grid2op.Environment.baseEnv import BaseEnv
 from grid2op.Opponent import BaseOpponent, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 from grid2op.typing_variables import RESET_OPTIONS_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
@@ -79,13 +79,15 @@ class Environment(BaseEnv):
 
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path: str,
         init_grid_path: str,
         chronics_handler,
         backend,
         parameters,
         name="unknown",
-        n_busbar : N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        n_busbar:N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         names_chronics_to_backend=None,
         actionClass=TopologyAction,
         observationClass=CompleteObservation,
@@ -156,6 +158,7 @@ class Environment(BaseEnv):
             highres_sim_counter=highres_sim_counter,
             update_obs_after_reward=_update_obs_after_reward,
             n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
+            allow_detachment=allow_detachment,
             name=name,
             _raw_backend_class=_raw_backend_class if _raw_backend_class is not None else type(backend),
             _init_obs=_init_obs,
@@ -262,7 +265,7 @@ class Environment(BaseEnv):
         need_process_backend = False    
         if not self.backend.is_loaded:
             if hasattr(self.backend, "init_pp_backend") and self.backend.init_pp_backend is not None:
-                # hack for lightsim2grid ...
+                # hack for legacy lightsim2grid ...
                 if type(self.backend.init_pp_backend)._INIT_GRID_CLS is not None:
                     type(self.backend.init_pp_backend)._INIT_GRID_CLS._clear_grid_dependant_class_attributes()
                 type(self.backend.init_pp_backend)._clear_grid_dependant_class_attributes()
@@ -278,8 +281,10 @@ class Environment(BaseEnv):
             # this is due to the class attribute
             type(self.backend).set_env_name(self.name)
             type(self.backend).set_n_busbar_per_sub(self._n_busbar)
+            type(self.backend).set_detachment_is_allowed(self._allow_detachment)
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version
+            
             self.backend.load_grid(
                 self._init_grid_path
             )  # the real powergrid of the environment
@@ -290,8 +295,8 @@ class Environment(BaseEnv):
             except BackendError as exc_:
                 self.backend.redispatching_unit_commitment_availble = False
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
-                            f"to use all grid2op functionalities. "
-                            f"The error was: \"{exc_}\"")
+                              f"to use all grid2op functionalities. "
+                              f"The error was: \"{exc_}\"")
             exc_ = self.backend.load_grid_layout(self.get_path_env())
             if exc_ is not None:
                 warnings.warn(
@@ -422,7 +427,7 @@ class Environment(BaseEnv):
             kwargs_observation=self._kwargs_observation,
             observation_bk_class=self._observation_bk_class,
             observation_bk_kwargs=self._observation_bk_kwargs,
-            _local_dir_cls=self._local_dir_cls
+            _local_dir_cls=self._local_dir_cls,
         )
 
         # test to make sure the backend is consistent with the chronics generator
@@ -923,7 +928,7 @@ class Environment(BaseEnv):
 
     def reset_grid(self,
                    init_act_opt : Optional[BaseAction]=None, 
-                   method:Literal["combine", "ignore"]="combine"):
+                   method : Literal["combine", "ignore"]="combine"):
         """
         INTERNAL
 
@@ -1043,10 +1048,17 @@ class Environment(BaseEnv):
             be used, experiments might not be reproducible)
             
         options: dict
-            Some options to "customize" the reset call. For example specifying the "time serie id" (grid2op >= 1.9.8) to use 
-            or the "initial state of the grid" (grid2op >= 1.10.2) or to 
-            start the episode at some specific time in the time series (grid2op >= 1.10.3) with the 
-            "init ts" key.
+            Some options to "customize" the reset call. For example (see detailed example bellow) :
+            
+            - "time serie id" (grid2op >= 1.9.8) to use a given time serie from the input data
+            - "init state" that allows you to apply a given "action" when generating the 
+              initial observation (grid2op >= 1.10.2)
+            - "init ts" (grid2op >= 1.10.3) to specify to which "steps" of the time series 
+              the episode will start
+            - "max step" (grid2op >= 1.10.3) : maximum number of steps allowed for the episode
+            - "thermal limit" (grid2op >= 1.11.0): which thermal limit to use for this episode 
+              (and the next ones, until they are changed)
+            - "init datetime": which time stamp is used in the first observation of the episode.
             
             See examples for more information about this. Ignored if 
             not set.
@@ -1269,6 +1281,28 @@ class Environment(BaseEnv):
             that `set_max_iter` is permenanent: it impacts all the future episodes and not only
             the next one.
             
+        If you want your environment to start at a given time stamp you can do:
+        
+        .. code-block:: python
+        
+            import grid2op
+            env_name = "l2rpn_case14_sandbox"
+            
+            env = grid2op.make(env_name)
+            obs = env.reset(options={"init datetime": "2024-12-06 00:00"})
+            obs.year == 2024
+            obs.month == 12
+            obs.day == 6
+            
+        .. seealso::
+            If you specify "init datetime" then the observation resulting to the 
+            `env.reset` call will have this datetime. If you specify also `"skip ts"`
+            option the behaviour does not change: the first observation will 
+            have the date time attributes you specified. 
+            
+            In other words, the "init datetime" refers to the initial observation of the
+            episode and NOT the initial time present in the time series.
+            
         """
         # process the "options" kwargs
         # (if there is an init state then I need to process it to remove the 
@@ -1312,6 +1346,7 @@ class Environment(BaseEnv):
         else:
             # reset previous max iter to value set with `env.set_max_iter(...)` (or -1 by default)
             self.chronics_handler._set_max_iter(self._max_iter)
+            
         self.chronics_handler.next_chronics()
         self.chronics_handler.initialize(
             self.backend.name_load,
@@ -1329,6 +1364,8 @@ class Environment(BaseEnv):
         self._reset_redispatching()
         self._reset_vectors_and_timings()  # it need to be done BEFORE to prevent cascading failure when there has been
             
+        if options is not None and "init datetime" in options:
+            self.chronics_handler.set_current_datetime(options["init datetime"])
         self.reset_grid(init_state, method)
         if self.viewer_fig is not None:
             del self.viewer_fig
@@ -1336,16 +1373,24 @@ class Environment(BaseEnv):
         
         if skip_ts is not None:
             self._reset_vectors_and_timings() 
-            
+            if options is None:
+                init_dt = None
+            elif "init datetime" in options:
+                init_dt = options["init datetime"]
+            else:
+                init_dt = None
+                
             if skip_ts < 1:
                 raise Grid2OpException(f"In `env.reset` the kwargs `init ts` should be an int >= 1, found {options['init ts']}")
             if skip_ts == 1:
                 self._init_obs = None
+                if init_dt is not None:
+                    self.chronics_handler.set_current_datetime(init_dt) 
                 self.step(self.action_space())
             elif skip_ts == 2:
-                self.fast_forward_chronics(1)
+                self.fast_forward_chronics(1, init_dt)
             else:
-                self.fast_forward_chronics(skip_ts)
+                self.fast_forward_chronics(skip_ts, init_dt)
             
         # if True, then it will not disconnect lines above their thermal limits
         self._reset_vectors_and_timings()  # and it needs to be done AFTER to have proper timings at tbe beginning
@@ -1500,6 +1545,7 @@ class Environment(BaseEnv):
         """
         res = {}
         res["n_busbar"] = self._n_busbar
+        res["allow_detachment"] = self._allow_detachment
         res["init_env_path"] = self._init_env_path
         res["init_grid_path"] = self._init_grid_path
         if with_chronics_handler:
@@ -2152,6 +2198,7 @@ class Environment(BaseEnv):
         res["grid_layout"] = self.grid_layout
         res["name_env"] = self.name
         res["n_busbar"] = self._n_busbar
+        res["allow_detachment"] = self._allow_detachment
 
         res["opponent_space_type"] = self._opponent_space_type
         res["opponent_action_class"] = self._opponent_action_class
@@ -2213,7 +2260,8 @@ class Environment(BaseEnv):
                              _read_from_local_dir,
                              _local_dir_cls,
                              _overload_name_multimix,
-                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB
+                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+                             allow_detachment=DEFAULT_ALLOW_DETACHMENT,
                              ):        
         res = cls(init_env_path=init_env_path,
                   init_grid_path=init_grid_path,
@@ -2246,6 +2294,7 @@ class Environment(BaseEnv):
                   observation_bk_class=observation_bk_class,
                   observation_bk_kwargs=observation_bk_kwargs,
                   n_busbar=int(n_busbar),
+                  allow_detachment=bool(allow_detachment),
                   _raw_backend_class=_raw_backend_class,
                   _read_from_local_dir=_read_from_local_dir,
                   _local_dir_cls=_local_dir_cls,

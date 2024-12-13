@@ -20,6 +20,7 @@ from grid2op.Exceptions import Grid2OpException, UnknownEnv
 import grid2op.MakeEnv.PathUtils
 from grid2op.MakeEnv.PathUtils import _create_path_folder
 from grid2op.Download.DownloadDataset import _aux_download
+from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
 
 _VAR_FORCE_TEST = "_GRID2OP_FORCE_TEST"
 
@@ -247,7 +248,8 @@ def _aux_make_multimix(
     dataset_path,
     test=False,
     experimental_read_from_local_dir=False,
-    n_busbar=2,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
     _add_cls_nm_bk=True,
     _add_to_name="",
     _compat_glop_version=None,
@@ -263,6 +265,7 @@ def _aux_make_multimix(
         dataset_path,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         n_busbar=n_busbar,
+        allow_detachment=allow_detachment,
         _test=test,
         _add_cls_nm_bk=_add_cls_nm_bk,
         _add_to_name=_add_to_name,
@@ -287,7 +290,8 @@ def make(
     test : bool=False,
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
-    n_busbar=2,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
     _add_cls_nm_bk=True,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
@@ -307,6 +311,9 @@ def make(
     
     .. versionadded:: 1.10.0
         The `n_busbar` parameters
+
+    .. versionadded:: 1.11.0
+        The `allow_detachment` parameter
         
     Parameters
     ----------
@@ -331,6 +338,9 @@ def make(
         
     n_busbar: ``int``
         Number of independant busbars allowed per substations. By default it's 2.
+
+    allow_detachmentnt: ``bool``
+        Whether to allow loads and generators to be shed without a game over. By default it's False.
         
     kwargs:
         Other keyword argument to give more control on the environment you are creating. See
@@ -394,6 +404,7 @@ def make(
         raise Grid2OpException(f"n_busbar parameters should be convertible to integer, but we have "
                                f"int(n_busbar) = {n_busbar_int} != {n_busbar}")
         
+        
     accepted_kwargs = ERR_MSG_KWARGS.keys() | {"dataset", "test"}
     for el in kwargs:
         if el not in accepted_kwargs:
@@ -448,6 +459,7 @@ def make(
             _compat_glop_version=_compat_glop_version_tmp,
             _overload_name_multimix=_overload_name_multimix,
             n_busbar=n_busbar,
+            allow_detachment=allow_detachment,
             **kwargs
         )
 
@@ -494,6 +506,7 @@ def make(
             dataset_path=ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            allow_detachment=allow_detachment,
             _add_cls_nm_bk=_add_cls_nm_bk,
             _add_to_name=_add_to_name,
             _compat_glop_version=_compat_glop_version,
@@ -510,6 +523,7 @@ def make(
             real_ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            allow_detachment=allow_detachment,
             _add_cls_nm_bk=_add_cls_nm_bk,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
             _overload_name_multimix=_overload_name_multimix,
@@ -531,6 +545,7 @@ def make(
         dataset_path=real_ds_path,
         logger=logger,
         n_busbar=n_busbar,
+        allow_detachment=allow_detachment,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         _overload_name_multimix=_overload_name_multimix,
         _add_cls_nm_bk=_add_cls_nm_bk,
