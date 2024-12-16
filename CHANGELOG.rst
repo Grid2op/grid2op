@@ -109,6 +109,9 @@ Native multi agents support:
   customize the added name by overloading the `get_class_added_name` class method.
 - [BREAKING] it is now forbidden to create environment with arguments.
   Only key-word arguments are allowed.
+- [BREAKING] the way actions is serialized has been changed with respect to the `from_vect` /
+  `to_vect` method. This might introduce some issues when loading previously saved actions
+  with this methods.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
@@ -125,7 +128,11 @@ Native multi agents support:
   environment data
 - [FIXED] an issue preventing to set the thermal limit in the options
   if the last simulated action lead to a game over
+- [FIXED] some bugs in `act.from_json(...)` due to the handling of the injection modifications.
 - [FIXED] logos now have the correct URL
+- [FIXED] deprecated call to `tostring_rgb` (replaced `tostring_argb`) in the env.render function.
+- [FIXED] warnings not properly issued in the AAA test when backend failed to call
+  `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -134,6 +141,10 @@ Native multi agents support:
 - [ADDED] a method to check the KCL (`obs.check_kirchhoff`) directly from the observation
   (previously it was only possible to do it from the backend). This should 
   be used for testing purpose only
+- [ADDED] parameters to disable the "redispatching routine" of the environment 
+  (see `params.ENV_DOES_REDISPATCHING`)
+- [ADDED] parameters to stop the episode when one of the constraints of one of the 
+  generators is not met (see `params.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`)
 - [ADDED] possibility to set the initial time stamp of the observation in the `env.reset`
   kwargs by using `env.reset(..., options={"init datetime": XXX})`
 - [IMPROVED] possibility to set the injections values with names
@@ -161,6 +172,10 @@ Native multi agents support:
   possible to use the same things as for the other types of element)
 - [IMPROVED] grid2op does not require the `chronics` folder when using the `FromHandlers`
   class
+- [IMPROVED] the function `action.get_topological_impact(...)` has now a "caching" mechanism
+  that allows not to recompute it over and over again (this is internal API please do not change 
+  it... unless you know what you are doing)
+    
 
 [1.10.4] - 2024-10-15
 -------------------------

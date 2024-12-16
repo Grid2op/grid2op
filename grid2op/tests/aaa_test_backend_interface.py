@@ -61,12 +61,12 @@ class AAATestBackendAPI(MakeBackend):
         """Tests the backend can be created (not integrated in a grid2op environment yet)"""
         self.skip_if_needed()
         backend = self.make_backend_with_glue_code()
-        if not backend._missing_two_busbars_support_info:
+        if backend._missing_two_busbars_support_info:
             warnings.warn("You should call either `self.can_handle_more_than_2_busbar()` "
                           "or `self.cannot_handle_more_than_2_busbar()` in the `load_grid` "
                           "method of your backend. Please refer to documentation for more information.")
     
-        if not backend._missing_detachment_support_info:
+        if backend._missing_detachment_support_info:
             warnings.warn("You should call either `self.can_handle_detachment()` "
                           "or `self.cannot_handle_detachment()` in the `load_grid` "
                           "method of your backend. Please refer to documentation for more information.")
@@ -818,13 +818,14 @@ class AAATestBackendAPI(MakeBackend):
             # legacy behaviour, should behave as if it diverges
             # for new (>= 1.11.0) behaviour, it is catched in the method `_runpf_with_diverging_exception`
             res = backend.runpf(is_dc=is_dc)  
-            assert not res[0], f"It is expected (at time of writing) that your backend returns `False` in case of isolated loads in {str_}."           
+            assert not res[0], f"It is expected (at time of writing) that your backend returns `False` in case of isolated elements (eg load, gen or storage unit) in {str_}."           
             maybe_exc = res[1]      
             detachment_allowed = False    
         else:
             # new (1.11.0) test here
             maybe_exc = backend._runpf_with_diverging_exception(is_dc=is_dc)           
             detachment_allowed = type(backend).detachment_is_allowed
+            
         if not detachment_allowed:
             # should raise in all cases as the backend prevent detachment
             self._aux_aux_test_detachment_should_fail(maybe_exc)

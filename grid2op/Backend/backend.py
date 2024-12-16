@@ -116,8 +116,8 @@ class Backend(GridObjects, ABC):
     IS_BK_CONVERTER : bool = False
     
     # action to set me
-    my_bk_act_class : "Optional[grid2op.Action._backendAction._BackendAction]"= None
-    _complete_action_class : "Optional[grid2op.Action.CompleteAction]"= None
+    my_bk_act_class : "Optional[grid2op.Action._backendAction._BackendAction]" = None
+    _complete_action_class : "Optional[grid2op.Action.CompleteAction]" = None
 
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
     ERR_DETACHMENT : str = ("One or more {} were isolated from the grid "

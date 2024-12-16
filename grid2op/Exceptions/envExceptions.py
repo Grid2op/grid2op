@@ -111,6 +111,52 @@ class IncorrectPositionOfStorages(EnvError):
     pass
 
 
+class SomeGeneratorAbovePmax(EnvError):
+    """This is a more precise exception saying that, at the end of the simulation, some generator would
+    have their production above pmax, which is not possible in practice.
+    
+    .. versionadded:: 1.11.0
+    
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    is ``True`` (which is not the default).
+    """
+    pass
+
+
+class SomeGeneratorBelowPmin(EnvError):
+    """This is a more precise exception saying that, at the end of the simulation, some generator would
+    have their production below pmin, which is not possible in practice.
+    
+    .. versionadded:: 1.11.0
+    
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    is ``True`` (which is not the default).
+    """
+    pass
+
+class SomeGeneratorAboveRampmax(EnvError):
+    """This is a more precise exception saying that, at the end of the simulation, some generator would
+    have their production vary too much, which is not possible in practice.
+    
+    .. versionadded:: 1.11.0
+    
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    is ``True`` (which is not the default).
+    """
+    pass
+
+
+class SomeGeneratorBelowRampmin(EnvError):
+    """This is a more precise exception saying that, at the end of the simulation, some generator would
+    have their production vary too much, which is not possible in practice.
+    
+    .. versionadded:: 1.11.0
+    
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    is ``True`` (which is not the default).
+    """
+    pass
+
 # Unknown environment at creation
 class UnknownEnv(Grid2OpException):
     """

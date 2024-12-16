@@ -23,7 +23,7 @@ import os
 import numpy as np
 import sys
 from packaging import version
-from typing import Dict, Union, Literal, Any, List, Optional, ClassVar, Tuple
+from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
     
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -479,6 +479,7 @@ class GridObjects:
     """
 
     BEFORE_COMPAT_VERSION : ClassVar[str] = "neurips_2020_compat"
+    MIN_VERSION_DETACH : ClassVar[str] = version.parse("1.11.0.dev2")
     glop_version : ClassVar[str] = grid2op.__version__
     
     _INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
@@ -690,9 +691,10 @@ class GridObjects:
 
         This clear the class as if it was defined in grid2op directly.
         """        
+        
+        #: this has to be here and not in _clear_grid_dependant_class_attributes
+        # otherwise it breaks some lightsim2grid versions
         cls.shunts_data_available = False
-        cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
-        cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
         
         # for redispatching / unit commitment
         cls._li_attr_disp = [
@@ -724,6 +726,13 @@ class GridObjects:
             float,
             bool,
         ]
+
+        cls.SUB_COL = 0
+        cls.LOA_COL = 1
+        cls.GEN_COL = 2
+        cls.LOR_COL = 3
+        cls.LEX_COL = 4
+        cls.STORAGE_COL = 5
         
         cls._clear_grid_dependant_class_attributes()
         
@@ -734,14 +743,10 @@ class GridObjects:
         cls._INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
         cls._PATH_GRID_CLASSES = None  # especially do not modify that
         
+        cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
+        cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
+        
         cls.glop_version = grid2op.__version__
-
-        cls.SUB_COL = 0
-        cls.LOA_COL = 1
-        cls.GEN_COL = 2
-        cls.LOR_COL = 3
-        cls.LEX_COL = 4
-        cls.STORAGE_COL = 5
 
         cls.attr_list_vect = None
         cls.attr_list_set = {}
@@ -901,6 +906,20 @@ class GridObjects:
         """
         return np.array(getattr(self, attr_name)).flatten()
 
+    def _set_array_from_attr_name(self, allowed_keys, key: str, array_) -> None:
+        """used for `from_json` please see `_assign_attr_from_name` for `from_vect`"""
+        if key not in allowed_keys:
+            raise AmbiguousAction(f'Impossible to recognize the key "{key}"')
+        my_attr = getattr(self, key)
+        if isinstance(my_attr, np.ndarray):
+            # the regular instance is an array, so i just need to assign the right values to it
+            my_attr[:] = array_
+        else:
+            # normal values is a scalar. So i need to convert the array received as a scalar, and
+            # convert it to the proper type
+            type_ = type(my_attr)
+            setattr(self, key, type_(array_[0]))
+
     def to_vect(self) -> np.ndarray:
         """
         Convert this instance of GridObjects to a numpy ndarray.
@@ -996,19 +1015,10 @@ class GridObjects:
 
         """
         # TODO optimization for action or observation, to reduce json size, for example using the see `to_json`
-        all_keys = type(self).attr_list_vect + type(self).attr_list_json
+        cls = type(self)
+        all_keys = cls.attr_list_vect + cls.attr_list_json
         for key, array_ in dict_.items():
-            if key not in all_keys:
-                raise AmbiguousAction(f'Impossible to recognize the key "{key}"')
-            my_attr = getattr(self, key)
-            if isinstance(my_attr, np.ndarray):
-                # the regular instance is an array, so i just need to assign the right values to it
-                my_attr[:] = array_
-            else:
-                # normal values is a scalar. So i need to convert the array received as a scalar, and
-                # convert it to the proper type
-                type_ = type(my_attr)
-                setattr(self, key, type_(array_[0]))
+            self._set_array_from_attr_name(all_keys, key, array_)
 
     @classmethod
     def _convert_to_json(cls, dict_: Dict[str, Any]) -> None:
@@ -1129,6 +1139,8 @@ class GridObjects:
 
         If this function is overloaded, then the _get_array_from_attr_name must be too.
 
+        Used for `from_vect`, please see `_set_array_from_attr_name` for `from_json`
+        
         Parameters
         ----------
         attr_nm
@@ -2040,7 +2052,16 @@ class GridObjects:
         if isinstance(cls.n_busbar_per_sub, (int, dt_int, np.int32, np.int64)):
             cls.n_busbar_per_sub = dt_int(cls.n_busbar_per_sub)
         else:
-            raise EnvError("Grid2op cannot handle a different number of busbar per substations at the moment.")
+            raise EnvError("Grid2op cannot handle a different number "
+                           "of busbar per substations with provided input "
+                           "(make sure `n_busbar_per_sub` is an int)")
+        
+        if isinstance(cls.detachment_is_allowed, (bool, dt_bool)):
+            cls.detachment_is_allowed = dt_bool(cls.detachment_is_allowed)
+        else:
+            raise EnvError("Grid2op cannot handle disconnection of loads / generators "
+                           "at the moment (make sure `detachment_is_allowed` "
+                           "is a bool)")
         
         if (cls.n_busbar_per_sub < 1).any():
             raise EnvError(f"`n_busbar_per_sub` should be >= 1 found {cls.n_busbar_per_sub}")
@@ -2331,8 +2352,6 @@ class GridObjects:
 
         # alert data
         cls._check_validity_alert_data()
-        
-        assert isinstance(cls.detachment_is_allowed, bool)
 
     @classmethod
     def _check_validity_alarm_data(cls):
@@ -2946,7 +2965,7 @@ class GridObjects:
             it does not initialize it. Setting "force=True" will bypass this check and update it accordingly.
 
         """
-        # nothing to do now that the value are class member
+        # nothing to do now that the value are class member            
         name_res = "{}_{}".format(cls.__name__, gridobj.env_name)
         if gridobj.glop_version != grid2op.__version__:
             name_res += f"_{gridobj.glop_version}"
@@ -3014,12 +3033,12 @@ class GridObjects:
         else:
             # i am the original class from grid2op
             res_cls._INIT_GRID_CLS = cls
-        
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
         res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
+        res_cls.process_detachment()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
@@ -3091,7 +3110,7 @@ class GridObjects:
             cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
             res = True
 
-        if glop_ver < version.parse("1.11.0.dev0"):
+        if glop_ver < cls.MIN_VERSION_DETACH:
             # Detachment did not exist, default value should have
             # no effect
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
@@ -4211,7 +4230,7 @@ class GridObjects:
             elif dict_["detachment_is_allowed"] == "False":
                 cls.detachment_is_allowed = False
             else:
-                raise ValueError(f"'detachment_is_allowed' (value: {dict_['detachment_is_allowed']}'')" +
+                raise ValueError(f"'detachment_is_allowed' (value: {dict_['detachment_is_allowed']}'')"
                                   "could not be converted to Boolean ")
         else: # Compatibility for older versions
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
@@ -4396,7 +4415,9 @@ class GridObjects:
             # cls.set_env_name(f"{cls.env_name}_{cls.glop_version}")
             # and now post process the class attributes for that
             cls.process_grid2op_compat()
-
+        
+        cls.process_detachment()
+        
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]
         else:
@@ -4438,6 +4459,13 @@ class GridObjects:
     @classmethod
     def process_shunt_static_data(cls):
         """remove possible shunts data from the classes, if shunts are deactivated"""
+        pass
+    
+    @classmethod
+    def process_detachment(cls):
+        """process the status of detachment, that can be turned on or off, is overloaded for :class:`grid2op.Action.BaseAction`
+        or :class:`grid2op.Observation.BaseObservation`
+        """
         pass
     
     @classmethod
@@ -4528,11 +4556,14 @@ class GridObjects:
         try:
             module = importlib.import_module(GRID2OP_CLASSES_ENV_FOLDER)
             if hasattr(module, name_cls):
-                my_class = getattr(module, name_cls)
+                my_class : Type["GridObjects"] = getattr(module, name_cls)
         except (ModuleNotFoundError, ImportError) as exc_:
             # normal behaviour i don't do anything there
             # TODO explain why
             pass
+        my_class.process_grid2op_compat()
+        my_class.process_detachment()
+        my_class.process_shunt_static_data()
         return my_class
 
     @staticmethod
@@ -4569,6 +4600,7 @@ class GridObjects:
             if res_cls.glop_version != grid2op.__version__:
                 res_cls.process_grid2op_compat()
             res_cls.process_shunt_static_data()
+            res_cls.process_detachment()
             # add the class in the "globals" for reuse later
             globals()[name_res] = res_cls
 
@@ -4984,7 +5016,6 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
 
     sub_info = {sub_info_str}
     dim_topo = {cls.dim_topo}
-    detachment_is_allowed = {cls.detachment_is_allowed}
     
     # to which substation is connected each element
     load_to_subid = {load_to_subid_str}

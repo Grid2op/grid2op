@@ -268,8 +268,10 @@ class Environment(BaseEnv):
                 # hack for legacy lightsim2grid ...
                 if type(self.backend.init_pp_backend)._INIT_GRID_CLS is not None:
                     type(self.backend.init_pp_backend)._INIT_GRID_CLS._clear_grid_dependant_class_attributes()
+                    type(self.backend.init_pp_backend)._INIT_GRID_CLS.shunts_data_available = self.backend.shunts_data_available
                 type(self.backend.init_pp_backend)._clear_grid_dependant_class_attributes()
-                
+                type(self.backend.init_pp_backend).shunts_data_available = self.backend.shunts_data_available
+            
             # usual case: the backend is not loaded
             # NB it is loaded when the backend comes from an observation for
             # example
@@ -281,6 +283,7 @@ class Environment(BaseEnv):
             # this is due to the class attribute
             type(self.backend).set_env_name(self.name)
             type(self.backend).set_n_busbar_per_sub(self._n_busbar)
+            type(self.backend).shunts_data_available = self.backend.shunts_data_available
             type(self.backend).set_detachment_is_allowed(self._allow_detachment)
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version
@@ -1466,7 +1469,14 @@ class Environment(BaseEnv):
         self.viewer_fig = fig
         
         # Return the rgb array
-        rgb_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 3)
+        try:
+            import matplotlib.colors
+            tmp = fig.canvas.tostring_argb()
+            argb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 4)
+            rgb_array = argb_array[:,:,1:]
+        except AttributeError:
+            tmp = fig.canvas.tostring_rgb()
+            rgb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 3)
         return rgb_array
 
     def _custom_deepcopy_for_copy(self, new_obj):

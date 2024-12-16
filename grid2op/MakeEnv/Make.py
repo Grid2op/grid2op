@@ -339,7 +339,7 @@ def make(
     n_busbar: ``int``
         Number of independant busbars allowed per substations. By default it's 2.
 
-    allow_detachmentnt: ``bool``
+    allow_detachment: ``bool``
         Whether to allow loads and generators to be shed without a game over. By default it's False.
         
     kwargs:
