@@ -19,10 +19,10 @@ class _ForecastEnv(Environment):
     
     It is used by obs.get_forecast_env.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self,**kwargs):
         if "_update_obs_after_reward" not in kwargs:
             kwargs["_update_obs_after_reward"] = False
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self._do_not_erase_local_dir_cls = True
         
     def step(self, action: BaseAction) -> Tuple[BaseObservation, float, bool, STEP_INFO_TYPING]:

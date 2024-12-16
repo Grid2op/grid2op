@@ -32,7 +32,7 @@ from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageControll
 from grid2op.Environment.baseEnv import BaseEnv
 from grid2op.Opponent import BaseOpponent, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 from grid2op.typing_variables import RESET_OPTIONS_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
@@ -79,13 +79,15 @@ class Environment(BaseEnv):
 
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path: str,
         init_grid_path: str,
         chronics_handler,
         backend,
         parameters,
         name="unknown",
-        n_busbar : N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        n_busbar:N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         names_chronics_to_backend=None,
         actionClass=TopologyAction,
         observationClass=CompleteObservation,
@@ -156,6 +158,7 @@ class Environment(BaseEnv):
             highres_sim_counter=highres_sim_counter,
             update_obs_after_reward=_update_obs_after_reward,
             n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
+            allow_detachment=allow_detachment,
             name=name,
             _raw_backend_class=_raw_backend_class if _raw_backend_class is not None else type(backend),
             _init_obs=_init_obs,
@@ -262,11 +265,13 @@ class Environment(BaseEnv):
         need_process_backend = False    
         if not self.backend.is_loaded:
             if hasattr(self.backend, "init_pp_backend") and self.backend.init_pp_backend is not None:
-                # hack for lightsim2grid ...
+                # hack for legacy lightsim2grid ...
                 if type(self.backend.init_pp_backend)._INIT_GRID_CLS is not None:
                     type(self.backend.init_pp_backend)._INIT_GRID_CLS._clear_grid_dependant_class_attributes()
+                    type(self.backend.init_pp_backend)._INIT_GRID_CLS.shunts_data_available = self.backend.shunts_data_available
                 type(self.backend.init_pp_backend)._clear_grid_dependant_class_attributes()
-                
+                type(self.backend.init_pp_backend).shunts_data_available = self.backend.shunts_data_available
+            
             # usual case: the backend is not loaded
             # NB it is loaded when the backend comes from an observation for
             # example
@@ -278,8 +283,11 @@ class Environment(BaseEnv):
             # this is due to the class attribute
             type(self.backend).set_env_name(self.name)
             type(self.backend).set_n_busbar_per_sub(self._n_busbar)
+            type(self.backend).shunts_data_available = self.backend.shunts_data_available
+            type(self.backend).set_detachment_is_allowed(self._allow_detachment)
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version
+            
             self.backend.load_grid(
                 self._init_grid_path
             )  # the real powergrid of the environment
@@ -290,8 +298,8 @@ class Environment(BaseEnv):
             except BackendError as exc_:
                 self.backend.redispatching_unit_commitment_availble = False
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
-                            f"to use all grid2op functionalities. "
-                            f"The error was: \"{exc_}\"")
+                              f"to use all grid2op functionalities. "
+                              f"The error was: \"{exc_}\"")
             exc_ = self.backend.load_grid_layout(self.get_path_env())
             if exc_ is not None:
                 warnings.warn(
@@ -422,7 +430,7 @@ class Environment(BaseEnv):
             kwargs_observation=self._kwargs_observation,
             observation_bk_class=self._observation_bk_class,
             observation_bk_kwargs=self._observation_bk_kwargs,
-            _local_dir_cls=self._local_dir_cls
+            _local_dir_cls=self._local_dir_cls,
         )
 
         # test to make sure the backend is consistent with the chronics generator
@@ -1461,7 +1469,14 @@ class Environment(BaseEnv):
         self.viewer_fig = fig
         
         # Return the rgb array
-        rgb_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 3)
+        try:
+            import matplotlib.colors
+            tmp = fig.canvas.tostring_argb()
+            argb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 4)
+            rgb_array = argb_array[:,:,1:]
+        except AttributeError:
+            tmp = fig.canvas.tostring_rgb()
+            rgb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 3)
         return rgb_array
 
     def _custom_deepcopy_for_copy(self, new_obj):
@@ -1540,6 +1555,7 @@ class Environment(BaseEnv):
         """
         res = {}
         res["n_busbar"] = self._n_busbar
+        res["allow_detachment"] = self._allow_detachment
         res["init_env_path"] = self._init_env_path
         res["init_grid_path"] = self._init_grid_path
         if with_chronics_handler:
@@ -2192,6 +2208,7 @@ class Environment(BaseEnv):
         res["grid_layout"] = self.grid_layout
         res["name_env"] = self.name
         res["n_busbar"] = self._n_busbar
+        res["allow_detachment"] = self._allow_detachment
 
         res["opponent_space_type"] = self._opponent_space_type
         res["opponent_action_class"] = self._opponent_action_class
@@ -2253,7 +2270,8 @@ class Environment(BaseEnv):
                              _read_from_local_dir,
                              _local_dir_cls,
                              _overload_name_multimix,
-                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB
+                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+                             allow_detachment=DEFAULT_ALLOW_DETACHMENT,
                              ):        
         res = cls(init_env_path=init_env_path,
                   init_grid_path=init_grid_path,
@@ -2286,6 +2304,7 @@ class Environment(BaseEnv):
                   observation_bk_class=observation_bk_class,
                   observation_bk_kwargs=observation_bk_kwargs,
                   n_busbar=int(n_busbar),
+                  allow_detachment=bool(allow_detachment),
                   _raw_backend_class=_raw_backend_class,
                   _read_from_local_dir=_read_from_local_dir,
                   _local_dir_cls=_local_dir_cls,

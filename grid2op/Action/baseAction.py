@@ -370,6 +370,9 @@ class BaseAction(GridObjects):
         "curtail",
         "raise_alarm",
         "raise_alert",
+        "detach_load",  # new in 1.11.0
+        "detach_gen",  # new in 1.11.0
+        "detach_storage",  # new in 1.11.0
     }
 
     attr_list_vect = [
@@ -388,8 +391,15 @@ class BaseAction(GridObjects):
         "_curtail",
         "_raise_alarm",
         "_raise_alert",
+        "_detach_load",  # new in 1.11.0
+        "_detach_gen",  # new in 1.11.0
+        "_detach_storage",  # new in 1.11.0
     ]
-    attr_nan_list_set = set()
+    # new in 1.11.0 (was not set to nan before in serialization)
+    attr_nan_list_set = set(["prod_p",
+                             "prod_v",
+                             "load_p",
+                             "load_q"])
 
     attr_list_set = set(attr_list_vect)
     shunt_added = False
@@ -399,6 +409,7 @@ class BaseAction(GridObjects):
 
     ERR_ACTION_CUT = 'The action added to me will be cut, because i don\'t support modification of "{}"'
     ERR_NO_STOR_SET_BUS = 'Impossible to modify the storage bus (with "set") with this action type.'
+    OBJ_SUPPORT_DETACH = ["load", "gen", "storage"]
     
     def __init__(self, _names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None):
         """
@@ -416,6 +427,7 @@ class BaseAction(GridObjects):
 
         """
         GridObjects.__init__(self)
+        cls = type(self)
         if _names_chronics_to_backend is not None:
             # should only be the case for the "init state" action
             self._names_chronics_to_backend = _names_chronics_to_backend
@@ -423,48 +435,48 @@ class BaseAction(GridObjects):
             self._names_chronics_to_backend = None
             
         # False(line is disconnected) / True(line is connected)
-        self._set_line_status = np.full(shape=self.n_line, fill_value=0, dtype=dt_int)
+        self._set_line_status = np.full(shape=cls.n_line, fill_value=0, dtype=dt_int)
         self._switch_line_status = np.full(
-            shape=self.n_line, fill_value=False, dtype=dt_bool
+            shape=cls.n_line, fill_value=False, dtype=dt_bool
         )
 
         # injection change
-        self._dict_inj = {}
+        self._dict_inj : Dict[Literal["prod_p", "prod_v", "load_p", "load_q"], np.ndarray] = {}
 
         # topology changed
-        self._set_topo_vect = np.full(shape=self.dim_topo, fill_value=0, dtype=dt_int)
+        self._set_topo_vect = np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int)
         self._change_bus_vect = np.full(
-            shape=self.dim_topo, fill_value=False, dtype=dt_bool
+            shape=cls.dim_topo, fill_value=False, dtype=dt_bool
         )
 
         # add the hazards and maintenance usefull for saving.
-        self._hazards = np.full(shape=self.n_line, fill_value=False, dtype=dt_bool)
-        self._maintenance = np.full(shape=self.n_line, fill_value=False, dtype=dt_bool)
+        self._hazards = np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
+        self._maintenance = np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
 
         # redispatching vector
-        self._redispatch = np.full(shape=self.n_gen, fill_value=0.0, dtype=dt_float)
+        self._redispatch = np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float)
 
         # storage unit vector
         self._storage_power = np.full(
-            shape=self.n_storage, fill_value=0.0, dtype=dt_float
+            shape=cls.n_storage, fill_value=0.0, dtype=dt_float
         )
 
         # curtailment of renewable energy
-        self._curtail = np.full(shape=self.n_gen, fill_value=-1.0, dtype=dt_float)
+        self._curtail = np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float)
 
         self._vectorized = None
         self._lines_impacted = None
         self._subs_impacted = None
 
         # shunts
-        if type(self).shunts_data_available:
+        if cls.shunts_data_available:
             self.shunt_p = np.full(
-                shape=self.n_shunt, fill_value=np.NaN, dtype=dt_float
+                shape=cls.n_shunt, fill_value=np.NaN, dtype=dt_float
             )
             self.shunt_q = np.full(
-                shape=self.n_shunt, fill_value=np.NaN, dtype=dt_float
+                shape=cls.n_shunt, fill_value=np.NaN, dtype=dt_float
             )
-            self.shunt_bus = np.full(shape=self.n_shunt, fill_value=0, dtype=dt_int)
+            self.shunt_bus = np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
         else:
             self.shunt_p = None
             self.shunt_q = None
@@ -473,13 +485,22 @@ class BaseAction(GridObjects):
         self._single_act = True
 
         self._raise_alarm = np.full(
-            shape=self.dim_alarms, dtype=dt_bool, fill_value=False
-        )  # TODO
+            shape=cls.dim_alarms, dtype=dt_bool, fill_value=False
+        ) 
 
         self._raise_alert = np.full(
-            shape=self.dim_alerts, dtype=dt_bool, fill_value=False
-        )  # TODO
+            shape=cls.dim_alerts, dtype=dt_bool, fill_value=False
+        ) 
 
+        if cls.detachment_is_allowed:
+            self._detach_load = np.full(cls.n_load, dtype=dt_bool, fill_value=False)
+            self._detach_gen = np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
+            self._detach_storage = np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
+        else:
+            self._detach_load = None
+            self._detach_gen = None
+            self._detach_storage = None
+        
         # change the stuff
         self._modif_inj = False
         self._modif_set_bus = False
@@ -491,9 +512,12 @@ class BaseAction(GridObjects):
         self._modif_curtailment = False
         self._modif_alarm = False
         self._modif_alert = False
+        self._modif_detach_load = False
+        self._modif_detach_gen = False
+        self._modif_detach_storage = False
 
     @classmethod
-    def process_shunt_satic_data(cls):
+    def process_shunt_static_data(cls):
         if not cls.shunts_data_available:
             # this is really important, otherwise things from grid2op base types will be affected
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
@@ -505,9 +529,42 @@ class BaseAction(GridObjects):
                         cls.attr_list_vect.remove(el)
                     except ValueError:
                         pass
-            cls.attr_list_set = set(cls.attr_list_vect)
-        return super().process_shunt_satic_data()
+            cls._update_value_set()
+        return super().process_shunt_static_data()
     
+    @classmethod
+    def process_detachment(cls):
+        if not cls.detachment_is_allowed:
+            # this is really important, otherwise things from grid2op base types will be affected
+            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+            cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
+            # remove the detachment from the list to vector
+            for el in ["_detach_load", "_detach_gen", "_detach_storage"]:
+                if el in cls.attr_list_vect:
+                    try:
+                        cls.attr_list_vect.remove(el)
+                    except ValueError:
+                        pass
+            # remove the detachment from the allowed action
+            for el in ["detach_load", "detach_gen", "detach_storage"]:
+                if el in cls.authorized_keys:
+                    cls.authorized_keys.remove(el)
+            cls._update_value_set()
+        # else:
+        #     # I support detachment, I need to make sure this is registered
+        #     cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+        #     cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
+        #     # add the detachment from the list to vector
+        #     for el in ["_detach_load", "_detach_gen", "_detach_storage"]:
+        #         if el not in cls.attr_list_vect:
+        #             cls.attr_list_vect.append(el)
+        #     # add the detachment from the allowed action
+        #     for el in ["detach_load", "detach_gen", "detach_storage"]:
+        #         if el not in cls.authorized_keys:
+        #             cls.authorized_keys.add(el)
+        #     cls._update_value_set()
+        return super().process_detachment()
+        
     def copy(self) -> "BaseAction":
         # sometimes this method is used...
         return self.__deepcopy__()
@@ -530,6 +587,9 @@ class BaseAction(GridObjects):
             "_modif_curtailment",
             "_modif_alarm",
             "_modif_alert",
+            "_modif_detach_load",
+            "_modif_detach_gen",
+            "_modif_detach_storage",
             "_single_act",
         ]
 
@@ -547,9 +607,13 @@ class BaseAction(GridObjects):
             "_raise_alert",
         ]
 
-        if type(self).shunts_data_available:
+        cls = type(self)
+        if cls.shunts_data_available:
             attr_vect += ["shunt_p", "shunt_q", "shunt_bus"]
 
+        if cls.detachment_is_allowed:
+            attr_vect += ["_detach_load", "_detach_gen", "_detach_storage"]
+            
         for attr_nm in attr_simple:
             setattr(other, attr_nm, getattr(self, attr_nm))
 
@@ -571,10 +635,6 @@ class BaseAction(GridObjects):
         res._subs_impacted = self._subs_impacted
 
         return res
-
-    @classmethod
-    def process_shunt_satic_data(cls):
-        return super().process_shunt_satic_data()
     
     def __deepcopy__(self, memodict={}) -> "BaseAction":
         res = type(self)()
@@ -744,6 +804,18 @@ class BaseAction(GridObjects):
                 ]
             if not res["shunt"]:
                 del res["shunt"]
+                
+        if cls.detachment_is_allowed:
+            for el in cls.OBJ_SUPPORT_DETACH:
+                attr_key = f"detach_{el}"
+                attr_vect = f"_detach_{el}"
+                xxx_name = getattr(cls, f"name_{el}")
+                res[attr_key] = {}
+                vect_ = getattr(self, attr_vect)
+                if vect_.any():
+                    res[attr_key] = [str(xxx_name[el]) for el in vect_.nonzero()[0]]
+                if not res[attr_key]:
+                    del res[attr_key]
         return res
 
     @classmethod
@@ -838,6 +910,19 @@ class BaseAction(GridObjects):
         if glop_ver < version.parse("1.9.1"):
             # this feature did not exist before.
             cls.dim_alerts = 0
+            
+        if glop_ver < cls.MIN_VERSION_DETACH:
+            # this feature did not exist before.
+            cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
+            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+            
+            for el in cls.OBJ_SUPPORT_DETACH:
+                attr_key = f"detach_{el}"
+                attr_vect = f"_{attr_key}"
+                if attr_key in cls.authorized_keys:
+                    cls.authorized_keys.remove(attr_key)
+                if attr_vect in cls.attr_list_vect:
+                    cls.attr_list_vect.remove(attr_vect)
 
         if (cls.n_busbar_per_sub >= 3) or (cls.n_busbar_per_sub == 1):
             # only relevant for grid2op >= 1.10.0
@@ -846,7 +931,7 @@ class BaseAction(GridObjects):
             # if there are only one busbar, the "set_bus" action can still be used
             # to disconnect the element, this is why it's not removed
             cls._aux_process_n_busbar_per_sub()
-                
+         
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
         cls.attr_list_set = set(cls.attr_list_vect)
                 
@@ -861,6 +946,9 @@ class BaseAction(GridObjects):
         self._modif_curtailment = False
         self._modif_alarm = False
         self._modif_alert = False
+        self._modif_detach_load = False
+        self._modif_detach_gen = False
+        self._modif_detach_storage = False
 
     def can_affect_something(self) -> bool:
         """
@@ -881,28 +969,68 @@ class BaseAction(GridObjects):
             or self._modif_curtailment
             or self._modif_alarm
             or self._modif_alert
+            or self._modif_detach_load
+            or self._modif_detach_gen
+            or self._modif_detach_storage
         )
 
     def _get_array_from_attr_name(self, attr_name):
         if hasattr(self, attr_name):
             res = super()._get_array_from_attr_name(attr_name)
-        else:
-            if attr_name in self._dict_inj:
-                res = self._dict_inj[attr_name]
-            else:
-                if attr_name == "prod_p" or attr_name == "prod_v":
-                    res = np.full(self.n_gen, fill_value=0.0, dtype=dt_float)
-                elif attr_name == "load_p" or attr_name == "load_q":
-                    res = np.full(self.n_load, fill_value=0.0, dtype=dt_float)
-                else:
-                    raise Grid2OpException(
-                        'Impossible to find the attribute "{}" '
-                        'into the BaseAction of type "{}"'.format(attr_name, type(self))
-                    )
-        return res
+            return res
+        
+        if attr_name in self._dict_inj:
+            res = self._dict_inj[attr_name]
+            return res
+        
+        cls = type(self)
+        if attr_name == "prod_p" or attr_name == "prod_v":
+            res = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+            return res
+        if attr_name == "load_p" or attr_name == "load_q":
+            res = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+            return res
+        raise Grid2OpException(
+            'Impossible to find the attribute "{}" '
+            'into the BaseAction of type "{}"'.format(attr_name, cls)
+        )
 
+    def _set_array_from_attr_name(self, allowed_keys, key: str, array_) -> None:
+        """used for `from_json` please see `_assign_attr_from_name` for from_vect"""
+        if key in self._dict_inj:
+            if np.isfinite(array_).any(): 
+                # because it is used elsewhere, to / from json stores also injection even if it's all nan
+                # so i need to check in this case or if it's a real injection modification
+                self._dict_inj[key][:] = array_
+                self._post_process_from_vect()  # set the correct flags
+            return
+        
+        if key == "prod_p" or key == "prod_v" or key == "load_p" or key == "load_q":
+            if np.isfinite(array_).any():
+                # because it is used elsewhere, to / from json stores also injection even if it's all nan
+                # so i need to check in this case or if it's a real injection modification
+                self._dict_inj[key] = np.asarray(array_).astype(dt_float)
+                self._post_process_from_vect()  # set the correct flags
+            return
+        
+        if key in allowed_keys:
+            # regular stuff
+            super()._set_array_from_attr_name(allowed_keys, key, array_)
+            self._post_process_from_vect()  # set the correct flags
+            return
+        
+        raise Grid2OpException(
+            'Impossible to find the attribute "{}" '
+            'into the BaseAction of type "{}"'.format(key, type(self))
+        )
+            
     def _post_process_from_vect(self):
-        self._modif_inj = self._dict_inj != {}
+        modif_inj = False
+        if self._dict_inj != {}:
+            for k, v in self._dict_inj.items():
+                if np.isfinite(v).any():
+                    modif_inj = True
+        self._modif_inj = modif_inj 
         self._modif_set_bus = (self._set_topo_vect != 0).any()
         self._modif_change_bus = (self._change_bus_vect).any()
         self._modif_set_status = (self._set_line_status != 0).any()
@@ -914,8 +1042,13 @@ class BaseAction(GridObjects):
         self._modif_curtailment = (np.abs(self._curtail + 1.0) >= 1e-7).any()
         self._modif_alarm = self._raise_alarm.any()
         self._modif_alert = self._raise_alert.any()
+        if type(self).detachment_is_allowed:
+            self._modif_detach_load = (self._detach_load).any()
+            self._modif_detach_gen = (self._detach_gen).any()
+            self._modif_detach_storage = (self._detach_storage).any()
 
     def _assign_attr_from_name(self, attr_nm, vect):
+        """used for from_vect, for from_json please see `_set_array_from_attr_name`"""
         if hasattr(self, attr_nm):
             if attr_nm not in type(self).attr_list_set:
                 raise AmbiguousAction(
@@ -924,8 +1057,14 @@ class BaseAction(GridObjects):
             super()._assign_attr_from_name(attr_nm, vect)
             self._post_process_from_vect()
         else:
+            if attr_nm != "load_p" and attr_nm != "load_q" and attr_nm != "prod_p" and attr_nm != "prod_v":
+                raise AmbiguousAction(f"Unknown action attribute with name {attr_nm}")
             if np.isfinite(vect).any() and (np.abs(vect) >= 1e-7).any():
-                self._dict_inj[attr_nm] = vect
+                if attr_nm in self._dict_inj:
+                    self._dict_inj[attr_nm][:] = vect
+                else:
+                    self._dict_inj[attr_nm] = vect.astype(dt_float)
+                self._post_process_from_vect()
 
     def check_space_legit(self):
         """
@@ -987,8 +1126,131 @@ class BaseAction(GridObjects):
 
         """
         return np.full(shape=self.n_line, fill_value=False, dtype=dt_bool)
-
-    def __eq__(self, other) -> bool:
+    
+    def _aux_eq_detachment_aux_both_ok(self, other, el_nm: Literal["load", "gen", "storage"]) -> bool:
+        attr_chgt = f"_modif_detach_{el_nm}"
+        attr_vect = f"_detach_{el_nm}"
+        # what I want to do:
+        # if ((self._modif_detach_load != other._modif_detach_load) or
+        #     (self._detach_load != other._detach_load).any()
+        # ):
+        #     return False
+        # but for all attribute related to "detach" feature
+        
+        if ((getattr(self, attr_chgt) != getattr(other, attr_chgt)) or
+            (getattr(self, attr_vect) != getattr(other, attr_vect)).any()
+        ):
+            return False
+        return True
+    
+    def _aux_eq_detachment_aux_one_not_ok(self, obj_detach_unsupported, el_nm: Literal["load", "gen", "storage"]) -> bool:
+        # self supports detachment but not other
+        # they are equal if an only if self did not
+        # modify any loads with detachment
+        # if self._modif_detach_load:
+        #     return False
+        # if self._detach_load.any():
+        #     return False
+        attr_chgt = f"_modif_detach_{el_nm}"
+        attr_vect = f"_detach_{el_nm}"
+        if getattr(obj_detach_unsupported, attr_chgt):
+            return False
+        if getattr(obj_detach_unsupported, attr_vect):
+            return False
+        return True
+        
+    def _aux_eq_detachment(self,  other: "BaseAction") -> bool:
+        cls = type(self)
+        cls_oth = type(other)
+        if cls.detachment_is_allowed:
+            if cls_oth.detachment_is_allowed:
+                # easy case, both detachement allowed
+                for el in cls.OBJ_SUPPORT_DETACH:
+                    if not self._aux_eq_detachment_aux_both_ok(other, el):
+                        return False
+            else:
+                # self supports detachment but not other
+                # they are equal if an only if self did not
+                # modify any loads with detachment
+                for el in cls.OBJ_SUPPORT_DETACH:
+                    if not self._aux_eq_detachment_aux_one_not_ok(self, el):
+                        return False
+        else:
+            # detachment is not allowed on self
+            # check if it's allowed on other
+            if cls_oth.detachment_is_allowed:
+                # hard case, I don't support detachment, but
+                # oth does.
+                # they can be equal if oth does not modify this
+                # attribute
+                for el in cls.OBJ_SUPPORT_DETACH:
+                    if not self._aux_eq_detachment_aux_one_not_ok(other, el):
+                        return False
+            else:
+                # if None support detachment, they are both equal concerning the detachment
+                return True
+        return True
+    
+    def _aux_eq_shunts(self, other: "BaseAction") -> bool:
+        if type(self).shunts_data_available:
+            if self.n_shunt != other.n_shunt:
+                return False
+            is_ok_me = np.isfinite(self.shunt_p)
+            is_ok_ot = np.isfinite(other.shunt_p)
+            if (is_ok_me != is_ok_ot).any():
+                return False
+            if not (self.shunt_p[is_ok_me] == other.shunt_p[is_ok_ot]).all():
+                return False
+            is_ok_me = np.isfinite(self.shunt_q)
+            is_ok_ot = np.isfinite(other.shunt_q)
+            if (is_ok_me != is_ok_ot).any():
+                return False
+            if not (self.shunt_q[is_ok_me] == other.shunt_q[is_ok_ot]).all():
+                return False
+            if not (self.shunt_bus == other.shunt_bus).all():
+                return False
+        return True
+    
+    def _aux_eq_compare_vect(self, other, modif_flag_nm, vect_nm):
+        """Implement something similar to :
+        
+        ((self._modif_set_status != other._modif_set_status) or 
+          not np.all(self._set_line_status == other._set_line_status)
+        )
+        But for different flag (*eg* `_modif_set_status`) and vector (*eg* `_set_line_status`)
+        """
+        return ((getattr(self, modif_flag_nm) != getattr(other, modif_flag_nm)) or 
+                not np.array_equal(getattr(self, vect_nm), getattr(other, vect_nm))
+               )
+    
+    def _aux_eq_inj(self, other: "BaseAction"):
+        # mismatch in flags
+        same_action = self._modif_inj == other._modif_inj
+        if not same_action:
+            return False
+        
+        # all injections are the same
+        for el in other._dict_inj.keys():
+            if el not in self._dict_inj:
+                # other modify "el" but not "self"
+                return False
+        # all injections are the same
+        for el in self._dict_inj.keys():
+            if el not in other._dict_inj:
+                # "self" modify "el" but not "other"
+                return False
+        for el in self._dict_inj.keys():
+            me_inj = self._dict_inj[el]
+            other_inj = other._dict_inj[el]
+            tmp_me = np.isfinite(me_inj)
+            tmp_other = np.isfinite(other_inj)
+            if not np.all(tmp_me == tmp_other) or not np.all(
+                me_inj[tmp_me] == other_inj[tmp_other]
+            ):
+                return False
+        return True
+        
+    def __eq__(self, other: "BaseAction") -> bool:
         """
         Test the equality of two actions.
 
@@ -1022,44 +1284,24 @@ class BaseAction(GridObjects):
         """
         if other is None:
             return False
-
+        cls = type(self)
         # check that the underlying grid is the same in both instances
-        same_grid = type(self).same_grid_class(type(other))
+        same_grid = cls.same_grid_class(type(other))
         if not same_grid:
             return False
 
         # _grid is the same, now I test the the injections modifications are the same
-        same_action = self._modif_inj == other._modif_inj
-        same_action = same_action and self._dict_inj.keys() == other._dict_inj.keys()
-        if not same_action:
+        if not self._aux_eq_inj(other):
             return False
-
-        # all injections are the same
-        for el in self._dict_inj.keys():
-            me_inj = self._dict_inj[el]
-            other_inj = other._dict_inj[el]
-            tmp_me = np.isfinite(me_inj)
-            tmp_other = np.isfinite(other_inj)
-            if not np.all(tmp_me == tmp_other) or not np.all(
-                me_inj[tmp_me] == other_inj[tmp_other]
-            ):
-                return False
-
+        
         # same line status
-        if (self._modif_set_status != other._modif_set_status) or not np.all(
-            self._set_line_status == other._set_line_status
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_set_status", "_set_line_status"):
             return False
-
-        if (self._modif_change_status != other._modif_change_status) or not np.all(
-            self._switch_line_status == other._switch_line_status
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_change_status", "_switch_line_status"):
             return False
 
         # redispatching is same
-        if (self._modif_redispatch != other._modif_redispatch) or not np.all(
-            self._redispatch == other._redispatch
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_redispatch", "_redispatch"):
             return False
 
         # storage is same
@@ -1073,52 +1315,31 @@ class BaseAction(GridObjects):
             return False
 
         # curtailment
-        if (self._modif_curtailment != other._modif_curtailment) or not np.array_equal(
-            self._curtail, other._curtail
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_curtailment", "_curtail"):
             return False
 
         # alarm
-        if (self._modif_alarm != other._modif_alarm) or not np.array_equal(
-            self._raise_alarm, other._raise_alarm
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_alarm", "_raise_alarm"):
             return False
     
-        # alarm
-        if (self._modif_alert != other._modif_alert) or not np.array_equal(
-            self._raise_alert, other._raise_alert
-        ):
+        # alert
+        if self._aux_eq_compare_vect(other, "_modif_alert", "_raise_alert"):
             return False
 
         # same topology changes
-        if (self._modif_set_bus != other._modif_set_bus) or not np.all(
-            self._set_topo_vect == other._set_topo_vect
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_set_bus", "_set_topo_vect"):
             return False
-        if (self._modif_change_bus != other._modif_change_bus) or not np.all(
-            self._change_bus_vect == other._change_bus_vect
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_change_bus", "_change_bus_vect"):
             return False
-
+        
+        # handle detachment
+        if not self._aux_eq_detachment(other):
+            return False
+        
         # shunts are the same
-        if type(self).shunts_data_available:
-            if self.n_shunt != other.n_shunt:
-                return False
-            is_ok_me = np.isfinite(self.shunt_p)
-            is_ok_ot = np.isfinite(other.shunt_p)
-            if (is_ok_me != is_ok_ot).any():
-                return False
-            if not (self.shunt_p[is_ok_me] == other.shunt_p[is_ok_ot]).all():
-                return False
-            is_ok_me = np.isfinite(self.shunt_q)
-            is_ok_ot = np.isfinite(other.shunt_q)
-            if (is_ok_me != is_ok_ot).any():
-                return False
-            if not (self.shunt_q[is_ok_me] == other.shunt_q[is_ok_ot]).all():
-                return False
-            if not (self.shunt_bus == other.shunt_bus).all():
-                return False
-
+        if not self._aux_eq_shunts(other):
+            return False
+        
         return True
 
     def _dont_affect_topology(self) -> bool:
@@ -1127,13 +1348,21 @@ class BaseAction(GridObjects):
             and (not self._modif_change_bus)
             and (not self._modif_set_status)
             and (not self._modif_change_status)
+            and (not self._modif_detach_load)
+            and (not self._modif_detach_gen)
+            and (not self._modif_detach_storage)
         )
 
-    def get_topological_impact(self, powerline_status=None) -> Tuple[np.ndarray, np.ndarray]:
+    def get_topological_impact(self,
+                               powerline_status : Optional[np.ndarray]=None,
+                               _store_in_cache : bool =False,
+                               _read_from_cache : bool =True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Gives information about the element being impacted by this action.
+        
         **NB** The impacted elements can be used by :class:`grid2op.BaseRules` to determine whether or not an action
         is legal or not.
+        
         **NB** The impacted are the elements that can potentially be impacted by the action. This does not mean they
         will be impacted. For examples:
 
@@ -1153,6 +1382,41 @@ class BaseAction(GridObjects):
         Any such "change" that would be illegal is declared as "illegal" regardless of the real impact of this action
         on the powergrid.
 
+        Parameters
+        -----------
+        powerline_status: Optional[np.ndarray]
+            The impact of a powerline can change depending on the status (connected or disconnected) of 
+            the powerlines of the grid (see section :ref:`action_powerline_status` of the documentation).
+            This argument gives this information to this function. It should be read from the current observation.
+            
+        _store_in_cache: ``bool``
+            Whether to store the result of this processing in a cache. This is for example used by the 
+            :class:`grid2op.Environment.Environment` especially in the :func:`grid2op.Environment.BaseEnv.step`
+            to avoid to compute this result over and over again.
+            
+            By default its ``False`` and we don't recommend to set it to ``True``. Indeed, if set to ``True`` 
+            then the argument `powerline_status` might be ignored in future calls where `_read_from_cache` is
+            ``True``
+            
+            .. newinversion:: 1.11.0
+            
+            .. warning:: 
+                Use with extra care, it's private API.
+        
+        _read_from_cache: ``bool``
+            Whether to read from the cache.
+            
+            If the cache has been set by a previous calls to this same function
+            by explicitly setting `_store_in_cache = True` it will skip all the computation and returns the
+            values stored in the cache, *de facto* ignoring the argument `powerline_status`.
+            
+            If the cache has not been set up then this has no effect (which is the default behaviour).
+            
+            By default it's ``True``, but by default no cache is not set up. This means that by default
+            the argument `powerline_status` is in fact used. 
+            
+            .. newinversion:: 1.11.0
+            
         Returns
         -------
         lines_impacted: :class:`numpy.ndarray`, dtype:dt_bool
@@ -1176,35 +1440,49 @@ class BaseAction(GridObjects):
             env_name = "l2rpn_case14_sandbox"  # or any other name
             env = grid2op.make(env_name)
 
+            obs = env.reset()
             # get an action
             action = env.action_space.sample()
             # inspect its impact
-            lines_impacted, subs_impacted = action.get_topological_impact()
+            lines_impacted, subs_impacted = action.get_topological_impact(obs.line_status)
 
             for line_id in np.where(lines_impacted)[0]:
                 print(f"The line {env.name_line[line_id]} with id {line_id} is impacted by this action")
 
             print(action)
+            
         """
+        if (_read_from_cache and 
+            self._lines_impacted is not None and
+            self._subs_impacted is not None):
+            # cache is set and I ask to read it
+            # no need to recompute this
+            return True & self._lines_impacted, True & self._subs_impacted
+        
+        cls = type(self)
         if self._dont_affect_topology():
             # action is not impacting the topology
             # so it does not modified anything concerning the topology
-            self._lines_impacted = np.full(
-                shape=self.n_line, fill_value=False, dtype=dt_bool
+            _lines_impacted = np.full(
+                shape=cls.n_line, fill_value=False, dtype=dt_bool
             )
-            self._subs_impacted = np.full(
-                shape=self.sub_info.shape, fill_value=False, dtype=dt_bool
+            _subs_impacted = np.full(
+                shape=cls.n_sub, fill_value=False, dtype=dt_bool
             )
-            return self._lines_impacted, self._subs_impacted
+            if _store_in_cache:
+                # store the result in cache is asked too
+                self._lines_impacted = _lines_impacted
+                self._subs_impacted = _subs_impacted
+            return _lines_impacted, _subs_impacted
 
         if powerline_status is None:
-            isnotconnected = np.full(self.n_line, fill_value=True, dtype=dt_bool)
+            isnotconnected = np.full(cls.n_line, fill_value=True, dtype=dt_bool)
         else:
             isnotconnected = ~powerline_status
 
-        self._lines_impacted = self._switch_line_status | (self._set_line_status != 0)
-        self._subs_impacted = np.full(
-            shape=self.sub_info.shape, fill_value=False, dtype=dt_bool
+        _lines_impacted = self._switch_line_status | (self._set_line_status != 0)
+        _subs_impacted = np.full(
+            shape=cls.n_sub, fill_value=False, dtype=dt_bool
         )
 
         # compute the changes of the topo vector
@@ -1212,10 +1490,10 @@ class BaseAction(GridObjects):
 
         # remove the change due to powerline only
         effective_change[
-            self.line_or_pos_topo_vect[self._lines_impacted & isnotconnected]
+            self.line_or_pos_topo_vect[_lines_impacted & isnotconnected]
         ] = False
         effective_change[
-            self.line_ex_pos_topo_vect[self._lines_impacted & isnotconnected]
+            self.line_ex_pos_topo_vect[_lines_impacted & isnotconnected]
         ] = False
         
         # i can change also the status of a powerline by acting on its extremity
@@ -1224,36 +1502,56 @@ class BaseAction(GridObjects):
             # if we don't know the state of the grid, we don't consider
             # these "improvments": we consider a powerline is never
             # affected if its bus is modified at any of its ends.
-            connect_set_or = (self._set_topo_vect[self.line_or_pos_topo_vect] > 0) & (
+            connect_set_or = (self._set_topo_vect[cls.line_or_pos_topo_vect] > 0) & (
                 isnotconnected
             )
-            self._lines_impacted |= connect_set_or
-            effective_change[self.line_or_pos_topo_vect[connect_set_or]] = False
-            effective_change[self.line_ex_pos_topo_vect[connect_set_or]] = False
-            connect_set_ex = (self._set_topo_vect[self.line_ex_pos_topo_vect] > 0) & (
+            _lines_impacted |= connect_set_or
+            effective_change[cls.line_or_pos_topo_vect[connect_set_or]] = False
+            effective_change[cls.line_ex_pos_topo_vect[connect_set_or]] = False
+            connect_set_ex = (self._set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & (
                 isnotconnected
             )
-            self._lines_impacted |= connect_set_ex
-            effective_change[self.line_or_pos_topo_vect[connect_set_ex]] = False
-            effective_change[self.line_ex_pos_topo_vect[connect_set_ex]] = False
+            _lines_impacted |= connect_set_ex
+            effective_change[cls.line_or_pos_topo_vect[connect_set_ex]] = False
+            effective_change[cls.line_ex_pos_topo_vect[connect_set_ex]] = False
             
             # second sub case i disconnected the powerline by setting origin or extremity to negative stuff
-            disco_set_or = (self._set_topo_vect[self.line_or_pos_topo_vect] < 0) & (
+            disco_set_or = (self._set_topo_vect[cls.line_or_pos_topo_vect] < 0) & (
                 powerline_status
             )
-            self._lines_impacted |= disco_set_or
-            effective_change[self.line_or_pos_topo_vect[disco_set_or]] = False
-            effective_change[self.line_ex_pos_topo_vect[disco_set_or]] = False
-            disco_set_ex = (self._set_topo_vect[self.line_ex_pos_topo_vect] < 0) & (
+            _lines_impacted |= disco_set_or
+            effective_change[cls.line_or_pos_topo_vect[disco_set_or]] = False
+            effective_change[cls.line_ex_pos_topo_vect[disco_set_or]] = False
+            disco_set_ex = (self._set_topo_vect[cls.line_ex_pos_topo_vect] < 0) & (
                 powerline_status
             )
-            self._lines_impacted |= disco_set_ex
-            effective_change[self.line_or_pos_topo_vect[disco_set_ex]] = False
-            effective_change[self.line_ex_pos_topo_vect[disco_set_ex]] = False
+            _lines_impacted |= disco_set_ex
+            effective_change[cls.line_or_pos_topo_vect[disco_set_ex]] = False
+            effective_change[cls.line_ex_pos_topo_vect[disco_set_ex]] = False
         
-        self._subs_impacted[self._topo_vect_to_sub[effective_change]] = True
-        return self._lines_impacted, self._subs_impacted
+        _subs_impacted[cls._topo_vect_to_sub[effective_change]] = True
+        
+        if cls.detachment_is_allowed:
+            # added for detachment: it can also affect substations
+            _subs_impacted[cls.load_to_subid[self._detach_load]] = True
+            _subs_impacted[cls.gen_to_subid[self._detach_gen]] = True
+            _subs_impacted[cls.storage_to_subid[self._detach_storage]] = True
+            
+        if _store_in_cache:
+            # store the results in cache if asked too
+            self._lines_impacted = _lines_impacted
+            self._subs_impacted = _subs_impacted
+        return _lines_impacted, _subs_impacted
 
+    def reset_cache_topological_impact(self) -> None:
+        """INTERNAL 
+        
+        .. versionadded:: 1.11.0
+        
+        """
+        self._lines_impacted = None
+        self._subs_impacted = None
+        
     def remove_line_status_from_topo(self,
                                      obs: "grid2op.Observation.BaseObservation" = None,
                                      check_cooldown: bool = True):
@@ -1598,6 +1896,9 @@ class BaseAction(GridObjects):
         self._modif_curtailment = self._modif_curtailment or other._modif_curtailment
         self._modif_alarm = self._modif_alarm or other._modif_alarm
         self._modif_alert = self._modif_alert or other._modif_alert
+        self._modif_detach_load = self._modif_detach_load or other._modif_detach_load
+        self._modif_detach_gen = self._modif_detach_gen or other._modif_detach_gen
+        self._modif_detach_storage = self._modif_detach_storage or other._modif_detach_storage
         
     def _aux_iadd_shunt(self, other):
         if not type(other).shunts_data_available:
@@ -1946,10 +2247,10 @@ class BaseAction(GridObjects):
 
     def _digest_setbus(self, dict_):
         if "set_bus" in dict_:
-            self._modif_set_bus = True
             if dict_["set_bus"] is None:
                 # no real action has been made
                 return
+            self._modif_set_bus = True
             
             if isinstance(dict_["set_bus"], dict):
                 ddict_ = dict_["set_bus"]
@@ -1989,10 +2290,10 @@ class BaseAction(GridObjects):
 
     def _digest_change_bus(self, dict_):
         if "change_bus" in dict_:
-            self._modif_change_bus = True
             if dict_["change_bus"] is None:
                 # no real action has been made
                 return
+            self._modif_change_bus = True
 
             if isinstance(dict_["change_bus"], dict):
                 ddict_ = dict_["change_bus"]
@@ -2107,6 +2408,12 @@ class BaseAction(GridObjects):
             if dict_["change_line_status"] is not None:
                 self.line_change_status = dict_["change_line_status"]
 
+    def _digest_detach_eltype(self, el : Literal["load", "gen", "storage"], dict_):
+        attr_key = f'detach_{el}'
+        if attr_key in dict_ and dict_[attr_key] is not None:
+                setattr(self, attr_key, dict_[attr_key])
+                # eg self.detach_load = dict_["detach_load"]
+
     def _digest_redispatching(self, dict_):
         if "redispatch" in dict_:
             self.redispatch = dict_["redispatch"]
@@ -2163,6 +2470,34 @@ class BaseAction(GridObjects):
         self._vectorized = None
         self._subs_impacted = None
         self._lines_impacted = None
+        
+    @staticmethod
+    def _check_keys_exist(action_cls:GridObjects, act_dict):
+        """
+        Checks whether an action has the same keys in its
+        action space as are present in the provided dictionary.
+        
+        Args:
+            action_cls (GridObjects): A Grid2Op action
+            act_dict (str:Any): Dictionary representation of an action
+        """
+        for kk in act_dict.keys():
+            if kk not in action_cls.authorized_keys:
+                if kk == "shunt" and not action_cls.shunts_data_available:
+                    # no warnings are raised in this case because if a warning
+                    # were raised it could crash some environment
+                    # with shunt in "init_state.json" with a backend that does not
+                    # handle shunt
+                    continue
+                if kk == "set_storage" and action_cls.n_storage == 0:
+                    # no warnings are raised in this case because if a warning
+                    # were raised it could crash some environment
+                    # with storage in "init_state.json" but if the backend did not
+                    # handle storage units
+                    continue
+                warnings.warn(
+                    f"The key '{kk}' used to update an action will be ignored. Valid keys are {action_cls.authorized_keys}"
+                )
 
     def update(self,
                dict_: DICT_ACT_TYPING
@@ -2257,6 +2592,9 @@ class BaseAction(GridObjects):
             - "curtail" : TODO
             - "raise_alarm" : TODO
             - "raise_alert": TODO
+            - "detach_load": TODO
+            - "detach_gen": TODO
+            - "detach_storage": TODO
             - "shunt": TODO
 
             **NB**: CHANGES: you can reconnect a powerline without specifying on each bus you reconnect it at both its
@@ -2374,23 +2712,7 @@ class BaseAction(GridObjects):
         cls = type(self)
         
         if dict_ is not None:
-            for kk in dict_.keys():
-                if kk not in cls.authorized_keys:
-                    if kk == "shunt" and not cls.shunts_data_available:
-                        # no warnings are raised in this case because if a warning
-                        # were raised it could crash some environment
-                        # with shunt in "init_state.json" with a backend that does not
-                        # handle shunt
-                        continue
-                    if kk == "set_storage" and cls.n_storage == 0:
-                        # no warnings are raised in this case because if a warning
-                        # were raised it could crash some environment
-                        # with storage in "init_state.json" but if the backend did not
-                        # handle storage units
-                        continue
-                    warn = 'The key "{}" used to update an action will be ignored. Valid keys are {}'
-                    warn = warn.format(kk, cls.authorized_keys)
-                    warnings.warn(warn)
+            BaseAction._check_keys_exist(cls, dict_)
 
             if cls.shunts_data_available:
                 # do not digest shunt when backend does not support it
@@ -2410,7 +2732,9 @@ class BaseAction(GridObjects):
             self._digest_change_status(dict_)
             self._digest_alarm(dict_)
             self._digest_alert(dict_)
-
+            if cls.detachment_is_allowed:
+                for el in cls.OBJ_SUPPORT_DETACH:
+                    self._digest_detach_eltype(el, dict_)
         return self
 
     def is_ambiguous(self) -> Tuple[bool, AmbiguousAction]:
@@ -2436,13 +2760,14 @@ class BaseAction(GridObjects):
         return res, info
 
     def _check_for_correct_modif_flags(self):
+        cls = type(self)
         if self._dict_inj:
             if not self._modif_inj:
                 raise AmbiguousAction(
                     "A action on the injection is performed while the appropriate flag is not "
                     "set. Please use the official grid2op action API to modify the injections."
                 )
-            if "injection" not in self.authorized_keys:
+            if "injection" not in cls.authorized_keys:
                 raise IllegalAction("You illegally act on the injection")
         if self._change_bus_vect.any():
             if not self._modif_change_bus:
@@ -2451,7 +2776,7 @@ class BaseAction(GridObjects):
                     "set. Please use the official grid2op action API to modify the bus using "
                     "'change'."
                 )
-            if "change_bus" not in self.authorized_keys:
+            if "change_bus" not in cls.authorized_keys:
                 raise IllegalAction("You illegally act on the bus (using change)")
         if (self._set_topo_vect != 0).any():
             if not self._modif_set_bus:
@@ -2460,7 +2785,7 @@ class BaseAction(GridObjects):
                     "set. Please use the official grid2op action API to modify the bus using "
                     "'set'."
                 )
-            if "set_bus" not in self.authorized_keys:
+            if "set_bus" not in cls.authorized_keys:
                 raise IllegalAction("You illegally act on the bus (using set)")
 
         if (self._set_line_status != 0).any():
@@ -2471,7 +2796,7 @@ class BaseAction(GridObjects):
                     "powerline using "
                     "'set'."
                 )
-            if "set_line_status" not in self.authorized_keys:
+            if "set_line_status" not in cls.authorized_keys:
                 raise IllegalAction(
                     "You illegally act on the powerline status (using set)"
                 )
@@ -2484,7 +2809,7 @@ class BaseAction(GridObjects):
                     "set. Please use the official grid2op action API to modify the status of "
                     "powerlines using 'change'."
                 )
-            if "change_line_status" not in self.authorized_keys:
+            if "change_line_status" not in cls.authorized_keys:
                 raise IllegalAction(
                     "You illegally act on the powerline status (using change)"
                 )
@@ -2497,7 +2822,7 @@ class BaseAction(GridObjects):
                     "set. Please use the official grid2op action API to perform redispatching "
                     "action."
                 )
-            if "redispatch" not in self.authorized_keys:
+            if "redispatch" not in cls.authorized_keys:
                 raise IllegalAction("You illegally act on the redispatching")
 
         if (np.abs(self._storage_power) >= 1e-7).any():
@@ -2508,7 +2833,7 @@ class BaseAction(GridObjects):
                     "set. Please use the official grid2op action API to perform "
                     "action on storage unit."
                 )
-            if "set_storage" not in self.authorized_keys:
+            if "set_storage" not in cls.authorized_keys:
                 raise IllegalAction("You illegally act on the storage unit")
 
         if (np.abs(self._curtail + 1.0) >= 1e-7).any():
@@ -2517,7 +2842,7 @@ class BaseAction(GridObjects):
                     "A curtailment is performed while the action is not supposed to have done so. "
                     "Please use the official grid2op action API to perform curtailment action."
                 )
-            if "curtail" not in self.authorized_keys:
+            if "curtail" not in cls.authorized_keys:
                 raise IllegalAction("You illegally act on the curtailment")
 
         if (self._raise_alarm).any():
@@ -2526,7 +2851,7 @@ class BaseAction(GridObjects):
                     "Incorrect way to raise some alarm, the appropriate flag is not "
                     "modified properly."
                 )
-            if "raise_alarm" not in self.authorized_keys:
+            if "raise_alarm" not in cls.authorized_keys:
                 raise IllegalAction("You illegally send an alarm.")
 
         if (self._raise_alert).any():
@@ -2535,9 +2860,23 @@ class BaseAction(GridObjects):
                     "Incorrect way to raise some alert, the appropriate flag is not "
                     "modified properly."
                 )
-            if "raise_alert" not in self.authorized_keys:
+            if "raise_alert" not in cls.authorized_keys:
                 raise IllegalAction("You illegally send an alert.")
-
+        
+        if cls.detachment_is_allowed:
+            for el in cls.OBJ_SUPPORT_DETACH:
+                attr_auth = f"detach_{el}"
+                attr_modif = f"_modif_detach_{el}"
+                attr_vect = f"_detach_{el}"
+                if (getattr(self, attr_vect)).any():
+                    if not getattr(self, attr_modif):
+                        raise AmbiguousAction(
+                            f"Incorrect way to detach some {el}, the appropriate flag is not "
+                            f"modified properly."
+                        )
+                    if attr_auth not in self.authorized_keys:
+                        raise IllegalAction(f"You illegally detached a {el}.")
+        
     def _check_for_ambiguity(self):
         """
         This method checks if an action is ambiguous or not. If the instance is ambiguous, an
@@ -2731,22 +3070,6 @@ class BaseAction(GridObjects):
                 "request on github if you need this feature."
             )
 
-        if False:
-            # TODO find an elegant way to disable that
-            # now it's possible.
-            for q_id, status in enumerate(self._set_line_status):
-                if status == 1:
-                    # i reconnect a powerline, i need to check that it's connected on both ends
-                    if (
-                        self._set_topo_vect[self.line_or_pos_topo_vect[q_id]] == 0
-                        or self._set_topo_vect[self.line_ex_pos_topo_vect[q_id]] == 0
-                    ):
-
-                        raise InvalidLineStatus(
-                            "You ask to reconnect powerline {} yet didn't tell on"
-                            " which bus.".format(q_id)
-                        )
-
         if self._modif_set_bus:
             disco_or = self._set_topo_vect[cls.line_or_pos_topo_vect] == -1
             if (self._set_topo_vect[cls.line_ex_pos_topo_vect][disco_or] > 0).any():
@@ -2884,6 +3207,55 @@ class BaseAction(GridObjects):
                     "as doing so. Expect wrong behaviour."
                 )
 
+        self._is_detachment_ambiguous()
+    
+    def _is_detachment_ambiguous(self):
+        """check if any of the detachment action is ambiguous"""
+        cls = type(self)
+        if not cls.detachment_is_allowed:
+            # detachment is not allowed
+            if self._modif_detach_gen:
+                raise IllegalAction("Generators cannot be detached with this environment")
+            if self._modif_detach_load:
+                raise IllegalAction("Loads cannot be detached with this environment")
+            if self._modif_detach_storage:
+                raise IllegalAction("Storage units cannot be detached with this environment")
+            if self._detach_gen is not None:
+                raise IllegalAction("Generators cannot be detached with this environment")
+            if self._detach_load is not None:
+                raise IllegalAction("Loads cannot be detached with this environment")
+            if self._detach_storage is not None:
+                raise IllegalAction("Storage units cannot be detached with this environment")
+            return
+        
+        # here detachment is allowed, I check consistency between everything
+        if (not self._modif_detach_gen) and self._detach_gen.any():
+            raise AmbiguousAction("Invalid flag for gen detachment, please use standard grid2op API for action.")
+        if (not self._modif_detach_load) and self._detach_load.any():
+            raise AmbiguousAction("Invalid flag for load detachment, please use standard grid2op API for action.")
+        if (not self._modif_detach_storage) and self._detach_storage.any():
+            raise AmbiguousAction("Invalid flag for load detachment, please use standard grid2op API for action.")
+        if self._modif_detach_load and "detach_load" not in cls.authorized_keys:
+            raise IllegalAction("It's forbidden to do a load detachment with this action type")
+        if self._modif_detach_gen and "detach_gen" not in cls.authorized_keys:
+            raise IllegalAction("It's forbidden to do a generator detachment with this action type")
+        if self._modif_detach_storage and "detach_storage" not in cls.authorized_keys:
+            raise IllegalAction("It's forbidden to do a storage detachment with this action type")
+        for el_nm in cls.OBJ_SUPPORT_DETACH:
+            _modif_detach_xxx = getattr(self, f"_modif_detach_{el_nm}")
+            xxx_pos_topo_vect = getattr(cls, f"{el_nm}_pos_topo_vect")
+            _detach_xxx = getattr(self, f"_detach_{el_nm}")
+            name_xxx = getattr(cls, f"name_{el_nm}")
+            if _modif_detach_xxx:
+                issue_xxx = self._change_bus_vect[xxx_pos_topo_vect] & _detach_xxx
+                if (issue_xxx).any():
+                    raise AmbiguousAction(f"Trying to both change a {el_nm} of busbar (change_bus) AND detach it from the grid. "
+                                         f"Check {el_nm}: {name_xxx[issue_xxx]}")
+                issue_xxx = (self._set_topo_vect[xxx_pos_topo_vect] >= 1) & _detach_xxx
+                if (issue_xxx).any():
+                    raise AmbiguousAction(f"Trying to both set a {el_nm} of busbar (set_bus) AND detach it from the grid. "
+                                         f"Check {el_nm}: {name_xxx[issue_xxx]}")
+                    
     def _is_storage_ambiguous(self):
         """check if storage actions are ambiguous"""
         cls = type(self)
@@ -4902,14 +5274,19 @@ class BaseAction(GridObjects):
 
     @change_bus.setter
     def change_bus(self, values):
+        cls = type(self)
+        if "change_bus" not in cls.authorized_keys:
+            raise IllegalAction(
+                'Impossible to modify an element with "change_bus" with this action type.'
+            )
         orig_ = self.change_bus
         try:
             self._aux_affect_object_bool(
                 values,
                 "",
-                self.dim_topo,
+                cls.dim_topo,
                 None,
-                np.arange(self.dim_topo),
+                np.arange(cls.dim_topo),
                 self._change_bus_vect,
             )
             self._modif_change_bus = True
@@ -4917,16 +5294,16 @@ class BaseAction(GridObjects):
             self._aux_affect_object_bool(
                 orig_,
                 "",
-                self.dim_topo,
+                cls.dim_topo,
                 None,
-                np.arange(self.dim_topo),
+                np.arange(cls.dim_topo),
                 self._change_bus_vect,
             )
             raise IllegalAction(
                 f"Impossible to modify the bus with your input. "
                 f"Please consult the documentation. "
-                f'The error was:\n"{exc_}"'
-            )
+                f'The error was:\n"{exc_}"' 
+            ) from exc_
 
     @property
     def load_change_bus(self) -> np.ndarray:
@@ -4941,7 +5318,8 @@ class BaseAction(GridObjects):
 
     @load_change_bus.setter
     def load_change_bus(self, values):
-        if "change_bus" not in self.authorized_keys:
+        cls = type(self)
+        if "change_bus" not in cls.authorized_keys:
             raise IllegalAction(
                 'Impossible to modify the load bus (with "change") with this action type.'
             )
@@ -4950,19 +5328,19 @@ class BaseAction(GridObjects):
             self._aux_affect_object_bool(
                 values,
                 "load",
-                self.n_load,
-                self.name_load,
-                self.load_pos_topo_vect,
+                cls.n_load,
+                cls.name_load,
+                cls.load_pos_topo_vect,
                 self._change_bus_vect,
                 _nm_ch_bk_key="loads",
             )
             self._modif_change_bus = True
         except Exception as exc_:
-            self._change_bus_vect[self.load_pos_topo_vect] = orig_
+            self._change_bus_vect[cls.load_pos_topo_vect] = orig_
             raise IllegalAction(
                 f"Impossible to modify the load bus with your input. Please consult the documentation. "
                 f'The error was "{exc_}"'
-            )
+            ) from exc_
 
     @property
     def gen_change_bus(self) -> np.ndarray:
@@ -4976,7 +5354,7 @@ class BaseAction(GridObjects):
             each generator units with the convention :
 
             * ``False`` this generator is not affected by any "change" action
-            * ``True`` this generator bus is not affected by any "change" action. If it was
+            * ``True`` this generator bus is affected by a "change" action. If it was
               on bus 1, it will be moved to bus 2, if it was on bus 2 it will be moved to bus 1 (
               and if it was disconnected it will stay disconnected)
 
@@ -5064,7 +5442,8 @@ class BaseAction(GridObjects):
 
     @gen_change_bus.setter
     def gen_change_bus(self, values):
-        if "change_bus" not in self.authorized_keys:
+        cls = type(self)
+        if "change_bus" not in cls.authorized_keys:
             raise IllegalAction(
                 'Impossible to modify the gen bus (with "change") with this action type.'
             )
@@ -5073,19 +5452,19 @@ class BaseAction(GridObjects):
             self._aux_affect_object_bool(
                 values,
                 "gen",
-                self.n_gen,
-                self.name_gen,
-                self.gen_pos_topo_vect,
+                cls.n_gen,
+                cls.name_gen,
+                cls.gen_pos_topo_vect,
                 self._change_bus_vect,
                 _nm_ch_bk_key="prods",
             )
             self._modif_change_bus = True
         except Exception as exc_:
-            self._change_bus_vect[self.gen_pos_topo_vect] = orig_
+            self._change_bus_vect[cls.gen_pos_topo_vect] = orig_
             raise IllegalAction(
                 f"Impossible to modify the gen bus with your input. Please consult the documentation. "
                 f'The error was:\n"{exc_}"'
-            )
+            ) from exc_
 
     @property
     def storage_change_bus(self) -> np.ndarray:
@@ -5100,11 +5479,12 @@ class BaseAction(GridObjects):
 
     @storage_change_bus.setter
     def storage_change_bus(self, values):
-        if "change_bus" not in self.authorized_keys:
+        cls = type(self)
+        if "change_bus" not in cls.authorized_keys:
             raise IllegalAction(
                 'Impossible to modify the storage bus (with "change") with this action type.'
             )
-        if "set_storage" not in self.authorized_keys:
+        if "set_storage" not in cls.authorized_keys:
             raise IllegalAction(
                 "Impossible to modify the storage units with this action type."
             )
@@ -5113,19 +5493,19 @@ class BaseAction(GridObjects):
             self._aux_affect_object_bool(
                 values,
                 "storage",
-                self.n_storage,
-                self.name_storage,
-                self.storage_pos_topo_vect,
+                cls.n_storage,
+                cls.name_storage,
+                cls.storage_pos_topo_vect,
                 self._change_bus_vect,
             )
             self._modif_change_bus = True
         except Exception as exc_:
-            self._change_bus_vect[self.storage_pos_topo_vect] = orig_
+            self._change_bus_vect[cls.storage_pos_topo_vect] = orig_
             raise IllegalAction(
                 f"Impossible to modify the storage bus with your input. "
                 f"Please consult the documentation. "
                 f'The error was:\n"{exc_}"'
-            )
+            ) from exc_
 
     @property
     def line_or_change_bus(self) -> np.ndarray:
@@ -5140,7 +5520,8 @@ class BaseAction(GridObjects):
 
     @line_or_change_bus.setter
     def line_or_change_bus(self, values):
-        if "change_bus" not in self.authorized_keys:
+        cls = type(self)
+        if "change_bus" not in cls.authorized_keys:
             raise IllegalAction(
                 'Impossible to modify the line (origin) bus (with "change") with this action type.'
             )
@@ -5149,20 +5530,20 @@ class BaseAction(GridObjects):
             self._aux_affect_object_bool(
                 values,
                 self._line_or_str,
-                self.n_line,
-                self.name_line,
-                self.line_or_pos_topo_vect,
+                cls.n_line,
+                cls.name_line,
+                cls.line_or_pos_topo_vect,
                 self._change_bus_vect,
                 _nm_ch_bk_key="lines",
             )
             self._modif_change_bus = True
         except Exception as exc_:
-            self._change_bus_vect[self.line_or_pos_topo_vect] = orig_
+            self._change_bus_vect[cls.line_or_pos_topo_vect] = orig_
             raise IllegalAction(
                 f"Impossible to modify the line origin bus with your input. "
                 f"Please consult the documentation. "
                 f'The error was:\n"{exc_}"'
-            )
+            ) from exc_
 
     @property
     def line_ex_change_bus(self) -> np.ndarray:
@@ -5177,7 +5558,8 @@ class BaseAction(GridObjects):
 
     @line_ex_change_bus.setter
     def line_ex_change_bus(self, values):
-        if "change_bus" not in self.authorized_keys:
+        cls = type(self)
+        if "change_bus" not in cls.authorized_keys:
             raise IllegalAction(
                 'Impossible to modify the line (ex) bus (with "change") with this action type.'
             )
@@ -5186,20 +5568,20 @@ class BaseAction(GridObjects):
             self._aux_affect_object_bool(
                 values,
                 self._line_ex_str,
-                self.n_line,
-                self.name_line,
-                self.line_ex_pos_topo_vect,
+                cls.n_line,
+                cls.name_line,
+                cls.line_ex_pos_topo_vect,
                 self._change_bus_vect,
                 _nm_ch_bk_key="lines",
             )
             self._modif_change_bus = True
         except Exception as exc_:
-            self._change_bus_vect[self.line_ex_pos_topo_vect] = orig_
+            self._change_bus_vect[cls.line_ex_pos_topo_vect] = orig_
             raise IllegalAction(
                 f"Impossible to modify the line extrmity bus with your input. "
                 f"Please consult the documentation. "
                 f'The error was:\n"{exc_}"'
-            )
+            ) from exc_
 
     @property
     def line_change_status(self) -> np.ndarray:
@@ -5219,7 +5601,8 @@ class BaseAction(GridObjects):
 
     @line_change_status.setter
     def line_change_status(self, values):
-        if "change_line_status" not in self.authorized_keys:
+        cls = type(self)
+        if "change_line_status" not in cls.authorized_keys:
             raise IllegalAction(
                 'Impossible to modify the status of powerlines (with "change") with this action type.'
             )
@@ -5228,9 +5611,9 @@ class BaseAction(GridObjects):
             self._aux_affect_object_bool(
                 values,
                 "line status",
-                self.n_line,
-                self.name_line,
-                np.arange(self.n_line),
+                cls.n_line,
+                cls.name_line,
+                np.arange(cls.n_line),
                 self._switch_line_status,
                 _nm_ch_bk_key="lines",
             )
@@ -5241,7 +5624,7 @@ class BaseAction(GridObjects):
                 f"Impossible to modify the line status with your input. "
                 f"Please consult the documentation. "
                 f'The error was:\n"{exc_}"'
-            )
+            ) from exc_
 
     @property
     def raise_alarm(self) -> np.ndarray:
@@ -5284,16 +5667,17 @@ class BaseAction(GridObjects):
         .. warning::
             /!\\\\ Only valid with "l2rpn_icaps_2021" environment /!\\\\
         """
-        if "raise_alarm" not in self.authorized_keys:
+        cls = type(self)
+        if "raise_alarm" not in cls.authorized_keys:
             raise IllegalAction("Impossible to send alarms with this action type.")
         orig_ = copy.deepcopy(self._raise_alarm)
         try:
             self._aux_affect_object_bool(
                 values,
                 "raise alarm",
-                self.dim_alarms,
-                self.alarms_area_names,
-                np.arange(self.dim_alarms),
+                cls.dim_alarms,
+                cls.alarms_area_names,
+                np.arange(cls.dim_alarms),
                 self._raise_alarm,
             )
             self._modif_alarm = True
@@ -5303,7 +5687,7 @@ class BaseAction(GridObjects):
                 f"Impossible to modify the alarm with your input. "
                 f"Please consult the documentation. "
                 f'The error was:\n"{exc_}"'
-            )
+            ) from exc_
 
     @property
     def raise_alert(self) -> np.ndarray:
@@ -5332,16 +5716,17 @@ class BaseAction(GridObjects):
 
     @raise_alert.setter
     def raise_alert(self, values):
-        if "raise_alert" not in self.authorized_keys:
+        cls = type(self)
+        if "raise_alert" not in cls.authorized_keys:
             raise IllegalAction("Impossible to send alerts with this action type.")
         orig_ = copy.deepcopy(self._raise_alert)
         try:
             self._aux_affect_object_bool(
                 values,
                 "raise alert",
-                self.dim_alerts,
-                self.alertable_line_names,
-                np.arange(self.dim_alerts),
+                cls.dim_alerts,
+                cls.alertable_line_names,
+                np.arange(cls.dim_alerts),
                 self._raise_alert,
             )
             self._modif_alert = True
@@ -5351,7 +5736,243 @@ class BaseAction(GridObjects):
                 f"Impossible to modify the alert with your input. "
                 f"Please consult the documentation. "
                 f'The error was:\n"{exc_}"'
+            ) from exc_
+            
+    @property
+    def detach_load(self) -> np.ndarray:
+        """
+        
+        ..versionadded:: 1.11.0
+        
+        Allows to retrieve (and affect) the status (connected / disconnected) of loads.
+        
+        .. note::
+            It is only available after grid2op version 1.11.0 and if the backend
+            allows it.
+
+        Returns
+        -------
+        res:
+            A vector of bool, of size `act.n_load` indicating whether this load
+            is detached or not. 
+
+            * ``False`` this load is not affected by any "detach" action
+            * ``True`` this load will be deactivated.
+
+        Examples
+        --------
+
+        To retrieve the impact of the action on the storage unit, you can do:
+
+        .. code-block:: python
+
+            detach_load = act.detach_load
+
+        To modify these buses you can do:
+
+        .. code-block:: python
+
+            # create an environment where i can modify everything
+            import numpy as np
+            import grid2op
+            from grid2op.Action import CompleteAction
+            env = grid2op.make("educ_case14_storage",
+                               test=True,
+                               action_class=CompleteAction,
+                               allow_detachment=True)
+
+            # create an action
+            act = env.action_space()
+
+            # method 1 : provide the full vector
+            act.detach_load = np.ones(act.n_load, dtype=bool)
+
+            # method 2: provide the index of the unit you want to modify
+            act.detach_load = 1
+
+            # method 3: provide a list of the units you want to modify
+            act.detach_load = [1, 2]
+
+            # method 4: change the storage unit by their name with a set
+            act.detach_load = {"load_1_0"}
+
+        .. note:: The "rule of thumb" to modify an object using "change" method it to provide always
+            the ID of an object. The ID should be an integer (or a name in some cases). It does not
+            make any sense to provide a "value" associated to an ID: either you change it, or not.
+
+        Notes
+        -----
+        It is a "property", you don't have to use parenthesis to access it:
+
+        .. code-block:: python
+
+            # valid code
+            gen_buses = act.gen_change_bus
+
+            # invalid code, it will crash, do not run
+            gen_buses = act.gen_change_bus()
+            # end do not run
+
+        And neither should you uses parenthesis to modify it:
+
+        .. code-block:: python
+
+            # valid code
+            act.gen_change_bus = [1, 2, 3]
+
+            # invalid code, it will crash, do not run
+            act.gen_change_bus([1, 2, 3])
+            # end do not run
+
+        Property cannot be set "directly", you have to use the `act.XXX = ..` syntax. For example:
+
+        .. code-block:: python
+
+            # valid code
+            act.gen_change_bus = [1, 3, 4]
+
+            # invalid code, it will raise an error, and even if it did not it would have not effect
+            # do not run
+            act.gen_change_bus[1] = True
+            # end do not run
+
+        .. note:: Be careful not to mix "change" and "set". For "change" you only need to provide the ID of the elements
+            you want to change, for "set" you need to provide the ID **AND** where you want to set them.
+
+        """
+        res = copy.deepcopy(self._detach_load)
+        res.flags.writeable = False
+        return res
+
+    @detach_load.setter
+    def detach_load(self, values):
+        cls = type(self)
+        if "detach_load" not in cls.authorized_keys:
+            raise IllegalAction("Impossible detach loads with this action type.")
+        orig_ = self.detach_load
+        try:
+            self._aux_affect_object_bool(
+                values,
+                "detach loads",
+                cls.n_load,
+                cls.name_load,
+                np.arange(cls.n_load),
+                self._detach_load,
             )
+            self._modif_detach_load = True
+        except Exception as exc_:
+            self._detach_load[:] = orig_
+            raise IllegalAction("Impossible to detach a load with your input.") from exc_
+            
+    @property
+    def detach_gen(self) -> np.ndarray:
+        """
+        
+        ..versionadded:: 1.11.0
+        
+        Allows to retrieve (and affect) the status (connected / disconnected) of generators.
+        
+        .. note::
+            It is only available after grid2op version 1.11.0 and if the backend
+            allows it.
+
+        Returns
+        -------
+        res:
+            A vector of bool, of size `act.n_gen` indicating whether this generator
+            is detached or not. 
+
+            * ``False`` this generator is not affected by any "detach" action
+            * ``True`` this generator will be deactivated.
+
+        Examples
+        --------
+
+        See examples in the :attr:`BaseAction.detach_load` for more information
+
+        Notes
+        -----
+        See notes in the :attr:`BaseAction.detach_load` for more information
+
+        """
+        res = copy.deepcopy(self._detach_gen)
+        res.flags.writeable = False
+        return res
+
+    @detach_gen.setter
+    def detach_gen(self, values):
+        cls = type(self)
+        if "detach_gen" not in cls.authorized_keys:
+            raise IllegalAction("Impossible to detach generator with this action type.")
+        orig_ = self.detach_gen
+        try:
+            self._aux_affect_object_bool(
+                values,
+                "detach gens",
+                cls.n_gen,
+                cls.name_gen,
+                np.arange(cls.n_gen),
+                self._detach_gen,
+            )
+            self._modif_detach_gen = True
+        except Exception as exc_:
+            self._detach_gen[:] = orig_
+            raise IllegalAction("Impossible to detach a generator with your input.") from exc_
+            
+    @property
+    def detach_storage(self) -> np.ndarray:
+        """
+        
+        ..versionadded:: 1.11.0
+        
+        Allows to retrieve (and affect) the status (connected / disconnected) of storage units.
+        
+        .. note::
+            It is only available after grid2op version 1.11.0 and if the backend
+            allows it.
+
+        Returns
+        -------
+        res:
+            A vector of bool, of size `act.n_storage` indicating whether this generator
+            is detached or not. 
+
+            * ``False`` this storage unit is not affected by any "detach" action
+            * ``True`` this storage unit will be deactivated.
+
+        Examples
+        --------
+
+        See examples in the :attr:`BaseAction.detach_load` for more information
+
+        Notes
+        -----
+        See notes in the :attr:`BaseAction.detach_load` for more information
+
+        """
+        res = copy.deepcopy(self._detach_storage)
+        res.flags.writeable = False
+        return res
+
+    @detach_storage.setter
+    def detach_storage(self, values):
+        cls = type(self)
+        if "detach_storage" not in cls.authorized_keys:
+            raise IllegalAction("Impossible to detach a storage unit with this action type.")
+        orig_ = self.detach_storage
+        try:
+            self._aux_affect_object_bool(
+                values,
+                "detach storage units",
+                cls.n_storage,
+                cls.name_storage,
+                np.arange(cls.n_storage),
+                self._detach_storage,
+            )
+            self._modif_detach_storage = True
+        except Exception as exc_:
+            self._detach_storage[:] = orig_
+            raise IllegalAction("Impossible to detach a storage unit with your input.") from exc_
 
     def _aux_affect_object_float(
         self,
@@ -6635,3 +7256,9 @@ class BaseAction(GridObjects):
             self._switch_line_status[:] = False
             self._modif_change_status = False
         return self
+
+    def has_element_detached(self):
+        """Return whether or not this action impact some elements with `detach`, for example 
+        `detach_load`, `detach_gen` or `detach_storage`
+        """
+        return self._modif_detach_gen or self._modif_detach_load or self._modif_detach_storage
