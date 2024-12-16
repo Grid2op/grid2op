@@ -3169,7 +3169,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # TODO after alert budget will be implemented !
         # self._is_alert_illegal
     
-    def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p) -> bool:
+    def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p) -> Optional[Grid2OpException]:
         beg_res = time.perf_counter()
         # update the thermal limit, for DLR for example
         self.backend.update_thermal_limit(self)  
@@ -3238,7 +3238,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             if diff_[cls.gen_redispatchable] > cls.gen_max_ramp_up[cls.gen_redispatchable] + self._tol_poly:
                 gen_ko = (diff_[cls.gen_redispatchable] > cls.gen_max_ramp_up[cls.gen_redispatchable]).nonzero()[0]
                 gen_ko_nms = cls.name_gen[cls.gen_redispatchable][gen_ko]
-                return SomeGeneratorAboveRampmax(f"Especially generators {gen_ko}")
+                return SomeGeneratorAboveRampmax(f"Especially generators {gen_ko_nms}")
             if diff_[cls.gen_redispatchable] < -cls.gen_max_ramp_down[cls.gen_redispatchable] - self._tol_poly:
                 gen_ko = (diff_[cls.gen_redispatchable] < -cls.gen_max_ramp_down[cls.gen_redispatchable]).nonzero()[0]
                 gen_ko_nms = cls.name_gen[cls.gen_redispatchable][gen_ko]
@@ -3293,7 +3293,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._gen_p_detached[~self._gens_detached] = 0.
             
             self._storage_p_detached[:] = 0.
-            self._storage_p_detached[:] = self._backend_action.storage_power.values
+            mask_chgt = self._backend_action.storage_power.changed
+            self._storage_p_detached[mask_chgt] = self._backend_action.storage_power.values[mask_chgt]
             self._storage_p_detached[~self._storages_detached] = 0.
             
         try:

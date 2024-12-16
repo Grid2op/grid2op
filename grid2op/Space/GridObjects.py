@@ -4463,6 +4463,9 @@ class GridObjects:
     
     @classmethod
     def process_detachment(cls):
+        """process the status of detachment, that can be turned on or off, is overloaded for :class:`grid2op.Action.BaseAction`
+        or :class:`grid2op.Observation.BaseObservation`
+        """
         pass
     
     @classmethod

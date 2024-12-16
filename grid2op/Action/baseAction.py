@@ -400,7 +400,6 @@ class BaseAction(GridObjects):
                              "prod_v",
                              "load_p",
                              "load_q"])
-    # attr_nan_list_set = set()
 
     attr_list_set = set(attr_list_vect)
     shunt_added = False
@@ -410,6 +409,7 @@ class BaseAction(GridObjects):
 
     ERR_ACTION_CUT = 'The action added to me will be cut, because i don\'t support modification of "{}"'
     ERR_NO_STOR_SET_BUS = 'Impossible to modify the storage bus (with "set") with this action type.'
+    OBJ_SUPPORT_DETACH = ["load", "gen", "storage"]
     
     def __init__(self, _names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None):
         """
@@ -806,7 +806,7 @@ class BaseAction(GridObjects):
                 del res["shunt"]
                 
         if cls.detachment_is_allowed:
-            for el in ["load", "gen", "storage"]:
+            for el in cls.OBJ_SUPPORT_DETACH:
                 attr_key = f"detach_{el}"
                 attr_vect = f"_detach_{el}"
                 xxx_name = getattr(cls, f"name_{el}")
@@ -916,7 +916,7 @@ class BaseAction(GridObjects):
             cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
             
-            for el in ["load", "gen", "storage"]:
+            for el in cls.OBJ_SUPPORT_DETACH:
                 attr_key = f"detach_{el}"
                 attr_vect = f"_{attr_key}"
                 if attr_key in cls.authorized_keys:
@@ -1165,14 +1165,14 @@ class BaseAction(GridObjects):
         if cls.detachment_is_allowed:
             if cls_oth.detachment_is_allowed:
                 # easy case, both detachement allowed
-                for el in ["load", "gen", "storage"]:
+                for el in cls.OBJ_SUPPORT_DETACH:
                     if not self._aux_eq_detachment_aux_both_ok(other, el):
                         return False
             else:
                 # self supports detachment but not other
                 # they are equal if an only if self did not
                 # modify any loads with detachment
-                for el in ["load", "gen", "storage"]:
+                for el in cls.OBJ_SUPPORT_DETACH:
                     if not self._aux_eq_detachment_aux_one_not_ok(self, el):
                         return False
         else:
@@ -1183,7 +1183,7 @@ class BaseAction(GridObjects):
                 # oth does.
                 # they can be equal if oth does not modify this
                 # attribute
-                for el in ["load", "gen", "storage"]:
+                for el in cls.OBJ_SUPPORT_DETACH:
                     if not self._aux_eq_detachment_aux_one_not_ok(other, el):
                         return False
             else:
@@ -1208,6 +1208,45 @@ class BaseAction(GridObjects):
             if not (self.shunt_q[is_ok_me] == other.shunt_q[is_ok_ot]).all():
                 return False
             if not (self.shunt_bus == other.shunt_bus).all():
+                return False
+        return True
+    
+    def _aux_eq_compare_vect(self, other, modif_flag_nm, vect_nm):
+        """Implement something similar to :
+        
+        ((self._modif_set_status != other._modif_set_status) or 
+          not np.all(self._set_line_status == other._set_line_status)
+        )
+        But for different flag (*eg* `_modif_set_status`) and vector (*eg* `_set_line_status`)
+        """
+        return ((getattr(self, modif_flag_nm) != getattr(other, modif_flag_nm)) or 
+                not np.array_equal(getattr(self, vect_nm), getattr(other, vect_nm))
+               )
+    
+    def _aux_eq_inj(self, other: "BaseAction"):
+        # mismatch in flags
+        same_action = self._modif_inj == other._modif_inj
+        if not same_action:
+            return False
+        
+        # all injections are the same
+        for el in other._dict_inj.keys():
+            if el not in self._dict_inj:
+                # other modify "el" but not "self"
+                return False
+        # all injections are the same
+        for el in self._dict_inj.keys():
+            if el not in other._dict_inj:
+                # "self" modify "el" but not "other"
+                return False
+        for el in self._dict_inj.keys():
+            me_inj = self._dict_inj[el]
+            other_inj = other._dict_inj[el]
+            tmp_me = np.isfinite(me_inj)
+            tmp_other = np.isfinite(other_inj)
+            if not np.all(tmp_me == tmp_other) or not np.all(
+                me_inj[tmp_me] == other_inj[tmp_other]
+            ):
                 return False
         return True
         
@@ -1252,37 +1291,17 @@ class BaseAction(GridObjects):
             return False
 
         # _grid is the same, now I test the the injections modifications are the same
-        same_action = self._modif_inj == other._modif_inj
-        same_action = same_action and self._dict_inj.keys() == other._dict_inj.keys()
-        if not same_action:
+        if not self._aux_eq_inj(other):
             return False
-
-        # all injections are the same
-        for el in self._dict_inj.keys():
-            me_inj = self._dict_inj[el]
-            other_inj = other._dict_inj[el]
-            tmp_me = np.isfinite(me_inj)
-            tmp_other = np.isfinite(other_inj)
-            if not np.all(tmp_me == tmp_other) or not np.all(
-                me_inj[tmp_me] == other_inj[tmp_other]
-            ):
-                return False
-
+        
         # same line status
-        if (self._modif_set_status != other._modif_set_status) or not np.all(
-            self._set_line_status == other._set_line_status
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_set_status", "_set_line_status"):
             return False
-
-        if (self._modif_change_status != other._modif_change_status) or not np.all(
-            self._switch_line_status == other._switch_line_status
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_change_status", "_switch_line_status"):
             return False
 
         # redispatching is same
-        if (self._modif_redispatch != other._modif_redispatch) or not np.all(
-            self._redispatch == other._redispatch
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_redispatch", "_redispatch"):
             return False
 
         # storage is same
@@ -1296,31 +1315,21 @@ class BaseAction(GridObjects):
             return False
 
         # curtailment
-        if (self._modif_curtailment != other._modif_curtailment) or not np.array_equal(
-            self._curtail, other._curtail
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_curtailment", "_curtail"):
             return False
 
         # alarm
-        if (self._modif_alarm != other._modif_alarm) or not np.array_equal(
-            self._raise_alarm, other._raise_alarm
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_alarm", "_raise_alarm"):
             return False
     
-        # alarm
-        if (self._modif_alert != other._modif_alert) or not np.array_equal(
-            self._raise_alert, other._raise_alert
-        ):
+        # alert
+        if self._aux_eq_compare_vect(other, "_modif_alert", "_raise_alert"):
             return False
 
         # same topology changes
-        if (self._modif_set_bus != other._modif_set_bus) or not np.all(
-            self._set_topo_vect == other._set_topo_vect
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_set_bus", "_set_topo_vect"):
             return False
-        if (self._modif_change_bus != other._modif_change_bus) or not np.all(
-            self._change_bus_vect == other._change_bus_vect
-        ):
+        if self._aux_eq_compare_vect(other, "_modif_change_bus", "_change_bus_vect"):
             return False
         
         # handle detachment
@@ -2401,8 +2410,7 @@ class BaseAction(GridObjects):
 
     def _digest_detach_eltype(self, el : Literal["load", "gen", "storage"], dict_):
         attr_key = f'detach_{el}'
-        if attr_key in dict_:
-            if dict_[attr_key] is not None:
+        if attr_key in dict_ and dict_[attr_key] is not None:
                 setattr(self, attr_key, dict_[attr_key])
                 # eg self.detach_load = dict_["detach_load"]
 
@@ -2725,7 +2733,7 @@ class BaseAction(GridObjects):
             self._digest_alarm(dict_)
             self._digest_alert(dict_)
             if cls.detachment_is_allowed:
-                for el in ["load", "gen", "storage"]:
+                for el in cls.OBJ_SUPPORT_DETACH:
                     self._digest_detach_eltype(el, dict_)
         return self
 
@@ -2856,7 +2864,7 @@ class BaseAction(GridObjects):
                 raise IllegalAction("You illegally send an alert.")
         
         if cls.detachment_is_allowed:
-            for el in ["load", "gen", "storage"]:
+            for el in cls.OBJ_SUPPORT_DETACH:
                 attr_auth = f"detach_{el}"
                 attr_modif = f"_modif_detach_{el}"
                 attr_vect = f"_detach_{el}"
@@ -3233,7 +3241,7 @@ class BaseAction(GridObjects):
             raise IllegalAction("It's forbidden to do a generator detachment with this action type")
         if self._modif_detach_storage and "detach_storage" not in cls.authorized_keys:
             raise IllegalAction("It's forbidden to do a storage detachment with this action type")
-        for el_nm in ["load", "gen", "storage"]:
+        for el_nm in cls.OBJ_SUPPORT_DETACH:
             _modif_detach_xxx = getattr(self, f"_modif_detach_{el_nm}")
             xxx_pos_topo_vect = getattr(cls, f"{el_nm}_pos_topo_vect")
             _detach_xxx = getattr(self, f"_detach_{el_nm}")
@@ -5854,9 +5862,7 @@ class BaseAction(GridObjects):
             self._modif_detach_load = True
         except Exception as exc_:
             self._detach_load[:] = orig_
-            raise IllegalAction(
-                f"Impossible to detach a load with your input."
-            ) from exc_
+            raise IllegalAction("Impossible to detach a load with your input.") from exc_
             
     @property
     def detach_gen(self) -> np.ndarray:
@@ -5911,9 +5917,7 @@ class BaseAction(GridObjects):
             self._modif_detach_gen = True
         except Exception as exc_:
             self._detach_gen[:] = orig_
-            raise IllegalAction(
-                f"Impossible to detach a generator with your input."
-            ) from exc_
+            raise IllegalAction("Impossible to detach a generator with your input.") from exc_
             
     @property
     def detach_storage(self) -> np.ndarray:
@@ -5968,9 +5972,7 @@ class BaseAction(GridObjects):
             self._modif_detach_storage = True
         except Exception as exc_:
             self._detach_storage[:] = orig_
-            raise IllegalAction(
-                f"Impossible to detach a storage unit with your input."
-            ) from exc_
+            raise IllegalAction("Impossible to detach a storage unit with your input.") from exc_
 
     def _aux_affect_object_float(
         self,

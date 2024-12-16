@@ -242,10 +242,10 @@ class OpponentSpace(object):
         if attack is None:
             attack_duration = 0
         else:
-            if observation is not None:
-                # cache the get_topological_impact to avoid useless computation later
-                # this is a speed optimization
-                _ = attack.get_topological_impact(observation.line_status, _store_in_cache=True, _read_from_cache=False)
+            # NB : here observation is not None (check done first line of this function)
+            # cache the get_topological_impact to avoid useless computation later
+            # this is a speed optimization
+            _ = attack.get_topological_impact(observation.line_status, _store_in_cache=True, _read_from_cache=False)
         return attack, attack_duration
 
     def close(self):
