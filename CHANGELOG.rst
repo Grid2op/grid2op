@@ -132,7 +132,7 @@ Native multi agents support:
 - [FIXED] logos now have the correct URL
 - [FIXED] deprecated call to `tostring_rgb` (replaced `tostring_argb`) in the env.render function.
 - [FIXED] warnings not properly issued in the AAA test when backend failed to call
-  `can_support_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
+  `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
