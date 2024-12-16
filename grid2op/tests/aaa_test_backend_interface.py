@@ -61,12 +61,12 @@ class AAATestBackendAPI(MakeBackend):
         """Tests the backend can be created (not integrated in a grid2op environment yet)"""
         self.skip_if_needed()
         backend = self.make_backend_with_glue_code()
-        if not backend._missing_two_busbars_support_info:
+        if backend._missing_two_busbars_support_info:
             warnings.warn("You should call either `self.can_handle_more_than_2_busbar()` "
                           "or `self.cannot_handle_more_than_2_busbar()` in the `load_grid` "
                           "method of your backend. Please refer to documentation for more information.")
     
-        if not backend._missing_detachment_support_info:
+        if backend._missing_detachment_support_info:
             warnings.warn("You should call either `self.can_handle_detachment()` "
                           "or `self.cannot_handle_detachment()` in the `load_grid` "
                           "method of your backend. Please refer to documentation for more information.")
