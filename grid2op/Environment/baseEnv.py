@@ -23,6 +23,8 @@ import numpy as np
 from scipy.optimize import (minimize, LinearConstraint)
 
 from abc import ABC, abstractmethod
+
+from grid2op.Environment.EnvInterface import EnvInterface
 from grid2op.Observation import (BaseObservation,
                                  ObservationSpace,
                                  HighResSimCounter)
@@ -89,7 +91,7 @@ BASE_TXT_COPYRIGHT = """# Copyright (c) 2019-2020, RTE (https://www.rte-france.c
 # WE DO NOT RECOMMEND TO ALTER IT IN ANY WAY
 """
 
-class BaseEnv(GridObjects, RandomObject, ABC):
+class BaseEnv(EnvInterface, GridObjects, RandomObject, ABC):
     """
     INTERNAL
 
@@ -3720,41 +3722,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._time_next_maintenance[:] = -1
         self._duration_next_maintenance[:] = 0
 
-    def __enter__(self):
-        """
-        Support *with-statement* for the environment.
-
-        Examples
-        --------
-
-        .. code-block:: python
-
-            import grid2op
-            import grid2op.BaseAgent
-            with grid2op.make("l2rpn_case14_sandbox") as env:
-                agent = grid2op.BaseAgent.DoNothingAgent(env.action_space)
-                act = env.action_space()
-                obs, r, done, info = env.step(act)
-                act = agent.act(obs, r, info)
-                obs, r, done, info = env.step(act)
-
-        """
-        return self
-
-    def __exit__(self, *args):
-        """
-        Support *with-statement* for the environment.
-        """
-        self.close()
-        # propagate exception
-        return False
-
     def close(self):
-        """close an environment: this will attempt to free as much memory as possible.
-        Note that after an environment is closed, you will not be able to use anymore.
-
-        Any attempt to use a closed environment might result in non deterministic behaviour.
-        """
         if self.__closed:
             raise EnvError(
                 f"This environment {id(self)} {self} is closed already, you cannot close it a second time."
