@@ -1,3 +1,10 @@
+# Copyright (c) 2025, RTE (https://www.rte-france.com)
+# See AUTHORS.txt
+# This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
+# If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
+# you can obtain one at http://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+# This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 from abc import ABC, abstractmethod
 from typing import Tuple, Union
 
@@ -7,7 +14,11 @@ from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
 
 
 class EnvInterface(ABC):
-
+    """
+    This is an interface for Grid2op environments designed to ensure that all implementations (except for multi-environments,
+    which have the same methods but slightly different signatures) define the minimum methods required to interact with
+    an environment.
+    """
     @abstractmethod
     def reset(self,
               *,
