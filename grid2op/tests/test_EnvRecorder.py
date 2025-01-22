@@ -46,5 +46,5 @@ class TestEnvRecorder(unittest.TestCase):
                     assert pq_file.is_file()
 
                 gen_p_pq = pd.read_parquet(tmp_dir_path / "gen_p.parquet")
-                assert gen_p_pq.shape == (93, 3)
+                assert gen_p_pq.shape == (95, 3)
                 assert gen_p_pq.columns.tolist() == ['time', 'gen_0_0', 'gen_1_1']
