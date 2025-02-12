@@ -807,6 +807,8 @@ class _BackendAction(GridObjects):
                 self.line_ex_pos_topo_vect,
                 self.last_topo_registered,
             )
+            self._detailed_topo = None
+
         if other._modif_set_status:
             self.current_topo.set_status(
                 set_status,
@@ -814,6 +816,7 @@ class _BackendAction(GridObjects):
                 self.line_ex_pos_topo_vect,
                 self.last_topo_registered,
             )
+            self._detailed_topo = None
 
         # if other._modif_change_status or other._modif_set_status:
         (
@@ -913,33 +916,6 @@ class _BackendAction(GridObjects):
         # this need to be done BEFORE the topology, as a connected powerline will be connected to their old bus.
         # regardless if the status is changed in the action or not.
         self._aux_iadd_line_status(other, switch_status, set_status)
-
-        # GJ badly merged
-        if other._modif_change_status:
-            self.current_topo.change_status(
-                switch_status,
-                self.line_or_pos_topo_vect,
-                self.line_ex_pos_topo_vect,
-                self.last_topo_registered,
-            )
-            self._detailed_topo = None
-
-        if other._modif_set_status:
-            self.current_topo.set_status(
-                set_status,
-                self.line_or_pos_topo_vect,
-                self.line_ex_pos_topo_vect,
-                self.last_topo_registered,
-            )
-            self._detailed_topo = None
-
-        # if other._modif_change_status or other._modif_set_status:
-        (
-            self._status_or_before[:],
-            self._status_ex_before[:],
-        ) = self.current_topo.get_line_status(
-            self.line_or_pos_topo_vect, self.line_ex_pos_topo_vect
-        )
 
         # IV topo
         if other._modif_change_bus:
