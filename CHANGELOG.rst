@@ -99,13 +99,83 @@ Native multi agents support:
 
 [1.11.0] - 202x-yy-zz
 -----------------------
+- [BREAKING] Change for `FromMultiEpisodeData` that disables the caching by default
+  when creating the data.
+- [BREAKING] deprecation of `backend.check_kirchoff` in favor of `backend.check_kirchhoff` 
+  (fix the typo in the name)
+- [BREAKING] change the name of the generated classes: now by default the backend class
+  name is added. This behaviour can be turned off by passing `_add_cls_nm_bk=False`
+  when calling `grid2op.make(...)`. If you develop a new Backend, you can also
+  customize the added name by overloading the `get_class_added_name` class method.
+- [BREAKING] it is now forbidden to create environment with arguments.
+  Only key-word arguments are allowed.
+- [BREAKING] the way actions is serialized has been changed with respect to the `from_vect` /
+  `to_vect` method. This might introduce some issues when loading previously saved actions
+  with this methods.
+- [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
+- [FIXED] missing an import on the `MaskedEnvironment` class
+- [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
+- [FIXED] the `obs.get_forecast_env` : in some cases the resulting first
+  observation (obtained from `for_env.reset()`) did not have the correct
+  topology.
+- [FIXED] issue https://github.com/Grid2op/grid2op/issues/665 (`obs.reset()`
+  was not correctly implemented: some attributes were forgotten)
+- [FIXED] issue https://github.com/Grid2op/grid2op/issues/667 (`act.as_serializable_dict()`
+  was not correctly implemented AND the `_aux_affect_object_int` and `_aux_affect_object_float`
+  have been also fixed - weird behaviour when you give them a list with the exact length of the
+  object you tried to modified (for example a list with a size of `n_load` that affected the loads))
+- [FIXED] a bug when using the `DoNothingHandler` for the maintenance and the 
+  environment data
+- [FIXED] an issue preventing to set the thermal limit in the options
+  if the last simulated action lead to a game over
+- [FIXED] some bugs in `act.from_json(...)` due to the handling of the injection modifications.
+- [FIXED] logos now have the correct URL
+- [FIXED] deprecated call to `tostring_rgb` (replaced `tostring_argb`) in the env.render function.
+- [FIXED] warnings not properly issued in the AAA test when backend failed to call
+  `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
   or , `gridobj.get_storage_info(...)` 
+- [ADDED] codacy badge on the readme
+- [ADDED] a method to check the KCL (`obs.check_kirchhoff`) directly from the observation
+  (previously it was only possible to do it from the backend). This should 
+  be used for testing purpose only
+- [ADDED] parameters to disable the "redispatching routine" of the environment 
+  (see `params.ENV_DOES_REDISPATCHING`)
+- [ADDED] parameters to stop the episode when one of the constraints of one of the 
+  generators is not met (see `params.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`)
+- [ADDED] possibility to set the initial time stamp of the observation in the `env.reset`
+  kwargs by using `env.reset(..., options={"init datetime": XXX})`
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
+- [IMPROVED] (linked to https://github.com/Grid2op/grid2op/issues/657) the way the 
+  "chronics_hander" in the ObsEnv behaves (it now fully implements the public interface of 
+  a "real" chronic_handler)
+- [IMPROVED] error message in the `FromNPY` class when the backend is checked
+- [IMRPOVED] the `FromMultiEpisodeData` class with the addition of the `caching` 
+  kwargs to allow / disable caching (which was default behavior in previous version) 
+- [IMPROVED] the `FromMultiEpisodeData` class that now returns also the path of the data
+- [IMPROVED] the classes inherited from `GreedyAgent` with the added possibility to 
+  do the `obs.simulate` on a different time horizon (kwarg `simulated_time_step`)
+- [IMPROVED] some type hints for some agent class
+- [IMPROVED] the `backend.update_from_obs` function to work even when observation
+  does not have shunt information but there are not shunts on the grid.
+- [IMPROVED] consistency of `MultiMixEnv` in case of automatic_classes (only one
+  class is generated for all mixes)
+- [IMRPOVED] handling of disconnected elements in the backend no more
+  raise error. The base `Backend` class does that.
+- [IMPROVED] the `act.as_serializable_dict()` to be more 'backend agnostic'as
+  it nows tries to use the name of the elements in the json output
+- [IMPROVED] the way shunt data are digested in the `BaseAction` class (it is now 
+  possible to use the same things as for the other types of element)
+- [IMPROVED] grid2op does not require the `chronics` folder when using the `FromHandlers`
+  class
+- [IMPROVED] the function `action.get_topological_impact(...)` has now a "caching" mechanism
+  that allows not to recompute it over and over again (this is internal API please do not change 
+  it... unless you know what you are doing)
+    
 
 [1.10.4] - 2024-10-15
 -------------------------

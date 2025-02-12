@@ -18,7 +18,7 @@ from grid2op.tests.helper_path_test import *
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import *
-from grid2op.Observation import ObservationSpace
+from grid2op.Observation import ObservationSpace, CompleteObservation
 from grid2op.Reward import (
     L2RPNReward,
     CloseToOverflowReward,
@@ -53,6 +53,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         self.dict_ = {
             "name_gen": ["gen_1_0", "gen_2_1", "gen_5_2", "gen_7_3", "gen_0_4"],
             "n_busbar_per_sub": "2",
+            "detachment_is_allowed": "False",
             "name_load": [
                 "load_1_0",
                 "load_2_1",
@@ -107,7 +108,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "name_storage": [],
             "glop_version": grid2op.__version__,
             # "env_name": "rte_case14_test",
-            "env_name": "rte_case14_testTestBasisObsBehaviour",
+            "env_name": "rte_case14_testPandaPowerBackendTestBasisObsBehaviour",
             "sub_info": [3, 6, 4, 6, 5, 6, 3, 2, 5, 3, 3, 3, 4, 3],
             "load_to_subid": [1, 2, 13, 3, 4, 5, 8, 9, 10, 11, 12],
             "gen_to_subid": [1, 2, 5, 7, 0],
@@ -847,6 +848,14 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "time_since_last_attack": [],
             "was_alert_used_after_attack": [],
             "attack_under_alert": [],
+            "gen_p_delta": [0.0, 0.0, 0.0, 0.0, 2.2990264892578125],
+            # "load_detached": [False, False, False, False, False, False, False, False, False, False, False],
+            # "gen_detached": [False, False, False, False, False],
+            # "storage_detached": [],
+            # "load_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            # "load_q_detached": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            # "gen_p_detached": [0.0, 0.0, 0.0, 0.0, 0.0],
+            # "storage_p_detached": [],
         }
         self.dtypes = np.array(
             [
@@ -915,6 +924,16 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 dt_int,
                 dt_int,
                 dt_int,
+                # slack (>= 1.11.0)
+                dt_float,
+                # detachment (>= 1.11.0)
+                # dt_bool,
+                # dt_bool,
+                # dt_bool,
+                # dt_float,
+                # dt_float,
+                # dt_float,
+                # dt_float,
             ],
             dtype=object,
         )
@@ -982,10 +1001,20 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 0,
                 0,
                 0,
-                0
+                0,
+                # slack (>= 1.11.0)
+                5,
+                # # detachment (>= 1.11.0)
+                # 11,
+                # 5,
+                # 0,
+                # 11,
+                # 11,
+                # 5,
+                # 0,
             ]
         )
-        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0
+        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 # + 11 + 5 + 0 + 11 + 11 + 5
 
     def tearDown(self):
         self.env.close()
@@ -1100,8 +1129,8 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 else:
                     p_line += graph.edges[(k1, k2)]["p_ex"]
                     q_line += graph.edges[(k1, k2)]["q_ex"]
-            assert abs(p_line - p_) <= 1e-5, "error for kirchoff's law for graph for P"
-            assert abs(q_line - q_) <= 1e-5, "error for kirchoff's law for graph for Q"
+            assert abs(p_line - p_) <= 1e-5, "error for Kirchhoff's law for graph for P"
+            assert abs(q_line - q_) <= 1e-5, "error for Kirchhoff's law for graph for Q"
 
     def test_bus_conn_mat_csr(self):
         self.aux_test_bus_conn_mat(as_csr=True)
@@ -1863,7 +1892,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert mat.shape == (15, 15)
         assert ind_lor[7] == 14
         assert ind_lor[8] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         if active_flow:
             assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one
@@ -1888,7 +1917,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert ind_lor[8] == 15
         assert ind_lor[2] == 14
         assert ind_lex[0] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         if active_flow:
             assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one
@@ -1952,7 +1981,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert mat.shape == (15, 15)
         assert ind_lor[7] == 14
         assert ind_lor[8] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         if active_flow:
             assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one
@@ -1982,7 +2011,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
         assert ind_lor[8] == 15
         assert ind_lor[2] == 14
         assert ind_lex[0] == 14
-        # check that kirchoff law is met
+        # check that Kirchhoff law is met
         assert np.max(np.abs(mat.sum(axis=1))) <= self.tol_one
         if active_flow:
             assert np.abs(mat[0, 0] - obs.prod_p[-1]) <= self.tol_one
@@ -2303,10 +2332,9 @@ class TestBasisObsBehaviour(unittest.TestCase):
 
     def test_to_from_json(self):
         """test the to_json, and from_json and make sure these are all  json serializable"""
-        obs = self.env.observation_space(self.env)
-        obs2 = self.env.observation_space(self.env)
-        dict_ = obs.to_json()
-
+        obs : CompleteObservation = self.env.observation_space(self.env)
+        obs2 : CompleteObservation = self.env.observation_space(self.env)
+        dict_ = obs.to_json()        
         # test that the right dictionary is returned
         for k in dict_:
             assert (
@@ -2327,7 +2355,9 @@ class TestBasisObsBehaviour(unittest.TestCase):
         # test i can initialize an observation from it
         obs2.reset()
         obs2.from_json(dict_realoaded)
-        assert obs == obs2
+        if obs != obs2:
+            diff_, attr_diff = obs2.where_different(obs)
+            raise AssertionError(f"Following attributes are different: {attr_diff}")
 
 
 class TestUpdateEnvironement(unittest.TestCase):

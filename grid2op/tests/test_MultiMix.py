@@ -82,7 +82,11 @@ class TestMultiMixEnvironment(unittest.TestCase):
         assert mme.current_obs is not None
         assert mme.current_env is not None
         for env in mme:
-            assert env.backend.dummy() == True
+            assert env.backend.dummy() == True, f"error for mix {env.multimix_mix_name}"
+            # the test below test that the backend is not initialized twice,
+            # if it was the case the name would be something like
+            # DummyBackend1_multimixDummyBackend1DummyBackend1
+            assert type(env.backend).__name__ == "DummyBackend1_multimixDummyBackend1", f"{ type(env.backend).__name__} for mix {env.multimix_mix_name}"
 
     def test_creation_with_backend_are_not_shared(self):
         class DummyBackend2(PandaPowerBackend):
@@ -298,9 +302,9 @@ class TestMultiMixEnvironment(unittest.TestCase):
     def test_bracket_access_by_name(self):
         mme = MultiMixEnvironment(PATH_DATA_MULTIMIX, _test=True)
         mix1_env = mme["case14_001"]
-        assert mix1_env.multimix_mix_name == "case14_001"
+        assert mix1_env.multimix_mix_name == "case14_001", f"{mix1_env.multimix_mix_name}"
         mix2_env = mme["case14_002"]
-        assert mix2_env.multimix_mix_name == "case14_002"
+        assert mix2_env.multimix_mix_name == "case14_002", f"{mix1_env.multimix_mix_name}"
         with self.assertRaises(KeyError):
             unknown_env = mme["unknown_raise"]
 

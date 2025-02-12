@@ -18,11 +18,11 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'Grid2Op'
-copyright = '2019, RTE France'
+copyright = 'Grid2Op a Series of LF Projects, LLC,\nFor website terms of use, trademark policy and other project policies please see https://lfprojects.org.'
 author = 'Benjamin Donnot'
 
 # The full version, including alpha/beta/rc tags
-release = '1.11.0.dev0'
+release = '1.11.0.dev3'
 version = '1.11'
 
 

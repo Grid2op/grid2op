@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import os
 import unittest
 import warnings
 import numpy as np
@@ -407,7 +408,7 @@ class TestExamples(unittest.TestCase):
                 env2 = grid2op.make(env_name,
                                     test=True,
                                     chronics_class=FromMultiEpisodeData,
-                                    data_feeding_kwargs={"li_ep_data": li_episode},
+                                    data_feeding_kwargs={"li_ep_data": li_episode, "caching": True},
                                     opponent_class=FromEpisodeDataOpponent,
                                     opponent_attack_cooldown=1,
                                     _add_to_name=type(self).__name__,
@@ -530,7 +531,7 @@ class TestWithOpp(unittest.TestCase):
                                 )
      
 
-class TestTSFromMultieEpisode(unittest.TestCase):
+class TestTSFromMultiEpisode(unittest.TestCase):
     def setUp(self) -> None:
         self.env_name = "l2rpn_case14_sandbox"
         with warnings.catch_warnings():
@@ -551,7 +552,10 @@ class TestTSFromMultieEpisode(unittest.TestCase):
     def tearDown(self) -> None:
         self.env.close()
         return super().tearDown()
-        
+    
+    def do_i_cache(self):
+        return False
+    
     def test_basic(self):
         """test injection, without opponent nor maintenance"""
         obs = self.env.reset()
@@ -565,7 +569,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
             env = grid2op.make(self.env_name,
                                test=True,
                                chronics_class=FromMultiEpisodeData,
-                               data_feeding_kwargs={"li_ep_data": ep_data},
+                               data_feeding_kwargs={"li_ep_data": ep_data, "caching": self.do_i_cache()},
                                opponent_attack_cooldown=99999999,
                                opponent_attack_duration=0,
                                opponent_budget_per_ts=0.,
@@ -574,6 +578,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
                                _add_to_name=type(self).__name__)
         # test init data
         obs = env.reset()
+        path_ = os.path.join(env.get_path_env(), "chronics")
         TestTSFromEpisodeMaintenance._aux_obs_equal(obs,  ep_data[0].observations[0])
         for i in range(10):
             obs, reward, done, info = env.step(env.action_space())
@@ -581,7 +586,7 @@ class TestTSFromMultieEpisode(unittest.TestCase):
         assert done
         with self.assertRaises(Grid2OpException):
             obs, reward, done, info = env.step(env.action_space())
-        assert env.chronics_handler.get_id() == "0"
+        assert env.chronics_handler.get_id() == f"{path_}@0", f"{env.chronics_handler.get_id()} vs {path_}@0"
         
         # test when reset, that it moves to next data
         obs = env.reset()
@@ -592,12 +597,12 @@ class TestTSFromMultieEpisode(unittest.TestCase):
         assert done
         with self.assertRaises(Grid2OpException):
             obs, reward, done, info = env.step(env.action_space())
-        assert env.chronics_handler.get_id() == "1"
+        assert env.chronics_handler.get_id() == f"{path_}@1", f"{env.chronics_handler.get_id()} vs {path_}@1"
         
         # test the set_id
         env.set_id("1")
         obs = env.reset()
-        assert env.chronics_handler.get_id() == "1"
+        assert env.chronics_handler.get_id() == f"{path_}@1", f"{env.chronics_handler.get_id()} vs {path_}@1"
         TestTSFromEpisodeMaintenance._aux_obs_equal(obs,  ep_data[1].observations[0])
         for i in range(10):
             obs, reward, done, info = env.step(env.action_space())
@@ -605,8 +610,13 @@ class TestTSFromMultieEpisode(unittest.TestCase):
         assert done
         with self.assertRaises(Grid2OpException):
             obs, reward, done, info = env.step(env.action_space())
-        assert env.chronics_handler.get_id() == "1"
+        assert env.chronics_handler.get_id() == f"{path_}@1", f"{env.chronics_handler.get_id()} vs {path_}@1"
         
-                                     
+        
+class TestTSFromMultiEpisodeWithCache(TestTSFromMultiEpisode):  
+    def do_i_cache(self):
+        return True
+
+               
 if __name__ == "__main__":
     unittest.main()
