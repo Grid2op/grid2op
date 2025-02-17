@@ -122,6 +122,9 @@ class _ObsEnv(BaseEnv):
         
         self.current_obs_init = None
         self.current_obs = None
+
+        self._init_thermal_limit()
+
         self._init_backend(
             chronics_handler=_ObsCH(),
             backend=backend_instanciated,
@@ -131,6 +134,8 @@ class _ObsEnv(BaseEnv):
             rewardClass=None,
             legalActClass=legalActClass,
         )
+
+        self.ts_manager = copy.deepcopy(self._observation_space.ts_manager)
 
         self.delta_time_seconds = delta_time_seconds
         ####
@@ -200,9 +205,9 @@ class _ObsEnv(BaseEnv):
         self._game_rules.initialize(self)
         self._legalActClass = legalActClass
         
-        # self._action_space = self._do_nothing
-        self.backend.set_thermal_limit(self._thermal_limit_a)
-
+        # # self._action_space = self._do_nothing
+        self.ts_manager.limits = self._thermal_limit_a # old code line : self.backend.set_thermal_limit(self._thermal_limit_a)
+        
         from grid2op.Observation import ObservationSpace
         from grid2op.Reward import FlatReward
         ob_sp_cls = ObservationSpace.init_grid(type(backend), _local_dir_cls=self._local_dir_cls)
@@ -214,7 +219,6 @@ class _ObsEnv(BaseEnv):
                                             _local_dir_cls=self._local_dir_cls
                                             )
         self._observationClass = self._observation_space.subtype  # not used anyway
-        
         # create the opponent
         self._create_opponent()
 

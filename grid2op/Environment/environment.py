@@ -26,7 +26,7 @@ from grid2op.Exceptions import *
 from grid2op.Observation import CompleteObservation, ObservationSpace, BaseObservation
 from grid2op.Reward import FlatReward, RewardHelper, BaseReward
 from grid2op.Rules import RulesChecker, AlwaysLegal, BaseRules
-from grid2op.Backend import Backend
+from grid2op.Backend import Backend, protectionScheme, thermalLimits
 from grid2op.Chronics import ChronicsHandler
 from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageController
 from grid2op.Environment.baseEnv import BaseEnv
@@ -196,10 +196,10 @@ class Environment(BaseEnv):
         self.spec = None
 
         self._compat_glop_version = _compat_glop_version
-
         # needs to be done before "_init_backend" otherwise observationClass is not defined in the
         # observation space (real_env_kwargs)
         self._observationClass_orig = observationClass
+        
         # for plotting
         self._init_backend(
             chronics_handler,
@@ -210,6 +210,8 @@ class Environment(BaseEnv):
             rewardClass,
             legalActClass,
         )
+        self.ts_manager : thermalLimits.ThermalLimits = copy.deepcopy(self.ts_manager)
+        self.protection : protectionScheme.DefaultProtection = copy.deepcopy(self.protection)
         
     def _init_backend(
         self,
@@ -410,6 +412,7 @@ class Environment(BaseEnv):
         # this needs to be done after the chronics handler: rewards might need information
         # about the chronics to work properly.
         self._helper_observation_class = ObservationSpace.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
+
         # FYI: this try to copy the backend if it fails it will modify the backend
         # and the environment to force the deactivation of the
         # forecasts
@@ -434,7 +437,6 @@ class Environment(BaseEnv):
         self._reward_helper.initialize(self)
         for k, v in self.other_rewards.items():
             v.initialize(self)
-
         # controller for voltage
         if not issubclass(self._voltagecontrolerClass, BaseVoltageController):
             raise Grid2OpException(
