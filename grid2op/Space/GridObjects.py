@@ -32,6 +32,11 @@ from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import *
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
+from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
+                                       DEFAULT_N_BUSBAR_PER_SUB,
+                                       GRID2OP_CLASSES_ENV_FOLDER,
+                                       GRID2OP_CURRENT_VERSION_STR,
+                                       GRID2OP_CURRENT_VERSION)
 
 # TODO tests of these methods and this class in general
 
@@ -5386,7 +5391,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
                              shunt_info : Optional[ElTypeInfo] = None,
                              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Analogous to "backend.check_kirchhoff" but from the observation
+        Analogous to "backend.check_kirchhoff" but can be used for both the observation and the backend
 
         .. versionadded:: 1.11.0
         

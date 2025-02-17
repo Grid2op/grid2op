@@ -3245,6 +3245,16 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 return SomeGeneratorBelowRampmin(f"Especially generators {gen_ko_nms}")
             
             self._gen_activeprod_t[:] = tmp_gen_p
+        
+        # set the status of the other elements (if the backend 
+        # disconnect them)
+        if type(self).detachment_is_allowed:
+            gen_detached_user = self._backend_action.get_gen_detached()
+            topo_ = self.backend.get_topo_vect()
+            self._backend_action.current_topo.values[:] = topo_
+            self._aux_update_detachment_info()
+        else:
+            gen_detached_user = np.zeros(cls.n_gen, dtype=dt_bool)
             
         # problem with the gen_activeprod_t above, is that the slack bus absorbs alone all the losses
         # of the system. So basically, when it's too high (higher than the ramp) it can
@@ -3253,11 +3263,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # set the line status
         self._line_status[:] = self.backend.get_line_status()
-
+            
         # for detachment remember previous loads and generation
         self._prev_load_p[:], self._prev_load_q[:], *_ = self.backend.loads_info()
         self._delta_gen_p[:] = self._gen_activeprod_t - self._gen_activeprod_t_redisp
-        self._delta_gen_p[self._gens_detached] = 0.
+        self._delta_gen_p[gen_detached_user] = 0.  # when the backend disconnect it it should not be set to 0.
         self._prev_gen_p[:] = self._gen_activeprod_t
         
         # finally, build the observation (it's a different one at each step, we cannot reuse the same one)
@@ -3272,11 +3282,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """overlaoded in MaskedEnv"""
         return self.backend.next_grid_state(env=self, is_dc=self._env_dc)
     
-    def _aux_run_pf_after_state_properly_set(
-        self, action, init_line_status, new_p, except_
-    ):
-        has_error = True
-        detailed_info = None
+    def _aux_update_detachment_info(self):
         cls = type(self)
         if cls.detachment_is_allowed:
             self._loads_detached[:] = self._backend_action.get_load_detached()
@@ -3296,6 +3302,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             mask_chgt = self._backend_action.storage_power.changed
             self._storage_p_detached[mask_chgt] = self._backend_action.storage_power.values[mask_chgt]
             self._storage_p_detached[~self._storages_detached] = 0.
+            
+    def _aux_run_pf_after_state_properly_set(
+        self, action, init_line_status, new_p, except_
+    ):
+        has_error = True
+        detailed_info = None
             
         try:
             # compute the next _grid state
