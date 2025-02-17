@@ -26,7 +26,7 @@ from abc import ABC, abstractmethod
 from grid2op.Observation import (BaseObservation,
                                  ObservationSpace,
                                  HighResSimCounter)
-from grid2op.Backend import Backend
+from grid2op.Backend import Backend, thermalLimits, protectionScheme
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Space import (GridObjects,
                            RandomObject,
@@ -569,6 +569,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self.__is_init = False
         self.debug_dispatch = False
 
+        # Thermal limit and protection
+        self.ts_manager : thermalLimits.ThermalLimits = None
+        self.protection = protectionScheme.NoProtection = None
+
         # to change the parameters
         self.__new_param = None
         self.__new_forecast_param = None
@@ -667,6 +671,33 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # slack (1.11.0)
         self._delta_gen_p = None
     
+
+    def _init_thermal_limit(self):
+
+        if self._thermal_limit_a is None:
+            if hasattr(self.ts_manager, '_thermal_limit_a') and isinstance(self.ts_manager.limits, np.ndarray):
+                _thermal_limits = self.ts_manager.limits.astype(dt_float)
+            else:
+                raise ValueError("Thermal limits not provided and 'self.ts_manager.limits' is unavailable or invalid.")
+        else:
+            _thermal_limits = self._thermal_limit_a
+        
+        # Update the thermal limits manager for protection scheme
+        self.ts_manager = thermalLimits.ThermalLimits(
+            _thermal_limit_a = _thermal_limits,
+            n_line=self.n_line,
+            line_names=self.name_line
+        )
+
+    def _init_protection(self):
+        # Initialize the protection system with the specified parameters
+        self.protection = protectionScheme.DefaultProtection(
+            backend=self.backend,
+            parameters=self.parameters,
+            thermal_limits=self.ts_manager,
+            is_dc=self._env_dc
+        ) 
+
     @property
     def highres_sim_counter(self):
         return self._highres_sim_counter
@@ -739,9 +770,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj._backend_action = copy.deepcopy(self._backend_action)
 
         # specific to Basic Env, do not change
-        new_obj.backend = self.backend.copy()
+        new_obj.ts_manager = self.ts_manager.copy()
         if self._thermal_limit_a is not None:
-            new_obj.backend.set_thermal_limit(self._thermal_limit_a)
+            new_obj.ts_manager.limits = self._thermal_limit_a
         new_obj._thermal_limit_a = copy.deepcopy(self._thermal_limit_a)
 
         new_obj.__is_init = self.__is_init
@@ -1889,57 +1920,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "Impossible to set the thermal limit to a non initialized Environment. "
                 "Have you called `env.reset()` after last game over ?"
             )
-        if isinstance(thermal_limit, dict):
-            tmp = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
-            for key, val in thermal_limit.items():
-                if key not in self.name_line:
-                    raise Grid2OpException(
-                        f"When setting a thermal limit with a dictionary, the keys should be line "
-                        f"names. We found: {key} which is not a line name. The names of the "
-                        f"powerlines are {self.name_line}"
-                    )
-                ind_line = (self.name_line == key).nonzero()[0][0]
-                if np.isfinite(tmp[ind_line]):
-                    raise Grid2OpException(
-                        f"Humm, there is a really strange bug, some lines are set twice."
-                    )
-                try:
-                    val_fl = float(val)
-                except Exception as exc_:
-                    raise Grid2OpException(
-                        f"When setting thermal limit with a dictionary, the keys should be "
-                        f"the names of the lines and the values the thermal limit (in amps) "
-                        f"you provided something that "
-                        f'cannot be converted to a float {type(val)}'
-                    ) from exc_
-                tmp[ind_line] = val_fl
-
-        elif isinstance(thermal_limit, (np.ndarray, list)):
-            try:
-                tmp = np.array(thermal_limit).flatten().astype(dt_float)
-            except Exception as exc_:
-                raise Grid2OpException(
-                    f"Impossible to convert the vector as input into a 1d numpy float array. "
-                ) from exc_
-            if tmp.shape[0] != self.n_line:
-                raise Grid2OpException(
-                    "Attempt to set thermal limit on {} powerlines while there are {}"
-                    "on the grid".format(tmp.shape[0], self.n_line)
-                )
-            if (~np.isfinite(tmp)).any():
-                raise Grid2OpException(
-                    "Impossible to use non finite value for thermal limits."
-                )
-        else:
-            raise Grid2OpException(
-                f"You can only set the thermal limits of the environment with a dictionary (in that "
-                f"case the keys are the line names, and the values the thermal limits) or with "
-                f"a numpy array that has as many components of the number of powerlines on "
-                f'the grid. You provided something with type "{type(thermal_limit)}" which '
-                f"is not supported."
-            )
-        self._thermal_limit_a[:] = tmp
-        self.backend.set_thermal_limit(self._thermal_limit_a)
+        # update n_line and name_line of ts_manager (old : self.ts_manager.n_line = -1 and self.ts_manager.name_line = None)
+        self.ts_manager.env_limits(thermal_limit=thermal_limit)
+        self.ts_manager.limits = self._thermal_limit_a
         self.observation_space.set_thermal_limit(self._thermal_limit_a)
 
     def _reset_redispatching(self):
@@ -3172,7 +3155,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p) -> Optional[Grid2OpException]:
         beg_res = time.perf_counter()
         # update the thermal limit, for DLR for example
-        self.backend.update_thermal_limit(self)  
+        self.ts_manager.update_limits(thermal_limit_a=self._thermal_limit_a) # old code : self.backend.update_thermal_limit(self)
+
         overflow_lines = self.backend.get_line_overflow()
         # save the current topology as "last" topology (for connected powerlines)
         # and update the state of the disconnected powerline due to cascading failure
@@ -3270,7 +3254,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     def _backend_next_grid_state(self):
         """overlaoded in MaskedEnv"""
-        return self.backend.next_grid_state(env=self, is_dc=self._env_dc)
+        self._init_thermal_limit()
+        self._init_protection()
+        return self.protection.next_grid_state()
     
     def _aux_run_pf_after_state_properly_set(
         self, action, init_line_status, new_p, except_
@@ -4529,7 +4515,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         update the value of the "time dependant" attributes, used mainly for the "_ObsEnv" (simulate) or
         the "Forecasted env" (obs.get_forecast_env())
         """
-        self.backend.set_thermal_limit(obs._thermal_limit)
+        self.ts_manager.limits = obs._thermal_limit
         if "opp_space_state" in obs._env_internal_params:
             self._oppSpace._set_state(obs._env_internal_params["opp_space_state"], 
                                       obs._env_internal_params["opp_state"])
