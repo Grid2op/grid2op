@@ -4405,7 +4405,7 @@ class BaseObservation(GridObjects):
         self.target_dispatch[:] = env._target_dispatch
         self.actual_dispatch[:] = env._actual_dispatch
 
-        self._thermal_limit[:] = env.get_thermal_limit()
+        self._thermal_limit[:] = env.ts_manager.limits
 
         if self.redispatching_unit_commitment_availble:
             self.gen_p_before_curtail[:] = env._gen_before_curtailment
