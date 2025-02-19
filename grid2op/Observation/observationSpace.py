@@ -189,7 +189,7 @@ class ObservationSpace(SerializableObservationSpace):
             parameters=self._simulate_parameters,
             reward_helper=self.reward_helper,
             action_helper=self.action_helper_env,
-            thermal_limit_a=env.get_thermal_limit(),
+            thermal_limit_a=env.ts_manager.limits,
             legalActClass=copy.deepcopy(env._legalActClass),
             other_rewards=other_rewards,
             helper_action_class=env._helper_action_class,
@@ -398,11 +398,11 @@ class ObservationSpace(SerializableObservationSpace):
                                "function when you cannot simulate (because the "
                                "backend could not be copied)")
 
-    def set_thermal_limit(self, thermal_limit_a):
-        if self.obs_env is not None:
-            self.obs_env.set_thermal_limit(thermal_limit_a)
-        # if self._backend_obs is not None:
-        #     self.ts_manager.limits = thermal_limit_a
+    # def set_thermal_limit(self, thermal_limit_a):
+    #     if self.obs_env is not None:
+    #         self.obs_env.set_thermal_limit(thermal_limit_a)
+    #     if self._backend_obs is not None:
+    #         self.obs_env.ts_manager.limits = thermal_limit_a
         
     def reset_space(self):
         if self.with_forecast:

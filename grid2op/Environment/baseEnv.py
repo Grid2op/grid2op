@@ -550,8 +550,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self.debug_dispatch = False
 
         # Thermal limit and protection
-        self.ts_manager : thermalLimits.ThermalLimits = None
-        self.protection = protectionScheme.NoProtection = None
+        self._init_thermal_limit()
+        self.protection : protectionScheme.DefaultProtection = None
 
         # to change the parameters
         self.__new_param = None
@@ -637,18 +637,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._reward_to_obs = {}
 
     def _init_thermal_limit(self):
-
-        if self._thermal_limit_a is None:
-            if hasattr(self.ts_manager, '_thermal_limit_a') and isinstance(self.ts_manager.limits, np.ndarray):
-                _thermal_limits = self.ts_manager.limits.astype(dt_float)
-            else:
-                raise ValueError("Thermal limits not provided and 'self.ts_manager.limits' is unavailable or invalid.")
-        else:
-            _thermal_limits = self._thermal_limit_a
-        
-        # Update the thermal limits manager for protection scheme
         self.ts_manager = thermalLimits.ThermalLimits(
-            _thermal_limit_a = _thermal_limits,
+            _thermal_limit_a = self._thermal_limit_a,
             n_line=self.n_line,
             line_names=self.name_line
         )
@@ -733,6 +723,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj._backend_action = copy.deepcopy(self._backend_action)
 
         # specific to Basic Env, do not change
+        new_obj.backend = self.backend.copy()
         new_obj.ts_manager = self.ts_manager.copy()
         if self._thermal_limit_a is not None:
             new_obj.ts_manager.limits = self._thermal_limit_a
@@ -1792,52 +1783,51 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         pass
 
-    def set_thermal_limit(self, thermal_limit):
-        """
-        Set the thermal limit effectively.
+    # def set_thermal_limit(self, thermal_limit):
+    #     """
+    #     Set the thermal limit effectively.
 
-        Parameters
-        ----------
-        thermal_limit: ``numpy.ndarray``
-            The new thermal limit. It must be a numpy ndarray vector (or convertible to it). For each powerline it
-            gives the new thermal limit.
+    #     Parameters
+    #     ----------
+    #     thermal_limit: ``numpy.ndarray``
+    #         The new thermal limit. It must be a numpy ndarray vector (or convertible to it). For each powerline it
+    #         gives the new thermal limit.
 
-            Alternatively, this can be a dictionary mapping the line names (keys) to its thermal limits (values). In
-            that case, all thermal limits for all powerlines should be specified (this is a safety measure
-            to reduce the odds of misuse).
+    #         Alternatively, this can be a dictionary mapping the line names (keys) to its thermal limits (values). In
+    #         that case, all thermal limits for all powerlines should be specified (this is a safety measure
+    #         to reduce the odds of misuse).
 
-        Examples
-        ---------
+    #     Examples
+    #     ---------
 
-        This function can be used like this:
+    #     This function can be used like this:
 
-        .. code-block:: python
+    #     .. code-block:: python
 
-            import grid2op
+    #         import grid2op
 
-            # I create an environment
-            env = grid2op.make(""l2rpn_case14_sandbox"", test=True)
+    #         # I create an environment
+    #         env = grid2op.make(""l2rpn_case14_sandbox"", test=True)
 
-            # i set the thermal limit of each powerline to 20000 amps
-            env.set_thermal_limit([20000 for _ in range(env.n_line)])
+    #         # i set the thermal limit of each powerline to 20000 amps
+    #         env.set_thermal_limit([20000 for _ in range(env.n_line)])
 
-        Notes
-        -----
-        As of grid2op > 1.5.0, it is possible to set the thermal limit by using a dictionary with the keys being
-        the name of the powerline and the values the thermal limits.
+    #     Notes
+    #     -----
+    #     As of grid2op > 1.5.0, it is possible to set the thermal limit by using a dictionary with the keys being
+    #     the name of the powerline and the values the thermal limits.
 
-        """
-        if self.__closed:
-            raise EnvError("This environment is closed, you cannot use it.")
-        if not self.__is_init:
-            raise Grid2OpException(
-                "Impossible to set the thermal limit to a non initialized Environment. "
-                "Have you called `env.reset()` after last game over ?"
-            )
-        # update n_line and name_line of ts_manager (old : self.ts_manager.n_line = -1 and self.ts_manager.name_line = None)
-        self.ts_manager.env_limits(thermal_limit=thermal_limit)
-        self.ts_manager.limits = self._thermal_limit_a
-        self.observation_space.set_thermal_limit(self._thermal_limit_a)
+    #     """
+    #     if self.__closed:
+    #         raise EnvError("This environment is closed, you cannot use it.")
+    #     if not self.__is_init:
+    #         raise Grid2OpException(
+    #             "Impossible to set the thermal limit to a non initialized Environment. "
+    #             "Have you called `env.reset()` after last game over ?"
+    #         )
+    #     # update n_line and name_line of ts_manager (old : self.ts_manager.n_line = -1 and self.ts_manager.name_line = None)
+    #     self.ts_manager.env_limits(thermal_limit=thermal_limit)
+    #     self.observation_space.set_thermal_limit(thermal_limit=thermal_limit)
 
     def _reset_redispatching(self):
         # redispatching
@@ -2492,33 +2482,33 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         else:
             return self._last_obs
 
-    def get_thermal_limit(self):
-        """
-        Get the current thermal limit in amps registered for the environment.
+    # def get_thermal_limit(self):
+    #     """
+    #     Get the current thermal limit in amps registered for the environment.
 
-        Examples
-        ---------
+    #     Examples
+    #     ---------
 
-        It can be used like this:
+    #     It can be used like this:
 
-        .. code-block:: python
+    #     .. code-block:: python
 
-            import grid2op
+    #         import grid2op
 
-            # I create an environment
-            env = grid2op.make("l2rpn_case14_sandbox")
+    #         # I create an environment
+    #         env = grid2op.make("l2rpn_case14_sandbox")
 
-            thermal_limits = env.get_thermal_limit()
+    #         thermal_limits = env.get_thermal_limit()
 
-        """
-        if self.__closed:
-            raise EnvError("This environment is closed, you cannot use it.")
-        if not self.__is_init:
-            raise EnvError(
-                "This environment is not initialized. It has no thermal limits. "
-                "Have you called `env.reset()` after last game over ?"
-            )
-        return 1.0 * self._thermal_limit_a
+    #     """
+    #     if self.__closed:
+    #         raise EnvError("This environment is closed, you cannot use it.")
+    #     if not self.__is_init:
+    #         raise EnvError(
+    #             "This environment is not initialized. It has no thermal limits. "
+    #             "Have you called `env.reset()` after last game over ?"
+    #         )
+    #     return 1.0 * self._thermal_limit_a
 
     def _withdraw_storage_losses(self):
         """
@@ -3053,7 +3043,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p):
         beg_res = time.perf_counter()
         # update the thermal limit, for DLR for example
-        self.ts_manager.update_limits(thermal_limit_a=self._thermal_limit_a) # old code : self.backend.update_thermal_limit(self)
+        self.ts_manager.update_limits(self) # old code : self.backend.update_thermal_limit(self)
 
         overflow_lines = self.backend.get_line_overflow()
         # save the current topology as "last" topology (for connected powerlines)
@@ -3116,11 +3106,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # TODO is non zero and disconnected, this should be ok.
         self._time_extract_obs += time.perf_counter() - beg_res
 
-    def _backend_next_grid_state(self):
+    def _protection_next_grid_state(self):
         """overlaoded in MaskedEnv"""
         self._init_thermal_limit()
         self._init_protection()
-        return self.protection.next_grid_state()
     
     def _aux_run_pf_after_state_properly_set(
         self, action, init_line_status, new_p, except_
@@ -3130,7 +3119,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         try:
             # compute the next _grid state
             beg_pf = time.perf_counter()
-            disc_lines, detailed_info, conv_ = self._backend_next_grid_state()
+            self._protection_next_grid_state()
+            disc_lines, detailed_info, conv_ = self.protection.next_grid_state()
             self._disc_lines[:] = disc_lines
             self._time_powerflow += time.perf_counter() - beg_pf
             if conv_ is None:

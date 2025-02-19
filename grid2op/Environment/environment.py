@@ -26,7 +26,7 @@ from grid2op.Exceptions import *
 from grid2op.Observation import CompleteObservation, ObservationSpace, BaseObservation
 from grid2op.Reward import FlatReward, RewardHelper, BaseReward
 from grid2op.Rules import RulesChecker, AlwaysLegal, BaseRules
-from grid2op.Backend import Backend, protectionScheme, thermalLimits
+from grid2op.Backend import Backend, thermalLimits
 from grid2op.Chronics import ChronicsHandler
 from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageController
 from grid2op.Environment.baseEnv import BaseEnv
@@ -84,6 +84,7 @@ class Environment(BaseEnv):
         chronics_handler,
         backend,
         parameters,
+        ts_manager: thermalLimits.ThermalLimits = None,
         name="unknown",
         n_busbar : N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
         names_chronics_to_backend=None,
@@ -204,19 +205,19 @@ class Environment(BaseEnv):
         self._init_backend(
             chronics_handler,
             backend,
+            ts_manager,
             names_chronics_to_backend,
             actionClass,
             observationClass,
             rewardClass,
             legalActClass,
         )
-        self.ts_manager : thermalLimits.ThermalLimits = copy.deepcopy(self.ts_manager)
-        self.protection : protectionScheme.DefaultProtection = copy.deepcopy(self.protection)
         
     def _init_backend(
         self,
         chronics_handler,
         backend,
+        ts_manager,
         names_chronics_to_backend,
         actionClass,
         observationClass,
@@ -246,7 +247,13 @@ class Environment(BaseEnv):
                         type(rewardClass)
                     )
                 )
-
+        #thermalLimits:
+        ts_manager = ts_manager or self.ts_manager
+        if not isinstance(ts_manager, thermalLimits.ThermalLimits):
+            raise Grid2OpException(
+                'Parameter "ts_manager" used to build the Environment should derived form the '
+                'grid2op.Backend.thermalLimits class, type provided is "{}"'.format(type(ts_manager))
+            )
         # backend
         if not isinstance(backend, Backend):
             raise Grid2OpException(
@@ -318,11 +325,13 @@ class Environment(BaseEnv):
         self._line_status = np.ones(shape=self.n_line, dtype=dt_bool)
         self._disc_lines = np.zeros(shape=self.n_line, dtype=dt_int) - 1
 
+        self.ts_manager.n_line = self.n_line
+        self.ts_manager.name_line = self.name_line
         if self._thermal_limit_a is None:
-            self._thermal_limit_a = self.backend.thermal_limit_a.astype(dt_float)
+            self.ts_manager.limits = self.backend.thermal_limit_a.astype(dt_float)
+            self._thermal_limit_a = self.ts_manager.limits
         else:
-            self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
-
+            self.ts_manager.limits = self._thermal_limit_a.astype(dt_float)
         *_, tmp = self.backend.generators_info()
 
         # rules of the game
@@ -1517,7 +1526,8 @@ class Environment(BaseEnv):
         res["legalActClass"] = self._legalActClass
         res["epsilon_poly"] = self._epsilon_poly
         res["tol_poly"] = self._tol_poly
-        res["thermal_limit_a"] = self._thermal_limit_a
+        # res["thermal_limit_a"] = self._thermal_limit_a
+        res["ts_manager"] = self.ts_manager
         res["voltagecontrolerClass"] = self._voltagecontrolerClass
         res["other_rewards"] = {k: v.rewardClass for k, v in self.other_rewards.items()}
         res["name"] = self.name
@@ -2139,7 +2149,8 @@ class Environment(BaseEnv):
         if self.chronics_handler.max_iter is not None:
             res["max_iter"] = self.chronics_handler.max_iter
         res["gridStateclass_kwargs"] = dict_
-        res["thermal_limit_a"] = self._thermal_limit_a
+        # res["thermal_limit_a"] = self._thermal_limit_a
+        res["ts_manager"] = self.ts_manager
         res["voltageControlerClass"] = self._voltagecontrolerClass
         res["other_rewards"] = {k: v.rewardClass for k, v in self.other_rewards.items()}
         res["grid_layout"] = self.grid_layout

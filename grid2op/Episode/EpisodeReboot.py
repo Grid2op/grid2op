@@ -244,9 +244,7 @@ class EpisodeReboot:
         # # TODO check that the "stored" "last bus for when the powerline were connected" are
         # # kept there (I might need to do a for loop)
         self.env.backend.update_from_obs(obs)
-        disc_lines, detailed_info, conv_ = self.env.backend.next_grid_state(
-            env=self.env
-        )
+        disc_lines, detailed_info, conv_ = self.env.protection.next_grid_state()
         if conv_ is None:
             self.env._backend_action.update_state(disc_lines)
         self.env._backend_action.reset()

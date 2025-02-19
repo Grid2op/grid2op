@@ -123,7 +123,6 @@ class _ObsEnv(BaseEnv):
         self.current_obs_init = None
         self.current_obs = None
 
-        self._init_thermal_limit()
 
         self._init_backend(
             chronics_handler=_ObsCH(),
@@ -135,7 +134,6 @@ class _ObsEnv(BaseEnv):
             legalActClass=legalActClass,
         )
 
-        self.ts_manager = copy.deepcopy(self._observation_space.ts_manager)
 
         self.delta_time_seconds = delta_time_seconds
         ####

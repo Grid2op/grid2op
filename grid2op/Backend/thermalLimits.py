@@ -1,6 +1,12 @@
-from loguru import logger
 from typing import Union, List, Optional, Dict
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
+
+from loguru import logger
 import numpy as np
+import copy
 
 import grid2op
 from grid2op.dtypes import dt_float
@@ -126,6 +132,8 @@ class ThermalLimits:
                     self._thermal_limit_a[i] = tmp
 
     def env_limits(self, thermal_limit):
+        """
+        """
         if isinstance(thermal_limit, dict):
             tmp = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
             for key, val in thermal_limit.items():
@@ -179,7 +187,7 @@ class ThermalLimits:
         self._thermal_limit_a = tmp
         logger.info("Env thermal limits successfully set.")
 
-    def update_limits(self, thermal_limit_a: np.ndarray) -> None:
+    def update_limits_from_vector(self, thermal_limit_a: np.ndarray) -> None:
         """
         Updates the thermal limits using a numpy array.
 
@@ -189,3 +197,15 @@ class ThermalLimits:
         thermal_limit_a = np.array(thermal_limit_a).astype(dt_float)
         self._thermal_limit_a = thermal_limit_a
         logger.info("Thermal limits updated from vector.")
+
+    def update_limits(self, env : "grid2op.Environment.BaseEnv") -> None:
+        pass
+
+    def copy(self) -> Self:
+        """
+        Creates a deep copy of the current ThermalLimits instance.
+
+        :return: ThermalLimits
+            A new instance with the same attributes.
+        """
+        return copy.deepcopy(self)

@@ -22,7 +22,7 @@ from grid2op.Reward import FlatReward, BaseReward
 from grid2op.Rules import AlwaysLegal
 from grid2op.Environment import Environment
 from grid2op.Chronics import ChronicsHandler, GridStateFromFile, GridValue, MultifolderWithCache
-from grid2op.Backend import Backend, PandaPowerBackend
+from grid2op.Backend import Backend, PandaPowerBackend, thermalLimits
 from grid2op.Parameters import Parameters
 from grid2op.Agent import DoNothingAgent, BaseAgent
 from grid2op.VoltageControler import ControlVoltageFromFile
@@ -374,6 +374,7 @@ class Runner(object):
         gridStateclass_kwargs={},
         voltageControlerClass=ControlVoltageFromFile,
         thermal_limit_a=None,
+        ts_manager=thermalLimits.ThermalLimits,
         max_iter=-1,
         other_rewards={},
         opponent_space_type=OpponentSpace,
@@ -665,6 +666,7 @@ class Runner(object):
 
         self.verbose = verbose
         self.thermal_limit_a = thermal_limit_a
+        self.ts_manager = ts_manager
 
         # controler for voltage
         if not issubclass(voltageControlerClass, ControlVoltageFromFile):
@@ -1275,6 +1277,7 @@ class Runner(object):
             "gridStateclass_kwargs": copy.deepcopy(self.gridStateclass_kwargs),
             "voltageControlerClass": self.voltageControlerClass,
             "thermal_limit_a": self.thermal_limit_a,
+            "ts_manager": self.ts_manager,
             "max_iter": self.max_iter,
             "other_rewards": copy.deepcopy(self._other_rewards),
             "opponent_space_type": self._opponent_space_type,
