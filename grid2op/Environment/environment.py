@@ -962,7 +962,7 @@ class Environment(BaseEnv):
         # self.backend.assert_grid_correct()
 
         if self._thermal_limit_a is not None:
-            self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
+            self.ts_manager.limits = self._thermal_limit_a.astype(dt_float)
 
         self._backend_action = self._backend_action_class()
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
