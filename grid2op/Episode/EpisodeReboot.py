@@ -182,6 +182,8 @@ class EpisodeReboot:
             del env_kwargs["opponent_class"]
         if "name" in env_kwargs:
             del env_kwargs["name"]
+        if "ts_manager" in env_kwargs:
+            del env_kwargs["ts_manager"]
 
         seed = None
         with open(os.path.join(agent_path, name, "episode_meta.json")) as f:
