@@ -551,7 +551,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # Thermal limit and protection
         self._init_thermal_limit()
-        self.protection : protectionScheme.DefaultProtection = None
+        self.protection : protectionScheme = None
 
         # to change the parameters
         self.__new_param = None
@@ -645,12 +645,21 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     def _init_protection(self):
         # Initialize the protection system with the specified parameters
-        self.protection = protectionScheme.DefaultProtection(
-            backend=self.backend,
-            parameters=self.parameters,
-            thermal_limits=self.ts_manager,
-            is_dc=self._env_dc
-        ) 
+        self._no_overflow_disconnection: bool = (
+            self._parameters.NO_OVERFLOW_DISCONNECTION
+        )
+        if self._no_overflow_disconnection:
+            self.protection = protectionScheme.NoProtection(
+                backend=self.backend,
+                thermal_limits=self.ts_manager,
+            )
+        else:
+            self.protection = protectionScheme.DefaultProtection(
+                backend=self.backend,
+                parameters=self.parameters,
+                thermal_limits=self.ts_manager,
+                is_dc=self._env_dc
+            )
 
     @property
     def highres_sim_counter(self):
@@ -1783,51 +1792,52 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         pass
 
-    # def set_thermal_limit(self, thermal_limit):
-    #     """
-    #     Set the thermal limit effectively.
+    def set_thermal_limit(self, thermal_limit):
+        """
+        Set the thermal limit effectively.
 
-    #     Parameters
-    #     ----------
-    #     thermal_limit: ``numpy.ndarray``
-    #         The new thermal limit. It must be a numpy ndarray vector (or convertible to it). For each powerline it
-    #         gives the new thermal limit.
+        Parameters
+        ----------
+        thermal_limit: ``numpy.ndarray``
+            The new thermal limit. It must be a numpy ndarray vector (or convertible to it). For each powerline it
+            gives the new thermal limit.
 
-    #         Alternatively, this can be a dictionary mapping the line names (keys) to its thermal limits (values). In
-    #         that case, all thermal limits for all powerlines should be specified (this is a safety measure
-    #         to reduce the odds of misuse).
+            Alternatively, this can be a dictionary mapping the line names (keys) to its thermal limits (values). In
+            that case, all thermal limits for all powerlines should be specified (this is a safety measure
+            to reduce the odds of misuse).
 
-    #     Examples
-    #     ---------
+        Examples
+        ---------
 
-    #     This function can be used like this:
+        This function can be used like this:
 
-    #     .. code-block:: python
+        .. code-block:: python
 
-    #         import grid2op
+            import grid2op
 
-    #         # I create an environment
-    #         env = grid2op.make(""l2rpn_case14_sandbox"", test=True)
+            # I create an environment
+            env = grid2op.make(""l2rpn_case14_sandbox"", test=True)
 
-    #         # i set the thermal limit of each powerline to 20000 amps
-    #         env.set_thermal_limit([20000 for _ in range(env.n_line)])
+            # i set the thermal limit of each powerline to 20000 amps
+            env.set_thermal_limit([20000 for _ in range(env.n_line)])
 
-    #     Notes
-    #     -----
-    #     As of grid2op > 1.5.0, it is possible to set the thermal limit by using a dictionary with the keys being
-    #     the name of the powerline and the values the thermal limits.
+        Notes
+        -----
+        As of grid2op > 1.5.0, it is possible to set the thermal limit by using a dictionary with the keys being
+        the name of the powerline and the values the thermal limits.
 
-    #     """
-    #     if self.__closed:
-    #         raise EnvError("This environment is closed, you cannot use it.")
-    #     if not self.__is_init:
-    #         raise Grid2OpException(
-    #             "Impossible to set the thermal limit to a non initialized Environment. "
-    #             "Have you called `env.reset()` after last game over ?"
-    #         )
-    #     # update n_line and name_line of ts_manager (old : self.ts_manager.n_line = -1 and self.ts_manager.name_line = None)
-    #     self.ts_manager.env_limits(thermal_limit=thermal_limit)
-    #     self.observation_space.set_thermal_limit(thermal_limit=thermal_limit)
+        """
+        if self.__closed:
+            raise EnvError("This environment is closed, you cannot use it.")
+        if not self.__is_init:
+            raise Grid2OpException(
+                "Impossible to set the thermal limit to a non initialized Environment. "
+                "Have you called `env.reset()` after last game over ?"
+            )
+        # update n_line and name_line of ts_manager (old : self.ts_manager.n_line = -1 and self.ts_manager.name_line = None)
+        self.ts_manager.env_limits(thermal_limit=thermal_limit)
+        self.backend.thermal_limit_a = self.ts_manager.limits
+        self.observation_space.set_thermal_limit(self.ts_manager.limits)
 
     def _reset_redispatching(self):
         # redispatching

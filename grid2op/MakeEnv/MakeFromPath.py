@@ -1042,8 +1042,7 @@ def make_from_dataset_path(
     )
     # Update the thermal limit if any
     if thermal_limits is not None:
-        env.ts_manager.env_limits(thermal_limits)
-        env.observation_space.ts_manager.env_limits(env.ts_manager.limits)
+        env.set_thermal_limit(thermal_limits)
 
     # Set graph layout if not None and not an empty dict
     if graph_layout is not None and graph_layout:
