@@ -10,6 +10,8 @@ import sys
 import copy
 import logging
 import os
+from grid2op.Backend import thermalLimits
+
 from grid2op.Exceptions.envExceptions import EnvError
 
 from grid2op.Observation.serializableObservationSpace import (
@@ -133,7 +135,10 @@ class ObservationSpace(SerializableObservationSpace):
         self._real_env_kwargs = {}
         self._observation_bk_class = observation_bk_class
         self._observation_bk_kwargs = observation_bk_kwargs
-    
+        
+        # Initialisation de la class thermal limits
+        self.ts_manager : thermalLimits.ThermalLimits = copy.deepcopy(env.ts_manager)
+
     def set_real_env_kwargs(self, env):
         if not self.with_forecast:
             return 
@@ -184,7 +189,7 @@ class ObservationSpace(SerializableObservationSpace):
             parameters=self._simulate_parameters,
             reward_helper=self.reward_helper,
             action_helper=self.action_helper_env,
-            thermal_limit_a=env.get_thermal_limit(),
+            thermal_limit_a=env.ts_manager.limits,
             legalActClass=copy.deepcopy(env._legalActClass),
             other_rewards=other_rewards,
             helper_action_class=env._helper_action_class,
@@ -216,8 +221,8 @@ class ObservationSpace(SerializableObservationSpace):
         self._backend_obs.assert_grid_correct()
         self._backend_obs.runpf()
         self._backend_obs.assert_grid_correct_after_powerflow()
-        self._backend_obs.set_thermal_limit(env.get_thermal_limit())
-            
+        self.ts_manager.limits = env.get_thermal_limit()
+        
     def _create_backend_obs(self, env, observation_bk_class, observation_bk_kwargs, _local_dir_cls):
         _with_obs_env = True
         path_sim_bk = os.path.join(env.get_path_env(), "grid_forecast.json")
@@ -395,9 +400,9 @@ class ObservationSpace(SerializableObservationSpace):
 
     def set_thermal_limit(self, thermal_limit_a):
         if self.obs_env is not None:
-            self.obs_env.set_thermal_limit(thermal_limit_a)
+            self.obs_env.ts_manager.env_limits(thermal_limit_a)
         if self._backend_obs is not None:
-            self._backend_obs.set_thermal_limit(thermal_limit_a)
+            self._backend_obs.thermal_limit_a = thermal_limit_a
         
     def reset_space(self):
         if self.with_forecast:
