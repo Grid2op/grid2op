@@ -1,5 +1,5 @@
 import copy
-from loguru import logger
+import logging
 from typing import Tuple, Union, Any, List, Optional
 import numpy as np
 
@@ -20,6 +20,7 @@ class DefaultProtection:
         parameters: Parameters,
         thermal_limits: ThermalLimits,
         is_dc: bool = False,
+        logger: Optional[logging.Logger] = None,
     ):
         """
         Initialise l'état du réseau avec des protections personnalisables.
@@ -42,6 +43,12 @@ class DefaultProtection:
         self._timestep_overflow = np.zeros(self.thermal_limits.n_line, dtype=dt_int)
         self.infos: List[str] = []
 
+        if logger is None:
+            self.logger = logging.getLogger(__name__)
+            self.logger.disabled = True
+        else:
+            self.logger: logging.Logger = logger.getChild("grid2op_BaseEnv")
+
     def _validate_input(self, backend: Backend, parameters: Optional[Parameters]) -> None:
         if not isinstance(backend, Backend):
             raise Grid2OpException(f"Argument 'backend' doit être de type 'Backend', reçu : {type(backend)}")
@@ -55,12 +62,18 @@ class DefaultProtection:
         try:
             return self.backend._runpf_with_diverging_exception(self.is_dc)
         except Exception as e:
-            logger.error(f"Erreur flux de puissance : {e}")
+            if self.logger is not None:
+                self.logger.error(
+                    f"Erreur flux de puissance : {e}"
+                )
             return e
 
     def _update_overflows(self, lines_flows: np.ndarray) -> np.ndarray:
         if self._thermal_limit_a is None:
-            logger.error("Thermal limits must be provided for overflow calculations.")
+            if self.logger is not None:
+                self.logger.error(
+                    "Thermal limits must be provided for overflow calculations."
+                )
             raise ValueError("Thermal limits must be provided for overflow calculations.")
 
         lines_status = self.backend.get_line_status() # self._thermal_limit_a reste fixe. self._soft_overflow_threshold = 1 
@@ -77,7 +90,9 @@ class DefaultProtection:
         for line_idx in np.where(lines_to_disconnect)[0]:
             self.backend._disconnect_line(line_idx)
             self.disconnected_during_cf[line_idx] = timestep
-            logger.warning(f"Ligne {line_idx} déconnectée au pas de temps {timestep}.")
+            if self.logger is not None:
+                self.logger.warning(f"Ligne {line_idx} déconnectée au pas de temps {timestep}.")         
+            
 
     def next_grid_state(self) -> Tuple[np.ndarray, List[Any], Union[None, Exception]]:
         try:
@@ -99,7 +114,8 @@ class DefaultProtection:
             return self.disconnected_during_cf, self.infos, None
 
         except Exception as e:
-            logger.exception("Erreur inattendue dans le calcul de l'état du réseau.")
+            if self.logger is not None:
+                self.exception("Erreur inattendue dans le calcul de l'état du réseau.")
             return self.disconnected_during_cf, self.infos, e
 
 class NoProtection:

@@ -4,7 +4,7 @@ try:
 except ImportError:
     from typing_extensions import Self
 
-from loguru import logger
+import logging
 import numpy as np
 import copy
 
@@ -21,7 +21,8 @@ class ThermalLimits:
             self,
             _thermal_limit_a: Optional[np.ndarray] = None,
             line_names: Optional[List[str]] = None,
-            n_line: Optional[int] = None
+            n_line: Optional[int] = None,
+            logger: Optional[logging.Logger] = None,
         ):
         """
         Initializes the thermal limits manager.
@@ -43,8 +44,12 @@ class ThermalLimits:
         self._n_line = n_line
         self._name_line = line_names
 
-        logger.info(f"ThermalLimits initialized with {self.n_line} limits.")
-
+        if logger is None:
+            self.logger = logging.getLogger(__name__)
+            self.logger.disabled = True
+        else:
+            self.logger: logging.Logger = logger.getChild("grid2op_BaseEnv")
+        
     @property
     def n_line(self) -> int:
         return self._n_line
@@ -54,8 +59,9 @@ class ThermalLimits:
         if new_n_line <= 0:
             raise ValueError("Number of lines must be a positive integer.")
         self._n_line = new_n_line
-        logger.info(f"Number of lines updated to {self._n_line}.")
-    
+        if self.logger is not None:
+            self.logger.info(f"Number of lines updated to {self._n_line}.")
+
     @property
     def name_line(self) -> Union[List[str], np.ndarray]:
         return self._name_line
@@ -75,7 +81,8 @@ class ThermalLimits:
             raise ValueError("Length of name list must match the number of lines.")
 
         self._name_line = new_name_line
-        logger.info(f"Power line names updated")
+        if self.logger is not None:
+            self.logger.info("Power line names updated")
 
     @property
     def limits(self) -> np.ndarray:
@@ -185,7 +192,8 @@ class ThermalLimits:
             )
 
         self._thermal_limit_a = tmp
-        logger.info("Env thermal limits successfully set.")
+        if self.logger is not None:
+            self.logger.info("Env thermal limits successfully set.")
 
     def update_limits_from_vector(self, thermal_limit_a: np.ndarray) -> None:
         """
@@ -196,7 +204,8 @@ class ThermalLimits:
         """
         thermal_limit_a = np.array(thermal_limit_a).astype(dt_float)
         self._thermal_limit_a = thermal_limit_a
-        logger.info("Thermal limits updated from vector.")
+        if self.logger is not None:
+            self.logger.info("Thermal limits updated from vector.")
 
     def update_limits(self, env : "grid2op.Environment.BaseEnv") -> None:
         pass
