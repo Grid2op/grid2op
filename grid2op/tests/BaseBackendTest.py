@@ -1637,7 +1637,7 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
                 
             )
 
-        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        disco, infos, conv_ = env.protection.next_grid_state()
         assert conv_ is None
         assert not infos
 
@@ -1667,9 +1667,10 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         thermal_limit[self.id_first_line_disco] = (
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
-        self.backend.set_thermal_limit(thermal_limit)
-
-        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        env.ts_manager.limits = thermal_limit
+        env._init_protection()
+        
+        disco, infos, conv_ = env.protection.next_grid_state()
         assert conv_ is None
         assert len(infos) == 1  # check that i have only one overflow
         assert np.sum(disco >= 0) == 1
@@ -1704,9 +1705,10 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         thermal_limit[self.id_first_line_disco] = (
             lines_flows_init[self.id_first_line_disco] / 2
         )
-        self.backend.set_thermal_limit(thermal_limit)
+        env.ts_manager.limits = thermal_limit
+        env._init_protection()
 
-        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        disco, infos, conv_ = env.protection.next_grid_state()
         assert conv_ is None
         assert not infos  # check that don't simulate a cascading failure
         assert np.sum(disco >= 0) == 0
@@ -1750,9 +1752,10 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        env.ts_manager.limits = thermal_limit
+        env._init_protection()
 
-        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        disco, infos, conv_ = env.protection.next_grid_state()
         assert conv_ is None
         assert len(infos) == 2  # check that there is a cascading failure of length 2
         assert disco[self.id_first_line_disco] >= 0
@@ -1793,9 +1796,10 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        env.ts_manager.limits = thermal_limit
+        env._init_protection()
 
-        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        disco, infos, conv_ = env.protection.next_grid_state()
         assert conv_ is None
         assert len(infos) == 1  # check that don't simulate a cascading failure
         assert disco[self.id_first_line_disco] >= 0
@@ -1836,9 +1840,10 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        env.ts_manager.limits = thermal_limit
+        env._init_protection()
 
-        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        disco, infos, conv_ = env.protection.next_grid_state()
         assert conv_ is None
         assert len(infos) == 1  # check that don't simulate a cascading failure
         assert disco[self.id_first_line_disco] >= 0
@@ -1879,9 +1884,10 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        env.ts_manager.limits = thermal_limit
+        env._init_protection()
 
-        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        disco, infos, conv_ = env.protection.next_grid_state()
         assert conv_ is None
         assert len(infos) == 2  # check that there is a cascading failure of length 2
         assert disco[self.id_first_line_disco] >= 0
