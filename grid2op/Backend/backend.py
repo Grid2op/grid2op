@@ -764,135 +764,135 @@ class Backend(GridObjects, ABC):
         p_or, q_or, v_or, a_or = self.lines_or_info()
         return a_or
 
-    # def set_thermal_limit(self, limits : Union[np.ndarray, Dict["str", float]]) -> None:
-    #     """
-    #     INTERNAL
+    def set_thermal_limit(self, limits : Union[np.ndarray, Dict["str", float]]) -> None:
+        """
+        INTERNAL
 
-    #     .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
-    #         You can set the thermal limit directly in the environment.
+            You can set the thermal limit directly in the environment.
 
-    #     This function is used as a convenience function to set the thermal limits :attr:`Backend.thermal_limit_a`
-    #     in amperes.
+        This function is used as a convenience function to set the thermal limits :attr:`Backend.thermal_limit_a`
+        in amperes.
 
-    #     It can be used at the beginning of an episode if the thermal limit are not present in the original data files
-    #     or alternatively if the thermal limits depends on the period of the year (one in winter and one in summer
-    #     for example).
+        It can be used at the beginning of an episode if the thermal limit are not present in the original data files
+        or alternatively if the thermal limits depends on the period of the year (one in winter and one in summer
+        for example).
 
-    #     Parameters
-    #     ----------
-    #     limits: ``object``
-    #         It can be understood differently according to its type:
+        Parameters
+        ----------
+        limits: ``object``
+            It can be understood differently according to its type:
 
-    #         - If it's a ``numpy.ndarray``, then it is assumed the thermal limits are given in amperes in the same order
-    #           as the powerlines computed in the backend. In that case it modifies all the thermal limits of all
-    #           the powerlines at once.
-    #         - If it's a ``dict`` it must have:
+            - If it's a ``numpy.ndarray``, then it is assumed the thermal limits are given in amperes in the same order
+              as the powerlines computed in the backend. In that case it modifies all the thermal limits of all
+              the powerlines at once.
+            - If it's a ``dict`` it must have:
 
-    #           - as key the powerline names (not all names are mandatory, in that case only the powerlines with the name
-    #             in this dictionnary will be modified)
-    #           - as value the new thermal limit (should be a strictly positive float).
+              - as key the powerline names (not all names are mandatory, in that case only the powerlines with the name
+                in this dictionnary will be modified)
+              - as value the new thermal limit (should be a strictly positive float).
 
-    #     """
-    #     if isinstance(limits, np.ndarray):
-    #         if limits.shape[0] == self.n_line:
-    #             self.thermal_limit_a = 1.0 * limits.astype(dt_float)
-    #     elif isinstance(limits, dict):
-    #         for el in limits.keys():
-    #             if not el in self.name_line:
-    #                 raise BackendError(
-    #                     'You asked to modify the thermal limit of powerline named "{}" that is not '
-    #                     "on the grid. Names of powerlines are {}".format(
-    #                         el, self.name_line
-    #                     )
-    #                 )
-    #         for i, el in self.name_line:
-    #             if el in limits:
-    #                 try:
-    #                     tmp = dt_float(limits[el])
-    #                 except Exception as exc_:
-    #                     raise BackendError(
-    #                         'Impossible to convert data ({}) for powerline named "{}" into float '
-    #                         "values".format(limits[el], el)
-    #                     ) from exc_
-    #                 if tmp <= 0:
-    #                     raise BackendError(
-    #                         'New thermal limit for powerlines "{}" is not positive ({})'
-    #                         "".format(el, tmp)
-    #                     )
-    #                 self.thermal_limit_a[i] = tmp
+        """
+        if isinstance(limits, np.ndarray):
+            if limits.shape[0] == self.n_line:
+                self.thermal_limit_a = 1.0 * limits.astype(dt_float)
+        elif isinstance(limits, dict):
+            for el in limits.keys():
+                if not el in self.name_line:
+                    raise BackendError(
+                        'You asked to modify the thermal limit of powerline named "{}" that is not '
+                        "on the grid. Names of powerlines are {}".format(
+                            el, self.name_line
+                        )
+                    )
+            for i, el in self.name_line:
+                if el in limits:
+                    try:
+                        tmp = dt_float(limits[el])
+                    except Exception as exc_:
+                        raise BackendError(
+                            'Impossible to convert data ({}) for powerline named "{}" into float '
+                            "values".format(limits[el], el)
+                        ) from exc_
+                    if tmp <= 0:
+                        raise BackendError(
+                            'New thermal limit for powerlines "{}" is not positive ({})'
+                            "".format(el, tmp)
+                        )
+                    self.thermal_limit_a[i] = tmp
 
-    # def update_thermal_limit_from_vect(self, thermal_limit_a : np.ndarray) -> None:
-    #     """You can use it if your backend stores the thermal limits
-    #     of the grid in a vector (see :class:`PandaPowerBackend` for example)
+    def update_thermal_limit_from_vect(self, thermal_limit_a : np.ndarray) -> None:
+        """You can use it if your backend stores the thermal limits
+        of the grid in a vector (see :class:`PandaPowerBackend` for example)
         
-    #     .. warning::
-    #         This is not called by the environment and cannot be used to
-    #         model Dynamic Line Rating. For such purpose please use `update_thermal_limit`
+        .. warning::
+            This is not called by the environment and cannot be used to
+            model Dynamic Line Rating. For such purpose please use `update_thermal_limit`
             
-    #         This function is used to create a "Simulator" from a backend for example.
+            This function is used to create a "Simulator" from a backend for example.
         
 
-    #     Parameters
-    #     ----------
-    #     vect : np.ndarray
-    #         The thermal limits (in A)
-    #     """
-    #     thermal_limit_a = np.array(thermal_limit_a).astype(dt_float)
-    #     self.thermal_limit_a[:] = thermal_limit_a
+        Parameters
+        ----------
+        vect : np.ndarray
+            The thermal limits (in A)
+        """
+        thermal_limit_a = np.array(thermal_limit_a).astype(dt_float)
+        self.thermal_limit_a[:] = thermal_limit_a
     
-    # def update_thermal_limit(self, env : "grid2op.Environment.BaseEnv") -> None:
-    #     """
-    #     INTERNAL
+    def update_thermal_limit(self, env : "grid2op.Environment.BaseEnv") -> None:
+        """
+        INTERNAL
 
-    #     .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
-    #         This is done in a call to `env.step` in case of DLR for example.
+            This is done in a call to `env.step` in case of DLR for example.
 
-    #         If you don't want this feature, do not implement it.
+            If you don't want this feature, do not implement it.
 
-    #     Update the new thermal limit in case of DLR for example.
+        Update the new thermal limit in case of DLR for example.
 
-    #     By default it does nothing.
+        By default it does nothing.
 
-    #     Depending on the operational strategy, it is also possible to implement some
-    #     `Dynamic Line Rating <https://en.wikipedia.org/wiki/Dynamic_line_rating_for_electric_utilities>`_ (DLR)
-    #     strategies.
-    #     In this case, this function will give the thermal limit for a given time step provided the flows and the
-    #     weather condition are accessible by the backend. Our methodology doesn't make any assumption on the method
-    #     used to get these thermal limits.
+        Depending on the operational strategy, it is also possible to implement some
+        `Dynamic Line Rating <https://en.wikipedia.org/wiki/Dynamic_line_rating_for_electric_utilities>`_ (DLR)
+        strategies.
+        In this case, this function will give the thermal limit for a given time step provided the flows and the
+        weather condition are accessible by the backend. Our methodology doesn't make any assumption on the method
+        used to get these thermal limits.
 
-    #     Parameters
-    #     ----------
-    #     env: :class:`grid2op.Environment.Environment`
-    #         The environment used to compute the thermal limit
+        Parameters
+        ----------
+        env: :class:`grid2op.Environment.Environment`
+            The environment used to compute the thermal limit
 
-    #     """
-    #     pass
+        """
+        pass
 
-    # def get_thermal_limit(self) -> np.ndarray:
-    #     """
-    #     INTERNAL
+    def get_thermal_limit(self) -> np.ndarray:
+        """
+        INTERNAL
 
-    #     .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
-    #         Retrieve the thermal limit directly from the environment instead (with a call
-    #         to :func:`grid2op.Environment.BaseEnc.get_thermal_limit` for example)
+            Retrieve the thermal limit directly from the environment instead (with a call
+            to :func:`grid2op.Environment.BaseEnc.get_thermal_limit` for example)
 
-    #     Gives the thermal limit (in amps) for each powerline of the _grid. Only one value per powerline is returned.
+        Gives the thermal limit (in amps) for each powerline of the _grid. Only one value per powerline is returned.
 
-    #     It is assumed that both :func:`Backend.get_line_flow` and *_get_thermal_limit* gives the value of the same
-    #     end of the powerline.
+        It is assumed that both :func:`Backend.get_line_flow` and *_get_thermal_limit* gives the value of the same
+        end of the powerline.
 
-    #     See the help of *_get_line_flow* for a more detailed description of this problem.
+        See the help of *_get_line_flow* for a more detailed description of this problem.
 
-    #     For assumption about the order of the powerline flows return in this vector, see the help of the
-    #     :func:`Backend.get_line_status` method.
+        For assumption about the order of the powerline flows return in this vector, see the help of the
+        :func:`Backend.get_line_status` method.
 
-    #     :return: An array giving the thermal limit of the powerlines.
-    #     :rtype: np.array, dtype:float
-    #     """
-    #     return self.thermal_limit_a
+        :return: An array giving the thermal limit of the powerlines.
+        :rtype: np.array, dtype:float
+        """
+        return self.thermal_limit_a
 
     def get_relative_flow(self) -> np.ndarray:
         """
@@ -915,7 +915,7 @@ class Backend(GridObjects, ABC):
             The relative flow in each powerlines of the grid.
         """
         num_ = self.get_line_flow()
-        denom_ = self.thermal_limit_a
+        denom_ = self.get_thermal_limit()
         res = np.divide(num_, denom_)
         return res
 
@@ -943,7 +943,7 @@ class Backend(GridObjects, ABC):
         :return: An array saying if a powerline is overflow or not
         :rtype: np.array, dtype:bool
         """
-        th_lim = self.thermal_limit_a
+        th_lim = self.get_thermal_limit()
         flow = self.get_line_flow()
         return flow > th_lim
 
@@ -1121,87 +1121,87 @@ class Backend(GridObjects, ABC):
             )
         return exc_me
 
-    # def next_grid_state(self,
-    #                     env: "grid2op.Environment.BaseEnv",
-    #                     is_dc: Optional[bool]=False):
-    #     """
-    #     INTERNAL
+    def next_grid_state(self,
+                        env: "grid2op.Environment.BaseEnv",
+                        is_dc: Optional[bool]=False):
+        """
+        INTERNAL
 
-    #     .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
-    #         This is called by `env.step`
+            This is called by `env.step`
 
-    #     This method is called by the environment to compute the next\\_grid\\_states.
-    #     It allows to compute the powerline and approximate the "cascading failures" if there are some overflows.
+        This method is called by the environment to compute the next\\_grid\\_states.
+        It allows to compute the powerline and approximate the "cascading failures" if there are some overflows.
 
-    #     Attributes
-    #     ----------
-    #     env: :class:`grid2op.Environment.Environment`
-    #         the environment in which the powerflow is ran.
+        Attributes
+        ----------
+        env: :class:`grid2op.Environment.Environment`
+            the environment in which the powerflow is ran.
 
-    #     is_dc: ``bool``
-    #         mode of power flow (AC : False, DC: is_dc is True)
+        is_dc: ``bool``
+            mode of power flow (AC : False, DC: is_dc is True)
 
-    #     Returns
-    #     --------
-    #     disconnected_during_cf: ``numpy.ndarray``, dtype=bool
-    #         For each powerlines, it returns ``True`` if the powerline has been disconnected due to a cascading failure
-    #         or ``False`` otherwise.
+        Returns
+        --------
+        disconnected_during_cf: ``numpy.ndarray``, dtype=bool
+            For each powerlines, it returns ``True`` if the powerline has been disconnected due to a cascading failure
+            or ``False`` otherwise.
 
-    #     infos: ``list``
-    #         If :attr:`Backend.detailed_infos_for_cascading_failures` is ``True`` then it returns the different
-    #         state computed by the powerflow (can drastically slow down this function, as it requires
-    #         deep copy of backend object). Otherwise the list is always empty.
+        infos: ``list``
+            If :attr:`Backend.detailed_infos_for_cascading_failures` is ``True`` then it returns the different
+            state computed by the powerflow (can drastically slow down this function, as it requires
+            deep copy of backend object). Otherwise the list is always empty.
 
-    #     """
-    #     infos = []
-    #     disconnected_during_cf = np.full(self.n_line, fill_value=-1, dtype=dt_int)
-    #     conv_ = self._runpf_with_diverging_exception(is_dc)
-    #     if env._no_overflow_disconnection or conv_ is not None:
-    #         return disconnected_during_cf, infos, conv_
+        """
+        infos = []
+        disconnected_during_cf = np.full(self.n_line, fill_value=-1, dtype=dt_int)
+        conv_ = self._runpf_with_diverging_exception(is_dc)
+        if env._no_overflow_disconnection or conv_ is not None:
+            return disconnected_during_cf, infos, conv_
 
-    #     # the environment disconnect some powerlines
-    #     init_time_step_overflow = copy.deepcopy(env._timestep_overflow)
-    #     ts = 0
-    #     while True:
-    #         # simulate the cascading failure
-    #         lines_flows = 1.0 * self.get_line_flow()
-    #         thermal_limits = self.get_thermal_limit() * env._parameters.SOFT_OVERFLOW_THRESHOLD  # SOFT_OVERFLOW_THRESHOLD new in grid2op 1.9.3
-    #         lines_status = self.get_line_status()
+        # the environment disconnect some powerlines
+        init_time_step_overflow = copy.deepcopy(env._timestep_overflow)
+        ts = 0
+        while True:
+            # simulate the cascading failure
+            lines_flows = 1.0 * self.get_line_flow()
+            thermal_limits = self.get_thermal_limit() * env._parameters.SOFT_OVERFLOW_THRESHOLD  # SOFT_OVERFLOW_THRESHOLD new in grid2op 1.9.3
+            lines_status = self.get_line_status()
 
-    #         # a) disconnect lines on hard overflow (that are still connected)
-    #         to_disc = (
-    #             lines_flows > env._hard_overflow_threshold * thermal_limits
-    #         ) & lines_status
+            # a) disconnect lines on hard overflow (that are still connected)
+            to_disc = (
+                lines_flows > env._hard_overflow_threshold * thermal_limits
+            ) & lines_status
 
-    #         # b) deals with soft overflow (disconnect them if lines still connected)
-    #         init_time_step_overflow[(lines_flows >= thermal_limits) & lines_status] += 1
-    #         to_disc[
-    #             (init_time_step_overflow > env._nb_timestep_overflow_allowed)
-    #             & lines_status
-    #         ] = True
+            # b) deals with soft overflow (disconnect them if lines still connected)
+            init_time_step_overflow[(lines_flows >= thermal_limits) & lines_status] += 1
+            to_disc[
+                (init_time_step_overflow > env._nb_timestep_overflow_allowed)
+                & lines_status
+            ] = True
 
-    #         # disconnect the current power lines
-    #         if to_disc[lines_status].any() == 0:
-    #             # no powerlines have been disconnected at this time step, 
-    #             # i stop the computation there
-    #             break
-    #         disconnected_during_cf[to_disc] = ts
+            # disconnect the current power lines
+            if to_disc[lines_status].any() == 0:
+                # no powerlines have been disconnected at this time step, 
+                # i stop the computation there
+                break
+            disconnected_during_cf[to_disc] = ts
             
-    #         # perform the disconnection action
-    #         for i, el in enumerate(to_disc):
-    #             if el:
-    #                 self._disconnect_line(i)
+            # perform the disconnection action
+            for i, el in enumerate(to_disc):
+                if el:
+                    self._disconnect_line(i)
 
-    #         # start a powerflow on this new state
-    #         conv_ = self._runpf_with_diverging_exception(is_dc)
-    #         if self.detailed_infos_for_cascading_failures:
-    #             infos.append(self.copy())
+            # start a powerflow on this new state
+            conv_ = self._runpf_with_diverging_exception(is_dc)
+            if self.detailed_infos_for_cascading_failures:
+                infos.append(self.copy())
 
-    #         if conv_ is not None:
-    #             break
-    #         ts += 1
-    #     return disconnected_during_cf, infos, conv_
+            if conv_ is not None:
+                break
+            ts += 1
+        return disconnected_during_cf, infos, conv_
 
     def storages_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -2132,7 +2132,7 @@ class Backend(GridObjects, ABC):
             raise IncorrectNumberOfLines('returned by "backend.get_line_flow()"')
         if (~np.isfinite(tmp)).any():
             raise EnvError(type(self).ERR_INIT_POWERFLOW)
-        tmp = self.thermal_limit_a
+        tmp = self.get_thermal_limit()
         if tmp.shape[0] != self.n_line:
             raise IncorrectNumberOfLines('returned by "backend.get_thermal_limit()"')
         if (~np.isfinite(tmp)).any():

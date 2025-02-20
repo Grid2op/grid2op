@@ -2588,33 +2588,33 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         else:
             return self._last_obs
 
-    # def get_thermal_limit(self):
-    #     """
-    #     Get the current thermal limit in amps registered for the environment.
+    def get_thermal_limit(self):
+        """
+        Get the current thermal limit in amps registered for the environment.
 
-    #     Examples
-    #     ---------
+        Examples
+        ---------
 
-    #     It can be used like this:
+        It can be used like this:
 
-    #     .. code-block:: python
+        .. code-block:: python
 
-    #         import grid2op
+            import grid2op
 
-    #         # I create an environment
-    #         env = grid2op.make("l2rpn_case14_sandbox")
+            # I create an environment
+            env = grid2op.make("l2rpn_case14_sandbox")
 
-    #         thermal_limits = env.get_thermal_limit()
+            thermal_limits = env.get_thermal_limit()
 
-    #     """
-    #     if self.__closed:
-    #         raise EnvError("This environment is closed, you cannot use it.")
-    #     if not self.__is_init:
-    #         raise EnvError(
-    #             "This environment is not initialized. It has no thermal limits. "
-    #             "Have you called `env.reset()` after last game over ?"
-    #         )
-    #     return 1.0 * self._thermal_limit_a
+        """
+        if self.__closed:
+            raise EnvError("This environment is closed, you cannot use it.")
+        if not self.__is_init:
+            raise EnvError(
+                "This environment is not initialized. It has no thermal limits. "
+                "Have you called `env.reset()` after last game over ?"
+            )
+        return 1.0 * self._thermal_limit_a
 
     def _withdraw_storage_losses(self):
         """
@@ -3256,6 +3256,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """overlaoded in MaskedEnv"""
         self._init_thermal_limit()
         self._init_protection()
+        return self.protection.next_grid_state()
     
     def _aux_run_pf_after_state_properly_set(
         self, action, init_line_status, new_p, except_
@@ -3285,8 +3286,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         try:
             # compute the next _grid state
             beg_pf = time.perf_counter()
-            self._protection_next_grid_state()
-            disc_lines, detailed_info, conv_ = self.protection.next_grid_state()
+            disc_lines, detailed_info, conv_ = self._protection_next_grid_state()
             self._disc_lines[:] = disc_lines
             self._time_powerflow += time.perf_counter() - beg_pf
             if conv_ is None:

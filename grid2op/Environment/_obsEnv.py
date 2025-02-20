@@ -115,8 +115,6 @@ class _ObsEnv(BaseEnv):
         
         self.current_obs_init = None
         self.current_obs = None
-
-
         self._init_backend(
             chronics_handler=_ObsCH(),
             backend=backend_instanciated,
@@ -126,7 +124,6 @@ class _ObsEnv(BaseEnv):
             rewardClass=None,
             legalActClass=legalActClass,
         )
-
 
         self.delta_time_seconds = delta_time_seconds
         ####

@@ -1591,7 +1591,7 @@ class Environment(BaseEnv):
         res["legalActClass"] = self._legalActClass
         res["epsilon_poly"] = self._epsilon_poly
         res["tol_poly"] = self._tol_poly
-        # res["thermal_limit_a"] = self._thermal_limit_a
+        res["thermal_limit_a"] = self._thermal_limit_a
         res["ts_manager"] = self.ts_manager
         res["voltagecontrolerClass"] = self._voltagecontrolerClass
         res["other_rewards"] = {k: v.rewardClass for k, v in self.other_rewards.items()}
@@ -2214,7 +2214,7 @@ class Environment(BaseEnv):
         if self.chronics_handler.max_iter is not None:
             res["max_iter"] = self.chronics_handler.max_iter
         res["gridStateclass_kwargs"] = dict_
-        # res["thermal_limit_a"] = self._thermal_limit_a
+        res["thermal_limit_a"] = self._thermal_limit_a
         res["ts_manager"] = self.ts_manager
         res["voltageControlerClass"] = self._voltagecontrolerClass
         res["other_rewards"] = {k: v.rewardClass for k, v in self.other_rewards.items()}
