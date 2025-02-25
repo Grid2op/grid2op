@@ -4985,7 +4985,7 @@ from {cls._INIT_GRID_CLS.__module__} import {cls._INIT_GRID_CLS.__name__}
 
 class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     BEFORE_COMPAT_VERSION = \"{cls.BEFORE_COMPAT_VERSION}\"
-    glop_version = {GRID2OP_CURRENT_VERSION_STR}_  # tells it's the installed grid2op version
+    glop_version = {GRID2OP_CURRENT_VERSION_STR}  # tells it's the installed grid2op version
     _PATH_GRID_CLASSES = {_PATH_ENV_str}   # especially do not modify that
     _INIT_GRID_CLS = {cls._INIT_GRID_CLS.__name__} 
     _CLS_DICT = None  # init once to avoid yet another serialization of the class as dict (in make_cls_dict)
