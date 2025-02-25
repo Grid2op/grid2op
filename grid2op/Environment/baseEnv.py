@@ -3170,6 +3170,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # self._is_alert_illegal
     
     def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p) -> Optional[Grid2OpException]:
+        cls = type(self)
         beg_res = time.perf_counter()
         # update the thermal limit, for DLR for example
         self.backend.update_thermal_limit(self)  
@@ -3224,7 +3225,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._gen_activeprod_t[:] = tmp_gen_p
         else:
             # I need to check whether all generators meet the constraints
-            cls = type(self)
             if tmp_gen_p[cls.gen_redispatchable] > cls.gen_pmax[cls.gen_redispatchable] + self._tol_poly:
                 gen_ko = (tmp_gen_p[cls.gen_redispatchable] > cls.gen_pmax[cls.gen_redispatchable]).nonzero()[0]
                 gen_ko_nms = cls.name_gen[cls.gen_redispatchable][gen_ko]
@@ -3248,7 +3248,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # set the status of the other elements (if the backend 
         # disconnect them)
-        if type(self).detachment_is_allowed:
+        if cls.detachment_is_allowed:
             gen_detached_user = self._backend_action.get_gen_detached()
             topo_ = self.backend.get_topo_vect()
             self._backend_action.current_topo.values[:] = topo_
