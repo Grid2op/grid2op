@@ -275,6 +275,8 @@ jobs:
                   source venv_test/bin/activate
                   export _GRID2OP_FORCE_TEST=1
                   which python julia python-jl
+                  python -c "import grid2op as gr;print(gr.__file__, gr.__version__)"
+                  python-jl venv_test/lib/python3.12/site-packages/pandapower/test/opf/test_pandamodels_runpm.py
                   # python -m unittest grid2op/tests/fromChronix2grid.py
                   # python-jl CONDA_PREFIX/lib/python3.12/site-packages/pandapower/test/opf/test_pandamodels_runpm.py
 
