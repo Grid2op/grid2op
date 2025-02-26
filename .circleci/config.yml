@@ -430,8 +430,5 @@ workflows:
 
     install:
         jobs:
-          - install38
-          - install39
           - install310
-          - install311
           - install312
