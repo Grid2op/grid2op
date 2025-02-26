@@ -32,7 +32,7 @@ from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageControll
 from grid2op.Environment.baseEnv import BaseEnv
 from grid2op.Opponent import BaseOpponent, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT, GRID2OP_CURRENT_VERSION_STR
 from grid2op.typing_variables import RESET_OPTIONS_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
@@ -647,7 +647,7 @@ class Environment(BaseEnv):
     def _handle_compat_glop_version(self, need_process_backend):
         if (
             self._compat_glop_version is not None
-            and self._compat_glop_version != grid2op.__version__
+            and self._compat_glop_version != GRID2OP_CURRENT_VERSION_STR
         ):
             warnings.warn(
                 'You are using a grid2op "compatibility" environment. This means that some '

@@ -1309,7 +1309,7 @@ class BaseObservation(GridObjects):
             cls._aux_process_grid2op_compat_191()
             
         if glop_ver < cls.MIN_VERSION_DETACH:
-            # alert attributes have been added in 1.9.1
+            # detachment has been added in grid2op 1.11
             cls._aux_process_grid2op_compat_1_11_0()
             
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)

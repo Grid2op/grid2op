@@ -86,7 +86,7 @@ jobs:
           ls ./dist/*.whl
 
       - name: Upload wheel
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: grid2op-wheel-${{ matrix.config.name }}-${{ matrix.python.name }}
           path: dist/*.whl

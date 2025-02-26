@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, RTE (https://www.rte-france.com)
+# Copyright (c) 2019-2025, RTE (https://www.rte-france.com)
 # See AUTHORS.txt
 # This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
 # If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
@@ -22,6 +22,8 @@ import copy
 import os
 import numpy as np
 import sys
+
+import importlib.metadata
 from packaging import version
 from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
     
@@ -30,11 +32,13 @@ from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import *
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
+from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
+                                       DEFAULT_N_BUSBAR_PER_SUB,
+                                       GRID2OP_CLASSES_ENV_FOLDER,
+                                       GRID2OP_CURRENT_VERSION_STR,
+                                       GRID2OP_CURRENT_VERSION)
 
 # TODO tests of these methods and this class in general
-DEFAULT_N_BUSBAR_PER_SUB = 2
-DEFAULT_ALLOW_DETACHMENT = False
-GRID2OP_CLASSES_ENV_FOLDER = "_grid2op_classes"
 
 
 class GridObjects:
@@ -480,7 +484,7 @@ class GridObjects:
 
     BEFORE_COMPAT_VERSION : ClassVar[str] = "neurips_2020_compat"
     MIN_VERSION_DETACH : ClassVar[str] = version.parse("1.11.0.dev2")
-    glop_version : ClassVar[str] = grid2op.__version__
+    glop_version : ClassVar[str] = GRID2OP_CURRENT_VERSION_STR
     
     _INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
     _PATH_GRID_CLASSES : ClassVar[Optional[str]] = None  # especially do not modify that
@@ -746,7 +750,7 @@ class GridObjects:
         cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
         cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
         
-        cls.glop_version = grid2op.__version__
+        cls.glop_version = GRID2OP_CURRENT_VERSION_STR
 
         cls.attr_list_vect = None
         cls.attr_list_set = {}
@@ -2967,7 +2971,7 @@ class GridObjects:
         """
         # nothing to do now that the value are class member            
         name_res = "{}_{}".format(cls.__name__, gridobj.env_name)
-        if gridobj.glop_version != grid2op.__version__:
+        if gridobj.glop_version != GRID2OP_CURRENT_VERSION_STR:
             name_res += f"_{gridobj.glop_version}"
         
         if gridobj._PATH_GRID_CLASSES is not None:
@@ -4409,7 +4413,7 @@ class GridObjects:
             
         cls.process_shunt_static_data()
         
-        if cls.glop_version != grid2op.__version__:
+        if cls.glop_version != GRID2OP_CURRENT_VERSION_STR:
             # change name of the environment, this is done in Environment.py for regular environment
             # see `self.backend.set_env_name(f"{self.name}_{self._compat_glop_version}")`
             # cls.set_env_name(f"{cls.env_name}_{cls.glop_version}")
@@ -4597,7 +4601,7 @@ class GridObjects:
             # if hasattr(res_cls, "n_sub") and res_cls.n_sub > 0:
             # that's a grid2op class iniailized with an environment, I need to initialize it too
             res_cls._compute_pos_big_topo_cls()
-            if res_cls.glop_version != grid2op.__version__:
+            if res_cls.glop_version != GRID2OP_CURRENT_VERSION_STR:
                 res_cls.process_grid2op_compat()
             res_cls.process_shunt_static_data()
             res_cls.process_detachment()
@@ -4981,7 +4985,7 @@ from {cls._INIT_GRID_CLS.__module__} import {cls._INIT_GRID_CLS.__name__}
 
 class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     BEFORE_COMPAT_VERSION = \"{cls.BEFORE_COMPAT_VERSION}\"
-    glop_version = grid2op.__version__  # tells it's the installed grid2op version
+    glop_version = \"{GRID2OP_CURRENT_VERSION_STR}\"  # tells it's the installed grid2op version
     _PATH_GRID_CLASSES = {_PATH_ENV_str}   # especially do not modify that
     _INIT_GRID_CLS = {cls._INIT_GRID_CLS.__name__} 
     _CLS_DICT = None  # init once to avoid yet another serialization of the class as dict (in make_cls_dict)
@@ -5387,7 +5391,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
                              shunt_info : Optional[ElTypeInfo] = None,
                              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Analogous to "backend.check_kirchhoff" but from the observation
+        Analogous to "backend.check_kirchhoff" but can be used for both the observation and the backend
 
         .. versionadded:: 1.11.0
         

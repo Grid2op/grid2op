@@ -23,7 +23,7 @@ import grid2op
 from grid2op.typing_variables import DICT_ACT_TYPING
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.Exceptions import *
-from grid2op.Space import GridObjects
+from grid2op.Space import GridObjects, GRID2OP_CURRENT_VERSION_STR
 
 # TODO time delay somewhere (eg action is implemented after xxx timestep, and not at the time where it's proposed)
 
@@ -2425,7 +2425,7 @@ class BaseAction(GridObjects):
             except IllegalAction as exc_:
                 cls = type(self)
                 # only raise the error if I am not in compat mode
-                if cls.glop_version == grid2op.__version__:
+                if cls.glop_version == GRID2OP_CURRENT_VERSION_STR:
                     raise exc_
                 else:
                     # TODO be more specific on the version
@@ -2439,7 +2439,7 @@ class BaseAction(GridObjects):
             except IllegalAction as exc_:
                 cls = type(self)
                 # only raise the error if I am not in compat mode
-                if cls.glop_version == grid2op.__version__:
+                if cls.glop_version == GRID2OP_CURRENT_VERSION_STR:
                     raise exc_
                 else:
                     # TODO be more specific on the version
