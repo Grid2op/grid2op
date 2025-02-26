@@ -245,7 +245,7 @@ jobs:
 
     test_powermodels:
         executor: python312
-        resource_class: medium  # install_julia step killed w/small
+        resource_class: medium  # install_julia step killed w/"small"
         steps:
             - checkout
             - run:
@@ -273,6 +273,8 @@ jobs:
                 name: Environment information
                 command: |
                   source venv_test/bin/activate
+                  julia -e 'using Pkg; Pkg.add(["Ipopt", "PowerModels", "PyCall"])'
+                  pip list | grep -e power -e grid -e panda
                   which python julia python-jl
                   pip list
                   julia -e 'using Pkg; Pkg.status()'
