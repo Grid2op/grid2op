@@ -258,7 +258,7 @@ jobs:
             - run:
                 command: |
                   source venv_test/bin/activate
-                  python -m pip install -U pip setuptools wheel "numpy" "pandas" "scipy"
+                  python -m pip install -U pip setuptools wheel "numpy" "pandas" "scipy" "pytest"
             - run:
                 command: |
                   source venv_test/bin/activate
