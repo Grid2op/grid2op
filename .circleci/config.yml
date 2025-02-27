@@ -269,11 +269,12 @@ jobs:
                   ./utils/install_julia.sh 1.10.4
                   python -m pip install julia
                   python ./utils/install_pycall.py
+                  julia -e 'using Pkg; Pkg.add(["Ipopt", "PowerModels", "PyCall"])'
+                  julia -e 'using Pkg; Pkg.add(url="https://github.com/loriab/PandaModels.jl", rev="update_pm")'
             - run:
                 name: Environment information
                 command: |
                   source venv_test/bin/activate
-                  julia -e 'using Pkg; Pkg.add(["Ipopt", "PowerModels", "PyCall"])'
                   pip list | grep -e power -e grid -e panda
                   which python julia python-jl
                   pip list
