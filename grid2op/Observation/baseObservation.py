@@ -23,6 +23,8 @@ except ImportError:
     from typing_extensions import Self
 
 import grid2op  # for type hints
+import grid2op.Environment  # for type hints
+from grid2op.Parameters import Parameters
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import (
@@ -4562,11 +4564,21 @@ class BaseObservation(GridObjects):
             # self._forecasted_inj already embed the current step
             raise NoForecastAvailable("It appears this environment does not support any forecast at all.")
         nb_h = len(self._forecasted_inj)
-        nb_el = self._forecasted_inj[0][1]['injection'][name].shape[0]
-        prev = 1.0 * self._forecasted_inj[0][1]['injection'][name]
+        if "injection" in self._forecasted_inj[0][1]:
+            dict_ref = self._forecasted_inj[0][1]['injection'] 
+        else:
+            # case of perfect forecast and do nothing data for example
+            dict_ref = {"prod_p": 1. * self.gen_p,
+                        "load_p": 1. * self.load_p,
+                        "load_q": 1. * self.load_q} 
+        nb_el = dict_ref[name].shape[0]
+        prev = 1.0 * dict_ref[name]
         res = np.zeros((nb_h, nb_el))
         for h in range(nb_h):
-            dict_tmp = self._forecasted_inj[h][1]['injection']
+            if "injection" in self._forecasted_inj[h][1]:
+                dict_tmp = self._forecasted_inj[h][1]['injection']
+            else:
+                dict_tmp = {}
             if name in dict_tmp:
                 this_row = 1.0 * dict_tmp[name]
                 prev = 1.0 * this_row
@@ -4585,7 +4597,7 @@ class BaseObservation(GridObjects):
                 res[tnm:(tnm+dnm),l_id] = True
         return res
     
-    def get_forecast_env(self) -> "grid2op.Environment.Environment":
+    def get_forecast_env(self) -> "grid2op.Environment.ForecastEnv":
         """
         .. versionadded:: 1.9.0
         
@@ -4893,7 +4905,7 @@ class BaseObservation(GridObjects):
                              prod_v: Optional[np.ndarray] = None,
                              maintenance: Optional[np.ndarray] = None):
         from grid2op.Chronics import FromNPY, ChronicsHandler
-        from grid2op.Environment._forecast_env import _ForecastEnv
+        from grid2op.Environment import ForecastEnv
         ch = ChronicsHandler(FromNPY,
                              load_p=load_p,
                              load_q=load_q,
@@ -4905,18 +4917,18 @@ class BaseObservation(GridObjects):
         backend = self._obs_env.backend.copy()
         backend._is_loaded = True
         nb_highres_called = self._obs_env.highres_sim_counter.nb_highres_called
-        res = _ForecastEnv(**self._ptr_kwargs_env,
-                           backend=backend,
-                           chronics_handler=ch,
-                           parameters=self._obs_env.parameters,
-                           _init_obs=self,
-                           highres_sim_counter=self._obs_env.highres_sim_counter
-                           )
+        res = ForecastEnv(**self._ptr_kwargs_env,
+                          backend=backend,
+                          chronics_handler=ch,
+                          parameters=self._obs_env.parameters,
+                          _init_obs=self,
+                          highres_sim_counter=self._obs_env.highres_sim_counter
+                          )
         # it does one simulation when it inits it (calling env.step) so I remove 1 here
         res.highres_sim_counter._HighResSimCounter__nb_highres_called = nb_highres_called
         return res
 
-    def change_forecast_parameters(self, params: "grid2op.Parameters.Parameters") -> None:
+    def change_forecast_parameters(self, params: Parameters) -> None:
         """This function allows to change the parameters (see :class:`grid2op.Parameters.Parameters` 
         for more information) that are used for the `obs.simulate()` and `obs.get_forecast_env()` method.
         

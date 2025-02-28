@@ -117,7 +117,7 @@ class SomeGeneratorAbovePmax(EnvError):
     
     .. versionadded:: 1.11.0
     
-    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_GEN_BREAK_CONSTRAINTS`
     is ``True`` (which is not the default).
     """
     pass
@@ -129,7 +129,7 @@ class SomeGeneratorBelowPmin(EnvError):
     
     .. versionadded:: 1.11.0
     
-    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_GEN_BREAK_CONSTRAINTS`
     is ``True`` (which is not the default).
     """
     pass
@@ -140,7 +140,7 @@ class SomeGeneratorAboveRampmax(EnvError):
     
     .. versionadded:: 1.11.0
     
-    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_GEN_BREAK_CONSTRAINTS`
     is ``True`` (which is not the default).
     """
     pass
@@ -152,7 +152,7 @@ class SomeGeneratorBelowRampmin(EnvError):
     
     .. versionadded:: 1.11.0
     
-    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`
+    This can only be triggered if :attr:`grid2op.Parameters.Parameters.STOP_EP_IF_GEN_BREAK_CONSTRAINTS`
     is ``True`` (which is not the default).
     """
     pass

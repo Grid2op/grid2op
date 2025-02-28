@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from datetime import timedelta
 import warnings
 import unittest
 
@@ -725,6 +726,56 @@ class TestLoadQPHandler14(TestCSVHandlerEnv):
                                      test=True)
         self._aux_reproducibility()
                
-               
+
+class TestDoNothingAndForecastEnv(unittest.TestCase):
+    def setUp(self):
+        dict_ = {"chronics_class": FromHandlers,
+                 "data_feeding_kwargs": {"gen_p_handler": DoNothingHandler("prod_p"),
+                                         "load_p_handler": DoNothingHandler("load_p"),
+                                         "gen_v_handler": DoNothingHandler("prod_v"),
+                                         "load_q_handler": DoNothingHandler("load_q"),  # modifier pour les maintenances
+                                         "maintenance_handler": DoNothingHandler("maintenance"),
+                                         "h_forecast": [i * 30 for i in range(1, 48)],  # Every 30 mins ahead up for 47 timesteps
+                                         "time_interval": timedelta(minutes=30),
+                                         "gen_p_for_handler": PerfectForecastHandler("prod_p_forecasted"),
+                                         "gen_v_for_handler": PerfectForecastHandler("prod_v_forecasted"),
+                                         "load_p_for_handler": PerfectForecastHandler("load_p_forecasted"),
+                                         "load_q_for_handler": PerfectForecastHandler("load_q_forecasted"),
+             
+                                         }}
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("l2rpn_case14_sandbox",
+                                    test=True,
+                                    **dict_
+                                    )
+        return super().setUp()
+    
+    def tearDown(self):
+        self.env.close()
+        return super().tearDown()
+    
+    def test_forecast_env(self, tol=1e-5):
+        obs = self.env.reset(seed=0, options={"time serie id": 0})
+        # get the forecast env
+        params = self.env.parameters
+        params.NO_OVERFLOW_DISCONNECTION = True
+        for_env = obs.get_forecast_env()
+        for_env.change_parameters(params)
+        # check that forecast observations matches env data
+        sim_obs = for_env.reset()
+        assert (np.abs(obs.gen_p - sim_obs.gen_p) <= tol).all(), f"error for {i}: {np.abs(obs.gen_p - sim_obs.gen_p).max()}"
+        assert (np.abs(obs.load_p - sim_obs.load_p) <= tol).all(), f"error for {i}: {np.abs(obs.load_p - sim_obs.load_p).max()}"
+        assert (np.abs(obs.load_q - sim_obs.load_q) <= tol).all(), f"error for {i}: {np.abs(obs.load_q - sim_obs.load_q).max()}"
+        assert (np.abs(obs.a_or - sim_obs.a_or) <= 100. * tol).all(), f"error for {i}: {np.abs(obs.a_or - sim_obs.a_or).max()}"
+            
+        for i in range(47):
+            sim_obs, sim_r, sim_d, sim_i = for_env.step(self.env.action_space())
+            assert not sim_d, f"error for {i}"
+            assert (np.abs(obs.gen_p - sim_obs.gen_p) <= tol).all(), f"error for {i}: {np.abs(obs.gen_p - sim_obs.gen_p).max()}"
+            assert (np.abs(obs.load_p - sim_obs.load_p) <= tol).all(), f"error for {i}: {np.abs(obs.load_p - sim_obs.load_p).max()}"
+            assert (np.abs(obs.load_q - sim_obs.load_q) <= tol).all(), f"error for {i}: {np.abs(obs.load_q - sim_obs.load_q).max()}"
+            assert (np.abs(obs.a_or - sim_obs.a_or) <= 100. * tol).all(), f"error for {i}: {np.abs(obs.a_or - sim_obs.a_or).max()}"
+    
 if __name__ == "__main__":
     unittest.main()

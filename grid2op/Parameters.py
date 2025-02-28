@@ -185,15 +185,17 @@ class Parameters:
         If you don't know what a "distributed slack" is you probably should not set this to `False`.
         
         And to be somewhat realistic, you might also consider setting the flag 
-        :attr:`Parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS` to avoid simulating unrealistic
+        :attr:`Parameters.STOP_EP_IF_GEN_BREAK_CONSTRAINTS` to avoid simulating unrealistic
         episode.
     
-    STOP_EP_IF_SLACK_BREAK_CONSTRAINTS: ``bool``
+    STOP_EP_IF_GEN_BREAK_CONSTRAINTS: ``bool``
         Whether to stop the episode when a constraint on the slack generator(s) are violated.
         
         In grid2op < 1.11.0 these were not checked at all. But from grid2op 1.11.0 you have the option
-        to check whether some slack generators would absorb / produce too much between two consecutive 
-        steps which would be unrealistic in practice.
+        to check whether some generators would absorb / produce too much between two consecutive 
+        steps which would be unrealistic in practice. (this can happen for example if the environment
+        does not take care of simulating the redispatching, in that case the backend will do it
+        but probably not with the same constraints as grid2op would)
         
         It defaults to ``False``.
         
@@ -281,7 +283,7 @@ class Parameters:
         
         # Added in 1.11.0 with detachement
         self.ENV_DOES_REDISPATCHING = True
-        self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = False
+        self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS = False
 
     @staticmethod
     def _isok_txt(arg):
@@ -430,8 +432,8 @@ class Parameters:
         
         if "ENV_DOES_REDISPATCHING" in dict_:
             self.ENV_DOES_REDISPATCHING = Parameters._isok_txt(dict_["ENV_DOES_REDISPATCHING"])
-        if "STOP_EP_IF_SLACK_BREAK_CONSTRAINTS" in dict_:
-            self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = Parameters._isok_txt(dict_["STOP_EP_IF_SLACK_BREAK_CONSTRAINTS"])
+        if "STOP_EP_IF_GEN_BREAK_CONSTRAINTS" in dict_:
+            self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS = Parameters._isok_txt(dict_["STOP_EP_IF_GEN_BREAK_CONSTRAINTS"])
         
         authorized_keys = set(self.__dict__.keys())
         authorized_keys = authorized_keys | {
@@ -483,7 +485,7 @@ class Parameters:
         res["MAX_SIMULATE_PER_EPISODE"] = int(self.MAX_SIMULATE_PER_EPISODE)
         res["IGNORE_INITIAL_STATE_TIME_SERIE"] = int(self.IGNORE_INITIAL_STATE_TIME_SERIE)
         res["ENV_DOES_REDISPATCHING"] = bool(self.ENV_DOES_REDISPATCHING)
-        res["STOP_EP_IF_SLACK_BREAK_CONSTRAINTS"] = bool(self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS)
+        res["STOP_EP_IF_GEN_BREAK_CONSTRAINTS"] = bool(self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS)
         return res
 
     def init_from_json(self, json_path):
@@ -798,10 +800,10 @@ class Parameters:
                 f'Impossible to convert ENV_DOES_REDISPATCHING to bool with error \n:"{exc_}"'
             ) from exc_
         try:
-            if not isinstance(self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS, (bool, dt_bool)):
-                raise RuntimeError("STOP_EP_IF_SLACK_BREAK_CONSTRAINTS should be a boolean")
-            self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS = dt_bool(self.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS)
+            if not isinstance(self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS, (bool, dt_bool)):
+                raise RuntimeError("STOP_EP_IF_GEN_BREAK_CONSTRAINTS should be a boolean")
+            self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS = dt_bool(self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS)
         except Exception as exc_:
             raise RuntimeError(
-                f'Impossible to convert STOP_EP_IF_SLACK_BREAK_CONSTRAINTS to bool with error \n:"{exc_}"'
+                f'Impossible to convert STOP_EP_IF_GEN_BREAK_CONSTRAINTS to bool with error \n:"{exc_}"'
             ) from exc_

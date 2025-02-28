@@ -133,6 +133,7 @@ Native multi agents support:
 - [FIXED] deprecated call to `tostring_rgb` (replaced `tostring_argb`) in the env.render function.
 - [FIXED] warnings not properly issued in the AAA test when backend failed to call
   `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
+- [FIXED] an issue with `obs.get_forecast_env` with changeNothing and DoNothingHandler time series
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -175,7 +176,7 @@ Native multi agents support:
 - [IMPROVED] the function `action.get_topological_impact(...)` has now a "caching" mechanism
   that allows not to recompute it over and over again (this is internal API please do not change 
   it... unless you know what you are doing)
-    
+- [IMPROVED] `ForecastEnv` is now part of the public API.
 
 [1.10.4] - 2024-10-15
 -------------------------

@@ -349,7 +349,7 @@ class TestSheddingEnv(unittest.TestCase):
         assert np.abs(self.env._delta_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
         
     def test_shedding_load_step(self):
-        # NB warning this test does not pass if STOP_EP_IF_SLACK_BREAK_CONSTRAINTS (slack breaks its rampdown !)
+        # NB warning this test does not pass if STOP_EP_IF_GEN_BREAK_CONSTRAINTS (slack breaks its rampdown !)
         obs, reward, done, info = self.env.step(self.env.action_space({"detach_load": 0}))
         # env converged
         assert not done
@@ -435,7 +435,7 @@ class TestSheddingEnv(unittest.TestCase):
         
         
 
-# TODO with the env parameters STOP_EP_IF_SLACK_BREAK_CONSTRAINTS and ENV_DOES_REDISPATCHING
+# TODO with the env parameters STOP_EP_IF_GEN_BREAK_CONSTRAINTS and ENV_DOES_REDISPATCHING
 # TODO when something is "re attached" on the grid
 # TODO check gen detached does not participate in redisp
 

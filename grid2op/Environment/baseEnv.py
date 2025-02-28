@@ -8,7 +8,6 @@
 
 
 from datetime import datetime
-import tempfile
 import logging
 import time
 import copy
@@ -3220,7 +3219,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # extract production active value at this time step (should be independent of action class)
         tmp_gen_p, *_ = self.backend.generators_info()
-        if not self._parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS:
+        if not self._parameters.STOP_EP_IF_GEN_BREAK_CONSTRAINTS:
             # default behaviour, no check performed
             self._gen_activeprod_t[:] = tmp_gen_p
         else:
@@ -4401,7 +4400,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             _init_txt += txt_
         
         # for the forecast env (we do this even if it's not used)
-        from grid2op.Environment._forecast_env import _ForecastEnv
+        from grid2op.Environment.forecast_env import _ForecastEnv
         for_env_cls = _ForecastEnv.init_grid(type(self.backend), _local_dir_cls=self._local_dir_cls)
         txt_ = self._aux_gen_classes(for_env_cls, sys_path, _add_class_output=False)
         if txt_ is not None:
