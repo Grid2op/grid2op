@@ -134,6 +134,7 @@ Native multi agents support:
 - [FIXED] warnings not properly issued in the AAA test when backend failed to call
   `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
 - [FIXED] an issue with `obs.get_forecast_env` with changeNothing and DoNothingHandler time series
+- [FIXED] a bug in updating the shunt in PandaPowerBackend (depdending on pandas version)
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -148,6 +149,7 @@ Native multi agents support:
   generators is not met (see `params.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`)
 - [ADDED] possibility to set the initial time stamp of the observation in the `env.reset`
   kwargs by using `env.reset(..., options={"init datetime": XXX})`
+- [ADDED] the `ChangeNothing` time series class now supports forecast
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
