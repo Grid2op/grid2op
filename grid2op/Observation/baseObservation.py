@@ -4458,18 +4458,48 @@ class BaseObservation(GridObjects):
         # handle alerts
         self._update_alert(env)
 
+    def _get_gen_p_for_forecasts(self) -> np.ndarray:
+        return self._get_array_for_forecast(self.gen_p, self.gen_detached)
+
+    def _get_gen_v_for_forecasts(self) -> np.ndarray:
+        return self._get_array_for_forecast(self.gen_v, self.gen_detached)
+    
+    def _get_load_p_for_forecasts(self) -> np.ndarray:
+        return self._get_array_for_forecast(self.load_p, self.load_detached)
+    
+    def _get_load_q_for_forecasts(self) -> np.ndarray:
+        return self._get_array_for_forecast(self.load_q, self.load_detached)
+    
+    @staticmethod
+    def _get_array_for_forecast(arr, mask_detached) -> np.ndarray:
+        res = (1.0 * arr).astype(dt_float)
+        res[mask_detached] = np.nan
+        return res
+
     def _update_forecast(self, env: "grid2op.Environment.BaseEnv", with_forecast: bool) -> None:
         if not with_forecast:
             return
-        
+        cls = type(self)
         inj_action = {}
         dict_ = {}
-        dict_["load_p"] = dt_float(1.0 * self.load_p)
-        dict_["load_q"] = dt_float(1.0 * self.load_q)
-        dict_["prod_p"] = dt_float(1.0 * self.gen_p)
-        dict_["prod_v"] = dt_float(1.0 * self.gen_v)
+        dict_["load_p"] = self._get_load_p_for_forecasts()
+        dict_["load_q"] = self._get_load_q_for_forecasts()
+        dict_["prod_p"] = self._get_gen_p_for_forecasts()
+        dict_["prod_v"] = self._get_gen_v_for_forecasts()
         inj_action["injection"] = dict_
-        # inj_action = self.action_helper(inj_action)
+        if self.gen_detached.any():
+            if "set_bus" not in inj_action:
+                inj_action["set_bus"] = {}
+            tmp_gen = np.zeros(cls.n_gen, dtype=dt_int)
+            tmp_gen[self.gen_detached] = -1
+            inj_action["set_bus"]["generators_id"] = tmp_gen
+        if self.load_detached.any():
+            if "set_bus" not in inj_action:
+                inj_action["set_bus"] = {}
+            tmp_load = np.zeros(cls.n_load, dtype=dt_int)
+            tmp_load[self.load_detached] = -1
+            inj_action["set_bus"]["loads_id"] = tmp_load
+            
         timestamp = self.get_time_stamp()
         self._forecasted_inj = [(timestamp, inj_action)]
         self._forecasted_inj += env.forecasts()

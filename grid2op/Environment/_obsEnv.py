@@ -7,11 +7,14 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
+import datetime
 import numpy as np
 import warnings
 from typing import Dict, Union, Tuple, List, Optional, Any, Literal
 
 import grid2op
+import grid2op.Action
+import grid2op.Observation  # for type hints
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import EnvError
@@ -315,10 +318,10 @@ class _ObsEnv(BaseEnv):
         
     def init(
         self,
-        new_state_action,
-        time_stamp,
-        obs,
-        time_step=1
+        new_state_action : "grid2op.Action.BaseAction",
+        time_stamp: datetime.datetime,
+        obs : "grid2op.Observation.CompleteObservation",
+        time_step : int=1
     ):
         """
         INTERNAL
@@ -381,18 +384,21 @@ class _ObsEnv(BaseEnv):
         else:
             set_status = self._line_status_me
             topo_vect = self._topo_vect
-            
         # TODO set the shunts here
         # update the action that set the grid to the real value
+        gen_p = obs._get_gen_p_for_forecasts()
+        gen_v = obs._get_gen_v_for_forecasts()
+        load_p = obs._get_load_p_for_forecasts()
+        load_q = obs._get_load_q_for_forecasts()
         self._backend_action_set += self._helper_action_env(
             {
                 "set_line_status": set_status,
                 "set_bus": topo_vect,
                 "injection": {
-                    "prod_p": obs.gen_p,
-                    "prod_v": obs.gen_v,
-                    "load_p": obs.load_p,
-                    "load_q": obs.load_q,
+                    "prod_p": gen_p,
+                    "prod_v": gen_v,
+                    "load_p": load_p,
+                    "load_q": load_q,
                 },
             }
         )
@@ -401,8 +407,8 @@ class _ObsEnv(BaseEnv):
         if time_step > 0:
             self._backend_action_set.storage_power.values[:] = 0.0
         self._backend_action_set.all_changed()
+        self._backend_action_set._assign_0_to_disco_el()
         self._backend_action = copy.deepcopy(self._backend_action_set)
-        
         # for curtailment
         if self._env_modification is not None:
             self._env_modification._dict_inj = {}

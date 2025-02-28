@@ -3272,8 +3272,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # finally, build the observation (it's a different one at each step, we cannot reuse the same one)
         # THIS SHOULD BE DONE AFTER EVERYTHING IS INITIALIZED !
         self.current_obs = self.get_obs(_do_copy=False)
-        # TODO storage: get back the result of the storage ! with the illegal action when a storage unit
-        # TODO is non zero and disconnected, this should be ok.
         self._time_extract_obs += time.perf_counter() - beg_res
         return None
 
@@ -4400,8 +4398,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             _init_txt += txt_
         
         # for the forecast env (we do this even if it's not used)
-        from grid2op.Environment.forecast_env import _ForecastEnv
-        for_env_cls = _ForecastEnv.init_grid(type(self.backend), _local_dir_cls=self._local_dir_cls)
+        from grid2op.Environment import ForecastEnv
+        for_env_cls = ForecastEnv.init_grid(type(self.backend), _local_dir_cls=self._local_dir_cls)
         txt_ = self._aux_gen_classes(for_env_cls, sys_path, _add_class_output=False)
         if txt_ is not None:
             _init_txt += txt_
