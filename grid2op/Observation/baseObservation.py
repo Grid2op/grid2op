@@ -653,9 +653,9 @@ class BaseObservation(GridObjects):
         self.gen_p_delta = np.empty(shape=cls.n_gen, dtype=dt_float)
         
         # detachment (>= 1.11.0)
-        self.load_detached = np.ones(shape=cls.n_load, dtype=dt_bool)
-        self.gen_detached = np.ones(shape=cls.n_gen, dtype=dt_bool)
-        self.storage_detached = np.ones(shape=cls.n_storage, dtype=dt_bool)
+        self.load_detached = np.zeros(shape=cls.n_load, dtype=dt_bool)
+        self.gen_detached = np.zeros(shape=cls.n_gen, dtype=dt_bool)
+        self.storage_detached = np.zeros(shape=cls.n_storage, dtype=dt_bool)
         self.load_p_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
         self.load_q_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
         self.gen_p_detached = np.zeros(shape=cls.n_gen, dtype=dt_float)
@@ -677,6 +677,7 @@ class BaseObservation(GridObjects):
             "year",
             "delta_time",
             "_is_done",
+            "_prev_conn"
         ]
 
         attr_vect = [

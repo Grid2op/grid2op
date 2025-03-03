@@ -135,6 +135,8 @@ Native multi agents support:
   `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
 - [FIXED] an issue with `obs.get_forecast_env` with changeNothing and DoNothingHandler time series
 - [FIXED] a bug in updating the shunt in PandaPowerBackend (depdending on pandas version)
+- [FIXED] a bug when action that reconnect loads, storage units or shunts are done
+  in the "obs.simulate" (results could depend from previous "obs.simulate" calls)
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 

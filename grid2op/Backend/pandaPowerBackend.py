@@ -867,7 +867,7 @@ class PandaPowerBackend(Backend):
             topo__,
             shunts__,
         ) = backendAction()
-
+        
         # handle bus status
         self._grid.bus["in_service"] = pd.Series(data=active_bus.T.reshape(-1),
                                                  index=np.arange(cls.n_sub * cls.n_busbar_per_sub),
@@ -1543,7 +1543,7 @@ class PandaPowerBackend(Backend):
         )
 
     def _storages_info(self):
-        if self.n_storage:
+        if self.n_storage > 0:
             # this is because we support "backward comaptibility" feature. So the storage can be
             # deactivated from the Environment...
             # p_storage = self._grid.res_storage["p_mw"].values.astype(dt_float)

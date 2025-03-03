@@ -94,7 +94,7 @@ class Environment(BaseEnv):
         rewardClass=FlatReward,
         legalActClass=AlwaysLegal,
         voltagecontrolerClass=ControlVoltageFromFile,
-        other_rewards={},
+        other_rewards=None,
         thermal_limit_a=None,
         with_forecast=True,
         epsilon_poly=1e-4,  # precision of the redispatching algorithm we don't recommend to go above 1e-4
@@ -107,9 +107,9 @@ class Environment(BaseEnv):
         opponent_budget_class=NeverAttackBudget,
         opponent_attack_duration=0,
         opponent_attack_cooldown=99999,
-        kwargs_opponent={},
+        kwargs_opponent=None,
         attention_budget_cls=LinearAttentionBudget,
-        kwargs_attention_budget={},
+        kwargs_attention_budget=None,
         has_attention_budget=False,
         logger=None,
         kwargs_observation=None,
@@ -126,6 +126,15 @@ class Environment(BaseEnv):
         _local_dir_cls=None,  # only set at the first call to `make(...)` after should be false
         _overload_name_multimix=None,
     ):
+        if other_rewards is None:
+            other_rewards = {}
+            
+        if kwargs_opponent is None:
+             kwargs_opponent = {}
+        
+        if kwargs_attention_budget is None:
+            kwargs_attention_budget = {}
+            
         BaseEnv.__init__(
             self,
             init_env_path=init_env_path,

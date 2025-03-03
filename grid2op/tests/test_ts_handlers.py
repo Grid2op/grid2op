@@ -511,18 +511,18 @@ class TestPersistenceHandler(unittest.TestCase):
         self.env.close()
         return super().tearDown()  
     
-    def _aux_test_obs(self, obs, max_it=12):
-        assert len(obs._forecasted_inj) == 13 # 12 + 1
+    def _aux_test_obs(self, obs, max_it=12, tol=1e-5):
+        assert len(obs._forecasted_inj) == max_it + 1 # 12 + 1
         init_obj = obs._forecasted_inj[0]
-        for el in obs._forecasted_inj:
+        for for_h, el in enumerate(obs._forecasted_inj):
             for k_ in ["load_p", "load_q"]:
-                assert np.all(el[1]["injection"][k_] == init_obj[1]["injection"][k_])
+                assert np.abs(el[1]["injection"][k_] - init_obj[1]["injection"][k_]).max() <= tol, f'iter {for_h} : {el[1]["injection"][k_]} vs {init_obj[1]["injection"][k_]}'
             k_ = "prod_p"  # because of slack...
             assert np.all(el[1]["injection"][k_][:-1] == init_obj[1]["injection"][k_][:-1]) 
             
-        obs.simulate(self.env.action_space(), 12)
+        obs.simulate(self.env.action_space(), max_it)
         with self.assertRaises(NoForecastAvailable):
-            obs.simulate(self.env.action_space(), 13)
+            obs.simulate(self.env.action_space(), max_it + 1)
         
     def test_step(self):
         obs = self.env.reset()
