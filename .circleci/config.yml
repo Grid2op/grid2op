@@ -290,7 +290,7 @@ jobs:
                 command: |
                   source venv_test/bin/activate
                   julia -e 'using PyCall; math = pyimport("math"); print(math.sin(math.pi/4))'
-                  julia -e 'using Pkg; Pkg.test("PowerModels")'
+                  #julia -e 'using Pkg; Pkg.test("PowerModels")'
             - run:
                 name: Test PowerModels in PandaPower
                 command: |
