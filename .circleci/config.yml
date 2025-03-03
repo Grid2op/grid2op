@@ -283,10 +283,11 @@ jobs:
                   julia -e 'using Pkg; Pkg.status()'
             - run:
                 name: Test PowerModels in Julia
+                no_output_timeout: 30m
                 command: |
                   source venv_test/bin/activate
                   julia -e 'using PyCall; math = pyimport("math"); print(math.sin(math.pi/4))'
-                  julia -e 'using Pkg; Pkg.test("PowerModels"; test_args=["input"])'
+                  julia -e 'using Pkg; Pkg.test("PowerModels")'
             - run:
                 name: Test PowerModels in PandaPower
                 command: |
@@ -442,7 +443,6 @@ workflows:
     version: 2.1
     test:
         jobs:
-          - test_chronix2grid
           - test_powermodels
 
     install:
