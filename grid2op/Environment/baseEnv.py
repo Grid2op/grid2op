@@ -22,6 +22,7 @@ import numpy as np
 from scipy.optimize import (minimize, LinearConstraint)
 
 from abc import ABC, abstractmethod
+from grid2op.Environment._env_prev_state import _EnvPreviousState
 from grid2op.Observation import (BaseObservation,
                                  ObservationSpace,
                                  HighResSimCounter)
@@ -665,7 +666,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         self._delta_gen_p = None
-    
+        
+        # required in 1.11.0 : the previous state when the element was last connected
+        self._previous_conn_state = None
+        self._cst_prev_state_at_init = None
+        
     @property
     def highres_sim_counter(self):
         return self._highres_sim_counter
@@ -984,6 +989,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         new_obj._delta_gen_p = 1. * self._delta_gen_p
+        
+        # previous connected state
+        new_obj._previous_conn_state = copy.deepcopy(self._previous_conn_state)
+        new_obj._cst_prev_state_at_init = self._cst_prev_state_at_init  # no need to deep copy this
         
     def get_path_env(self):
         """
@@ -1454,7 +1463,28 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
-
+        
+        # previous state (complete)
+        self._previous_conn_state = _EnvPreviousState(bk_type,
+                                                      np.zeros(bk_type.n_load, dtype=dt_float),
+                                                      np.zeros(bk_type.n_load, dtype=dt_float),
+                                                      np.zeros(bk_type.n_gen, dtype=dt_float),
+                                                      np.zeros(bk_type.n_gen, dtype=dt_float),
+                                                      np.zeros(bk_type.dim_topo, dtype=dt_int),
+                                                      np.zeros(bk_type.n_storage, dtype=dt_float),
+                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
+                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
+                                                      np.zeros(bk_type.n_shunt, dtype=dt_int),
+                                                      )
+        try:
+            self._previous_conn_state.update_from_backend(self.backend)
+        except Exception as exc_:
+            # nothing to do in this case
+            self.logger.warning(f"Impossible to retrieve the initial state of the grid before running the initial powerflow: {exc_}")
+            self._previous_conn_state._topo_vect[:] = 1  # I force assign everything to busbar 1 by default...
+        self._cst_prev_state_at_init = copy.deepcopy(self._previous_conn_state)
+        self._cst_prev_state_at_init.prevent_modification()
+        
     def _update_parameters(self):
         """update value for the new parameters"""
         self._parameters = self.__new_param
@@ -3168,7 +3198,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # TODO after alert budget will be implemented !
         # self._is_alert_illegal
     
-    def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p) -> Optional[Grid2OpException]:
+    def _aux_register_env_converged(self,
+                                    disc_lines,
+                                    action: BaseAction,
+                                    init_line_status,
+                                    new_p) -> Optional[Grid2OpException]:
         cls = type(self)
         beg_res = time.perf_counter()
         # update the thermal limit, for DLR for example
@@ -3272,6 +3306,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # finally, build the observation (it's a different one at each step, we cannot reuse the same one)
         # THIS SHOULD BE DONE AFTER EVERYTHING IS INITIALIZED !
         self.current_obs = self.get_obs(_do_copy=False)
+        
+        # update the previous state
+        self._previous_conn_state.update_from_backend(self.backend)
+        
         self._time_extract_obs += time.perf_counter() - beg_res
         return None
 

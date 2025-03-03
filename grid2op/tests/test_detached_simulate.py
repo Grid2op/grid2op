@@ -63,7 +63,6 @@ class TestDetachSimulate(unittest.TestCase):
         assert next_obs_sim00.gen_detached[gen_id]
         assert next_obs_sim00.gen_v[gen_id] == 0.
         assert next_obs_sim00.gen_p[gen_id] == 0.
-        print("here here here")
         next_obs_sim0, reward, done, info = next_obs.simulate(act_reco)
         assert not done
         assert len(info["exception"]) == 0
@@ -102,6 +101,7 @@ class TestDetachSimulate(unittest.TestCase):
         assert next_obs_sim5.gen_detached[gen_id]
         assert next_obs_sim5.gen_v[gen_id] == 0.
         assert next_obs_sim5.gen_p[gen_id] == 0.
+        
         # reco again (and check the setpoint is not the last one used in obs.simulate but is the one of the observation)
         next_obs_sim6, reward, done, info = next_obs.simulate(act_reco)
         assert not done

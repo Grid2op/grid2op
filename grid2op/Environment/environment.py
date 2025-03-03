@@ -945,10 +945,11 @@ class Environment(BaseEnv):
         If the thermal has been modified, it also modify them into the new backend.
 
         """
-        self.backend.reset(
-            self._init_grid_path,
-        )  # the real powergrid of the environment
+        # the real powergrid of the environment
+        self.backend.reset(self._init_grid_path)  
+        
         # self.backend.assert_grid_correct()
+        self._previous_conn_state.update_from_other(self._cst_prev_state_at_init)
 
         if self._thermal_limit_a is not None:
             self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))

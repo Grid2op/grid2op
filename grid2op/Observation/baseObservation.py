@@ -24,6 +24,7 @@ except ImportError:
 
 import grid2op  # for type hints
 import grid2op.Environment  # for type hints
+import grid2op.Action  # for type hints
 from grid2op.Parameters import Parameters
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -659,6 +660,9 @@ class BaseObservation(GridObjects):
         self.load_q_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
         self.gen_p_detached = np.zeros(shape=cls.n_gen, dtype=dt_float)
         self.storage_p_detached = np.zeros(shape=cls.n_storage, dtype=dt_float)
+        
+        # 1.11.0 previous connected
+        self._prev_conn = None
         
     def _aux_copy(self, other : Self) -> None:
         attr_simple = [
@@ -3260,9 +3264,9 @@ class BaseObservation(GridObjects):
         return res
 
     def simulate(self, action : "grid2op.Action.BaseAction", time_step:int=1) -> Tuple["BaseObservation",
-                                                float,
-                                                bool,
-                                                STEP_INFO_TYPING]:
+                                                                                       float,
+                                                                                       bool,
+                                                                                       STEP_INFO_TYPING]:
         """
         This method is used to simulate the effect of an action on a forecast powergrid state. This forecast
         state is built upon the current observation.
@@ -3528,12 +3532,12 @@ class BaseObservation(GridObjects):
             )
 
         if time_step < 0:
-            raise NoForecastAvailable("Impossible to forecast in the past.")
+            raise NoForecastAvailable("Impossible to 'forecast' in the past at the moment.")
 
         if time_step >= len(self._forecasted_inj):
             raise NoForecastAvailable(
-                "Forecast for {} timestep(s) ahead is not possible with your chronics."
-                "".format(time_step)
+                f"Forecast for {time_step} timestep(s) ahead is not possible "
+                f"with your chronics, max length {len(self._forecasted_inj) - 1} steps ahead."
             )
             
         if time_step not in self._forecasted_grid_act:
@@ -3549,11 +3553,14 @@ class BaseObservation(GridObjects):
             inj_action,
             time_stamp=timestamp,
             obs=self,
-            time_step=time_step,
+            time_step=time_step
         )
-
         sim_obs, *rest = self._obs_env.simulate(action)
         sim_obs = copy.deepcopy(sim_obs)
+        
+        # remember the last valid state of the environment
+        sim_obs._prev_conn = self._prev_conn  # shallow copy here because it's const
+        
         if self._forecasted_inj:
             # allow "chain" to simulate
             sim_obs.action_helper = self.action_helper  # no copy !
@@ -4449,6 +4456,10 @@ class BaseObservation(GridObjects):
             self.gen_p_detached[:] = env._gen_p_detached
             self.storage_p_detached[:] = env._storage_p_detached
         
+        # 1.11.0 
+        self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        self._prev_conn.prevent_modification()  # I do not want to modify this accidently
+        
         # handles forecasts here
         self._update_forecast(env, with_forecast)
         
@@ -4459,21 +4470,23 @@ class BaseObservation(GridObjects):
         self._update_alert(env)
 
     def _get_gen_p_for_forecasts(self) -> np.ndarray:
-        return self._get_array_for_forecast(self.gen_p, self.gen_detached)
+        return self._get_array_for_forecast(self.gen_p, self.gen_detached, self._prev_conn._gen_p)
 
     def _get_gen_v_for_forecasts(self) -> np.ndarray:
-        return self._get_array_for_forecast(self.gen_v, self.gen_detached)
+        res = self._get_array_for_forecast(self.gen_v, self.gen_detached, self._prev_conn._gen_v)
+        return res
     
     def _get_load_p_for_forecasts(self) -> np.ndarray:
-        return self._get_array_for_forecast(self.load_p, self.load_detached)
+        return self._get_array_for_forecast(self.load_p, self.load_detached, self._prev_conn._load_p)
     
     def _get_load_q_for_forecasts(self) -> np.ndarray:
-        return self._get_array_for_forecast(self.load_q, self.load_detached)
+        return self._get_array_for_forecast(self.load_q, self.load_detached, self._prev_conn._load_q)
     
     @staticmethod
-    def _get_array_for_forecast(arr, mask_detached) -> np.ndarray:
-        res = (1.0 * arr).astype(dt_float)
-        res[mask_detached] = np.nan
+    def _get_array_for_forecast(arr, mask_detached, prev_val) -> np.ndarray:
+        res = (1.0 * prev_val).astype(dt_float)
+        is_conn = ~mask_detached
+        res[is_conn] = arr[is_conn]
         return res
 
     def _update_forecast(self, env: "grid2op.Environment.BaseEnv", with_forecast: bool) -> None:

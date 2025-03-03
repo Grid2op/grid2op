@@ -14,6 +14,7 @@ from typing import Dict, Union, Tuple, List, Optional, Any, Literal
 
 import grid2op
 import grid2op.Action
+from grid2op.Environment._env_prev_state import _EnvPreviousState
 import grid2op.Observation  # for type hints
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -61,18 +62,22 @@ class _ObsEnv(BaseEnv):
         tol_poly,
         max_episode_duration,
         delta_time_seconds,
-        other_rewards={},
+        other_rewards=None,
         has_attention_budget=False,
         attention_budget_cls=LinearAttentionBudget,
-        kwargs_attention_budget={},
+        kwargs_attention_budget=None,
         logger=None,
         highres_sim_counter=None,
         _complete_action_cls=None,
         allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         _ptr_orig_obs_space=None,
-        _local_dir_cls=None,  # only set at the first call to `make(...)` after should be false
+        _local_dir_cls=None,
         _read_from_local_dir=None,
     ):
+        if other_rewards is None:
+            other_rewards = {}
+        if kwargs_attention_budget is None:
+            kwargs_attention_budget = {}
         BaseEnv.__init__(
             self,
             init_env_path=init_env_path,
@@ -153,12 +158,12 @@ class _ObsEnv(BaseEnv):
         if self.__unusable:
             self._backend_action_set = None
         else:
-            self._backend_action_set = self._backend_action_class()
+            self._backend_action_set : grid2op.Action._BackendAction._BackendAction = self._backend_action_class()
 
         if self.__unusable:
             self._disc_lines = np.zeros(shape=0, dtype=dt_int) - 1
         else:
-            self._disc_lines = np.zeros(shape=self.n_line, dtype=dt_int) - 1
+            self._disc_lines = np.zeros(shape=cls.n_line, dtype=dt_int) - 1
             
         self._max_episode_duration = max_episode_duration
 
@@ -321,7 +326,7 @@ class _ObsEnv(BaseEnv):
         new_state_action : "grid2op.Action.BaseAction",
         time_stamp: datetime.datetime,
         obs : "grid2op.Observation.CompleteObservation",
-        time_step : int=1
+        time_step : int=1,
     ):
         """
         INTERNAL
@@ -384,8 +389,10 @@ class _ObsEnv(BaseEnv):
         else:
             set_status = self._line_status_me
             topo_vect = self._topo_vect
+        
         # TODO set the shunts here
         # update the action that set the grid to the real value
+        self._previous_conn_state.update_from_other(obs._prev_conn)
         gen_p = obs._get_gen_p_for_forecasts()
         gen_v = obs._get_gen_v_for_forecasts()
         load_p = obs._get_load_p_for_forecasts()
@@ -407,7 +414,6 @@ class _ObsEnv(BaseEnv):
         if time_step > 0:
             self._backend_action_set.storage_power.values[:] = 0.0
         self._backend_action_set.all_changed()
-        self._backend_action_set._assign_0_to_disco_el()
         self._backend_action = copy.deepcopy(self._backend_action_set)
         # for curtailment
         if self._env_modification is not None:
@@ -417,7 +423,7 @@ class _ObsEnv(BaseEnv):
         self.current_obs.reset()
         self.time_stamp = time_stamp
 
-    def _get_new_prod_setpoint(self, action):
+    def _get_new_prod_setpoint(self, action : "grid2op.Action.BaseAction"):
         new_p = 1.0 * self._backend_action_set.prod_p.values
         if "prod_p" in action._dict_inj:
             tmp = action._dict_inj["prod_p"]
@@ -490,7 +496,7 @@ class _ObsEnv(BaseEnv):
         obs, reward, done, info = self.step(action)
         return obs, reward, done, info
 
-    def get_obs(self, _update_state=True, _do_copy=True):
+    def get_obs(self, _update_state=True, _do_copy=True) -> "grid2op.Observation.BaseObservation":
         """
         INTERNAL
 
@@ -515,7 +521,7 @@ class _ObsEnv(BaseEnv):
             res = self.current_obs
         return res
 
-    def update_grid(self, env):
+    def update_grid(self, env : BaseEnv):
         """
         INTERNAL
 
