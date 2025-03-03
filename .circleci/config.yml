@@ -277,9 +277,12 @@ jobs:
                 name: Environment information
                 command: |
                   source venv_test/bin/activate
+                  pip list
                   pip list | grep -e power -e grid -e panda
                   which python julia python-jl
-                  pip list
+                  python --version
+                  julia --version
+                  python-jl --version
                   julia -e 'using Pkg; Pkg.status()'
             - run:
                 name: Test PowerModels in Julia
