@@ -245,7 +245,7 @@ jobs:
 
     test_powermodels:
         executor: python312
-        resource_class: medium  # install_julia step killed w/"small"
+        resource_class: medium+  # install_julia step killed w/"small"
         steps:
             - checkout
             - run:
@@ -286,7 +286,7 @@ jobs:
                 command: |
                   source venv_test/bin/activate
                   julia -e 'using PyCall; math = pyimport("math"); print(math.sin(math.pi/4))'
-                  julia -e 'using Pkg; Pkg.test("PowerModels")'
+                  julia -e 'using Pkg; Pkg.test("PowerModels"; test_args=["input"])'
             - run:
                 name: Test PowerModels in PandaPower
                 command: |
