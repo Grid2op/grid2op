@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import copy
 from typing import Optional, Type, Any
 import numpy as np
 from grid2op.Space import GridObjects
@@ -103,6 +104,8 @@ class _EnvPreviousState(object):
     
     def update_from_other(self, 
                           other : "_EnvPreviousState"):
+        if not self._can_modif:
+            raise Grid2OpException(f"Impossible to modifiy this _EnvPreviousState")
         for attr_nm in ["_load_p",
                         "_load_q",
                         "_gen_p",
@@ -115,7 +118,7 @@ class _EnvPreviousState(object):
             tmp = getattr(self, attr_nm)
             if tmp.size > 1:
                 # works only for array of size 2 or more
-                tmp[:] = getattr(other, attr_nm)
+                tmp[:] = copy.deepcopy(getattr(other, attr_nm))
             else:
                 setattr(self, attr_nm, getattr(other, attr_nm))
         

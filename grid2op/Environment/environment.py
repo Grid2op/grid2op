@@ -534,14 +534,6 @@ class Environment(BaseEnv):
         # reset everything to be consistent
         self._reset_vectors_and_timings()
         
-        # 1.11 and detachement: forecasted env
-        if self._init_obs is not None:
-            # update the backend
-            self._backend_action = self.backend.update_from_obs(self._init_obs)
-            self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
-            self._cst_prev_state_at_init.force_update(self._init_obs._prev_conn)
-            self._previous_conn_state.update_from_other(self._init_obs._prev_conn)
-        
     def max_episode_duration(self):
         """
         Return the maximum duration (in number of steps) of the current episode.

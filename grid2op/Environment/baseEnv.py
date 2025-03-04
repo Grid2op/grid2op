@@ -1380,7 +1380,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if np.min([self.n_line, self.n_gen, self.n_load, self.n_sub]) <= 0:
             raise EnvironmentError("Environment has not been initialized properly")
         self._backend_action_class = _BackendAction.init_grid(bk_type, _local_dir_cls=self._local_dir_cls)
-        self._backend_action = self._backend_action_class()
 
         # initialize maintenance / hazards
         self._time_next_maintenance = np.full(bk_type.n_line, -1, dtype=dt_int)
@@ -1480,20 +1479,23 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if self._init_obs is None:
             # regular environment, initialized from scratch
             try:
+                self.backend.runpf(is_dc=self._parameters.ENV_DC)
                 self._previous_conn_state.update_from_backend(self.backend)
             except Exception as exc_:
                 # nothing to do in this case
                 self.logger.warning(f"Impossible to retrieve the initial state of the grid before running the initial powerflow: {exc_}")
                 self._previous_conn_state._topo_vect[:] = 1  # I force assign everything to busbar 1 by default...
             self._cst_prev_state_at_init = copy.deepcopy(self._previous_conn_state)
-            self._cst_prev_state_at_init.prevent_modification()
+            self._backend_action = self._backend_action_class()
         else:
             # environment initialized from an observation, eg forecast_env
+            # update the backend
+            self._backend_action = self.backend.update_from_obs(self._init_obs)
+            self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
             self._cst_prev_state_at_init = copy.deepcopy(self._init_obs._prev_conn)
-            self._cst_prev_state_at_init.prevent_modification()
-            self._previous_conn_state.update_from_other(self._cst_prev_state_at_init)
-            # TODO this has to be done also in "_reset_to_orig_state" but I don't know why...
+            self._previous_conn_state.update_from_other(self._init_obs._prev_conn)
             
+        self._cst_prev_state_at_init.prevent_modification()
         # update backend_action with the "last known" state
         self._backend_action.last_topo_registered.values[:] = self._previous_conn_state._topo_vect
         
