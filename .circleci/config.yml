@@ -293,6 +293,11 @@ jobs:
                   julia -e 'using Pkg; Pkg.test("PowerModels")'
                   #; test_args=["input"])'
             - run:
+                name: Test PandaModels in Julia
+                command: |
+                  source venv_test/bin/activate
+                  julia -e 'using Pkg; Pkg.test("PandaModels")'
+            - run:
                 name: Test PowerModels in PandaPower
                 command: |
                   source venv_test/bin/activate
