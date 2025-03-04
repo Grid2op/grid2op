@@ -6,10 +6,11 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from typing import Optional, Type
+from typing import Optional, Type, Any
 import numpy as np
 from grid2op.Space import GridObjects
 import grid2op.Backend
+from grid2op.typing_variables import CLS_AS_DICT_TYPING
 from grid2op.Exceptions import Grid2OpException
 
 
@@ -26,7 +27,9 @@ class _EnvPreviousState(object):
                  init_shunt_q : np.ndarray,
                  init_shunt_bus : np.ndarray):
         self._can_modif = True
-        self._grid_obj_cls : Type[GridObjects] = grid_obj_cls
+        self._grid_obj_cls : CLS_AS_DICT_TYPING = grid_obj_cls.cls_to_dict()
+        self._n_storage = len(self._grid_obj_cls["name_storage"])  # to avoid typing that over and over again
+        
         self._load_p : np.ndarray = 1. * init_load_p
         self._load_q : np.ndarray = 1. * init_load_q
         self._gen_p : np.ndarray = 1. * init_gen_p
@@ -50,12 +53,12 @@ class _EnvPreviousState(object):
         if not self._can_modif:
             raise Grid2OpException(f"Impossible to modifiy this _EnvPreviousState")
         
-        self._aux_update(topo_vect[self._grid_obj_cls.load_pos_topo_vect],
+        self._aux_update(topo_vect[self._grid_obj_cls["load_pos_topo_vect"]],
                          self._load_p,
                          load_p,
                          self._load_q,
                          load_q)
-        self._aux_update(topo_vect[self._grid_obj_cls.gen_pos_topo_vect],
+        self._aux_update(topo_vect[self._grid_obj_cls["gen_pos_topo_vect"]],
                          self._gen_p,
                          gen_p,
                          self._gen_v,
@@ -63,8 +66,8 @@ class _EnvPreviousState(object):
         self._topo_vect[topo_vect > 0] = 1 * topo_vect[topo_vect > 0]
         
         # update storage units
-        if self._grid_obj_cls.n_storage > 0:
-            self._aux_update(topo_vect[self._grid_obj_cls.storage_pos_topo_vect],
+        if self._n_storage > 0:
+            self._aux_update(topo_vect[self._grid_obj_cls["storage_pos_topo_vect"]],
                             self._storage_p,
                             storage_p)
         
@@ -84,7 +87,7 @@ class _EnvPreviousState(object):
         topo_vect = backend.get_topo_vect()
         load_p, load_q, *_ = backend.loads_info()
         gen_p, gen_q, gen_v = backend.generators_info()
-        if self._grid_obj_cls.n_storage > 0:
+        if self._n_storage > 0:
             storage_p, *_ = backend.storages_info()
         else:
             storage_p = None
@@ -109,7 +112,12 @@ class _EnvPreviousState(object):
                         "_shunt_p",
                         "_shunt_q",
                         "_shunt_bus"]:
-            getattr(self, attr_nm)[:] = getattr(other, attr_nm)
+            tmp = getattr(self, attr_nm)
+            if tmp.size > 1:
+                # works only for array of size 2 or more
+                tmp[:] = getattr(other, attr_nm)
+            else:
+                setattr(self, attr_nm, getattr(other, attr_nm))
             
     def prevent_modification(self):
         for attr_nm in ["_load_p",
@@ -121,7 +129,10 @@ class _EnvPreviousState(object):
                         "_shunt_p",
                         "_shunt_q",
                         "_shunt_bus"]:
-            getattr(self, attr_nm).flags.writeable = False
+            tmp = getattr(self, attr_nm)
+            if tmp.size > 1:
+                # can't set flags on array of size 1 apparently
+                tmp.flags.writeable = False
         self._can_modif = False
         
     def _aux_update(self,

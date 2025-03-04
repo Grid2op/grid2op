@@ -4159,7 +4159,7 @@ class GridObjects:
             cls._CLS_DICT_EXTENDED = res.copy()
 
     @classmethod
-    def cls_to_dict(cls):
+    def cls_to_dict(cls) -> CLS_AS_DICT_TYPING:
         """
         INTERNAL
 

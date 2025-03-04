@@ -13,6 +13,7 @@ import unittest
 from grid2op.tests.helper_path_test import *
 
 import grid2op
+from grid2op.Agent import BaseAgent
 from grid2op.Exceptions import NoForecastAvailable
 from grid2op.Chronics import GridStateFromFileWithForecasts, GridStateFromFile, GridStateFromFileWithForecastsWithoutMaintenance, FromHandlers
 from grid2op.Chronics.handlers import (CSVHandler,
@@ -34,6 +35,20 @@ import warnings
 # TODO check when there is also redispatching
 
 
+class TestAgent(BaseAgent):
+    def __init__(self, action_space, tester):
+        super().__init__(action_space)
+        self.tester = tester
+    def act(self, obs, reward, done=False):
+        # size of the forecast is always 12 even if it's "after" the size of the episode
+        self.tester._aux_test_obs(obs, max_it=12)
+        _ = self.tester.env.step(self.action_space())   # for TestPerfectForecastHandler: self.tester.env should be synch with the runner env...
+        return self.action_space()
+    def reset(self, obs):
+        self.tester.env.reset()  # for TestPerfectForecastHandler
+        return super().reset(obs)
+            
+            
 def _load_next_chunk_in_memory_hack(self):
     self._nb_call += 1
     # i load the next chunk as dataframes
@@ -512,7 +527,7 @@ class TestPersistenceHandler(unittest.TestCase):
         return super().tearDown()  
     
     def _aux_test_obs(self, obs, max_it=12, tol=1e-5):
-        assert len(obs._forecasted_inj) == max_it + 1 # 12 + 1
+        assert len(obs._forecasted_inj) == max_it + 1, f"{len(obs._forecasted_inj)} vs {max_it + 1}"
         init_obj = obs._forecasted_inj[0]
         for for_h, el in enumerate(obs._forecasted_inj):
             for k_ in ["load_p", "load_q"]:
@@ -553,20 +568,7 @@ class TestPersistenceHandler(unittest.TestCase):
             for k_ in ["load_p", "load_q", "prod_p"]:
                 assert np.all(el[1]["injection"][k_] == el_cpy[1]["injection"][k_])
     
-    def test_runner(self):
-        from grid2op.Agent import BaseAgent
-        class TestAgent(BaseAgent):
-            def __init__(self, action_space, tester):
-                super().__init__(action_space)
-                self.tester = tester
-            def act(self, obs, reward, done=False):
-                self.tester._aux_test_obs(obs, max_it=5 - obs.current_step)
-                _ = self.tester.env.step(self.action_space())   # for TestPerfectForecastHandler: self.tester.env should be synch with the runner env...
-                return self.action_space()
-            def reset(self, obs):
-                self.tester.env.reset()  # for TestPerfectForecastHandler
-                return super().reset(obs)
-            
+    def test_runner(self):            
         testagent = TestAgent(self.env.action_space, self)
         self.env.set_id(0)  # for TestPerfectForecastHandler
         runner = Runner(**self.env.get_params_for_runner(), agentClass=None, agentInstance=testagent)
