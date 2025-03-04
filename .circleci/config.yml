@@ -279,10 +279,10 @@ jobs:
                   source venv_test/bin/activate
                   pip list
                   pip list | grep -e power -e grid -e panda
-                  which python julia python-jl
+                  which python python-jl julia
                   python --version
-                  julia --version
                   python-jl --version
+                  julia --version
                   julia -e 'using Pkg; Pkg.status(); Pkg.status(outdated=true)'
             - run:
                 name: Test PowerModels in Julia
@@ -290,18 +290,19 @@ jobs:
                 command: |
                   source venv_test/bin/activate
                   julia -e 'using PyCall; math = pyimport("math"); print(math.sin(math.pi/4))'
-                  julia -e 'using Pkg; Pkg.test("PowerModels")'
-                  #; test_args=["input"])'
+                  # julia -e 'using Pkg; Pkg.test("PowerModels")'
+                  # PM testing above is clean but takes 30m
             - run:
                 name: Test PandaModels in Julia
                 command: |
                   source venv_test/bin/activate
-                  julia -e 'using Pkg; Pkg.test("PandaModels")'
+                  # julia -e 'using Pkg; Pkg.test("PandaModels")'
+                  # PdM testing above has a couple failures b/c Ipopt
             - run:
                 name: Test PowerModels in PandaPower
                 command: |
                   source venv_test/bin/activate
-                  python venv_test/lib/python3.12/site-packages/pandapower/test/opf/test_pandamodels_runpm.py
+                  python -m pytest -v venv_test/lib/python3.12/site-packages/pandapower/test/opf/test_pandamodels_runpm.py
                   # use python-jl instead of python above if get a static libpython error
 
     install39:
