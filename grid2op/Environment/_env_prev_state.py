@@ -118,8 +118,21 @@ class _EnvPreviousState(object):
                 tmp[:] = getattr(other, attr_nm)
             else:
                 setattr(self, attr_nm, getattr(other, attr_nm))
-            
+        
     def prevent_modification(self):
+        self._aux_modif()
+        self._can_modif = False
+        
+    def force_update(self, other: "_EnvPreviousState"):
+        """This is used when initializing the forecast env. This removes the "cst" part, 
+        set it to the value given by other, and then assign it to const.
+        """
+        self._can_modif = True
+        self._aux_modif(True)
+        self.update_from_other(other)
+        self.prevent_modification()
+    
+    def _aux_modif(self, writeable_flag=False):
         for attr_nm in ["_load_p",
                         "_load_q",
                         "_gen_p",
@@ -132,8 +145,7 @@ class _EnvPreviousState(object):
             tmp = getattr(self, attr_nm)
             if tmp.size > 1:
                 # can't set flags on array of size 1 apparently
-                tmp.flags.writeable = False
-        self._can_modif = False
+                tmp.flags.writeable = writeable_flag
         
     def _aux_update(self,
                     el_topo_vect : np.ndarray,

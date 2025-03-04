@@ -34,7 +34,6 @@ from grid2op.Opponent import BaseOpponent, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
 from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT, GRID2OP_CURRENT_VERSION_STR
 from grid2op.typing_variables import RESET_OPTIONS_TYPING, N_BUSBAR_PER_SUB_TYPING
-from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
 
 class Environment(BaseEnv):
@@ -202,6 +201,7 @@ class Environment(BaseEnv):
         self._allow_loaded_backend : bool = _allow_loaded_backend
 
         # for gym compatibility (action_spacen and observation_space initialized below)
+        # for plotting
         self.reward_range = None
         self._viewer = None
         self.metadata = None
@@ -212,7 +212,8 @@ class Environment(BaseEnv):
         # needs to be done before "_init_backend" otherwise observationClass is not defined in the
         # observation space (real_env_kwargs)
         self._observationClass_orig = observationClass
-        # for plotting
+        
+        # init the backend
         self._init_backend(
             chronics_handler,
             backend,
@@ -532,6 +533,14 @@ class Environment(BaseEnv):
 
         # reset everything to be consistent
         self._reset_vectors_and_timings()
+        
+        # 1.11 and detachement: forecasted env
+        if self._init_obs is not None:
+            # update the backend
+            self._backend_action = self.backend.update_from_obs(self._init_obs)
+            self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
+            self._cst_prev_state_at_init.force_update(self._init_obs._prev_conn)
+            self._previous_conn_state.update_from_other(self._init_obs._prev_conn)
         
     def max_episode_duration(self):
         """
@@ -963,11 +972,14 @@ class Environment(BaseEnv):
         if self._thermal_limit_a is not None:
             self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
 
-        self._backend_action = self._backend_action_class()
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
         
         if self._init_obs is not None:
-            self.backend.update_from_obs(self._init_obs)
+            # update the backend
+            self._backend_action = self.backend.update_from_obs(self._init_obs)
+            self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
+        else:
+            self._backend_action = self._backend_action_class()
             
         init_action = None
         if not self._parameters.IGNORE_INITIAL_STATE_TIME_SERIE:

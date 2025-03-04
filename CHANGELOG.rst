@@ -137,6 +137,9 @@ Native multi agents support:
 - [FIXED] a bug in updating the shunt in PandaPowerBackend (depdending on pandas version)
 - [FIXED] a bug when action that reconnect loads, storage units or shunts are done
   in the "obs.simulate" (results could depend from previous "obs.simulate" calls)
+- [FIXED] a bug in "obs.simulate" and "obs.get_forecast_env" : when a line was disconnected
+  and the user tried to reconnect it (without specifying on which bus) it could do something
+  different than "env.step" (with the same action)
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 

@@ -1476,14 +1476,26 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                       np.zeros(bk_type.n_shunt, dtype=dt_float),
                                                       np.zeros(bk_type.n_shunt, dtype=dt_int),
                                                       )
-        try:
-            self._previous_conn_state.update_from_backend(self.backend)
-        except Exception as exc_:
-            # nothing to do in this case
-            self.logger.warning(f"Impossible to retrieve the initial state of the grid before running the initial powerflow: {exc_}")
-            self._previous_conn_state._topo_vect[:] = 1  # I force assign everything to busbar 1 by default...
-        self._cst_prev_state_at_init = copy.deepcopy(self._previous_conn_state)
-        self._cst_prev_state_at_init.prevent_modification()
+        
+        if self._init_obs is None:
+            # regular environment, initialized from scratch
+            try:
+                self._previous_conn_state.update_from_backend(self.backend)
+            except Exception as exc_:
+                # nothing to do in this case
+                self.logger.warning(f"Impossible to retrieve the initial state of the grid before running the initial powerflow: {exc_}")
+                self._previous_conn_state._topo_vect[:] = 1  # I force assign everything to busbar 1 by default...
+            self._cst_prev_state_at_init = copy.deepcopy(self._previous_conn_state)
+            self._cst_prev_state_at_init.prevent_modification()
+        else:
+            # environment initialized from an observation, eg forecast_env
+            self._cst_prev_state_at_init = copy.deepcopy(self._init_obs._prev_conn)
+            self._cst_prev_state_at_init.prevent_modification()
+            self._previous_conn_state.update_from_other(self._cst_prev_state_at_init)
+            # TODO this has to be done also in "_reset_to_orig_state" but I don't know why...
+            
+        # update backend_action with the "last known" state
+        self._backend_action.last_topo_registered.values[:] = self._previous_conn_state._topo_vect
         
     def _update_parameters(self):
         """update value for the new parameters"""
@@ -4626,6 +4638,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # soft overflow
         self._timestep_overflow[:] = obs.timestep_overflow
+        
+        # previous "connected" state of all elements
+        self._previous_conn_state.update_from_other(obs._prev_conn)  # already done with _cst_prev_XXX
+        self._backend_action.last_topo_registered.values[:] = obs._prev_conn._topo_vect
+        # self._backend_action.current_topo.values[:] = obs._prev_conn._topo_vect
 
     def forecasts(self):
         # ensure that the "env.chronics_handler.forecasts" is called at most once per step

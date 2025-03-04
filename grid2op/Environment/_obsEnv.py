@@ -393,6 +393,8 @@ class _ObsEnv(BaseEnv):
         # TODO set the shunts here
         # update the action that set the grid to the real value
         self._previous_conn_state.update_from_other(obs._prev_conn)
+        # remember the last connection state
+        self._backend_action_set.last_topo_registered.values[:] = obs._prev_conn._topo_vect
         gen_p = obs._get_gen_p_for_forecasts()
         gen_v = obs._get_gen_v_for_forecasts()
         load_p = obs._get_load_p_for_forecasts()

@@ -36,6 +36,8 @@ from grid2op.Exceptions import (
     Grid2OpException,
 )
 from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+import grid2op.Observation  # for type hints
+import grid2op.Action  # for type hints
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -1920,7 +1922,7 @@ class Backend(GridObjects, ABC):
 
     def update_from_obs(self,
                         obs: "grid2op.Observation.CompleteObservation",
-                        force_update: Optional[bool]=False):
+                        force_update: Optional[bool]=False) -> "grid2op.Action._BackendAction._BackendAction":
         """
         Takes an observation as input and update the internal state of `self` to match the state of the backend
         that produced this observation.
@@ -1954,7 +1956,7 @@ class Backend(GridObjects, ABC):
             )
 
         cls = type(self)
-        backend_action = cls.my_bk_act_class()
+        backend_action : "grid2op.Action._BackendAction._BackendAction" = cls.my_bk_act_class()        
         act = cls._complete_action_class()
         line_status = self._aux_get_line_status_to_set(obs.line_status)
         # skip the action part and update directly the backend action !
@@ -1962,10 +1964,10 @@ class Backend(GridObjects, ABC):
             "set_bus": obs.topo_vect,
             "set_line_status": line_status,
             "injection": {
-                "prod_p": obs.prod_p,
-                "prod_v": obs.prod_v,
-                "load_p": obs.load_p,
-                "load_q": obs.load_q,
+                "prod_p": obs._get_gen_p_for_forecasts(),
+                "prod_v": obs._get_gen_v_for_forecasts(),
+                "load_p": obs._get_load_p_for_forecasts(),
+                "load_q": obs._get_load_q_for_forecasts(),
             },
         }
 
@@ -1991,6 +1993,7 @@ class Backend(GridObjects, ABC):
         act.update(dict_)
         backend_action += act
         self.apply_action(backend_action)
+        return backend_action
 
     def assert_grid_correct(self, _local_dir_cls=None) -> None:
         """
