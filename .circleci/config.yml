@@ -272,7 +272,8 @@ jobs:
                   ./utils/install_julia.sh 1.10.4
                   python -m pip install julia
                   python ./utils/install_pycall.py
-                  julia -e 'using Pkg; Pkg.add([Pkg.PackageSpec(;name="Ipopt"), Pkg.PackageSpec(;name="PowerModels", version="0.21.3"), Pkg.PackageSpec(;name="PyCall"), Pkg.PackageSpec(;url="https://github.com/loriab/PandaModels.jl", rev="update_pm")])'
+                  #julia -e 'using Pkg; Pkg.add([Pkg.PackageSpec(;name="Ipopt"), Pkg.PackageSpec(;name="PowerModels", version="0.21.3"), Pkg.PackageSpec(;name="PyCall"), Pkg.PackageSpec(;url="https://github.com/loriab/PandaModels.jl", rev="update_pm")])'
+                  julia -e 'using Pkg; Pkg.add("Ipopt", "PowerModels", "PyCall")'
             - run:
                 name: Environment information
                 command: |
@@ -290,13 +291,14 @@ jobs:
                 command: |
                   source venv_test/bin/activate
                   julia -e 'using PyCall; math = pyimport("math"); print(math.sin(math.pi/4))'
-                  #julia -e 'using Pkg; Pkg.test("PowerModels")'
+                  julia -e 'using Pkg; Pkg.test("PowerModels")'
+                  #; test_args=["input"])'
             - run:
                 name: Test PowerModels in PandaPower
                 command: |
                   source venv_test/bin/activate
-                  python-jl venv_test/lib/python3.12/site-packages/pandapower/test/opf/test_pandamodels_runpm.py
                   python venv_test/lib/python3.12/site-packages/pandapower/test/opf/test_pandamodels_runpm.py
+                  # use python-jl instead of python above if get a static libpython error
 
     install39:
         executor: python39
