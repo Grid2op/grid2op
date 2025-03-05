@@ -182,6 +182,8 @@ class EpisodeReboot:
             del env_kwargs["opponent_class"]
         if "name" in env_kwargs:
             del env_kwargs["name"]
+        if "ts_manager" in env_kwargs:
+            del env_kwargs["ts_manager"]
 
         seed = None
         with open(os.path.join(agent_path, name, "episode_meta.json")) as f:
@@ -244,9 +246,7 @@ class EpisodeReboot:
         # # TODO check that the "stored" "last bus for when the powerline were connected" are
         # # kept there (I might need to do a for loop)
         self.env.backend.update_from_obs(obs)
-        disc_lines, detailed_info, conv_ = self.env.backend.next_grid_state(
-            env=self.env
-        )
+        disc_lines, detailed_info, conv_ = self.env.protection.next_grid_state()
         if conv_ is None:
             self.env._backend_action.update_state(disc_lines)
         self.env._backend_action.reset()

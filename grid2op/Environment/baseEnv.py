@@ -26,7 +26,7 @@ from abc import ABC, abstractmethod
 from grid2op.Observation import (BaseObservation,
                                  ObservationSpace,
                                  HighResSimCounter)
-from grid2op.Backend import Backend
+from grid2op.Backend import Backend, thermalLimits, protectionScheme
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Space import GridObjects, RandomObject
 from grid2op.Exceptions import (Grid2OpException,
@@ -549,6 +549,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self.__is_init = False
         self.debug_dispatch = False
 
+        # Thermal limit and protection
+        self._init_thermal_limit()
+        self.protection : protectionScheme = None
+
         # to change the parameters
         self.__new_param = None
         self.__new_forecast_param = None
@@ -631,7 +635,48 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # general things that can be used by the reward
         self._reward_to_obs = {}
-    
+
+    def _init_thermal_limit(self):
+        self.ts_manager = thermalLimits.ThermalLimits(
+            _thermal_limit_a = self._thermal_limit_a,
+            n_line=self.n_line,
+            line_names=self.name_line
+        )
+
+    def _init_protection(self):
+        """
+        Initialise le système de protection du réseau avec gestion des erreurs et logs.
+        """
+        try:
+            self.logger.info("Initialisation du système de protection...")
+
+            initializerProtection = protectionScheme.DefaultProtection(
+                backend=self.backend,
+                parameters=self.parameters,
+                thermal_limits=self.ts_manager,
+                is_dc=self._env_dc,
+                logger=self.logger
+            )
+
+            if self._no_overflow_disconnection or initializerProtection.conv_ is not None:
+                self.logger.warning("Utilisation de NoProtection car _no_overflow_disconnection est activé "
+                                    "ou la convergence du power flow a échoué.")
+                self.protection = protectionScheme.NoProtection(
+                    backend=self.backend,
+                    thermal_limits=self.ts_manager,
+                    is_dc=self._env_dc
+                )
+            else:
+                self.logger.info("Utilisation de DefaultProtection avec succès.")
+                self.protection = initializerProtection
+
+        except Grid2OpException as e:
+            self.logger.error(f"Erreur spécifique à Grid2Op lors de l'initialisation de la protection : {e}")
+            raise
+        except Exception as e:
+            self.logger.exception("Erreur inattendue lors de l'initialisation de la protection.")
+            raise
+
     @property
     def highres_sim_counter(self):
         return self._highres_sim_counter
@@ -704,8 +749,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # specific to Basic Env, do not change
         new_obj.backend = self.backend.copy()
+        new_obj.ts_manager = self.ts_manager.copy()
         if self._thermal_limit_a is not None:
-            new_obj.backend.set_thermal_limit(self._thermal_limit_a)
+            new_obj.ts_manager.limits = self._thermal_limit_a
         new_obj._thermal_limit_a = copy.deepcopy(self._thermal_limit_a)
 
         new_obj.__is_init = self.__is_init
@@ -1804,58 +1850,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "Impossible to set the thermal limit to a non initialized Environment. "
                 "Have you called `env.reset()` after last game over ?"
             )
-        if isinstance(thermal_limit, dict):
-            tmp = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
-            for key, val in thermal_limit.items():
-                if key not in self.name_line:
-                    raise Grid2OpException(
-                        f"When setting a thermal limit with a dictionary, the keys should be line "
-                        f"names. We found: {key} which is not a line name. The names of the "
-                        f"powerlines are {self.name_line}"
-                    )
-                ind_line = (self.name_line == key).nonzero()[0][0]
-                if np.isfinite(tmp[ind_line]):
-                    raise Grid2OpException(
-                        f"Humm, there is a really strange bug, some lines are set twice."
-                    )
-                try:
-                    val_fl = float(val)
-                except Exception as exc_:
-                    raise Grid2OpException(
-                        f"When setting thermal limit with a dictionary, the keys should be "
-                        f"the values of the thermal limit (in amps) you provided something that "
-                        f'cannot be converted to a float. Error was "{exc_}".'
-                    )
-                tmp[ind_line] = val_fl
-
-        elif isinstance(thermal_limit, (np.ndarray, list)):
-            try:
-                tmp = np.array(thermal_limit).flatten().astype(dt_float)
-            except Exception as exc_:
-                raise Grid2OpException(
-                    f"Impossible to convert the vector as input into a 1d numpy float array. "
-                    f"Error was: \n {exc_}"
-                )
-            if tmp.shape[0] != self.n_line:
-                raise Grid2OpException(
-                    "Attempt to set thermal limit on {} powerlines while there are {}"
-                    "on the grid".format(tmp.shape[0], self.n_line)
-                )
-            if (~np.isfinite(tmp)).any():
-                raise Grid2OpException(
-                    "Impossible to use non finite value for thermal limits."
-                )
-        else:
-            raise Grid2OpException(
-                f"You can only set the thermal limits of the environment with a dictionary (in that "
-                f"case the keys are the line names, and the values the thermal limits) or with "
-                f"a numpy array that has as many components of the number of powerlines on "
-                f'the grid. You provided something with type "{type(thermal_limit)}" which '
-                f"is not supported."
-            )
-        self._thermal_limit_a[:] = tmp
-        self.backend.set_thermal_limit(self._thermal_limit_a)
-        self.observation_space.set_thermal_limit(self._thermal_limit_a)
+        # update n_line and name_line of ts_manager (old : self.ts_manager.n_line = -1 and self.ts_manager.name_line = None)
+        self.ts_manager.env_limits(thermal_limit=thermal_limit)
+        self.backend.thermal_limit_a = self.ts_manager.limits
+        self.observation_space.set_thermal_limit(self.ts_manager.limits)
 
     def _reset_redispatching(self):
         # redispatching
@@ -3070,9 +3068,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     
     def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p):
         beg_res = time.perf_counter()
-        self.backend.update_thermal_limit(
-            self
-        )  # update the thermal limit, for DLR for example
+        # update the thermal limit, for DLR for example
+        self.ts_manager.update_limits(self) # old code : self.backend.update_thermal_limit(self)
+
         overflow_lines = self.backend.get_line_overflow()
         # save the current topology as "last" topology (for connected powerlines)
         # and update the state of the disconnected powerline due to cascading failure
@@ -3134,9 +3132,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # TODO is non zero and disconnected, this should be ok.
         self._time_extract_obs += time.perf_counter() - beg_res
 
-    def _backend_next_grid_state(self):
+    def _protection_next_grid_state(self):
         """overlaoded in MaskedEnv"""
-        return self.backend.next_grid_state(env=self, is_dc=self._env_dc)
+        self._init_thermal_limit()
+        self._init_protection()
+        return self.protection.next_grid_state()
     
     def _aux_run_pf_after_state_properly_set(
         self, action, init_line_status, new_p, except_
@@ -3146,7 +3146,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         try:
             # compute the next _grid state
             beg_pf = time.perf_counter()
-            disc_lines, detailed_info, conv_ = self._backend_next_grid_state()
+            disc_lines, detailed_info, conv_ = self._protection_next_grid_state()
             self._disc_lines[:] = disc_lines
             self._time_powerflow += time.perf_counter() - beg_pf
             if conv_ is None:
@@ -4357,7 +4357,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         update the value of the "time dependant" attributes, used mainly for the "_ObsEnv" (simulate) or
         the "Forecasted env" (obs.get_forecast_env())
         """
-        self.backend.set_thermal_limit(obs._thermal_limit)
+        self.ts_manager.limits = obs._thermal_limit
         if "opp_space_state" in obs._env_internal_params:
             self._oppSpace._set_state(obs._env_internal_params["opp_space_state"], 
                                       obs._env_internal_params["opp_state"])

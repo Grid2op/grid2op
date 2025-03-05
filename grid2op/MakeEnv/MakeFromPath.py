@@ -1039,11 +1039,11 @@ def make_from_dataset_path(
         kwargs_observation=kwargs_observation,
         observation_bk_class=observation_backend_class,
         observation_bk_kwargs=observation_backend_kwargs
-    )   
+    )
     # Update the thermal limit if any
     if thermal_limits is not None:
         env.set_thermal_limit(thermal_limits)
-        
+
     # Set graph layout if not None and not an empty dict
     if graph_layout is not None and graph_layout:
         try:
