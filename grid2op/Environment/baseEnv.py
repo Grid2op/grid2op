@@ -644,22 +644,38 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         )
 
     def _init_protection(self):
-        # Initialize the protection system with the specified parameters
-        self._no_overflow_disconnection: bool = (
-            self._parameters.NO_OVERFLOW_DISCONNECTION
-        )
-        if self._no_overflow_disconnection:
-            self.protection = protectionScheme.NoProtection(
-                backend=self.backend,
-                thermal_limits=self.ts_manager,
-            )
-        else:
-            self.protection = protectionScheme.DefaultProtection(
+        """
+        Initialise le système de protection du réseau avec gestion des erreurs et logs.
+        """
+        try:
+            self.logger.info("Initialisation du système de protection...")
+
+            initializerProtection = protectionScheme.DefaultProtection(
                 backend=self.backend,
                 parameters=self.parameters,
                 thermal_limits=self.ts_manager,
-                is_dc=self._env_dc
+                is_dc=self._env_dc,
+                logger=self.logger
             )
+
+            if self._no_overflow_disconnection or initializerProtection.conv_ is not None:
+                self.logger.warning("Utilisation de NoProtection car _no_overflow_disconnection est activé "
+                                    "ou la convergence du power flow a échoué.")
+                self.protection = protectionScheme.NoProtection(
+                    backend=self.backend,
+                    thermal_limits=self.ts_manager,
+                    is_dc=self._env_dc
+                )
+            else:
+                self.logger.info("Utilisation de DefaultProtection avec succès.")
+                self.protection = initializerProtection
+
+        except Grid2OpException as e:
+            self.logger.error(f"Erreur spécifique à Grid2Op lors de l'initialisation de la protection : {e}")
+            raise
+        except Exception as e:
+            self.logger.exception("Erreur inattendue lors de l'initialisation de la protection.")
+            raise
 
     @property
     def highres_sim_counter(self):

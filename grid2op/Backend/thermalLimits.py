@@ -122,7 +122,7 @@ class ThermalLimits:
                             el, self.name_line
                         )
                     )
-            for i, el in self.name_line:
+            for i, el in enumerate(self.name_line):
                 if el in new_limits:
                     try:
                         tmp = dt_float(new_limits[el])
