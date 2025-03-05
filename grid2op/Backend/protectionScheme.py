@@ -17,8 +17,8 @@ class DefaultProtection:
     def __init__(
         self,
         backend: Backend,
-        parameters: Parameters,
-        thermal_limits: ThermalLimits,
+        parameters: Optional[Parameters] = None,
+        thermal_limits: Optional[ThermalLimits] = None,
         is_dc: bool = False,
         logger: Optional[logging.Logger] = None,
     ):
@@ -38,9 +38,11 @@ class DefaultProtection:
         self._hard_overflow_threshold = self._get_value_from_parameters("HARD_OVERFLOW_THRESHOLD")
         self._soft_overflow_threshold = self._get_value_from_parameters("SOFT_OVERFLOW_THRESHOLD")
         self._nb_timestep_overflow_allowed = self._get_value_from_parameters("NB_TIMESTEP_OVERFLOW_ALLOWED")
+        self._no_overflow_disconnection = self._get_value_from_parameters("NO_OVERFLOW_DISCONNECTION")
 
         self.disconnected_during_cf = np.full(self.thermal_limits.n_line, fill_value=-1, dtype=dt_int)
         self._timestep_overflow = np.zeros(self.thermal_limits.n_line, dtype=dt_int)
+        self.conv_ = self._run_power_flow()
         self.infos: List[str] = []
 
         if logger is None:
@@ -115,37 +117,21 @@ class DefaultProtection:
 
         except Exception as e:
             if self.logger is not None:
-                self.exception("Erreur inattendue dans le calcul de l'état du réseau.")
+                self.logger.exception("Erreur inattendue dans le calcul de l'état du réseau.")
             return self.disconnected_during_cf, self.infos, e
 
-class NoProtection:
+class NoProtection(DefaultProtection):
     """
-    Classe qui gère le cas où les protections de débordement sont désactivées.
+    Classe qui désactive les protections de débordement tout en conservant la structure de DefaultProtection.
     """
-    def __init__(
-            self,
-            backend: Backend,
-            thermal_limits: ThermalLimits
-        ):
-        self.backend = backend
-        self._validate_input(self.backend)
+    def __init__(self, backend: Backend, thermal_limits: ThermalLimits, is_dc: bool = False):
+        super().__init__(backend, parameters=None, thermal_limits=thermal_limits, is_dc=is_dc)
 
-        self.thermal_limits = thermal_limits
-
-        self._thermal_limit_a = self.thermal_limits.limits if self.thermal_limits else None
-        self.backend.thermal_limit_a = self._thermal_limit_a
-
-        self.disconnected_during_cf = np.full(self.thermal_limits.n_line, fill_value=-1, dtype=dt_int)
-        self.infos = []
-
-    def _validate_input(self, backend: Backend) -> None:
-        if not isinstance(backend, Backend):
-            raise Grid2OpException(f"Argument 'backend' doit être de type 'Backend', reçu : {type(backend)}")
     def next_grid_state(self) -> Tuple[np.ndarray, List[Any], None]:
         """
-        Retourne l'état du réseau sans effectuer de déconnexions dues aux débordements.
+        Ignore les protections et retourne l'état du réseau sans déconnexions.
         """
-        return self.disconnected_during_cf, self.infos, None
+        return self.disconnected_during_cf, self.infos, self.conv_
 
 class BlablaProtection:
     pass
