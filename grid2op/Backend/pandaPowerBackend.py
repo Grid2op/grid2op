@@ -858,7 +858,6 @@ class PandaPowerBackend(Backend):
         """
         if backendAction is None:
             return
-    
         cls = type(self)
         
         (

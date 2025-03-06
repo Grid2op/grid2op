@@ -3550,7 +3550,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # and this regardless of the 
             _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             
-            is_legal, reason = self._game_rules(action=action, env=self)
+            if self._last_obs is not None:
+                is_legal, reason = self._game_rules(action=action, env=self)
+            else:
+                is_legal = True
+                reason = None
             if not is_legal:
                 # action is replace by do nothing
                 action.reset_cache_topological_impact()
@@ -4640,11 +4644,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # soft overflow
         self._timestep_overflow[:] = obs.timestep_overflow
-        
-        # previous "connected" state of all elements
-        self._previous_conn_state.update_from_other(obs._prev_conn)  # already done with _cst_prev_XXX
-        self._backend_action.last_topo_registered.values[:] = obs._prev_conn._topo_vect
-        # self._backend_action.current_topo.values[:] = obs._prev_conn._topo_vect
 
     def forecasts(self):
         # ensure that the "env.chronics_handler.forecasts" is called at most once per step

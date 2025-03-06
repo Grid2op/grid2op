@@ -32,9 +32,8 @@ class TestForecastEnvTester(unittest.TestCase):
         for_env = obs.get_forecast_env()
         for_obs = for_env.reset()
         assert (for_obs.topo_vect == obs.topo_vect).all(), f"{(for_obs.topo_vect != obs.topo_vect).nonzero()}"
-        
         for_obs = for_env.reset(options={"init state": {"set_line_status": [(line_id, -1)]}})
-        assert (for_obs.topo_vect != obs.topo_vect).sum() == 2
+        assert (for_obs.topo_vect != obs.topo_vect).sum() == 2, f"{(for_obs.topo_vect != obs.topo_vect).nonzero()}"
         assert for_obs.topo_vect[type(self.env).line_or_pos_topo_vect[line_id]] == -1
         assert for_obs.topo_vect[type(self.env).line_ex_pos_topo_vect[line_id]] == -1
         

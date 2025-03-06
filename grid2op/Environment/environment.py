@@ -955,6 +955,9 @@ class Environment(BaseEnv):
         If the thermal has been modified, it also modify them into the new backend.
 
         """
+        # force the first observation to be generated properly
+        self._last_obs = None
+        
         # the real powergrid of the environment
         self.backend.reset(self._init_grid_path)  
         
@@ -972,6 +975,9 @@ class Environment(BaseEnv):
             self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
         else:
             self._backend_action = self._backend_action_class()
+        
+        if self._init_obs is not None:
+            self._reset_to_orig_state(self._init_obs)
             
         init_action = None
         if not self._parameters.IGNORE_INITIAL_STATE_TIME_SERIE:
@@ -983,9 +989,15 @@ class Environment(BaseEnv):
         else:
             # do as if everything was connected to busbar 1
             # TODO logger: log that
-            init_action = self._helper_action_env({"set_bus": np.ones(type(self).dim_topo, dtype=dt_int)})
-            if type(self).shunts_data_available:
-                init_action += self._helper_action_env({"shunt": {"set_bus": np.ones(type(self).n_shunt, dtype=dt_int)}})
+            if self._init_obs is None:
+                init_action = self._helper_action_env({"set_bus": np.ones(type(self).dim_topo, dtype=dt_int)})
+                if type(self).shunts_data_available:
+                    init_action += self._helper_action_env({"shunt": {"set_bus": np.ones(type(self).n_shunt, dtype=dt_int)}})
+            else:
+                init_action = self._helper_action_env({"set_bus": self._init_obs.topo_vect})
+                if type(self).shunts_data_available:
+                    init_action += self._helper_action_env({"shunt": {"set_bus": self._init_obs._shunt_bus}})
+                    
         if init_action is None:
             # default behaviour for grid2op < 1.10.2
             init_action = self._helper_action_env({})
@@ -1003,7 +1015,7 @@ class Environment(BaseEnv):
                 raise Grid2OpException(f"kwargs `method` used to set the initial state of the grid "
                                        f"is not understood (use one of `combine` or `ignore` and "
                                        f"not `{method}`)")
-        init_action._set_topo_vect.nonzero()
+                
         *_, fail_to_start, info = self.step(init_action)
         if fail_to_start:
             raise Grid2OpException(
@@ -1383,6 +1395,7 @@ class Environment(BaseEnv):
             
         if options is not None and "init datetime" in options:
             self.chronics_handler.set_current_datetime(options["init datetime"])
+            
         self.reset_grid(init_state, method)
         if self.viewer_fig is not None:
             del self.viewer_fig
@@ -1423,11 +1436,6 @@ class Environment(BaseEnv):
         # and reset also the "simulated env" in the observation space
         self._observation_space.reset(self)
         self._observation_space.set_real_env_kwargs(self)
-
-        self._last_obs = None  # force the first observation to be generated properly
-        
-        if self._init_obs is not None:
-            self._reset_to_orig_state(self._init_obs)
         return self.get_obs()
 
     def render(self, mode="rgb_array"):

@@ -15,7 +15,7 @@ import json
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional, Any, Dict, Union
+from typing import Tuple, Optional, Any, Dict, Type, Union
 
 try:
     from typing import Self
@@ -38,6 +38,7 @@ from grid2op.Exceptions import (
 from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 import grid2op.Observation  # for type hints
 import grid2op.Action  # for type hints
+import grid2op.Action._BackendAction  # for type hints
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -118,8 +119,8 @@ class Backend(GridObjects, ABC):
     IS_BK_CONVERTER : bool = False
     
     # action to set me
-    my_bk_act_class : "Optional[grid2op.Action._backendAction._BackendAction]" = None
-    _complete_action_class : "Optional[grid2op.Action.CompleteAction]" = None
+    my_bk_act_class : "Optional[Type[grid2op.Action._BackendAction._BackendAction]]" = None
+    _complete_action_class : "Optional[Type[grid2op.Action.CompleteAction]]" = None
 
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
     ERR_DETACHMENT : str = ("One or more {} were isolated from the grid "
@@ -1972,7 +1973,7 @@ class Backend(GridObjects, ABC):
         }
 
         if cls.shunts_data_available and type(obs).shunts_data_available:
-            if cls.n_shunt > 0 and "_shunt_bus" not in type(obs).attr_list_set:
+            if cls.n_shunt > 0 and "_shunt_bus" not in (type(obs).attr_list_set | set(type(obs).attr_list_json)):
                 raise BackendError(
                     "Impossible to set the backend to the state given by the observation: shunts data "
                     "are not present in the observation."
@@ -1993,6 +1994,7 @@ class Backend(GridObjects, ABC):
         act.update(dict_)
         backend_action += act
         self.apply_action(backend_action)
+        backend_action.reset()  # already processed by the backend
         return backend_action
 
     def assert_grid_correct(self, _local_dir_cls=None) -> None:
