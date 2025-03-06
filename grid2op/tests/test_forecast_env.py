@@ -89,10 +89,10 @@ class TestDoNothingAndForecastEnv(unittest.TestCase):
         for_env.change_parameters(params)
         # check that forecast observations matches env data
         sim_obs = for_env.reset()
-        assert (np.abs(obs.gen_p - sim_obs.gen_p) <= tol).all(), f"error for {i}: {np.abs(obs.gen_p - sim_obs.gen_p).max()}"
-        assert (np.abs(obs.load_p - sim_obs.load_p) <= tol).all(), f"error for {i}: {np.abs(obs.load_p - sim_obs.load_p).max()}"
-        assert (np.abs(obs.load_q - sim_obs.load_q) <= tol).all(), f"error for {i}: {np.abs(obs.load_q - sim_obs.load_q).max()}"
-        assert (np.abs(obs.a_or - sim_obs.a_or) <= 100. * tol).all(), f"error for {i}: {np.abs(obs.a_or - sim_obs.a_or).max()}"
+        assert (np.abs(obs.gen_p - sim_obs.gen_p) <= tol).all(), f"error: {np.abs(obs.gen_p - sim_obs.gen_p).max()}"
+        assert (np.abs(obs.load_p - sim_obs.load_p) <= tol).all(), f"error: {np.abs(obs.load_p - sim_obs.load_p).max()}"
+        assert (np.abs(obs.load_q - sim_obs.load_q) <= tol).all(), f"error: {np.abs(obs.load_q - sim_obs.load_q).max()}"
+        assert (np.abs(obs.a_or - sim_obs.a_or) <= 100. * tol).all(), f"error: {np.abs(obs.a_or - sim_obs.a_or).max()}"
             
         for i in range(47):
             sim_obs, sim_r, sim_d, sim_i = for_env.step(self.env.action_space())
