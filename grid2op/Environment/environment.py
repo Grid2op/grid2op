@@ -490,6 +490,7 @@ class Environment(BaseEnv):
         # thermal limits are set AFTER this initial step
         _no_overflow_disconnection = self._no_overflow_disconnection
         self._no_overflow_disconnection = True
+        self._last_obs = None
         *_, fail_to_start, info = self.step(do_nothing)
         self._no_overflow_disconnection = _no_overflow_disconnection
         
@@ -1336,6 +1337,7 @@ class Environment(BaseEnv):
         # process the "options" kwargs
         # (if there is an init state then I need to process it to remove the 
         # some keys)
+        self._called_from_reset = False
         self._max_step = None
         method = "combine"
         init_state = None
@@ -1416,6 +1418,8 @@ class Environment(BaseEnv):
                 self._init_obs = None
                 if init_dt is not None:
                     self.chronics_handler.set_current_datetime(init_dt) 
+                self._last_obs = None  # properly initialize the last observation
+                self._called_from_reset = True
                 self.step(self.action_space())
             elif skip_ts == 2:
                 self.fast_forward_chronics(1, init_dt)
@@ -1436,6 +1440,9 @@ class Environment(BaseEnv):
         # and reset also the "simulated env" in the observation space
         self._observation_space.reset(self)
         self._observation_space.set_real_env_kwargs(self)
+        self._called_from_reset = False        
+        # force the first observation to be generated properly
+        self._last_obs = None
         return self.get_obs()
 
     def render(self, mode="rgb_array"):

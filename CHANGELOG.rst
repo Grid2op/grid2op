@@ -142,6 +142,7 @@ Native multi agents support:
   different than "env.step" (with the same action)
 - [FIXED] a powerflow is run when the environment is first created even before the initial "env.step"
   function is called. This is to ensure proper behaviour if env is used without being reset.
+- [FIXED] no error was catched if the backend could not properly apply the action sent by the environment.
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 

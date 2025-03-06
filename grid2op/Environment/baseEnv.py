@@ -44,7 +44,8 @@ from grid2op.Exceptions import (Grid2OpException,
                                 SomeGeneratorAbovePmax,
                                 SomeGeneratorBelowPmin,
                                 SomeGeneratorAboveRampmax, 
-                                SomeGeneratorBelowRampmin)
+                                SomeGeneratorBelowRampmin,
+                                BackendError)
 from grid2op.Parameters import Parameters
 from grid2op.Reward import BaseReward, RewardHelper
 from grid2op.Opponent import OpponentSpace, NeverAttackBudget, BaseOpponent
@@ -671,6 +672,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._previous_conn_state = None
         self._cst_prev_state_at_init = None
         
+        # 1.11: do not check rules if first observation
+        self._called_from_reset = True
+        
     @property
     def highres_sim_counter(self):
         return self._highres_sim_counter
@@ -993,6 +997,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # previous connected state
         new_obj._previous_conn_state = copy.deepcopy(self._previous_conn_state)
         new_obj._cst_prev_state_at_init = self._cst_prev_state_at_init  # no need to deep copy this
+        
+        
+        new_obj._called_from_reset = self._called_from_reset
         
     def get_path_env(self):
         """
@@ -1550,6 +1557,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                    f"can be used.")
                     
         self.__is_init = True
+        self._called_from_reset = True
         # current = None is an indicator that this is the first step of the environment
         # so don't change the setting of current_obs = None unless you are willing to change that
         self.current_obs = None
@@ -3550,7 +3558,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # and this regardless of the 
             _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             
-            if self._last_obs is not None:
+            if not self._called_from_reset:
+                # avoid checking this at first environment "step" which is a "reset"
                 is_legal, reason = self._game_rules(action=action, env=self)
             else:
                 is_legal = True
@@ -3634,6 +3643,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     is_done = True
                     # TODO in this case: cancel the topological action of the agent
                     # and continue instead of "game over"
+                except BackendError as exc_:
+                    has_error = True
+                    except_.append(exc_)
+                    is_done = True
                 self._time_apply_act += time.perf_counter() - beg_
 
                 # now it's time to run the powerflow properly

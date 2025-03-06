@@ -447,6 +447,8 @@ class _ObsEnv(BaseEnv):
                            "environment that cannot be copied.")
         super().reset()
         self.current_obs = self.current_obs_init
+        # force the checking of the rules for the action
+        self._called_from_reset = False  
 
     def simulate(self, action : "grid2op.Action.BaseAction") -> Tuple["grid2op.Observation.BaseObservation", float, bool, STEP_INFO_TYPING]:
         """

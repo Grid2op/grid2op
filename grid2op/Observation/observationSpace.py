@@ -495,8 +495,8 @@ class ObservationSpace(SerializableObservationSpace):
         
         # real env kwargs, these is a "pointer" anyway
         if env is not None:
-            from grid2op.Environment import Environment
-            new_obj._real_env_kwargs = Environment.get_kwargs(env, False, False)
+            new_obj._real_env_kwargs = {}
+            new_obj.set_real_env_kwargs(env)
         else:
             new_obj._real_env_kwargs = self._real_env_kwargs
         new_obj._observation_bk_class = self._observation_bk_class
