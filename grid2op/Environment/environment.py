@@ -491,6 +491,7 @@ class Environment(BaseEnv):
         _no_overflow_disconnection = self._no_overflow_disconnection
         self._no_overflow_disconnection = True
         self._last_obs = None
+        self._called_from_reset = True
         *_, fail_to_start, info = self.step(do_nothing)
         self._no_overflow_disconnection = _no_overflow_disconnection
         
@@ -499,7 +500,8 @@ class Environment(BaseEnv):
                 "Impossible to initialize the powergrid, the powerflow diverge at iteration 0. "
                 "Available information are: {}".format(info)
             ) from info["exception"][0]
-
+        self._called_from_reset = False
+        
         # test the backend returns object of the proper size
         if need_process_backend:
             
