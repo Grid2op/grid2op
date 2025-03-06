@@ -471,10 +471,10 @@ class BaseAction(GridObjects):
         # shunts
         if cls.shunts_data_available:
             self.shunt_p = np.full(
-                shape=cls.n_shunt, fill_value=np.NaN, dtype=dt_float
+                shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
             )
             self.shunt_q = np.full(
-                shape=cls.n_shunt, fill_value=np.NaN, dtype=dt_float
+                shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
             )
             self.shunt_bus = np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
         else:
@@ -1805,8 +1805,8 @@ class BaseAction(GridObjects):
 
         # shunts
         if type(self).shunts_data_available:
-            self.shunt_p[:] = np.NaN
-            self.shunt_q[:] = np.NaN
+            self.shunt_p[:] = np.nan
+            self.shunt_q[:] = np.nan
             self.shunt_bus[:] = 0
 
         # alarm
@@ -3990,7 +3990,7 @@ class BaseAction(GridObjects):
             )
         if load_id < 0:
             raise Grid2OpException(f"`load_id` should be positive.")
-        res = {"new_p": np.NaN, "new_q": np.NaN, "change_bus": False, "set_bus": 0}
+        res = {"new_p": np.nan, "new_q": np.nan, "change_bus": False, "set_bus": 0}
         if "load_p" in self._dict_inj:
             res["new_p"] = self._dict_inj["load_p"][load_id]
         if "load_q" in self._dict_inj:
@@ -4008,7 +4008,7 @@ class BaseAction(GridObjects):
             )
         if gen_id < 0:
             raise Grid2OpException(f"`gen_id` should be positive.")
-        res = {"new_p": np.NaN, "new_v": np.NaN, "set_bus": 0, "change_bus": False}
+        res = {"new_p": np.nan, "new_v": np.nan, "set_bus": 0, "change_bus": False}
         if "prod_p" in self._dict_inj:
             res["new_p"] = self._dict_inj["prod_p"][gen_id]
         if "prod_v" in self._dict_inj:
@@ -4051,7 +4051,7 @@ class BaseAction(GridObjects):
             )
         if storage_id < 0:
             raise Grid2OpException(f"`storage_id` should be positive.")
-        res = {"power": np.NaN, "set_bus": 0, "change_bus": False}
+        res = {"power": np.nan, "set_bus": 0, "change_bus": False}
         my_id = self.storage_pos_topo_vect[storage_id]
         res["change_bus"] = self._change_bus_vect[my_id]
         res["set_bus"] = self._set_topo_vect[my_id]
@@ -4266,7 +4266,7 @@ class BaseAction(GridObjects):
             New bus of the loads, affected with "change_bus" command
         """
         cls = type(self)
-        load_p = np.full(cls.n_load, fill_value=np.NaN, dtype=dt_float)
+        load_p = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
         if "load_p" in self._dict_inj:
             load_p[:] = self._dict_inj["load_p"]
         load_q = 1.0 * load_p
@@ -4295,7 +4295,7 @@ class BaseAction(GridObjects):
 
         """
         cls = type(self)
-        gen_p = np.full(cls.n_gen, fill_value=np.NaN, dtype=dt_float)
+        gen_p = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
         if "prod_p" in self._dict_inj:
             gen_p[:] = self._dict_inj["prod_p"]
         gen_v = 1.0 * gen_p

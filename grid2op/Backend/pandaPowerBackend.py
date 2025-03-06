@@ -549,6 +549,7 @@ class PandaPowerBackend(Backend):
                 else:
                     tmp = dict(**el)
                     if "geo" in tmp:
+                        # bug in pandapower 3.0.0 in this case
                         del tmp["geo"]
                     pp.create_bus(self._grid, index=ind, **tmp)
         self._init_private_attrs()
@@ -773,26 +774,26 @@ class PandaPowerBackend(Backend):
         )
         self.thermal_limit_a = self.thermal_limit_a.astype(dt_float)
 
-        self.p_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.q_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.v_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.a_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.p_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.q_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.v_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.a_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.load_p = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
-        self.load_q = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
-        self.load_v = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
-        self.prod_p = np.full(self.n_gen, dtype=dt_float, fill_value=np.NaN)
-        self.prod_v = np.full(self.n_gen, dtype=dt_float, fill_value=np.NaN)
-        self.prod_q = np.full(self.n_gen, dtype=dt_float, fill_value=np.NaN)
-        self.storage_p = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_q = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_v = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
+        self.p_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.q_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.v_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.a_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.p_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.q_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.v_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.a_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.load_p = np.full(self.n_load, dtype=dt_float, fill_value=np.nan)
+        self.load_q = np.full(self.n_load, dtype=dt_float, fill_value=np.nan)
+        self.load_v = np.full(self.n_load, dtype=dt_float, fill_value=np.nan)
+        self.prod_p = np.full(self.n_gen, dtype=dt_float, fill_value=np.nan)
+        self.prod_v = np.full(self.n_gen, dtype=dt_float, fill_value=np.nan)
+        self.prod_q = np.full(self.n_gen, dtype=dt_float, fill_value=np.nan)
+        self.storage_p = np.full(self.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_q = np.full(self.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_v = np.full(self.n_storage, dtype=dt_float, fill_value=np.nan)
         self._nb_bus_before = None
         
-        self.line_status = np.full(self.n_line, dtype=dt_bool, fill_value=np.NaN)
+        self.line_status = np.full(self.n_line, dtype=dt_bool, fill_value=np.nan)
         self.line_status.flags.writeable = False
 
         # store the topoid -> objid
@@ -814,11 +815,11 @@ class PandaPowerBackend(Backend):
         # store the topoid -> objid
         self._init_big_topo_to_bk()
 
-        self.theta_or = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
-        self.theta_ex = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
-        self.load_theta = np.full(self.n_load, fill_value=np.NaN, dtype=dt_float)
-        self.gen_theta = np.full(self.n_gen, fill_value=np.NaN, dtype=dt_float)
-        self.storage_theta = np.full(self.n_storage, fill_value=np.NaN, dtype=dt_float)
+        self.theta_or = np.full(self.n_line, fill_value=np.nan, dtype=dt_float)
+        self.theta_ex = np.full(self.n_line, fill_value=np.nan, dtype=dt_float)
+        self.load_theta = np.full(self.n_load, fill_value=np.nan, dtype=dt_float)
+        self.gen_theta = np.full(self.n_gen, fill_value=np.nan, dtype=dt_float)
+        self.storage_theta = np.full(self.n_storage, fill_value=np.nan, dtype=dt_float)
 
         self._get_topo_vect()
         self.tol = 1e-5  # this is NOT the pandapower tolerance !!!! this is used to check if a storage unit
@@ -835,10 +836,10 @@ class PandaPowerBackend(Backend):
 
     def storage_deact_for_backward_comaptibility(self) -> None:
         cls = type(self)
-        self.storage_theta = np.full(cls.n_storage, fill_value=np.NaN, dtype=dt_float)
-        self.storage_p = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_q = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_v = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
+        self.storage_theta = np.full(cls.n_storage, fill_value=np.nan, dtype=dt_float)
+        self.storage_p = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_q = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_v = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
         self._topo_vect.flags.writeable = True
         self._topo_vect.resize(cls.dim_topo)
         self._topo_vect.flags.writeable = False
@@ -1208,30 +1209,30 @@ class PandaPowerBackend(Backend):
             return False, BackendError(f'powerflow diverged with error :"{msg}", you can check `env.backend.div_exception` for more information')
 
     def _reset_all_nan(self) -> None:
-        self.p_or[:] = np.NaN
-        self.q_or[:] = np.NaN
-        self.v_or[:] = np.NaN
-        self.a_or[:] = np.NaN
-        self.p_ex[:] = np.NaN
-        self.q_ex[:] = np.NaN
-        self.v_ex[:] = np.NaN
-        self.a_ex[:] = np.NaN
-        self.prod_p[:] = np.NaN
-        self.prod_q[:] = np.NaN
-        self.prod_v[:] = np.NaN
-        self.load_p[:] = np.NaN
-        self.load_q[:] = np.NaN
-        self.load_v[:] = np.NaN
-        self.storage_p[:] = np.NaN
-        self.storage_q[:] = np.NaN
-        self.storage_v[:] = np.NaN
+        self.p_or[:] = np.nan
+        self.q_or[:] = np.nan
+        self.v_or[:] = np.nan
+        self.a_or[:] = np.nan
+        self.p_ex[:] = np.nan
+        self.q_ex[:] = np.nan
+        self.v_ex[:] = np.nan
+        self.a_ex[:] = np.nan
+        self.prod_p[:] = np.nan
+        self.prod_q[:] = np.nan
+        self.prod_v[:] = np.nan
+        self.load_p[:] = np.nan
+        self.load_q[:] = np.nan
+        self.load_v[:] = np.nan
+        self.storage_p[:] = np.nan
+        self.storage_q[:] = np.nan
+        self.storage_v[:] = np.nan
         self._nb_bus_before = None
 
-        self.theta_or[:] = np.NaN
-        self.theta_ex[:] = np.NaN
-        self.load_theta[:] = np.NaN
-        self.gen_theta[:] = np.NaN
-        self.storage_theta[:] = np.NaN
+        self.theta_or[:] = np.nan
+        self.theta_ex[:] = np.nan
+        self.load_theta[:] = np.nan
+        self.gen_theta[:] = np.nan
+        self.storage_theta[:] = np.nan
         self._topo_vect.flags.writeable = True
         self._topo_vect[:] = -1
         self._topo_vect.flags.writeable = False
