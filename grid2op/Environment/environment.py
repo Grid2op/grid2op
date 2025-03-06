@@ -980,6 +980,7 @@ class Environment(BaseEnv):
             self._backend_action = self._backend_action_class()
         
         if self._init_obs is not None:
+            # NB this is called twice (once at the end of reset), this is the first call
             self._reset_to_orig_state(self._init_obs)
             
         init_action = None
@@ -1443,6 +1444,11 @@ class Environment(BaseEnv):
         self._observation_space.reset(self)
         self._observation_space.set_real_env_kwargs(self)
         self._called_from_reset = False        
+        
+        # reset cooldowns and all
+        if self._init_obs is not None:
+            # NB this is called twice (once in reset_grid), this is the second call
+            self._reset_to_orig_state(self._init_obs)
         # force the first observation to be generated properly
         self._last_obs = None
         return self.get_obs()
