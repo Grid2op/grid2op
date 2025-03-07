@@ -95,6 +95,11 @@ Native multi agents support:
 - cf ad-hoc branch (dev-multiagents)
 - properly model interconnecting powerlines
 
+[1.10.5] - 2025-03-07
+------------------------
+- [FIXED] force pandapower < 3 otherwise pandapower backend does not work and 
+  lots of tests are failing.
+
 [1.10.4] - 2024-10-15
 -------------------------
 - [FIXED] new pypi link (no change in code)
