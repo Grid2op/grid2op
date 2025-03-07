@@ -1412,7 +1412,14 @@ class Environment(BaseEnv):
         self.viewer_fig = fig
         
         # Return the rgb array
-        rgb_array = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 3)
+        try:
+            import matplotlib.colors
+            tmp = fig.canvas.tostring_argb()
+            argb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 4)
+            rgb_array = argb_array[:,:,1:]
+        except AttributeError:
+            tmp = fig.canvas.tostring_rgb()
+            rgb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 3)
         return rgb_array
 
     def _custom_deepcopy_for_copy(self, new_obj):
