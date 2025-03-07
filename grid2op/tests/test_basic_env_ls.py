@@ -47,7 +47,8 @@ class TestEnvironmentBasic(unittest.TestCase):
             self.env = grid2op.make("l2rpn_case14_sandbox",
                                     test=True,
                                     _add_to_name=type(self).__name__,
-                                    backend=LightSimBackend())
+                                    backend=LightSimBackend(),
+                                    allow_detachment=False)
         self.line_id = 3
         th_lim = self.env.get_thermal_limit() * 2.  # avoid all problem in general
         th_lim[self.line_id] /= 10.  # make sure to get trouble in line 3
@@ -169,6 +170,9 @@ class TestBasicEnvironmentRunner(unittest.TestCase):
             "1.9.8",
             "1.10.0",
             "1.10.1",
+            "1.10.2",
+            "1.10.3",
+            "1.10.4",
         ]
         # first check a normal run
         curr_version = "test_version"
@@ -275,12 +279,12 @@ class TestBasicEnvironmentRunner(unittest.TestCase):
             if g2op_ver <= version.parse("1.4.0"):
                 assert (
                     EpisodeData.get_grid2op_version(full_episode_path) == "<=1.4.0"
-                ), "wrong grid2op version stored (grid2op version <= 1.4.0)"
+                ), f"wrong grid2op version stored (grid2op version <= 1.4.0) stored {EpisodeData.get_grid2op_version(full_episode_path)} vs '<=1.4.0'"
             elif g2op_version == "test_version":
                 assert (
                     EpisodeData.get_grid2op_version(full_episode_path)
                     == grid2op.__version__
-                ), "wrong grid2op version stored (test_version)"
+                ), f"wrong grid2op version stored (test_version) : {EpisodeData.get_grid2op_version(full_episode_path)} vs {grid2op.__version__}"
             else:
                 assert (
                     EpisodeData.get_grid2op_version(full_episode_path) == g2op_version
@@ -342,10 +346,10 @@ class TestBasicEnvironmentGym(unittest.TestCase):
         env_gym = GymEnv(self.env)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            env_gym.action_space = MultiDiscreteActSpace(self.env.action_space)
+            env_gym.action_space = MultiDiscreteActSpace(self.env.action_space, attr_to_keep=["set_line_status"])
         env_gym.reset()
         act = env_gym.action_space.sample()
-        act[:] = 0
+        act[:] = 1  # apparently this is "do nothing"
         self._aux_run_envs(act, env_gym)
 
 

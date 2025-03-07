@@ -349,7 +349,7 @@ class TestSheddingEnv(unittest.TestCase):
         assert np.abs(self.env._delta_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
         
     def test_shedding_load_step(self):
-        # NB warning this test does not pass if STOP_EP_IF_SLACK_BREAK_CONSTRAINTS (slack breaks its rampdown !)
+        # NB warning this test does not pass if STOP_EP_IF_GEN_BREAK_CONSTRAINTS (slack breaks its rampdown !)
         obs, reward, done, info = self.env.step(self.env.action_space({"detach_load": 0}))
         # env converged
         assert not done
@@ -432,10 +432,66 @@ class TestSheddingEnv(unittest.TestCase):
         assert np.abs(self.env._delta_gen_p.sum() / self.env._gen_activeprod_t.sum()) <= 0.02  # less than 2% losses
         
         
+class TestSheddingActionsNoShedding(unittest.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        p = Parameters()
+        p.MAX_SUB_CHANGED = 999999
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    param=p,
+                                    action_class=CompleteAction,
+                                    allow_detachment=False,
+                                    test=True,
+                                    _add_to_name=type(self).__name__)
+        obs = self.env.reset(seed=0, options={"time serie id": 0}) # Reproducibility
         
+    def tearDown(self) -> None:
+        self.env.close()
+        super().tearDown()        
+        
+    def test_load(self):
+        obs = self.env.reset()
+        assert not type(self.env).detachment_is_allowed
+        assert (~obs.load_detached).all()
+        
+        with self.assertRaises(UserWarning):
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
+                self.env.action_space({"detach_load": 0})
+        
+        obs, reward, done, info = self.env.step(self.env.action_space({"set_bus": {"loads_id": [(0, -1)]}}))
+        assert done
+        
+    def test_gen(self):
+        obs = self.env.reset()
+        assert not type(self.env).detachment_is_allowed
+        assert (~obs.gen_detached).all()
+        
+        with self.assertRaises(UserWarning):
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
+                self.env.action_space({"detach_gen": 0})
+        
+        obs, reward, done, info = self.env.step(self.env.action_space({"set_bus": {"generators_id": [(0, -1)]}}))
+        assert done
+        
+    def test_storage(self):
+        obs = self.env.reset()
+        assert not type(self.env).detachment_is_allowed
+        assert (~obs.storage_detached).all()
+        
+        with self.assertRaises(UserWarning):
+            with warnings.catch_warnings():
+                warnings.filterwarnings("error")
+                self.env.action_space({"detach_storage": 0})
+        
+        obs, reward, done, info = self.env.step(self.env.action_space({"set_bus": {"storages_id": [(0, -1)]}, "set_storage": [(0, 1.)]}))
+        assert done
         
 
-# TODO with the env parameters STOP_EP_IF_SLACK_BREAK_CONSTRAINTS and ENV_DOES_REDISPATCHING
+# TODO with the env parameters STOP_EP_IF_GEN_BREAK_CONSTRAINTS and ENV_DOES_REDISPATCHING
 # TODO when something is "re attached" on the grid
 # TODO check gen detached does not participate in redisp
 

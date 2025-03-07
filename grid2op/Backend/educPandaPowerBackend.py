@@ -351,7 +351,7 @@ class EducPandaPowerBackend(Backend):
 
         Function is verbose (~40 lines of code), but pretty straightforward.
         """
-        res = np.full(self.dim_topo, fill_value=np.NaN, dtype=dt_int)
+        res = np.full(self.dim_topo, fill_value=np.nan, dtype=dt_int)
 
         line_status = self.get_line_status()
 

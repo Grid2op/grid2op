@@ -8,7 +8,6 @@
 
 
 from datetime import datetime
-import tempfile
 import logging
 import time
 import copy
@@ -23,6 +22,7 @@ import numpy as np
 from scipy.optimize import (minimize, LinearConstraint)
 
 from abc import ABC, abstractmethod
+from grid2op.Environment._env_prev_state import _EnvPreviousState
 from grid2op.Observation import (BaseObservation,
                                  ObservationSpace,
                                  HighResSimCounter)
@@ -44,7 +44,8 @@ from grid2op.Exceptions import (Grid2OpException,
                                 SomeGeneratorAbovePmax,
                                 SomeGeneratorBelowPmin,
                                 SomeGeneratorAboveRampmax, 
-                                SomeGeneratorBelowRampmin)
+                                SomeGeneratorBelowRampmin,
+                                BackendError)
 from grid2op.Parameters import Parameters
 from grid2op.Reward import BaseReward, RewardHelper
 from grid2op.Opponent import OpponentSpace, NeverAttackBudget, BaseOpponent
@@ -666,7 +667,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         self._delta_gen_p = None
-    
+        
+        # required in 1.11.0 : the previous state when the element was last connected
+        self._previous_conn_state = None
+        self._cst_prev_state_at_init = None
+        
+        # 1.11: do not check rules if first observation
+        self._called_from_reset = True
+        
     @property
     def highres_sim_counter(self):
         return self._highres_sim_counter
@@ -985,6 +993,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         new_obj._delta_gen_p = 1. * self._delta_gen_p
+        
+        # previous connected state
+        new_obj._previous_conn_state = copy.deepcopy(self._previous_conn_state)
+        new_obj._cst_prev_state_at_init = self._cst_prev_state_at_init  # no need to deep copy this
+        
+        
+        new_obj._called_from_reset = self._called_from_reset
         
     def get_path_env(self):
         """
@@ -1372,7 +1387,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if np.min([self.n_line, self.n_gen, self.n_load, self.n_sub]) <= 0:
             raise EnvironmentError("Environment has not been initialized properly")
         self._backend_action_class = _BackendAction.init_grid(bk_type, _local_dir_cls=self._local_dir_cls)
-        self._backend_action = self._backend_action_class()
 
         # initialize maintenance / hazards
         self._time_next_maintenance = np.full(bk_type.n_line, -1, dtype=dt_int)
@@ -1455,7 +1469,43 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
-
+        
+        # previous state (complete)
+        self._previous_conn_state = _EnvPreviousState(bk_type,
+                                                      np.zeros(bk_type.n_load, dtype=dt_float),
+                                                      np.zeros(bk_type.n_load, dtype=dt_float),
+                                                      np.zeros(bk_type.n_gen, dtype=dt_float),
+                                                      np.zeros(bk_type.n_gen, dtype=dt_float),
+                                                      np.zeros(bk_type.dim_topo, dtype=dt_int),
+                                                      np.zeros(bk_type.n_storage, dtype=dt_float),
+                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
+                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
+                                                      np.zeros(bk_type.n_shunt, dtype=dt_int),
+                                                      )
+        
+        if self._init_obs is None:
+            # regular environment, initialized from scratch
+            try:
+                self.backend.runpf(is_dc=self._parameters.ENV_DC)
+                self._previous_conn_state.update_from_backend(self.backend)
+            except Exception as exc_:
+                # nothing to do in this case
+                self.logger.warning(f"Impossible to retrieve the initial state of the grid before running the initial powerflow: {exc_}")
+                self._previous_conn_state._topo_vect[:] = 1  # I force assign everything to busbar 1 by default...
+            self._cst_prev_state_at_init = copy.deepcopy(self._previous_conn_state)
+            self._backend_action = self._backend_action_class()
+        else:
+            # environment initialized from an observation, eg forecast_env
+            # update the backend
+            self._backend_action = self.backend.update_from_obs(self._init_obs)
+            self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
+            self._cst_prev_state_at_init = copy.deepcopy(self._init_obs._prev_conn)
+            self._previous_conn_state.update_from_other(self._init_obs._prev_conn)
+            
+        self._cst_prev_state_at_init.prevent_modification()
+        # update backend_action with the "last known" state
+        self._backend_action.last_topo_registered.values[:] = self._previous_conn_state._topo_vect
+        
     def _update_parameters(self):
         """update value for the new parameters"""
         self._parameters = self.__new_param
@@ -1507,6 +1557,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                    f"can be used.")
                     
         self.__is_init = True
+        self._called_from_reset = True
         # current = None is an indicator that this is the first step of the environment
         # so don't change the setting of current_obs = None unless you are willing to change that
         self.current_obs = None
@@ -1890,7 +1941,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "Have you called `env.reset()` after last game over ?"
             )
         if isinstance(thermal_limit, dict):
-            tmp = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
+            tmp = np.full(self.n_line, fill_value=np.nan, dtype=dt_float)
             for key, val in thermal_limit.items():
                 if key not in self.name_line:
                     raise Grid2OpException(
@@ -3169,7 +3220,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # TODO after alert budget will be implemented !
         # self._is_alert_illegal
     
-    def _aux_register_env_converged(self, disc_lines, action, init_line_status, new_p) -> Optional[Grid2OpException]:
+    def _aux_register_env_converged(self,
+                                    disc_lines,
+                                    action: BaseAction,
+                                    init_line_status,
+                                    new_p) -> Optional[Grid2OpException]:
         cls = type(self)
         beg_res = time.perf_counter()
         # update the thermal limit, for DLR for example
@@ -3220,7 +3275,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # extract production active value at this time step (should be independent of action class)
         tmp_gen_p, *_ = self.backend.generators_info()
-        if not self._parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS:
+        if not self._parameters.STOP_EP_IF_GEN_BREAK_CONSTRAINTS:
             # default behaviour, no check performed
             self._gen_activeprod_t[:] = tmp_gen_p
         else:
@@ -3273,8 +3328,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # finally, build the observation (it's a different one at each step, we cannot reuse the same one)
         # THIS SHOULD BE DONE AFTER EVERYTHING IS INITIALIZED !
         self.current_obs = self.get_obs(_do_copy=False)
-        # TODO storage: get back the result of the storage ! with the illegal action when a storage unit
-        # TODO is non zero and disconnected, this should be ok.
+        
+        # update the previous state
+        self._previous_conn_state.update_from_backend(self.backend)
+        
         self._time_extract_obs += time.perf_counter() - beg_res
         return None
 
@@ -3501,7 +3558,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # and this regardless of the 
             _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             
-            is_legal, reason = self._game_rules(action=action, env=self)
+            if not self._called_from_reset:
+                # avoid checking this at first environment "step" which is a "reset"
+                is_legal, reason = self._game_rules(action=action, env=self)
+            else:
+                is_legal = True
+                reason = None
             if not is_legal:
                 # action is replace by do nothing
                 action.reset_cache_topological_impact()
@@ -3581,6 +3643,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     is_done = True
                     # TODO in this case: cancel the topological action of the agent
                     # and continue instead of "game over"
+                except BackendError as exc_:
+                    has_error = True
+                    except_.append(exc_)
+                    is_done = True
                 self._time_apply_act += time.perf_counter() - beg_
 
                 # now it's time to run the powerflow properly
@@ -4097,7 +4163,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             raise EnvError("This environment is not intialized. "
                            "Have you called `env.reset()` after last game over ?")
         nb_timestep = int(nb_timestep)
-
+        
         # Go to the timestep requested minus one
         nb_timestep = max(1, nb_timestep - 1)
         self.chronics_handler.fast_forward(nb_timestep)
@@ -4401,8 +4467,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             _init_txt += txt_
         
         # for the forecast env (we do this even if it's not used)
-        from grid2op.Environment._forecast_env import _ForecastEnv
-        for_env_cls = _ForecastEnv.init_grid(type(self.backend), _local_dir_cls=self._local_dir_cls)
+        from grid2op.Environment import ForecastEnv
+        for_env_cls = ForecastEnv.init_grid(type(self.backend), _local_dir_cls=self._local_dir_cls)
         txt_ = self._aux_gen_classes(for_env_cls, sys_path, _add_class_output=False)
         if txt_ is not None:
             _init_txt += txt_

@@ -881,6 +881,9 @@ class _BackendAction(GridObjects):
         Do not consider disconnected elements are modified for there active / reactive / voltage values
         """
         cls = type(self)
+        if not cls.detachment_is_allowed:
+            # is detachment is not allowed, this should not happen
+            return
         gen_changed = self.current_topo.changed[cls.gen_pos_topo_vect]
         gen_bus = self.current_topo.values[cls.gen_pos_topo_vect]
         self.prod_p.force_unchanged(gen_changed, gen_bus)

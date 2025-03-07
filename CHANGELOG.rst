@@ -133,6 +133,16 @@ Native multi agents support:
 - [FIXED] deprecated call to `tostring_rgb` (replaced `tostring_argb`) in the env.render function.
 - [FIXED] warnings not properly issued in the AAA test when backend failed to call
   `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
+- [FIXED] an issue with `obs.get_forecast_env` with changeNothing and DoNothingHandler time series
+- [FIXED] a bug in updating the shunt in PandaPowerBackend (depdending on pandas version)
+- [FIXED] a bug when action that reconnect loads, storage units or shunts are done
+  in the "obs.simulate" (results could depend from previous "obs.simulate" calls)
+- [FIXED] a bug in "obs.simulate" and "obs.get_forecast_env" : when a line was disconnected
+  and the user tried to reconnect it (without specifying on which bus) it could do something
+  different than "env.step" (with the same action)
+- [FIXED] a powerflow is run when the environment is first created even before the initial "env.step"
+  function is called. This is to ensure proper behaviour if env is used without being reset.
+- [FIXED] no error was catched if the backend could not properly apply the action sent by the environment.
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -147,6 +157,7 @@ Native multi agents support:
   generators is not met (see `params.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`)
 - [ADDED] possibility to set the initial time stamp of the observation in the `env.reset`
   kwargs by using `env.reset(..., options={"init datetime": XXX})`
+- [ADDED] the `ChangeNothing` time series class now supports forecast
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
@@ -175,7 +186,7 @@ Native multi agents support:
 - [IMPROVED] the function `action.get_topological_impact(...)` has now a "caching" mechanism
   that allows not to recompute it over and over again (this is internal API please do not change 
   it... unless you know what you are doing)
-    
+- [IMPROVED] `ForecastEnv` is now part of the public API.
 
 [1.10.4] - 2024-10-15
 -------------------------
