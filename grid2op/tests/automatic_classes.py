@@ -155,7 +155,7 @@ class AutoClassInFileTester(unittest.TestCase):
                      f"PandaPowerBackend_{classes_name}",
                      name_action_cls,
                      f"VoltageOnlyAction_{classes_name}",
-                     f"_ForecastEnv_{classes_name}",
+                     f"ForecastEnv_{classes_name}",
                      ]
         names_attr = ["action_space",
                       "_backend_action_class",
@@ -168,7 +168,7 @@ class AutoClassInFileTester(unittest.TestCase):
                       "backend",
                       "_actionClass",
                       None, # VoltageOnlyAction not in env
-                      None, # _ForecastEnv_ not in env
+                      None, # ForecastEnv_ not in env
                       ]
         # NB: these imports needs to be consistent with what is done in
         # base_env.generate_classes() and gridobj.init_grid(...)

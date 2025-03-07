@@ -23,6 +23,9 @@ except ImportError:
     from typing_extensions import Self
 
 import grid2op  # for type hints
+import grid2op.Environment  # for type hints
+import grid2op.Action  # for type hints
+from grid2op.Parameters import Parameters
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import (
@@ -650,13 +653,16 @@ class BaseObservation(GridObjects):
         self.gen_p_delta = np.empty(shape=cls.n_gen, dtype=dt_float)
         
         # detachment (>= 1.11.0)
-        self.load_detached = np.ones(shape=cls.n_load, dtype=dt_bool)
-        self.gen_detached = np.ones(shape=cls.n_gen, dtype=dt_bool)
-        self.storage_detached = np.ones(shape=cls.n_storage, dtype=dt_bool)
+        self.load_detached = np.zeros(shape=cls.n_load, dtype=dt_bool)
+        self.gen_detached = np.zeros(shape=cls.n_gen, dtype=dt_bool)
+        self.storage_detached = np.zeros(shape=cls.n_storage, dtype=dt_bool)
         self.load_p_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
         self.load_q_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
         self.gen_p_detached = np.zeros(shape=cls.n_gen, dtype=dt_float)
         self.storage_p_detached = np.zeros(shape=cls.n_storage, dtype=dt_float)
+        
+        # 1.11.0 previous connected
+        self._prev_conn = None
         
     def _aux_copy(self, other : Self) -> None:
         attr_simple = [
@@ -671,6 +677,7 @@ class BaseObservation(GridObjects):
             "year",
             "delta_time",
             "_is_done",
+            "_prev_conn"
         ]
 
         attr_vect = [
@@ -1309,7 +1316,7 @@ class BaseObservation(GridObjects):
             cls._aux_process_grid2op_compat_191()
             
         if glop_ver < cls.MIN_VERSION_DETACH:
-            # alert attributes have been added in 1.9.1
+            # detachment has been added in grid2op 1.11
             cls._aux_process_grid2op_compat_1_11_0()
             
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
@@ -1343,25 +1350,25 @@ class BaseObservation(GridObjects):
         self.topo_vect[:] = 0
 
         # generators information
-        self.gen_p[:] = np.NaN
-        self.gen_q[:] = np.NaN
-        self.gen_v[:] = np.NaN
+        self.gen_p[:] = np.nan
+        self.gen_q[:] = np.nan
+        self.gen_v[:] = np.nan
         # loads information
-        self.load_p[:] = np.NaN
-        self.load_q[:] = np.NaN
-        self.load_v[:] = np.NaN
+        self.load_p[:] = np.nan
+        self.load_q[:] = np.nan
+        self.load_v[:] = np.nan
         # lines origin information
-        self.p_or[:] = np.NaN
-        self.q_or[:] = np.NaN
-        self.v_or[:] = np.NaN
-        self.a_or[:] = np.NaN
+        self.p_or[:] = np.nan
+        self.q_or[:] = np.nan
+        self.v_or[:] = np.nan
+        self.a_or[:] = np.nan
         # lines extremity information
-        self.p_ex[:] = np.NaN
-        self.q_ex[:] = np.NaN
-        self.v_ex[:] = np.NaN
-        self.a_ex[:] = np.NaN
+        self.p_ex[:] = np.nan
+        self.q_ex[:] = np.nan
+        self.v_ex[:] = np.nan
+        self.a_ex[:] = np.nan
         # lines relative flows
-        self.rho[:] = np.NaN
+        self.rho[:] = np.nan
 
         # cool down and reconnection time after hard overflow, soft overflow or cascading failure
         self.time_before_cooldown_line[:] = 0
@@ -1384,13 +1391,13 @@ class BaseObservation(GridObjects):
         self._env_internal_params = {}
 
         # redispatching
-        self.target_dispatch[:] = np.NaN
-        self.actual_dispatch[:] = np.NaN
+        self.target_dispatch[:] = np.nan
+        self.actual_dispatch[:] = np.nan
 
         # storage units
-        self.storage_charge[:] = np.NaN
-        self.storage_power_target[:] = np.NaN
-        self.storage_power[:] = np.NaN
+        self.storage_charge[:] = np.nan
+        self.storage_power_target[:] = np.nan
+        self.storage_power[:] = np.nan
 
         # to save up computation time
         self._dictionnarized = None
@@ -1398,17 +1405,17 @@ class BaseObservation(GridObjects):
         self._bus_connectivity_matrix_ = None
 
         if type(self).shunts_data_available:
-            self._shunt_p[:] = np.NaN
-            self._shunt_q[:] = np.NaN
-            self._shunt_v[:] = np.NaN
+            self._shunt_p[:] = np.nan
+            self._shunt_q[:] = np.nan
+            self._shunt_v[:] = np.nan
             self._shunt_bus[:] = -1
 
         self.support_theta = False
-        self.theta_or[:] = np.NaN
-        self.theta_ex[:] = np.NaN
-        self.load_theta[:] = np.NaN
-        self.gen_theta[:] = np.NaN
-        self.storage_theta[:] = np.NaN
+        self.theta_or[:] = np.nan
+        self.theta_ex[:] = np.nan
+        self.load_theta[:] = np.nan
+        self.gen_theta[:] = np.nan
+        self.storage_theta[:] = np.nan
 
         # alarm feature
         self.is_alarm_illegal[:] = False
@@ -3221,10 +3228,10 @@ class BaseObservation(GridObjects):
             )
         cls = type(self)
         t, a = self._forecasted_inj[time_step]
-        prod_p_f = np.full(cls.n_gen, fill_value=np.NaN, dtype=dt_float)
-        prod_v_f = np.full(cls.n_gen, fill_value=np.NaN, dtype=dt_float)
-        load_p_f = np.full(cls.n_load, fill_value=np.NaN, dtype=dt_float)
-        load_q_f = np.full(cls.n_load, fill_value=np.NaN, dtype=dt_float)
+        prod_p_f = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+        prod_v_f = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+        load_p_f = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+        load_q_f = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
 
         if "prod_p" in a["injection"]:
             prod_p_f = a["injection"]["prod_p"]
@@ -3258,9 +3265,9 @@ class BaseObservation(GridObjects):
         return res
 
     def simulate(self, action : "grid2op.Action.BaseAction", time_step:int=1) -> Tuple["BaseObservation",
-                                                float,
-                                                bool,
-                                                STEP_INFO_TYPING]:
+                                                                                       float,
+                                                                                       bool,
+                                                                                       STEP_INFO_TYPING]:
         """
         This method is used to simulate the effect of an action on a forecast powergrid state. This forecast
         state is built upon the current observation.
@@ -3526,12 +3533,12 @@ class BaseObservation(GridObjects):
             )
 
         if time_step < 0:
-            raise NoForecastAvailable("Impossible to forecast in the past.")
+            raise NoForecastAvailable("Impossible to 'forecast' in the past at the moment.")
 
         if time_step >= len(self._forecasted_inj):
             raise NoForecastAvailable(
-                "Forecast for {} timestep(s) ahead is not possible with your chronics."
-                "".format(time_step)
+                f"Forecast for {time_step} timestep(s) ahead is not possible "
+                f"with your chronics, max length {len(self._forecasted_inj) - 1} steps ahead."
             )
             
         if time_step not in self._forecasted_grid_act:
@@ -3547,11 +3554,14 @@ class BaseObservation(GridObjects):
             inj_action,
             time_stamp=timestamp,
             obs=self,
-            time_step=time_step,
+            time_step=time_step
         )
-
         sim_obs, *rest = self._obs_env.simulate(action)
         sim_obs = copy.deepcopy(sim_obs)
+        
+        # remember the last valid state of the environment
+        sim_obs._prev_conn = self._prev_conn  # shallow copy here because it's const
+        
         if self._forecasted_inj:
             # allow "chain" to simulate
             sim_obs.action_helper = self.action_helper  # no copy !
@@ -4447,6 +4457,10 @@ class BaseObservation(GridObjects):
             self.gen_p_detached[:] = env._gen_p_detached
             self.storage_p_detached[:] = env._storage_p_detached
         
+        # 1.11.0 
+        self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        self._prev_conn.prevent_modification()  # I do not want to modify this accidently
+        
         # handles forecasts here
         self._update_forecast(env, with_forecast)
         
@@ -4456,18 +4470,50 @@ class BaseObservation(GridObjects):
         # handle alerts
         self._update_alert(env)
 
+    def _get_gen_p_for_forecasts(self) -> np.ndarray:
+        return self._get_array_for_forecast(self.gen_p, self.gen_detached, self._prev_conn._gen_p)
+
+    def _get_gen_v_for_forecasts(self) -> np.ndarray:
+        res = self._get_array_for_forecast(self.gen_v, self.gen_detached, self._prev_conn._gen_v)
+        return res
+    
+    def _get_load_p_for_forecasts(self) -> np.ndarray:
+        return self._get_array_for_forecast(self.load_p, self.load_detached, self._prev_conn._load_p)
+    
+    def _get_load_q_for_forecasts(self) -> np.ndarray:
+        return self._get_array_for_forecast(self.load_q, self.load_detached, self._prev_conn._load_q)
+    
+    @staticmethod
+    def _get_array_for_forecast(arr, mask_detached, prev_val) -> np.ndarray:
+        res = (1.0 * prev_val).astype(dt_float)
+        is_conn = ~mask_detached
+        res[is_conn] = arr[is_conn]
+        return res
+
     def _update_forecast(self, env: "grid2op.Environment.BaseEnv", with_forecast: bool) -> None:
         if not with_forecast:
             return
-        
+        cls = type(self)
         inj_action = {}
         dict_ = {}
-        dict_["load_p"] = dt_float(1.0 * self.load_p)
-        dict_["load_q"] = dt_float(1.0 * self.load_q)
-        dict_["prod_p"] = dt_float(1.0 * self.gen_p)
-        dict_["prod_v"] = dt_float(1.0 * self.gen_v)
+        dict_["load_p"] = self._get_load_p_for_forecasts()
+        dict_["load_q"] = self._get_load_q_for_forecasts()
+        dict_["prod_p"] = self._get_gen_p_for_forecasts()
+        dict_["prod_v"] = self._get_gen_v_for_forecasts()
         inj_action["injection"] = dict_
-        # inj_action = self.action_helper(inj_action)
+        if self.gen_detached.any():
+            if "set_bus" not in inj_action:
+                inj_action["set_bus"] = {}
+            tmp_gen = np.zeros(cls.n_gen, dtype=dt_int)
+            tmp_gen[self.gen_detached] = -1
+            inj_action["set_bus"]["generators_id"] = tmp_gen
+        if self.load_detached.any():
+            if "set_bus" not in inj_action:
+                inj_action["set_bus"] = {}
+            tmp_load = np.zeros(cls.n_load, dtype=dt_int)
+            tmp_load[self.load_detached] = -1
+            inj_action["set_bus"]["loads_id"] = tmp_load
+            
         timestamp = self.get_time_stamp()
         self._forecasted_inj = [(timestamp, inj_action)]
         self._forecasted_inj += env.forecasts()
@@ -4562,11 +4608,21 @@ class BaseObservation(GridObjects):
             # self._forecasted_inj already embed the current step
             raise NoForecastAvailable("It appears this environment does not support any forecast at all.")
         nb_h = len(self._forecasted_inj)
-        nb_el = self._forecasted_inj[0][1]['injection'][name].shape[0]
-        prev = 1.0 * self._forecasted_inj[0][1]['injection'][name]
+        if "injection" in self._forecasted_inj[0][1]:
+            dict_ref = self._forecasted_inj[0][1]['injection'] 
+        else:
+            # case of perfect forecast and do nothing data for example
+            dict_ref = {"prod_p": 1. * self.gen_p,
+                        "load_p": 1. * self.load_p,
+                        "load_q": 1. * self.load_q} 
+        nb_el = dict_ref[name].shape[0]
+        prev = 1.0 * dict_ref[name]
         res = np.zeros((nb_h, nb_el))
         for h in range(nb_h):
-            dict_tmp = self._forecasted_inj[h][1]['injection']
+            if "injection" in self._forecasted_inj[h][1]:
+                dict_tmp = self._forecasted_inj[h][1]['injection']
+            else:
+                dict_tmp = {}
             if name in dict_tmp:
                 this_row = 1.0 * dict_tmp[name]
                 prev = 1.0 * this_row
@@ -4585,7 +4641,7 @@ class BaseObservation(GridObjects):
                 res[tnm:(tnm+dnm),l_id] = True
         return res
     
-    def get_forecast_env(self) -> "grid2op.Environment.Environment":
+    def get_forecast_env(self) -> "grid2op.Environment.ForecastEnv":
         """
         .. versionadded:: 1.9.0
         
@@ -4893,7 +4949,7 @@ class BaseObservation(GridObjects):
                              prod_v: Optional[np.ndarray] = None,
                              maintenance: Optional[np.ndarray] = None):
         from grid2op.Chronics import FromNPY, ChronicsHandler
-        from grid2op.Environment._forecast_env import _ForecastEnv
+        from grid2op.Environment import ForecastEnv
         ch = ChronicsHandler(FromNPY,
                              load_p=load_p,
                              load_q=load_q,
@@ -4905,18 +4961,18 @@ class BaseObservation(GridObjects):
         backend = self._obs_env.backend.copy()
         backend._is_loaded = True
         nb_highres_called = self._obs_env.highres_sim_counter.nb_highres_called
-        res = _ForecastEnv(**self._ptr_kwargs_env,
-                           backend=backend,
-                           chronics_handler=ch,
-                           parameters=self._obs_env.parameters,
-                           _init_obs=self,
-                           highres_sim_counter=self._obs_env.highres_sim_counter
-                           )
+        res = ForecastEnv(**self._ptr_kwargs_env,
+                          backend=backend,
+                          chronics_handler=ch,
+                          parameters=self._obs_env.parameters,
+                          _init_obs=self,
+                          highres_sim_counter=self._obs_env.highres_sim_counter
+                          )
         # it does one simulation when it inits it (calling env.step) so I remove 1 here
         res.highres_sim_counter._HighResSimCounter__nb_highres_called = nb_highres_called
         return res
 
-    def change_forecast_parameters(self, params: "grid2op.Parameters.Parameters") -> None:
+    def change_forecast_parameters(self, params: Parameters) -> None:
         """This function allows to change the parameters (see :class:`grid2op.Parameters.Parameters` 
         for more information) that are used for the `obs.simulate()` and `obs.get_forecast_env()` method.
         

@@ -1769,7 +1769,7 @@ class AAATestBackendAPI(MakeBackend):
         - :attr:`TestBackendAPI.test_20_disconnected_load_stops_computation`
         - :attr:`TestBackendAPI.test_21_disconnected_gen_stops_computation`
         
-        When your backend is initialized with "allow_detachment".
+        When your backend is initialized with "allow_detachment=True".
         
         NB: of course these tests have been modified such that things that should pass
         will pass and things that should fail will fail.
@@ -1795,4 +1795,8 @@ class AAATestBackendAPI(MakeBackend):
         self.test_20_disconnected_load_stops_computation(allow_detachment=True)
         self.test_21_disconnected_gen_stops_computation(allow_detachment=True)
         self.test_31_disconnected_storage_with_p_stops_computation(allow_detachment=True)
-        
+    
+    # TODO test: gen_v of disconnected generator are 0
+    # TODO test : load_v of disco load are 0
+    # TODO test: storage_v of disco sto are 0
+    # TODO test: disconnect a gen a load a conso and then connect it again and see what you end up with.

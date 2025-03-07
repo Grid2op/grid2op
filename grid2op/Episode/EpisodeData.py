@@ -19,6 +19,7 @@ from grid2op.Exceptions import (
     IncorrectNumberOfElements,
     NonFiniteElement,
 )
+from grid2op.Space import GRID2OP_CURRENT_VERSION_STR
 from grid2op.Action import ActionSpace
 from grid2op.Observation import ObservationSpace
 
@@ -535,7 +536,7 @@ class EpisodeData:
             helper_action_env = ActionSpace.from_dict(
                 os.path.join(agent_path, EpisodeData.ENV_MODIF_SPACE)
             )
-        if observation_space.glop_version != grid2op.__version__:
+        if observation_space.glop_version != GRID2OP_CURRENT_VERSION_STR:
             warnings.warn(
                 'You are using a "grid2op compatibility" feature (the data you saved '
                 "have been saved with a previous grid2op version). When we loaded your data, we attempted "
@@ -833,7 +834,7 @@ class EpisodeData:
                 "w",
                 encoding="utf-8",
             ) as f:
-                dict_ = {"version": f"{grid2op.__version__}"}
+                dict_ = {"version": f"{GRID2OP_CURRENT_VERSION_STR}"}
                 json.dump(obj=dict_, fp=f, indent=4, sort_keys=True)
 
     def _aux_make_obs_space_serializable(self):

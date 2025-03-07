@@ -15,7 +15,7 @@ import json
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional, Any, Dict, Union
+from typing import Tuple, Optional, Any, Dict, Type, Union
 
 try:
     from typing import Self
@@ -36,6 +36,9 @@ from grid2op.Exceptions import (
     Grid2OpException,
 )
 from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+import grid2op.Observation  # for type hints
+import grid2op.Action  # for type hints
+import grid2op.Action._BackendAction  # for type hints
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -116,8 +119,8 @@ class Backend(GridObjects, ABC):
     IS_BK_CONVERTER : bool = False
     
     # action to set me
-    my_bk_act_class : "Optional[grid2op.Action._backendAction._BackendAction]" = None
-    _complete_action_class : "Optional[grid2op.Action.CompleteAction]" = None
+    my_bk_act_class : "Optional[Type[grid2op.Action._BackendAction._BackendAction]]" = None
+    _complete_action_class : "Optional[Type[grid2op.Action.CompleteAction]]" = None
 
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
     ERR_DETACHMENT : str = ("One or more {} were isolated from the grid "
@@ -1906,8 +1909,8 @@ class Backend(GridObjects, ABC):
                 sh_conn = bus_s > 0
                 p_s[sh_conn] *= (self._sh_vnkv[sh_conn] / sh_v[sh_conn]) ** 2
                 q_s[sh_conn] *= (self._sh_vnkv[sh_conn] / sh_v[sh_conn]) ** 2
-                p_s[bus_s == -1] = np.NaN
-                q_s[bus_s == -1] = np.NaN
+                p_s[bus_s == -1] = np.nan
+                q_s[bus_s == -1] = np.nan
                 dict_["shunt"]["shunt_p"] = p_s
                 dict_["shunt"]["shunt_q"] = q_s
 
@@ -1920,7 +1923,7 @@ class Backend(GridObjects, ABC):
 
     def update_from_obs(self,
                         obs: "grid2op.Observation.CompleteObservation",
-                        force_update: Optional[bool]=False):
+                        force_update: Optional[bool]=False) -> "grid2op.Action._BackendAction._BackendAction":
         """
         Takes an observation as input and update the internal state of `self` to match the state of the backend
         that produced this observation.
@@ -1954,7 +1957,7 @@ class Backend(GridObjects, ABC):
             )
 
         cls = type(self)
-        backend_action = cls.my_bk_act_class()
+        backend_action : "grid2op.Action._BackendAction._BackendAction" = cls.my_bk_act_class()        
         act = cls._complete_action_class()
         line_status = self._aux_get_line_status_to_set(obs.line_status)
         # skip the action part and update directly the backend action !
@@ -1962,15 +1965,15 @@ class Backend(GridObjects, ABC):
             "set_bus": obs.topo_vect,
             "set_line_status": line_status,
             "injection": {
-                "prod_p": obs.prod_p,
-                "prod_v": obs.prod_v,
-                "load_p": obs.load_p,
-                "load_q": obs.load_q,
+                "prod_p": obs._get_gen_p_for_forecasts(),
+                "prod_v": obs._get_gen_v_for_forecasts(),
+                "load_p": obs._get_load_p_for_forecasts(),
+                "load_q": obs._get_load_q_for_forecasts(),
             },
         }
 
         if cls.shunts_data_available and type(obs).shunts_data_available:
-            if cls.n_shunt > 0 and "_shunt_bus" not in type(obs).attr_list_set:
+            if cls.n_shunt > 0 and "_shunt_bus" not in (type(obs).attr_list_set | set(type(obs).attr_list_json)):
                 raise BackendError(
                     "Impossible to set the backend to the state given by the observation: shunts data "
                     "are not present in the observation."
@@ -1982,8 +1985,8 @@ class Backend(GridObjects, ABC):
                 mults = (self._sh_vnkv / obs._shunt_v) ** 2
                 sh_p = obs._shunt_p * mults
                 sh_q = obs._shunt_q * mults
-                sh_p[~shunt_co] = np.NaN
-                sh_q[~shunt_co] = np.NaN
+                sh_p[~shunt_co] = np.nan
+                sh_q[~shunt_co] = np.nan
                 dict_["shunt"]["shunt_p"] = sh_p
                 dict_["shunt"]["shunt_q"] = sh_q
         elif cls.shunts_data_available and not type(obs).shunts_data_available:
@@ -1991,6 +1994,8 @@ class Backend(GridObjects, ABC):
         act.update(dict_)
         backend_action += act
         self.apply_action(backend_action)
+        backend_action.reset()  # already processed by the backend
+        return backend_action
 
     def assert_grid_correct(self, _local_dir_cls=None) -> None:
         """
