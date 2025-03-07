@@ -1495,6 +1495,9 @@ class PandaPowerBackend(Backend):
         load_theta = self._grid.res_bus.loc[self._grid.load["bus"].values][
             "va_degree"
         ].values.astype(dt_float)
+        load_disco = ~self._grid.load["in_service"]
+        load_v[load_disco] = 0.
+        load_theta[load_disco] = 0.
         return load_p, load_q, load_v, load_theta
 
     def generators_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
