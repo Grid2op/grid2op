@@ -3355,7 +3355,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._gen_p_detached[:] = self._prev_gen_p
             self._gen_p_detached[~self._gens_detached] = 0.
             
-            self._storage_p_detached[:] = 0.
             self._storage_p_detached[:] = self._storage_power
             self._storage_p_detached[~self._storages_detached] = 0.
             self._storage_power[self._storages_detached] = 0.
