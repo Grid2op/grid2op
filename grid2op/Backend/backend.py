@@ -766,7 +766,7 @@ class Backend(GridObjects, ABC):
         p_or, q_or, v_or, a_or = self.lines_or_info()
         return a_or
 
-    def set_thermal_limit(self, limits : Union[np.ndarray, Dict["str", float]]) -> None:
+    def set_thermal_limit(self, limits : Union[np.ndarray, Dict[str, float]]) -> None:
         """
         INTERNAL
 
@@ -794,6 +794,8 @@ class Backend(GridObjects, ABC):
               - as key the powerline names (not all names are mandatory, in that case only the powerlines with the name
                 in this dictionnary will be modified)
               - as value the new thermal limit (should be a strictly positive float).
+            
+            In all cases, limits are expected to be given in A (not in kA)
 
         """
         if isinstance(limits, np.ndarray):
@@ -891,7 +893,7 @@ class Backend(GridObjects, ABC):
         For assumption about the order of the powerline flows return in this vector, see the help of the
         :func:`Backend.get_line_status` method.
 
-        :return: An array giving the thermal limit of the powerlines.
+        :return: An array giving the thermal limit of the powerlines (in A).
         :rtype: np.array, dtype:float
         """
         return self.thermal_limit_a
@@ -972,11 +974,11 @@ class Backend(GridObjects, ABC):
         Returns
         -------
         shunt_p: ``numpy.ndarray``
-            For each shunt, the active power it withdraw at the bus to which it is connected.
+            For each shunt, the active power it withdraw at the bus to which it is connected (in MW)
         shunt_q: ``numpy.ndarray``
-            For each shunt, the reactive power it withdraw at the bus to which it is connected.
+            For each shunt, the reactive power it withdraw at the bus to which it is connected (in MVAr)
         shunt_v: ``numpy.ndarray``
-            For each shunt, the voltage magnitude of the bus to which it is connected.
+            For each shunt, the voltage magnitude of the bus to which it is connected (in kV)
         shunt_bus: ``numpy.ndarray``
             For each shunt, the bus id to which it is connected.
         """
@@ -995,15 +997,20 @@ class Backend(GridObjects, ABC):
         Returns
         -------
         line_or_theta: ``numpy.ndarray``
-            For each origin side of powerline, gives the voltage angle
+            For each origin side of powerline, gives the voltage angle (in deg) of the bus to
+            which each "origin" side is connected
         line_ex_theta: ``numpy.ndarray``
-            For each extremity side of powerline, gives the voltage angle
+            For each extremity side of powerline, gives the voltage angle (in deg) of the bus to
+            which each "ext" side is connected
         load_theta: ``numpy.ndarray``
-            Gives the voltage angle to the bus at which each load is connected
+            Gives the voltage angle to the bus at which each load is connected (in deg) of the bus to
+            which each load is connected
         gen_theta: ``numpy.ndarray``
-            Gives the voltage angle to the bus at which each generator is connected
+            Gives the voltage angle to the bus at which each generator is connected (in deg) of the bus to
+            which each generator is connected
         storage_theta: ``numpy.ndarray``
-            Gives the voltage angle to the bus at which each storage unit is connected
+            Gives the voltage angle to the bus at which each storage unit is connected  (in deg) of the bus to
+            which each storage unit is connected
         """
         raise NotImplementedError(
             "Your backend does not support the retrieval of the voltage angle theta."
@@ -1289,7 +1296,7 @@ class Backend(GridObjects, ABC):
             sum of injected reactive power at each buses. It is given in form of a matrix, with number of substations as
             row, and number of columns equal to the maximum number of buses for a substation (MVAr)
         diff_v_bus: ``numpy.ndarray`` (2d array)
-            difference between maximum voltage and minimum voltage (computed for each elements)
+            difference between maximum voltage and minimum voltage (in kV) (computed for each elements)
             at each bus. It is an array of two dimension:
 
             - first dimension represents the the substation (between 1 and self.n_sub)
@@ -1888,7 +1895,7 @@ class Backend(GridObjects, ABC):
         if type(self)._complete_action_class is None:
             # some bug in multiprocessing, this was not set
             # sub processes
-            from grid2op.Action.completeAction import CompleteAction
+            from grid2op.Action import CompleteAction
             type(self)._complete_action_class = CompleteAction.init_grid(type(self))
         set_me = self._complete_action_class()
         dict_ = {
