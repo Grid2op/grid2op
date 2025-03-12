@@ -123,6 +123,7 @@ class TestGymAlertCompat(unittest.TestCase):
                                                                         768.4899,809.58997,834.88995,772.18994,772.18994,
                                                                         834.88995,809.58997,809.58997,884.88995,802.08997,809.58997,1134.8899,1034.8899,
                                                                         1084.8899], dtype=dt_float), (22,), dt_float),
+                                'gen_q_delta': Box(-np.inf, np.inf, (22,), dt_float),
                                 'gen_q': Box(-np.inf, np.inf, (22,), dt_float),
                                 'gen_theta': Box(-180.0, 180.0, (22,), dt_float),
                                 'gen_v': Box(0.0, np.inf, (22,), dt_float),
@@ -231,9 +232,12 @@ class TestGymAlertCompat(unittest.TestCase):
             ]
         )
         if "actual_flex" in env_gym.observation_space.spaces:
-            size_th = 1792 # as of grid2Op 1.11.0 (where flexibility was added)
+            size_th = 1814 # as of grid2Op 1.11.0 (where flexibility was added)
         else:
-            size_th = 1718 # as of grid2Op 1.9.1 (where alerts are added)
+            # as of grid2Op 1.9.1 (where alerts are added)
+            size_th = 1718
+            # as of grid2Op 1.11.0 (where gen_p_delta)
+            size_th = 1740
         assert (
             dim_obs_space == size_th
         ), f"Size should be {size_th} but is {dim_obs_space}"

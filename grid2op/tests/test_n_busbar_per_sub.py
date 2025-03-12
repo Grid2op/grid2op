@@ -506,18 +506,18 @@ class TestAction_3busbars(unittest.TestCase):
             tmp = act_as_dict["shunt"]["shunt_bus"]
             assert tmp[el_id] == bus_val
 
-    def _aux_test_act_consistent_as_serializable_dict(self, act_as_dict, el_nms, el_id, bus_val):
+    def _aux_test_act_consistent_as_serializable_dict(self, act_as_dict, el_nms, el_id, bus_val, nm_els):
         if el_nms is not None:
             # regular element
             assert "set_bus" in act_as_dict
             assert el_nms in act_as_dict["set_bus"]
             tmp = act_as_dict["set_bus"][el_nms]
-            assert tmp == [(el_id, bus_val)]
+            assert tmp == [(nm_els[el_id], bus_val)]
         else:
             # shunts of other things not in the topo vect
             assert "shunt" in act_as_dict
             tmp = act_as_dict["shunt"]["shunt_bus"]
-            assert tmp == [(el_id, bus_val)]
+            assert tmp == [(nm_els[el_id], bus_val)]
     
     def _aux_test_action(self, act : BaseAction, name_xxx, el_id, bus_val, el_nms):
         assert act.can_affect_something()
@@ -526,7 +526,7 @@ class TestAction_3busbars(unittest.TestCase):
         tmp = act.as_dict()  # test I can convert to dict
         self._aux_test_act_consistent_as_dict(tmp, name_xxx, el_id, bus_val)
         tmp = act.as_serializable_dict()  # test I can convert to another type of dict
-        self._aux_test_act_consistent_as_serializable_dict(tmp, el_nms, el_id, bus_val)
+        self._aux_test_act_consistent_as_serializable_dict(tmp, el_nms, el_id, bus_val, name_xxx)
         
     def _aux_test_set_bus_onebus(self, nm_prop, el_id, bus_val, name_xxx, el_nms):
         act = self.env.action_space()
@@ -610,7 +610,7 @@ class TestAction_3busbars(unittest.TestCase):
         tmp = act.as_dict()  # test I can convert to dict
         self._aux_test_act_consistent_as_dict(tmp, name_xxx, el_id, bus_val)
         tmp = act.as_serializable_dict()  # test I can convert to another type of dict
-        self._aux_test_act_consistent_as_serializable_dict(tmp, el_nms, el_id, bus_val)
+        self._aux_test_act_consistent_as_serializable_dict(tmp, el_nms, el_id, bus_val, type(act).name_shunt)
         
     def test_shunt(self):
         el_id = 0
@@ -1254,7 +1254,10 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 assert self.env.backend._grid.bus.loc[global_bus]["in_service"]
             else:
                 assert not self.env.backend._grid.line.iloc[line_id]["in_service"]
-            self.env.backend.line_status[:] = self.env.backend._get_line_status()  # otherwise it's not updated
+            tmp = self.env.backend._get_line_status()  # otherwise it's not updated
+            self.env.backend.line_status.flags.writeable = True
+            self.env.backend.line_status[:] = tmp
+            self.env.backend.line_status.flags.writeable = False
             topo_vect = self.env.backend._get_topo_vect()
             assert topo_vect[cls.line_or_pos_topo_vect[line_id]] == new_bus, f"{topo_vect[cls.line_or_pos_topo_vect[line_id]]} vs {new_bus}"
                 
@@ -1272,7 +1275,10 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 assert self.env.backend._grid.bus.loc[global_bus]["in_service"]
             else:
                 assert not self.env.backend._grid.line.iloc[line_id]["in_service"]
-            self.env.backend.line_status[:] = self.env.backend._get_line_status()  # otherwise it's not updated
+            tmp = self.env.backend._get_line_status()  # otherwise it's not updated
+            self.env.backend.line_status.flags.writeable = True
+            self.env.backend.line_status[:] = tmp
+            self.env.backend.line_status.flags.writeable = False
             topo_vect = self.env.backend._get_topo_vect()
             assert topo_vect[cls.line_ex_pos_topo_vect[line_id]] == new_bus, f"{topo_vect[cls.line_ex_pos_topo_vect[line_id]]} vs {new_bus}"
             

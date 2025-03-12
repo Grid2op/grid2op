@@ -7,7 +7,9 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 from typing import Dict, Literal, Any, Union, List
+import datetime
 import numpy as np
+
 
 #: type hints corresponding to the "info" part of the env.step return value
 STEP_INFO_TYPING = Dict[Literal["disc_lines",
@@ -39,7 +41,8 @@ DICT_ACT_TYPING = Dict[Literal["set_line_status",
                                "injection",
                                "hazards",
                                "maintenance",
-                               "shunt"],
+                               "shunt",
+                               "detach_load"],
                        Any]
 # TODO improve that (especially the Any part)
 
@@ -49,6 +52,7 @@ RESET_OPTIONS_TYPING = Union[Dict[Literal["time serie id"], int],
                              Dict[Literal["init ts"], int],
                              Dict[Literal["max step"], int],
                              Dict[Literal["thermal limit"], Union[List[float], Dict[str, float]]],
+                             Dict[Literal["init datetime"], Union[str, datetime.datetime]],
                              None]
 
 #: type hints for a "GridObject" when converted to a dictionary

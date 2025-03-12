@@ -741,7 +741,66 @@ class _BackendAction(GridObjects):
             self.line_ex_pos_topo_vect,
             self.last_topo_registered,
         )
-           
+    
+    def _aux_iadd_detach(self, other, set_topo_vect : np.ndarray, modif_inj: bool):
+        cls = type(self)
+        if other._modif_detach_load:
+            set_topo_vect[cls.load_pos_topo_vect[other._detach_load]] = -1
+            modif_set_bus = True
+        if other._modif_detach_gen:
+            set_topo_vect[cls.gen_pos_topo_vect[other._detach_gen]] = -1
+            modif_set_bus = True
+        if other._modif_detach_storage:
+            set_topo_vect[cls.storage_pos_topo_vect[other._detach_storage]] = -1
+            modif_set_bus = True
+        if modif_inj:
+            for key, vect_ in other._dict_inj.items():
+                if key == "load_p" or key == "load_q":
+                    vect_[other._detach_load] = 0.
+                elif key == "prod_p":
+                    vect_[other._detach_gen] = 0.
+                elif key == "prod_v":
+                    vect_[other._detach_gen] = np.nan
+                else:
+                    raise RuntimeError(f"Unknown key {key} for injection found.")
+        else:
+            # TODO when injection is not modified by the action (eg change nothing)
+            if other._modif_detach_load:
+                modif_inj = True
+                other._dict_inj["load_p"] = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+                other._dict_inj["load_q"] = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+                other._dict_inj["load_p"][other._detach_load] = 0.
+                other._dict_inj["load_q"][other._detach_load] = 0.
+            if other._modif_detach_gen:
+                modif_inj = True
+                other._dict_inj["prod_p"] = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+                other._dict_inj["prod_p"][other._detach_gen] = 0.
+        return modif_set_bus, modif_inj
+    
+    def _aux_iadd_line_status(self, other: BaseAction, switch_status: np.ndarray, set_status: np.ndarray):
+        if other._modif_change_status:
+            self.current_topo.change_status(
+                switch_status,
+                self.line_or_pos_topo_vect,
+                self.line_ex_pos_topo_vect,
+                self.last_topo_registered,
+            )
+        if other._modif_set_status:
+            self.current_topo.set_status(
+                set_status,
+                self.line_or_pos_topo_vect,
+                self.line_ex_pos_topo_vect,
+                self.last_topo_registered,
+            )
+
+        # if other._modif_change_status or other._modif_set_status:
+        (
+            self._status_or_before[:],
+            self._status_ex_before[:],
+        ) = self.current_topo.get_line_status(
+            self.line_or_pos_topo_vect, self.line_ex_pos_topo_vect
+        )
+        
     def __iadd__(self, other : BaseAction) -> Self:
         """
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
@@ -768,16 +827,23 @@ class _BackendAction(GridObjects):
         
         """
 
-        set_status = other._set_line_status
+        set_status = 1 * other._set_line_status
         switch_status = other._switch_line_status
-        set_topo_vect = other._set_topo_vect
+        set_topo_vect = 1 * other._set_topo_vect
         switcth_topo_vect = other._change_bus_vect
         redispatching = other._redispatch
         storage_power = other._storage_power
-
+        modif_set_bus = other._modif_set_bus
+        modif_inj = other._modif_inj
+        cls = type(self)
+        
+        # I detachment (before all else)
+        if cls.detachment_is_allowed and other.has_element_detached():
+            modif_set_bus, modif_inj = self._aux_iadd_detach(other, set_topo_vect, modif_inj)
+            
         # I deal with injections
         # Ia set the injection
-        if other._modif_inj:
+        if modif_inj:
             self._aux_iadd_inj(other._dict_inj)
             
         # Ib change the injection aka redispatching
@@ -789,39 +855,18 @@ class _BackendAction(GridObjects):
             self.storage_power.set_val(storage_power)
 
         # II shunts
-        if type(self).shunts_data_available:
+        if cls.shunts_data_available:
             self._aux_iadd_shunt(other)
             
         # III line status
         # this need to be done BEFORE the topology, as a connected powerline will be connected to their old bus.
         # regardless if the status is changed in the action or not.
-        if other._modif_change_status:
-            self.current_topo.change_status(
-                switch_status,
-                self.line_or_pos_topo_vect,
-                self.line_ex_pos_topo_vect,
-                self.last_topo_registered,
-            )
-        if other._modif_set_status:
-            self.current_topo.set_status(
-                set_status,
-                self.line_or_pos_topo_vect,
-                self.line_ex_pos_topo_vect,
-                self.last_topo_registered,
-            )
-
-        # if other._modif_change_status or other._modif_set_status:
-        (
-            self._status_or_before[:],
-            self._status_ex_before[:],
-        ) = self.current_topo.get_line_status(
-            self.line_or_pos_topo_vect, self.line_ex_pos_topo_vect
-        )
-
+        self._aux_iadd_line_status(other, switch_status, set_status)
+        
         # IV topo
         if other._modif_change_bus:
             self.current_topo.change_val(switcth_topo_vect)
-        if other._modif_set_bus:
+        if modif_set_bus:
             self.current_topo.set_val(set_topo_vect)
 
         # V Force disconnected status
@@ -831,7 +876,7 @@ class _BackendAction(GridObjects):
         )
 
         # At least one disconnected extremity
-        if other._modif_change_bus or other._modif_set_bus:
+        if other._modif_change_bus or modif_set_bus:
             self._aux_iadd_reconcile_disco_reco()
         return self
 
@@ -1452,3 +1497,15 @@ class _BackendAction(GridObjects):
             )
         self.last_topo_registered.update_connected(self.current_topo)
         self.current_topo.reset()
+
+    def get_load_detached(self):
+        cls = type(self)
+        return self.current_topo.values[cls.load_pos_topo_vect] == -1
+    
+    def get_gen_detached(self):
+        cls = type(self)
+        return self.current_topo.values[cls.gen_pos_topo_vect] == -1
+    
+    def get_sto_detached(self):
+        cls = type(self)
+        return self.current_topo.values[cls.storage_pos_topo_vect] == -1

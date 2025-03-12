@@ -41,7 +41,7 @@ class Issue418Tester(unittest.TestCase):
                 year = 229
                 day = 13
             else:
-                year = 571
+                year = 1476
                 day = 9
             
         

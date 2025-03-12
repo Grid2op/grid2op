@@ -28,7 +28,12 @@ from grid2op.Observation import (BaseObservation,
                                  HighResSimCounter)
 from grid2op.Backend import Backend
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Space import GridObjects, RandomObject, GRID2OP_CLASSES_ENV_FOLDER
+from grid2op.Space import (GridObjects,
+                           RandomObject,
+                           DEFAULT_ALLOW_DETACHMENT,
+                           DEFAULT_N_BUSBAR_PER_SUB,
+                           GRID2OP_CLASSES_ENV_FOLDER)
+from grid2op.typing_variables import N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import (Grid2OpException,
                                 EnvError,
                                 InvalidRedispatching,
@@ -36,7 +41,11 @@ from grid2op.Exceptions import (Grid2OpException,
                                 GeneratorTurnedOffTooSoon,
                                 GeneratorTurnedOnTooSoon,
                                 AmbiguousActionRaiseAlert,
-                                ImpossibleTopology)
+                                ImpossibleTopology,
+                                SomeGeneratorAbovePmax,
+                                SomeGeneratorBelowPmin,
+                                SomeGeneratorAboveRampmax, 
+                                SomeGeneratorBelowRampmin)
 from grid2op.Parameters import Parameters
 from grid2op.Reward import BaseReward, RewardHelper
 from grid2op.Opponent import OpponentSpace, NeverAttackBudget, BaseOpponent
@@ -46,6 +55,7 @@ from grid2op.Action._backendAction import _BackendAction
 from grid2op.Chronics import ChronicsHandler
 from grid2op.Rules import AlwaysLegal, BaseRules, AlwaysLegal
 from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
+from grid2op.VoltageControler import ControlVoltageFromFile
 
 # TODO put in a separate class the redispatching function
 DETAILED_REDISP_ERR_MSG = (
@@ -309,14 +319,17 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                           "init state",
                           "init ts",
                           "max step",
-                          THERMAL_LIMIT}
+                          "thermal limit",
+                          "init datetime",
+                          }
     
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path: os.PathLike,
         init_grid_path: os.PathLike,
         parameters: Parameters,
-        voltagecontrolerClass: type,
+        voltagecontrolerClass: type=ControlVoltageFromFile,
         name="unknown",
         thermal_limit_a: Optional[np.ndarray] = None,
         epsilon_poly: float = 1e-4,  # precision of the redispatching algorithm
@@ -341,7 +354,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         observation_bk_kwargs=None,  # type of backend for the observation space
         highres_sim_counter=None,
         update_obs_after_reward=False,
-        n_busbar=2,
+        n_busbar:N_BUSBAR_PER_SUB_TYPING=DEFAULT_N_BUSBAR_PER_SUB,
+        allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         _is_test: bool = False,  # TODO not implemented !!
         _init_obs: Optional[BaseObservation] =None,
         _local_dir_cls=None,
@@ -368,6 +382,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._raw_backend_class = _raw_backend_class
             
         self._n_busbar = n_busbar  # env attribute not class attribute !
+        self._allow_detachment = allow_detachment
+
         if other_rewards is None:
             other_rewards = {}
         if kwargs_attention_budget is None:
@@ -651,6 +667,21 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # general things that can be used by the reward
         self._reward_to_obs = {}
+        
+        # detachement (1.11.0)
+        self._loads_detached = None
+        self._gens_detached = None
+        self._storages_detached = None
+        self._prev_load_p = None
+        self._load_p_detached = None
+        self._prev_load_q = None
+        self._load_q_detached = None
+        self._prev_gen_p = None
+        self._gen_p_detached = None
+        self._storage_p_detached = None
+        
+        # slack (1.11.0)
+        self._delta_gen_p = None
     
     @property
     def highres_sim_counter(self):
@@ -676,6 +707,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if dict_ is None:
             dict_ = {}
         new_obj._n_busbar = self._n_busbar
+        new_obj._allow_detachment = self._allow_detachment
         
         new_obj._init_grid_path = copy.deepcopy(self._init_grid_path)
         new_obj._init_env_path = copy.deepcopy(self._init_env_path)
@@ -964,6 +996,21 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # breaks for some version of lightsim2grid... (a powerflow need to be run to retrieve the observation)
             new_obj.current_obs = new_obj.get_obs()
 
+        # detachment (1.11.0)
+        new_obj._loads_detached = copy.deepcopy(self._loads_detached)
+        new_obj._gens_detached = copy.deepcopy(self._gens_detached)
+        new_obj._storages_detached = copy.deepcopy(self._storages_detached)
+        new_obj._prev_load_p = 1. * self._prev_load_p
+        new_obj._load_p_detached = 1. * self._load_p_detached
+        new_obj._prev_load_q = 1. * self._prev_load_q
+        new_obj._load_q_detached = 1. * self._load_q_detached
+        new_obj._prev_gen_p = 1. * self._prev_gen_p
+        new_obj._gen_p_detached = 1. * self._gen_p_detached
+        new_obj._storage_p_detached = 1. * self._storage_p_detached
+        
+        # slack (1.11.0)
+        new_obj._delta_gen_p = 1. * self._delta_gen_p
+        
     def get_path_env(self):
         """
         Get the path that allows to create this environment.
@@ -1353,20 +1400,20 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._backend_action = self._backend_action_class()
 
         # initialize maintenance / hazards
-        self._time_next_maintenance = np.full(self.n_line, -1, dtype=dt_int)
-        self._duration_next_maintenance = np.zeros(shape=(self.n_line,), dtype=dt_int)
+        self._time_next_maintenance = np.full(bk_type.n_line, -1, dtype=dt_int)
+        self._duration_next_maintenance = np.zeros(shape=(bk_type.n_line,), dtype=dt_int)
         self._times_before_line_status_actionable = np.full(
-            shape=(self.n_line,), fill_value=0, dtype=dt_int
+            shape=(bk_type.n_line,), fill_value=0, dtype=dt_int
         )
 
         # create the vector to the proper shape
-        self._target_dispatch = np.zeros(self.n_gen, dtype=dt_float)
-        self._already_modified_gen = np.zeros(self.n_gen, dtype=dt_bool)
-        self._actual_dispatch = np.zeros(self.n_gen, dtype=dt_float)
-        self._gen_uptime = np.zeros(self.n_gen, dtype=dt_int)
-        self._gen_downtime = np.zeros(self.n_gen, dtype=dt_int)
-        self._gen_activeprod_t = np.zeros(self.n_gen, dtype=dt_float)
-        self._gen_activeprod_t_redisp = np.zeros(self.n_gen, dtype=dt_float)
+        self._target_dispatch = np.zeros(bk_type.n_gen, dtype=dt_float)
+        self._already_modified_gen = np.zeros(bk_type.n_gen, dtype=dt_bool)
+        self._actual_dispatch = np.zeros(bk_type.n_gen, dtype=dt_float)
+        self._gen_uptime = np.zeros(bk_type.n_gen, dtype=dt_int)
+        self._gen_downtime = np.zeros(bk_type.n_gen, dtype=dt_int)
+        self._gen_activeprod_t = np.zeros(bk_type.n_gen, dtype=dt_float)
+        self._gen_activeprod_t_redisp = np.zeros(bk_type.n_gen, dtype=dt_float)
         self._max_timestep_line_status_deactivated = (
             self._parameters.NB_TIMESTEP_COOLDOWN_LINE
         )
@@ -1379,22 +1426,22 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._load_demand_t_flex = np.zeros(self.n_load, dtype=dt_float)
 
         self._times_before_line_status_actionable = np.zeros(
-            shape=(self.n_line,), dtype=dt_int
+            shape=(bk_type.n_line,), dtype=dt_int
         )
         self._times_before_topology_actionable = np.zeros(
-            shape=(self.n_sub,), dtype=dt_int
+            shape=(bk_type.n_sub,), dtype=dt_int
         )
         self._nb_timestep_overflow_allowed = np.full(
-            shape=(self.n_line,),
+            shape=(bk_type.n_line,),
             fill_value=self._parameters.NB_TIMESTEP_OVERFLOW_ALLOWED,
             dtype=dt_int,
         )
         self._hard_overflow_threshold = np.full(
-            shape=(self.n_line,),
+            shape=(bk_type.n_line,),
             fill_value=self._parameters.HARD_OVERFLOW_THRESHOLD,
             dtype=dt_float,
         )
-        self._timestep_overflow = np.zeros(shape=(self.n_line,), dtype=dt_int)
+        self._timestep_overflow = np.zeros(shape=(bk_type.n_line,), dtype=dt_int)
 
         # update the parameters
         self.__new_param = self._parameters  # small hack to have it working as expected
@@ -1404,28 +1451,43 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._reset_flexibility()
 
         # storage
-        self._storage_current_charge = np.zeros(self.n_storage, dtype=dt_float)
-        self._storage_previous_charge = np.zeros(self.n_storage, dtype=dt_float)
-        self._action_storage = np.zeros(self.n_storage, dtype=dt_float)
-        self._storage_power = np.zeros(self.n_storage, dtype=dt_float)
-        self._storage_power_prev = np.zeros(self.n_storage, dtype=dt_float)
+        self._storage_current_charge = np.zeros(bk_type.n_storage, dtype=dt_float)
+        self._storage_previous_charge = np.zeros(bk_type.n_storage, dtype=dt_float)
+        self._action_storage = np.zeros(bk_type.n_storage, dtype=dt_float)
+        self._storage_power = np.zeros(bk_type.n_storage, dtype=dt_float)
+        self._storage_power_prev = np.zeros(bk_type.n_storage, dtype=dt_float)
         self._amount_storage = 0.0
         self._amount_storage_prev = 0.0
 
         # curtailment
         self._limit_curtailment = np.ones(
-            self.n_gen, dtype=dt_float
+            bk_type.n_gen, dtype=dt_float
         )  # in ratio of pmax
         self._limit_curtailment_prev = np.ones(
-            self.n_gen, dtype=dt_float
+            bk_type.n_gen, dtype=dt_float
         )  # in ratio of pmax
-        self._gen_before_curtailment = np.zeros(self.n_gen, dtype=dt_float)  # in MW
+        self._gen_before_curtailment = np.zeros(bk_type.n_gen, dtype=dt_float)  # in MW
         self._sum_curtailment_mw = dt_float(0.0)
         self._sum_curtailment_mw_prev = dt_float(0.0)
         self._reset_curtailment()
 
         # register this is properly initialized
         self.__is_init = True
+        
+        # detachment (1.11.0)
+        self._loads_detached = np.zeros(bk_type.n_load, dtype=dt_bool)
+        self._gens_detached = np.zeros(bk_type.n_gen, dtype=dt_bool)
+        self._storages_detached = np.zeros(bk_type.n_storage, dtype=dt_bool)
+        self._prev_load_p =  np.zeros(bk_type.n_load, dtype=dt_float)
+        self._load_p_detached =  np.zeros(bk_type.n_load, dtype=dt_float)
+        self._prev_load_q =  np.zeros(bk_type.n_load, dtype=dt_float)
+        self._load_q_detached =  np.zeros(bk_type.n_load, dtype=dt_float)
+        self._prev_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
+        self._gen_p_detached =  np.zeros(bk_type.n_gen, dtype=dt_float)
+        self._storage_p_detached =  np.zeros(bk_type.n_storage, dtype=dt_float)
+        
+        # slack (1.11.0)
+        self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
 
     def _update_parameters(self):
         """update value for the new parameters"""
@@ -1513,9 +1575,24 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._reset_storage()
         self._reset_curtailment()
         self._reset_alert()
+        self._reset_slack_and_detachment()
         self._reward_to_obs = {}
         self._has_just_been_seeded = False
 
+    def _reset_slack_and_detachment(self):
+        self._loads_detached[:] = False
+        self._gens_detached[:] = False
+        self._storages_detached[:] = False
+        self._prev_load_p[:] = 0.
+        self._load_p_detached[:] = 0.
+        self._prev_load_q[:] = 0.
+        self._load_q_detached[:] = 0.
+        self._prev_gen_p[:] = 0.
+        self._gen_p_detached[:] = 0.
+        self._storage_p_detached[:] = 0.
+        
+        self._delta_gen_p[:] = 0.
+        
     def _reset_alert(self):
         self._last_alert[:] = False
         self._is_already_attacked[:] = False
@@ -1649,7 +1726,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 raise Grid2OpException(
                     "Impossible to seed with the seed provided. Make sure it can be converted to a"
                     "numpy 32 bits integer."
-                )
+                ) from exc_
             # example from gym
             # self.np_random, seed = seeding.np_random(seed)
             # inspiration from @ https://github.com/openai/gym/tree/master/gym/utils
@@ -1917,6 +1994,33 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self.backend.set_thermal_limit(self._thermal_limit_a)
         self.observation_space.set_thermal_limit(self._thermal_limit_a)
 
+    def _reset_redispatching(self):
+        # redispatching
+        self._target_dispatch[:] = 0.0
+        self._already_modified_gen[:] = False
+        self._actual_dispatch[:] = 0.0
+        self._gen_uptime[:] = 0
+        self._gen_downtime[:] = 0
+        self._gen_activeprod_t[:] = 0.0
+        self._gen_activeprod_t_redisp[:] = 0.0
+
+    def _feed_data_for_detachment(self, new_p_th):
+        """feed the attribute for the detachment"""
+        
+        self._prev_gen_p[:] = new_p_th
+        self._aux_retrieve_modif_act(self._prev_load_p, self._env_modification, "load_p")
+        self._aux_retrieve_modif_act(self._prev_load_q, self._env_modification, "load_q")
+        
+    def _aux_retrieve_modif_act(self,
+                                input_ : np.ndarray,
+                                act: BaseAction, 
+                                key: Literal["prod_p", "prod_v", "load_p", "load_q"]):
+        """It does modify directly its imput !"""
+        if key in act._dict_inj:
+            tmp = act._dict_inj[key]
+            indx_ok = np.isfinite(tmp)
+            input_[indx_ok] = tmp[indx_ok]
+        
     def _get_new_prod_setpoint(self, action):
         """
         NB this is overidden in _ObsEnv where the data are read from the action to set this environment
@@ -1924,18 +2028,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         # get the modification of generator active setpoint from the action
         new_p = 1.0 * self._gen_activeprod_t
-        if "prod_p" in action._dict_inj:
-            tmp = action._dict_inj["prod_p"]
-            indx_ok = np.isfinite(tmp)
-            new_p[indx_ok] = tmp[indx_ok]
+        self._aux_retrieve_modif_act(new_p, action, "prod_p")
             
         # modification of the environment always override the modification of the agents (if any)
         # TODO have a flag there if this is the case.
-        if "prod_p" in self._env_modification._dict_inj:
-            # modification of the production setpoint value
-            tmp = self._env_modification._dict_inj["prod_p"]
-            indx_ok = np.isfinite(tmp)
-            new_p[indx_ok] = tmp[indx_ok]
+        self._aux_retrieve_modif_act(new_p, self._env_modification, "prod_p")
         return new_p
     
     def _get_new_load_setpoint(self, action):
@@ -1945,18 +2042,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         # get the modification of generator active setpoint from the action
         new_p = 1.0 * self._load_demand_t
-        if "load_p" in action._dict_inj:
-            tmp = action._dict_inj["load_p"]
-            indx_ok = np.isfinite(tmp)
-            new_p[indx_ok] = tmp[indx_ok]
-
+        self._aux_retrieve_modif_act(new_p, action, "load_p")
+            
         # modification of the environment always override the modification of the agents (if any)
         # TODO have a flag there if this is the case.
-        if "load_p" in self._env_modification._dict_inj:
-            # modification of the production setpoint value
-            tmp = self._env_modification._dict_inj["load_p"]
-            indx_ok = np.isfinite(tmp)
-            new_p[indx_ok] = tmp[indx_ok]
+        self._aux_retrieve_modif_act(new_p, self._env_modification, "load_p")
         return new_p
 
     def _get_already_modified_gen(self, action):
@@ -3103,7 +3193,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     def _aux_apply_redisp(self, action:BaseAction, new_gen_p:np.array, new_gen_p_th:np.array,
                           new_load_p:np.array, new_load_p_th:np.array, gen_curtailed:np.array,
-                          except_) -> Tuple[BaseAction, np.array, np.array, bool]:
+                          except_, powerline_status) -> Tuple[BaseAction, np.array, np.array, bool]:
         is_illegal_redisp = False
         is_done = False
         is_illegal_reco = False
@@ -3120,7 +3210,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         if except_tmp is not None:
             orig_action = action
+            action.reset_cache_topological_impact()
             action = self._action_space({})
+            _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             if type(self).dim_alerts:
                 action.raise_alert = orig_action.raise_alert
             is_illegal_redisp = True
@@ -3157,7 +3249,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if not valid_disp or except_tmp is not None:
             # GAMEOVER case
             # Reason: Divergence of the Scipy (optimization) routine to compute redispatching and flexibility
+            action.reset_cache_topological_impact()
             res_action = self._action_space({})
+            _ = res_action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             if type(self).dim_alerts:
                 res_action.raise_alert = action.raise_alert
             is_illegal_redisp = True
@@ -3176,7 +3270,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         except_tmp = self._handle_updown_times(gen_up_before, self._actual_dispatch)
         if except_tmp is not None:
             is_illegal_reco = True
+            action.reset_cache_topological_impact()
             res_action = self._action_space({})
+            _ = res_action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
             if type(self).dim_alerts:
                 res_action.raise_alert = action.raise_alert
             except_.append(except_tmp)
@@ -3246,7 +3342,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # self._is_alert_illegal
     
     def _aux_register_env_converged(self, disc_lines:np.array, action:BaseAction, 
-                                    init_line_status:np.array, new_gen_p:np.array, new_load_p:np.array):
+                                    init_line_status:np.array, new_gen_p:np.array, new_load_p:np.array) -> Optional[Grid2OpException]:
         beg_res = time.perf_counter()
         # Update the thermal limit, for DLR for example
         self.backend.update_thermal_limit(self)
@@ -3293,8 +3389,35 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             ] = self._max_timestep_topology_deactivated
 
         # Extract production active value at this time step (should be independent of action class)
-        self._gen_activeprod_t[:], *_ = self.backend.generators_info()
-        # Note: The problem with the gen_activeprod_t above, is that the slack bus alone absorbs all the losses
+        tmp_gen_p, *_ = self.backend.generators_info()
+        if not self._parameters.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS:
+            # default behaviour, no check performed
+            self._gen_activeprod_t[:] = tmp_gen_p
+        else:
+            # I need to check whether all generators meet the constraints
+            cls = type(self)
+            if tmp_gen_p[cls.gen_redispatchable] > cls.gen_pmax[cls.gen_redispatchable] + self._tol_poly:
+                gen_ko = (tmp_gen_p[cls.gen_redispatchable] > cls.gen_pmax[cls.gen_redispatchable]).nonzero()[0]
+                gen_ko_nms = cls.name_gen[cls.gen_redispatchable][gen_ko]
+                return SomeGeneratorAbovePmax(f"Especially generators id {gen_ko_nms}")
+            if tmp_gen_p[cls.gen_redispatchable] < cls.gen_pmin[cls.gen_redispatchable] - self._tol_pol:
+                gen_ko = (tmp_gen_p[cls.gen_redispatchable] < cls.gen_pmin[cls.gen_redispatchable]).nonzero()[0]
+                gen_ko_nms = cls.name_gen[cls.gen_redispatchable][gen_ko]
+                return SomeGeneratorBelowPmin(f"Especially generators {gen_ko_nms}")
+            diff_ = tmp_gen_p - self._gen_activeprod_t
+            
+            if diff_[cls.gen_redispatchable] > cls.gen_max_ramp_up[cls.gen_redispatchable] + self._tol_poly:
+                gen_ko = (diff_[cls.gen_redispatchable] > cls.gen_max_ramp_up[cls.gen_redispatchable]).nonzero()[0]
+                gen_ko_nms = cls.name_gen[cls.gen_redispatchable][gen_ko]
+                return SomeGeneratorAboveRampmax(f"Especially generators {gen_ko_nms}")
+            if diff_[cls.gen_redispatchable] < -cls.gen_max_ramp_down[cls.gen_redispatchable] - self._tol_poly:
+                gen_ko = (diff_[cls.gen_redispatchable] < -cls.gen_max_ramp_down[cls.gen_redispatchable]).nonzero()[0]
+                gen_ko_nms = cls.name_gen[cls.gen_redispatchable][gen_ko]
+                return SomeGeneratorBelowRampmin(f"Especially generators {gen_ko_nms}")
+            
+            self._gen_activeprod_t[:] = tmp_gen_p
+            
+        # problem with the gen_activeprod_t above, is that the slack bus absorbs alone all the losses
         # of the system. So basically, when it's too high (higher than the ramp) it can
         # mess up the rest of the environment
         self._gen_activeprod_t_redisp[:] = new_gen_p + self._actual_dispatch
@@ -3304,14 +3427,21 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._load_demand_t_flex[:] = new_load_p + self._actual_flex
         
         # Set the line status
-        self._line_status[:] = copy.deepcopy(self.backend.get_line_status())
+        self._line_status[:] = self.backend.get_line_status()
 
+        # for detachment remember previous loads and generation
+        self._prev_load_p[:], self._prev_load_q[:], *_ = self.backend.loads_info()
+        self._delta_gen_p[:] = self._gen_activeprod_t - self._gen_activeprod_t_redisp
+        self._delta_gen_p[self._gens_detached] = 0.
+        self._prev_gen_p[:] = self._gen_activeprod_t
+        
         # Finally, build the observation (it's a different one at each step, we cannot reuse the same one)
         # THIS SHOULD BE DONE AFTER EVERYTHING IS INITIALIZED !
         self.current_obs = self.get_obs(_do_copy=False)
         # TODO storage: get back the result of the storage ! with the illegal action when a storage unit
         # TODO is non zero and disconnected, this should be ok.
         self._time_extract_obs += time.perf_counter() - beg_res
+        return None
 
     def _backend_next_grid_state(self):
         """Overloaded in MaskedEnv"""
@@ -3321,6 +3451,26 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                              new_gen_p:np.array, new_load_p:np.array, except_):
         has_error = True
         detailed_info = None
+        cls = type(self)
+        if cls.detachment_is_allowed:
+            self._loads_detached[:] = self._backend_action.get_load_detached()
+            self._gens_detached[:] = self._backend_action.get_gen_detached()
+            self._storages_detached[:] = self._backend_action.get_sto_detached()
+            
+            self._load_p_detached[:] = self._prev_load_p
+            self._load_p_detached[~self._loads_detached] = 0.
+            
+            self._load_q_detached[:] = self._prev_load_q
+            self._load_q_detached[~self._loads_detached] = 0.
+            
+            self._gen_p_detached[:] = self._prev_gen_p
+            self._gen_p_detached[~self._gens_detached] = 0.
+            
+            self._storage_p_detached[:] = 0.
+            mask_chgt = self._backend_action.storage_power.changed
+            self._storage_p_detached[mask_chgt] = self._backend_action.storage_power.values[mask_chgt]
+            self._storage_p_detached[~self._storages_detached] = 0.
+            
         try:
             # Compute the next _grid state
             beg_pf = time.perf_counter()
@@ -3329,10 +3479,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._time_powerflow += time.perf_counter() - beg_pf
             if conv_ is None:
                 # Everything went well, so register what is needed
-                self._aux_register_env_converged(
+                maybe_error = self._aux_register_env_converged(
                     disc_lines, action, init_line_status, new_gen_p, new_load_p,
                 )
-                has_error = False
+                if maybe_error is None:
+                    has_error = False
+                else:
+                    has_error = True
+                    except_.append(maybe_error)
             else:
                 except_.append(conv_)
         except Grid2OpException as exc_:
@@ -3500,11 +3654,22 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     else:
                         action.raise_alert = init_alert
                 except_.append(except_tmp)
-
+                
+            # speed optimization: during all the "env.step" the "topological impact"
+            # of an action is called multiple times, I cache the results
+            # at first iteration, self.current_obs is None so I cannot use self.current_obs.line_status
+            powerline_status = self.get_current_line_status()
+            # explicitly store in cache the topological impact (not to recompute it again and again)
+            # and this regardless of the 
+            _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
+            
             is_legal, reason = self._game_rules(action=action, env=self)
             if not is_legal:
-                # Action is replaced by do nothing
+                # Action is replace by do nothing
+                action.reset_cache_topological_impact()
                 action = self._action_space({})
+                _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
+                
                 init_disp = 1.0 * action._redispatch # Dispatching action
                 init_flex = 1.0 * action._flexibility # Flexibility action
                 action_storage_power = (1.0 * action._storage_power)  # Battery information
@@ -3529,27 +3694,29 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             new_load_p = self._get_new_load_setpoint(action)
             new_gen_p_th = 1.0 * new_gen_p
             new_load_p_th = 1.0 * new_load_p
+            self._feed_data_for_detachment(new_gen_p_th)
 
-            # Storage unit
+            # storage unit
             if cls.n_storage > 0:
                 # Ensures the Emin / Emax of storage for all the actions
                 # Note: Limiting of charge/discharge of storage units is done in `_aux_apply_redisp`
                 self._compute_storage(action_storage_power)
 
-            # Curtailment
-            # Note: No attempt is made here to "limit" curtailment for feasability
-            self._gen_before_curtailment[self.gen_renewable] = new_gen_p[self.gen_renewable]
+            # curtailment (does not attempt to "limit" the curtailment to make sure
+            # it is feasible)
+            self._gen_before_curtailment[cls.gen_renewable] = new_gen_p[cls.gen_renewable]
             gen_curtailed = self._aux_handle_curtailment_without_limit(action, new_gen_p)
 
             # Redispatch + Flexibility
             beg__redisp = time.perf_counter()
-            if cls.redispatching_unit_commitment_available or cls.flexible_load_available or cls.n_storage > 0.0:
+            if (cls.redispatching_unit_commitment_available or cls.n_storage > 0.0 or cls.flexible_load_available) and self._parameters.ENV_DOES_REDISPATCHING:
                 # This computes the "optimal" redispatching of generators and flexibility
                 # adjustment of loads
                 # Note: It is in this function that the limiting of the curtailment / storage actions
                 # is performed to make the state "feasible"
                 res_disp = self._aux_apply_redisp(action, new_gen_p, new_gen_p_th,
-                                                          new_load_p, new_load_p_th, gen_curtailed, except_)
+                    new_load_p, new_load_p_th, gen_curtailed, except_, powerline_status
+                )
                 action, is_illegal_redisp, is_illegal_reco, is_done = res_disp
                 
             self._time_redisp += time.perf_counter() - beg__redisp
@@ -3644,7 +3811,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if self._update_obs_after_reward and self.current_obs is not None:
             # Transfer some information computed in the reward into the obs (if any)
             self.current_obs.update_after_reward(self)
-            
+        
+        action.reset_cache_topological_impact()
         # TODO: Documentation on all the possible way to be illegal now
         if self.done:
             self.__is_init = False
@@ -4022,7 +4190,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             if self._opponent_action_space is not None:
                 self._opponent_action_space.attach_layout(res)
 
-    def fast_forward_chronics(self, nb_timestep):
+    def fast_forward_chronics(self, nb_timestep, init_dt=None):
         """
         This method allows you to skip some time step at the beginning of the chronics.
 
@@ -4114,7 +4282,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._times_before_topology_actionable[:] = np.maximum(
             ff_time_topo_act, min_time_topo
         )
-
+        if init_dt is not None:
+            self.chronics_handler.set_current_datetime(init_dt) 
         # Update to the fast forward state using a do nothing action
         self.step(self._action_space({}))
 

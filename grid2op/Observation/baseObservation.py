@@ -30,7 +30,7 @@ from grid2op.Exceptions import (
     NoForecastAvailable,
     BaseObservationError,
 )
-from grid2op.Space import GridObjects
+from grid2op.Space import GridObjects, ElTypeInfo
 
 # TODO have a method that could do "forecast" by giving the _injection by the agent,
 # TODO if he wants to make custom forecasts
@@ -430,6 +430,22 @@ class BaseObservation(GridObjects):
         - obs.attack_under_alert[i] = +1 => attackable line i has been attacked and (before
           the attack) an alert was sent (so your agent expects to "game over" within the next 
           `env.parameters.ALERT_TIME_WINDOW` steps)  
+
+    gen_p_delta: :class:`numpy.ndarray`, dtype:float
+     
+    load_detached: :class:`numpy.ndarray`, dtype:bool
+    
+    gen_detached: :class:`numpy.ndarray`, dtype:bool
+    
+    storage_detached: :class:`numpy.ndarray`, dtype:bool
+    
+    load_p_detached: :class:`numpy.ndarray`, dtype:float
+    
+    load_q_detached: :class:`numpy.ndarray`, dtype:float
+    
+    gen_p_detached: :class:`numpy.ndarray`, dtype:float
+    
+    storage_p_detached: :class:`numpy.ndarray`, dtype:float
         
     _shunt_p: :class:`numpy.ndarray`, dtype:float
         Shunt active value (only available if shunts are available) (in MW)
@@ -502,6 +518,16 @@ class BaseObservation(GridObjects):
         # gen up / down
         "gen_margin_up",
         "gen_margin_down",
+        # slack (>= 1.11.0)
+        "gen_p_delta",
+        # detachment (>= 1.11.0)
+        "load_detached",
+        "gen_detached",
+        "storage_detached",
+        "load_p_detached",
+        "load_q_detached",
+        "gen_p_detached",
+        "storage_p_detached",
     ]
 
     attr_list_vect = None
@@ -639,6 +665,18 @@ class BaseObservation(GridObjects):
         self.max_step = dt_int(np.iinfo(dt_int).max)
         self.delta_time = dt_float(5.0)
 
+        # slack (1.11.0)
+        self.gen_p_delta = np.empty(shape=cls.n_gen, dtype=dt_float)
+        
+        # detachment (>= 1.11.0)
+        self.load_detached = np.ones(shape=cls.n_load, dtype=dt_bool)
+        self.gen_detached = np.ones(shape=cls.n_gen, dtype=dt_bool)
+        self.storage_detached = np.ones(shape=cls.n_storage, dtype=dt_bool)
+        self.load_p_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
+        self.load_q_detached = np.zeros(shape=cls.n_load, dtype=dt_float)
+        self.gen_p_detached = np.zeros(shape=cls.n_gen, dtype=dt_float)
+        self.storage_p_detached = np.zeros(shape=cls.n_storage, dtype=dt_float)
+        
     def _aux_copy(self, other : Self) -> None:
         attr_simple = [
             "max_step",
@@ -710,6 +748,16 @@ class BaseObservation(GridObjects):
             "gen_margin_up",
             "gen_margin_down",
             "curtailment_limit_effective",
+            # slack (>= 1.11.0)
+            "gen_p_delta",
+            # detachment (>= 1.11.0)
+            "load_detached",
+            "gen_detached",
+            "storage_detached",
+            "load_p_detached",
+            "load_q_detached",
+            "gen_p_detached",
+            "storage_p_detached",
         ]
 
         if type(self).shunts_data_available:
@@ -852,6 +900,12 @@ class BaseObservation(GridObjects):
                 - "actual_flex" the actual flexibility implemented for this load
                 - "target_flex" the target flexibility (cumulation of all previously asked flexibility by the agent)
                   for this load
+                - "detached" (>= 1.11.0) whether this load is detached from the grid 
+                  (if detachement is allowed in the environment)
+                - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by 
+                  the detachment of this load (if detachement is allowed in the environment)
+                - "q_detached" (>= 1.11.0) amount of MVAr detached from the grid cause by 
+                  the detachment of this load (if detachement is allowed in the environment)
 
             - if a generator is inspected, then the keys are:
 
@@ -864,6 +918,21 @@ class BaseObservation(GridObjects):
                 - "actual_dispatch" the actual dispatch implemented for this generator
                 - "target_dispatch" the target dispatch (cumulation of all previously asked dispatch by the agent)
                   for this generator
+                - "curtailment": the curtailment applied on this generator (0. for non renewable generator)
+                - "curtailment_limit": the curtailment limit as given by the agent
+                - "curtailment_limit_effective": the effective curtailment limit
+                - "p_before_curtail": the active production (in MW) before any curtailment is applied
+                  this should be 0. for non renewable generator
+                - "margin_up": by how much this generateur can see its production increase between this step 
+                  and the next (in MW). It's 0. for renewable generators.
+                - "margin_down": by how much this generateur can see its production decrease between this step 
+                  and the next (in MW). It's 0. for renewable generators.
+                - "p_delta" (>= 1.11.0) difference (in MW) between what the environment ask this generator to produce
+                  and what it actually produces (difference is not caused by grid2op but by the Backend)
+                - "detached" (>= 1.11.0) whether this generator is detached from the 
+                  grid (if detachement is allowed in the environment)
+                - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by the 
+                  detachment of this generator (if detachement is allowed in the environment)
 
             - if a powerline is inspected then the keys are "origin" and "extremity" each being dictionary with keys:
 
@@ -891,6 +960,11 @@ class BaseObservation(GridObjects):
                 - "storage_theta": (optional) the voltage angle of the bus at which the storage unit is connected
                 - "bus": the bus (1 or 2) to which the storage unit is connected
                 - "sub_id" : the id of the substation to which the sotrage unit is connected
+                - "detached" (>= 1.11.0) whether this storage is detached from the grid
+                  (if detachement is allowed in the environment)
+                - "p_detached" (>= 1.11.0) amount of MW detached from the grid cause by the detachment of this storage
+                  (if detachement is allowed in the environment)
+
 
             - if a substation is inspected, it returns the topology to this substation in a dictionary with keys:
 
@@ -955,6 +1029,10 @@ class BaseObservation(GridObjects):
             }
             if self.support_theta:
                 res["theta"] = self.load_theta[load_id]
+            if cls.detachment_is_allowed:
+                res["detached"] = self.load_detached[load_id]
+                res["p_detached"] = self.load_p_detached[load_id]
+                res["q_detached"] = self.load_q_detached[load_id]
         elif gen_id is not None:
             if (
                 line_id is not None
@@ -985,9 +1063,13 @@ class BaseObservation(GridObjects):
                 "p_before_curtail": self.gen_p_before_curtail[gen_id],
                 "margin_up": self.gen_margin_up[gen_id],
                 "margin_down": self.gen_margin_down[gen_id],
+                "gen_p_delta": self.gen_p_delta[gen_id],
             }
             if self.support_theta:
                 res["theta"] = self.gen_theta[gen_id]
+            if cls.detachment_is_allowed:
+                res["detached"] = self.gen_detached[gen_id]
+                res["p_detached"] = self.gen_p_detached[gen_id]
         elif line_id is not None:
             if substation_id is not None or storage_id is not None:
                 raise Grid2OpException(ERROR_ONLY_SINGLE_EL)
@@ -1054,6 +1136,9 @@ class BaseObservation(GridObjects):
             res["sub_id"] = cls.storage_to_subid[storage_id]
             if self.support_theta:
                 res["theta"] = self.storage_theta[storage_id]
+            if cls.detachment_is_allowed:
+                res["detached"] = self.storage_detached[storage_id]
+                res["p_detached"] = self.storage_p_detached[storage_id]
         else:
             if substation_id >= len(cls.sub_info):
                 raise Grid2OpException(
@@ -1194,15 +1279,26 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError:
+            except ValueError as exc_:
                 # this attribute was not there in the first place
                 pass 
             
     @classmethod
-    def _aux_process_grid2op_compat_1110(cls):
+    def _aux_process_grid2op_compat_1_11_0(cls):
         cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
 
         for el in [
+            # slack (>= 1.11.0)
+            "gen_p_delta",
+            # detachment (>= 1.11.0)
+            "load_detached",
+            "gen_detached",
+            "storage_detached",
+            "load_p_detached",
+            "load_q_detached",
+            "gen_p_detached",
+            "storage_p_detached",
+            # flexibility (>= 1.11.0)
             "load_size",
             "load_flexible",
             "load_max_ramp_up",
@@ -1213,10 +1309,9 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError:
+            except ValueError as exc_:
                 # this attribute was not there in the first place
-                pass 
-        
+                pass
         
     @classmethod
     def process_grid2op_compat(cls) -> None:
@@ -1246,10 +1341,12 @@ class BaseObservation(GridObjects):
         if glop_ver < version.parse("1.9.1"):
             # alert attributes have been added in 1.9.1
             cls._aux_process_grid2op_compat_191()
-        
-        if glop_ver < version.parse("1.11.0.dev0"):
-            # flexibility attributes addded in 1.10.4
-            cls._aux_process_grid2op_compat_1110()
+            
+        if glop_ver < cls.MIN_VERSION_DETACH:
+            # detachment added in 1.11.0
+            # flexibility attributes added in 1.11.0
+            cls._aux_process_grid2op_compat_1_11_0()
+            
             
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
         cls.attr_list_set = set(cls.attr_list_vect)
@@ -1380,6 +1477,19 @@ class BaseObservation(GridObjects):
         self.curtailment_limit_effective[:] = 0.
         self.curtailment[:] = 0. 
 
+        # slack (>= 1.11.0)
+        self.gen_p_delta[:] = 0.
+        
+        # detachment (>= 1.11.0)
+        if type(self).detachment_is_allowed:
+            self.load_detached[:] = True
+            self.gen_detached[:] = True
+            self.storage_detached[:] = True
+            self.load_p_detached[:] = 0.
+            self.load_q_detached[:] = 0.
+            self.gen_p_detached[:] = 0.
+            self.storage_p_detached[:] = 0.
+        
     def set_game_over(self,
                       env: Optional["grid2op.Environment.Environment"]=None) -> None:
         """
@@ -1521,6 +1631,19 @@ class BaseObservation(GridObjects):
         # was_alert_used_after_attack not updated here in this case
         # attack_under_alert not updated here in this case
 
+        # slack (>= 1.11.0)
+        self.gen_p_delta[:] = 0.
+        
+        # detachment (>= 1.11.0)
+        if type(self).detachment_is_allowed:
+            self.load_detached[:] = True
+            self.gen_detached[:] = True
+            self.storage_detached[:] = True
+            self.load_p_detached[:] = 0.
+            self.load_q_detached[:] = 0.
+            self.gen_p_detached[:] = 0.
+            self.storage_p_detached[:] = 0.
+        
     def __compare_stats(self, other: Self, name: str) -> bool:
         attr_me = getattr(self, name)
         attr_other = getattr(other, name)
@@ -2764,15 +2887,31 @@ class BaseObservation(GridObjects):
         return bus_ids
         
     def _aux_add_loads(self, graph, cls, first_id):
-        nodes_prop = [("target_flex", self.target_flex),
-                      ("actual_flex", self.actual_flex)]
+        if type(self).detachment_is_allowed:
+            nodes_prop = [
+                ("detached", self.load_detached),
+                ("p_detached", self.load_p_detached),
+                ("q_detached", self.load_q_detached),
+                ("target_flex", self.target_flex),
+                ("actual_flex", self.actual_flex)
+            ]
+        else:
+            nodes_prop = [("target_flex", self.target_flex),
+                          ("actual_flex", self.actual_flex)]
+        
         edges_prop=[
             ("p", self.load_p),
             ("q", self.load_q),
-            ("v", self.load_v)
+            ("v", self.load_v),
         ]
         if self.support_theta:
             edges_prop.append(("theta", self.load_theta))
+
+        # slack (>= 1.11.0)
+        self.gen_p_delta[:] = 0.
+        
+        if "load_detached" in self.attr_list_set:
+            edges_prop.append(("is_detached", self.load_detached))
         load_ids = self._aux_add_el_to_comp_graph(graph,
                                                   first_id,
                                                   cls.name_load,
@@ -2792,8 +2931,9 @@ class BaseObservation(GridObjects):
                       ("curtailment", self.curtailment),
                       ("curtailment_limit", self.curtailment_limit),
                       ("gen_margin_up", self.gen_margin_up),
-                      ("gen_margin_down", self.gen_margin_down)
-                      ]  # todo class attributes gen_max_ramp_up etc.
+                      ("gen_margin_down", self.gen_margin_down),
+                      ("p_delta", self.gen_p_delta)]
+                       # todo class attributes gen_max_ramp_up etc.
         edges_prop=[
             ("p", - self.gen_p),
             ("q", - self.gen_q),
@@ -2801,6 +2941,11 @@ class BaseObservation(GridObjects):
         ]
         if self.support_theta:
             edges_prop.append(("theta", self.gen_theta))
+        
+        if type(self).detachment_is_allowed:
+            nodes_prop.append(("detached", self.gen_detached))
+            nodes_prop.append(("p_detached", self.gen_p_detached))
+            
         gen_ids = self._aux_add_el_to_comp_graph(graph,
                                                  first_id,
                                                  cls.name_gen,
@@ -2814,11 +2959,17 @@ class BaseObservation(GridObjects):
     
     def _aux_add_storages(self, graph, cls, first_id):
         nodes_prop = [("storage_charge", self.storage_charge),
-                      ("storage_power_target", self.storage_power_target)]  
+                      ("storage_power_target", self.storage_power_target),
+                      ]  
+        
         # TODO class attr in nodes_prop: storageEmax etc.
         edges_prop=[("p", self.storage_power)]
         if self.support_theta:
             edges_prop.append(("theta", self.storage_theta))
+        
+        if type(self).detachment_is_allowed:
+            nodes_prop.append(("detached", self.storage_detached))
+            nodes_prop.append(("p_detached", self.storage_p_detached))
         sto_ids = self._aux_add_el_to_comp_graph(graph,
                                                  first_id,
                                                  cls.name_storage,
@@ -3837,6 +3988,8 @@ class BaseObservation(GridObjects):
             # current_step / max step
             self._dictionnarized["current_step"] = self.current_step
             self._dictionnarized["max_step"] = self.max_step
+            
+            # TODO shedding: add relevant attributes
 
         return self._dictionnarized
 
@@ -4036,7 +4189,7 @@ class BaseObservation(GridObjects):
         cls = type(self)
         cls_act = type(act)
         
-        act = copy.deepcopy(act)
+        act : BaseAction = copy.deepcopy(act)
         res = cls()
         res.set_game_over(env=None)
 
@@ -4048,8 +4201,13 @@ class BaseObservation(GridObjects):
             raise RuntimeError(
                 f"Impossible to add an ambiguous action to an observation. Your action was "
                 f'ambiguous because: "{except_tmp}"'
-            )
+            ) from except_tmp
 
+        if act._modif_detach_gen or act._modif_detach_load or act._modif_detach_storage:
+            raise NotImplementedError("This function is not yet implemented when some elements "
+                                      "are detached from the grid. Please write a feature request "
+                                      "if you are interested in this feature.")
+            
         # if a powerline has been reconnected without specific bus, i issue a warning
         if "set_line_status" in cls_act.authorized_keys:
             self._aux_add_act_set_line_status(cls, cls_act, act, res, issue_warn)
@@ -4343,6 +4501,19 @@ class BaseObservation(GridObjects):
             self.curtailment_limit_effective[:] = 1.0
 
         self.delta_time = dt_float(1.0 * env.delta_time_seconds / 60.0)
+
+        # slack (1.11.0)
+        self.gen_p_delta[:] = env._delta_gen_p
+        
+        # detachment (>= 1.11.0)
+        if type(self).detachment_is_allowed:
+            self.load_detached[:] = env._loads_detached
+            self.gen_detached[:] = env._gens_detached
+            self.storage_detached[:] = env._storages_detached
+            self.load_p_detached[:] = env._load_p_detached
+            self.load_q_detached[:] = env._load_q_detached
+            self.gen_p_detached[:] = env._gen_p_detached
+            self.storage_p_detached[:] = env._storage_p_detached
         
         # handles forecasts here
         self._update_forecast(env, with_forecast)
@@ -4933,58 +5104,6 @@ class BaseObservation(GridObjects):
         if self._is_done:
             raise Grid2OpException("Cannot use this function in a 'done' state.")
         return self.action_helper.get_back_to_ref_state(self, storage_setpoint, precision)
-
-    def _aux_kcl(self,
-                 n_el, # cst eg. cls.n_gen
-                 el_to_subid, # cst eg. cls.gen_to_subid
-                 el_bus,  # cst eg. gen_bus
-                 el_p,  # cst, eg. gen_p
-                 el_q,  # cst, eg. gen_q
-                 el_v,  # cst, eg. gen_v
-                 p_subs, q_subs,
-                 p_bus, q_bus,
-                 v_bus,
-                 load_conv=True  # whether the object is load convention (True) or gen convention (False)
-                 ):
-        
-        # bellow i'm "forced" to do a loop otherwise, numpy do not compute the "+=" the way I want it to.
-        # for example, if two powerlines are such that line_or_to_subid is equal (eg both connected to substation 0)
-        # then numpy do not guarantee that `p_subs[self.line_or_to_subid] += p_or` will add the two "corresponding p_or"
-        # TODO this can be vectorized with matrix product, see example in obs.flow_bus_matrix (BaseObervation.py)
-        for i in range(n_el):
-            psubid = el_to_subid[i]
-            if el_bus[i] == -1:
-                # el is disconnected
-                continue
-            
-            # for substations
-            if load_conv:
-                p_subs[psubid] += el_p[i]
-                q_subs[psubid] += el_q[i]
-            else:
-                p_subs[psubid] -= el_p[i]
-                q_subs[psubid] -= el_q[i]
-
-            # for bus
-            loc_bus = el_bus[i] - 1
-            if load_conv:
-                p_bus[psubid, loc_bus] += el_p[i]
-                q_bus[psubid, loc_bus] += el_q[i]
-            else:
-                p_bus[psubid, loc_bus] -= el_p[i]
-                q_bus[psubid, loc_bus] -= el_q[i]
-
-            # compute max and min values
-            if el_v is not None and el_v[i]:
-                # but only if gen is connected
-                v_bus[psubid, loc_bus][0] = min(
-                    v_bus[psubid, loc_bus][0],
-                    el_v[i],
-                )
-                v_bus[psubid, loc_bus][1] = max(
-                    v_bus[psubid, loc_bus][1],
-                    el_v[i],
-                )
                 
     def check_kirchhoff(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -5013,98 +5132,75 @@ class BaseObservation(GridObjects):
 
         """
         cls = type(self)
-        
-        # fist check the "substation law" : nothing is created at any substation
-        p_subs = np.zeros(cls.n_sub, dtype=dt_float)
-        q_subs = np.zeros(cls.n_sub, dtype=dt_float)
-
-        # check for each bus
-        p_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
-        q_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
-        v_bus = (
-            np.zeros((cls.n_sub, cls.n_busbar_per_sub, 2), dtype=dt_float) - 1.0
-        )  # sub, busbar, [min,max]
-        some_kind_of_inf = 1_000_000_000.
-        v_bus[:,:,0] = some_kind_of_inf
-        v_bus[:,:,1] = -1 * some_kind_of_inf
-        
-        self._aux_kcl(
-            cls.n_line, # cst eg. cls.n_gen
-            cls.line_or_to_subid, # cst eg. cls.gen_to_subid
-            self.line_or_bus,
+        lineor_info = ElTypeInfo(
+            self.line_or_bus, # cst eg. self.gen_bus
             self.p_or,  # cst, eg. gen_p
             self.q_or,  # cst, eg. gen_q
             self.v_or,  # cst, eg. gen_v
-            p_subs, q_subs,
-            p_bus, q_bus,
-            v_bus,
             )
-        self._aux_kcl(
-            cls.n_line, # cst eg. cls.n_gen
-            cls.line_ex_to_subid, # cst eg. cls.gen_to_subid
-            self.line_ex_bus,
+        lineex_info = ElTypeInfo(
+            self.line_ex_bus, # cst eg. self.gen_bus
             self.p_ex,  # cst, eg. gen_p
             self.q_ex,  # cst, eg. gen_q
             self.v_ex,  # cst, eg. gen_v
-            p_subs, q_subs,
-            p_bus, q_bus,
-            v_bus,
             )
-        self._aux_kcl(
-            cls.n_load, # cst eg. cls.n_gen
-            cls.load_to_subid, # cst eg. cls.gen_to_subid
-            self.load_bus,
+        load_info = ElTypeInfo(
+            self.load_bus, # cst eg. self.gen_bus
             self.load_p,  # cst, eg. gen_p
             self.load_q,  # cst, eg. gen_q
             self.load_v,  # cst, eg. gen_v
-            p_subs, q_subs,
-            p_bus, q_bus,
-            v_bus,
             )
-        self._aux_kcl(
-            cls.n_gen, # cst eg. cls.n_gen
-            cls.gen_to_subid, # cst eg. cls.gen_to_subid
+        gen_info = ElTypeInfo(
             self.gen_bus,  # cst eg. self.gen_bus
             self.gen_p,  # cst, eg. gen_p
             self.gen_q,  # cst, eg. gen_q
             self.gen_v,  # cst, eg. gen_v
-            p_subs, q_subs,
-            p_bus, q_bus,
-            v_bus,
-            load_conv=False
             )
-        if cls.n_storage:
-            self._aux_kcl(
-                cls.n_storage, # cst eg. cls.n_gen
-                cls.storage_to_subid, # cst eg. cls.gen_to_subid
-                self.storage_bus,
+        if cls.n_storage > 0:
+            storage_info = ElTypeInfo(
+                self.storage_bus,   # cst eg. self.gen_bus
                 self.storage_power,  # cst, eg. gen_p
                 np.zeros(cls.n_storage),  # cst, eg. gen_q
                 None,  # cst, eg. gen_v
-                p_subs, q_subs,
-                p_bus, q_bus,
-                v_bus,
-                )
+            )
+        else:
+            storage_info = None
 
         if cls.shunts_data_available:
-            self._aux_kcl(
-                cls.n_shunt, # cst eg. cls.n_gen
-                cls.shunt_to_subid, # cst eg. cls.gen_to_subid
-                self._shunt_bus,
+            shunt_info = ElTypeInfo(
+                self._shunt_bus,  # cst eg. self.gen_bus
                 self._shunt_p,  # cst, eg. gen_p
                 self._shunt_q,  # cst, eg. gen_q
                 self._shunt_v,  # cst, eg. gen_v
-                p_subs, q_subs,
-                p_bus, q_bus,
-                v_bus,
-                )
-        else:
-            warnings.warn(
-                "Observation.check_kirchhoff Impossible to get shunt information. Reactive information might be "
-                "incorrect."
             )
-        diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
-        diff_v_bus[:, :] = v_bus[:, :, 1] - v_bus[:, :, 0]
-        diff_v_bus[np.abs(diff_v_bus - -2. * some_kind_of_inf) <= 1e-5 ] = 0.  # disconnected bus
+        else:
+            shunt_info = None
+        
+        p_subs, q_subs, p_bus, q_bus, diff_v_bus = cls._aux_check_kirchhoff(lineor_info,
+                                                                            lineex_info,
+                                                                            load_info,
+                                                                            gen_info,
+                                                                            storage_info,
+                                                                            shunt_info)
         return p_subs, q_subs, p_bus, q_bus, diff_v_bus
-    
+
+    @classmethod
+    def process_detachment(cls):
+        if not cls.detachment_is_allowed:
+            # this is really important, otherwise things from grid2op base types will be affected
+            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+            # remove the detachment from the list to vector
+            for el in ["load_detached",
+                       "gen_detached",
+                       "storage_detached",
+                       "load_p_detached",
+                       "load_q_detached",
+                       "gen_p_detached",
+                       "storage_p_detached",]:
+                if el in cls.attr_list_vect:
+                    try:
+                        cls.attr_list_vect.remove(el)
+                    except ValueError:
+                        pass
+            cls._update_value_set()
+        return super().process_detachment()

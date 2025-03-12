@@ -23,17 +23,19 @@ import os
 import numpy as np
 import sys
 from packaging import version
-from typing import Dict, Union, Literal, Any, List, Optional, ClassVar, Tuple
+from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
     
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import *
-from grid2op.Space.space_utils import extract_from_dict, save_to_dict
+from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
 
 # TODO tests of these methods and this class in general
 DEFAULT_N_BUSBAR_PER_SUB = 2
+DEFAULT_ALLOW_DETACHMENT = False
 GRID2OP_CLASSES_ENV_FOLDER = "_grid2op_classes"
+
 
 class GridObjects:
     """
@@ -499,6 +501,7 @@ class GridObjects:
     """
 
     BEFORE_COMPAT_VERSION : ClassVar[str] = "neurips_2020_compat"
+    MIN_VERSION_DETACH : ClassVar[str] = version.parse("1.11.0.dev2")
     glop_version : ClassVar[str] = grid2op.__version__
     
     _INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
@@ -535,6 +538,7 @@ class GridObjects:
 
     sub_info : ClassVar[np.ndarray] = None
     dim_topo : ClassVar[np.ndarray] = -1
+    detachment_is_allowed : ClassVar[bool] = DEFAULT_ALLOW_DETACHMENT
 
     # to which substation is connected each element
     load_to_subid : ClassVar[np.ndarray] = None
@@ -689,6 +693,10 @@ class GridObjects:
         cls.n_busbar_per_sub = n_busbar_per_sub
         
     @classmethod
+    def set_detachment_is_allowed(cls, detachment_is_allowed: bool) -> None:
+        cls.detachment_is_allowed = detachment_is_allowed
+        
+    @classmethod
     def tell_dim_alarm(cls, dim_alarms: int) -> None:
         if cls.dim_alarms != 0:
             # number of alarms has already been set, i issue a warning
@@ -730,8 +738,10 @@ class GridObjects:
 
         This clear the class as if it was defined in grid2op directly.
         """        
+        
+        #: this has to be here and not in _clear_grid_dependant_class_attributes
+        # otherwise it breaks some lightsim2grid versions
         cls.shunts_data_available = False
-        cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
         
         # for redispatching / unit commitment
         cls._li_attr_disp = [
@@ -779,6 +789,13 @@ class GridObjects:
             float,
             float
         ]
+
+        cls.SUB_COL = 0
+        cls.LOA_COL = 1
+        cls.GEN_COL = 2
+        cls.LOR_COL = 3
+        cls.LEX_COL = 4
+        cls.STORAGE_COL = 5
         
         cls._clear_grid_dependant_class_attributes()
         
@@ -789,14 +806,10 @@ class GridObjects:
         cls._INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically
         cls._PATH_GRID_CLASSES = None  # especially do not modify that
         
+        cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
+        cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
+        
         cls.glop_version = grid2op.__version__
-
-        cls.SUB_COL = 0
-        cls.LOA_COL = 1
-        cls.GEN_COL = 2
-        cls.LOR_COL = 3
-        cls.LEX_COL = 4
-        cls.STORAGE_COL = 5
 
         cls.attr_list_vect = None
         cls.attr_list_set = {}
@@ -964,6 +977,20 @@ class GridObjects:
         """
         return np.array(getattr(self, attr_name)).flatten()
 
+    def _set_array_from_attr_name(self, allowed_keys, key: str, array_) -> None:
+        """used for `from_json` please see `_assign_attr_from_name` for `from_vect`"""
+        if key not in allowed_keys:
+            raise AmbiguousAction(f'Impossible to recognize the key "{key}"')
+        my_attr = getattr(self, key)
+        if isinstance(my_attr, np.ndarray):
+            # the regular instance is an array, so i just need to assign the right values to it
+            my_attr[:] = array_
+        else:
+            # normal values is a scalar. So i need to convert the array received as a scalar, and
+            # convert it to the proper type
+            type_ = type(my_attr)
+            setattr(self, key, type_(array_[0]))
+
     def to_vect(self) -> np.ndarray:
         """
         Convert this instance of GridObjects to a numpy ndarray.
@@ -1059,19 +1086,10 @@ class GridObjects:
 
         """
         # TODO optimization for action or observation, to reduce json size, for example using the see `to_json`
-        all_keys = type(self).attr_list_vect + type(self).attr_list_json
+        cls = type(self)
+        all_keys = cls.attr_list_vect + cls.attr_list_json
         for key, array_ in dict_.items():
-            if key not in all_keys:
-                raise AmbiguousAction(f'Impossible to recognize the key "{key}"')
-            my_attr = getattr(self, key)
-            if isinstance(my_attr, np.ndarray):
-                # the regular instance is an array, so i just need to assign the right values to it
-                my_attr[:] = array_
-            else:
-                # normal values is a scalar. So i need to convert the array received as a scalar, and
-                # convert it to the proper type
-                type_ = type(my_attr)
-                setattr(self, key, type_(array_[0]))
+            self._set_array_from_attr_name(all_keys, key, array_)
 
     @classmethod
     def _convert_to_json(cls, dict_: Dict[str, Any]) -> None:
@@ -1192,6 +1210,8 @@ class GridObjects:
 
         If this function is overloaded, then the _get_array_from_attr_name must be too.
 
+        Used for `from_vect`, please see `_set_array_from_attr_name` for `from_json`
+        
         Parameters
         ----------
         attr_nm
@@ -2104,17 +2124,18 @@ class GridObjects:
         # TODO n_busbar_per_sub different num per substations
         if isinstance(cls.n_busbar_per_sub, (int, dt_int, np.int32, np.int64)):
             cls.n_busbar_per_sub = dt_int(cls.n_busbar_per_sub)
-                                   # np.full(cls.n_sub,
-                                   #         fill_value=cls.n_busbar_per_sub,
-                                   #         dtype=dt_int)
         else:
-            # cls.n_busbar_per_sub = np.array(cls.n_busbar_per_sub)
-            # cls.n_busbar_per_sub = cls.n_busbar_per_sub.astype(dt_int)
-            raise EnvError("Grid2op cannot handle a different number of busbar per substations at the moment.")
+            raise EnvError("Grid2op cannot handle a different number "
+                           "of busbar per substations with provided input "
+                           "(make sure `n_busbar_per_sub` is an int)")
         
-        # if cls.n_busbar_per_sub != int(cls.n_busbar_per_sub):
-            # raise EnvError(f"`n_busbar_per_sub` should be convertible to an integer, found {cls.n_busbar_per_sub}")
-        # cls.n_busbar_per_sub = int(cls.n_busbar_per_sub)
+        if isinstance(cls.detachment_is_allowed, (bool, dt_bool)):
+            cls.detachment_is_allowed = dt_bool(cls.detachment_is_allowed)
+        else:
+            raise EnvError("Grid2op cannot handle disconnection of loads / generators "
+                           "at the moment (make sure `detachment_is_allowed` "
+                           "is a bool)")
+        
         if (cls.n_busbar_per_sub < 1).any():
             raise EnvError(f"`n_busbar_per_sub` should be >= 1 found {cls.n_busbar_per_sub}")
             
@@ -3061,7 +3082,7 @@ class GridObjects:
             it does not initialize it. Setting "force=True" will bypass this check and update it accordingly.
 
         """
-        # nothing to do now that the value are class member
+        # nothing to do now that the value are class member            
         name_res = "{}_{}".format(cls.__name__, gridobj.env_name)
         if gridobj.glop_version != grid2op.__version__:
             name_res += f"_{gridobj.glop_version}"
@@ -3085,6 +3106,9 @@ class GridObjects:
             # to be able to load same environment with
             # different `n_busbar_per_sub`
             name_res += f"_{gridobj.n_busbar_per_sub}"
+            
+        if gridobj.detachment_is_allowed != DEFAULT_ALLOW_DETACHMENT:
+            name_res += "_allowDetach"
                 
         if _local_dir_cls is not None and gridobj._PATH_GRID_CLASSES is not None:
             # new in grid2op 1.10.3:
@@ -3126,12 +3150,12 @@ class GridObjects:
         else:
             # i am the original class from grid2op
             res_cls._INIT_GRID_CLS = cls
-        
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
         res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
+        res_cls.process_detachment()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
@@ -3201,6 +3225,12 @@ class GridObjects:
             # this feature did not exists before
             # I need to set it to the default if set elsewhere
             cls.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
+            res = True
+
+        if glop_ver < cls.MIN_VERSION_DETACH:
+            # Detachment did not exist, default value should have
+            # no effect
+            cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
             res = True
             
         if glop_ver < version.parse("1.11.0.dev0"):
@@ -3873,6 +3903,8 @@ class GridObjects:
                 else:
                     res[k] = v
             return
+       
+        save_to_dict(res, cls, "detachment_is_allowed", str, copy_)
 
         if not _topo_vect_only:
             # all the attributes bellow are not needed for the "first call"
@@ -4252,7 +4284,7 @@ class GridObjects:
         # shunt (not in topo vect but might be usefull)
         res["shunts_data_available"] = cls.shunts_data_available
         res["n_shunt"] = cls.n_shunt
-        
+
         if not _topo_vect_only:
             # all the attributes bellow are not needed for the "first call"
             # to this function when the elements are put together in the topo_vect.
@@ -4267,7 +4299,9 @@ class GridObjects:
             
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
-            
+        
+        res["detachment_is_allowed"] = cls.detachment_is_allowed
+        
         # avoid further computation and save it
         if not as_list and not _topo_vect_only:
             cls._CLS_DICT_EXTENDED = res.copy()
@@ -4340,6 +4374,18 @@ class GridObjects:
                 cls._PATH_GRID_CLASSES = None
         else:
             cls._PATH_GRID_CLASSES = None
+            
+        # Detachment of Loads / Generators
+        if 'detachment_is_allowed' in dict_:
+            if dict_["detachment_is_allowed"] == "True":
+                cls.detachment_is_allowed = True 
+            elif dict_["detachment_is_allowed"] == "False":
+                cls.detachment_is_allowed = False
+            else:
+                raise ValueError(f"'detachment_is_allowed' (value: {dict_['detachment_is_allowed']}'')"
+                                  "could not be converted to Boolean ")
+        else: # Compatibility for older versions
+            cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
         
         if 'n_busbar_per_sub' in dict_:
             cls.n_busbar_per_sub = int(dict_["n_busbar_per_sub"])
@@ -4541,7 +4587,9 @@ class GridObjects:
             # cls.set_env_name(f"{cls.env_name}_{cls.glop_version}")
             # and now post process the class attributes for that
             cls.process_grid2op_compat()
-
+        
+        cls.process_detachment()
+        
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]
         else:
@@ -4585,6 +4633,13 @@ class GridObjects:
         """remove possible shunts data from the classes, if shunts are deactivated"""
         pass
 
+    @classmethod
+    def process_detachment(cls):
+        """process the status of detachment, that can be turned on or off, is overloaded for :class:`grid2op.Action.BaseAction`
+        or :class:`grid2op.Observation.BaseObservation`
+        """
+        pass
+    
     @classmethod
     def set_no_storage(cls):
         """
@@ -4673,11 +4728,14 @@ class GridObjects:
         try:
             module = importlib.import_module(GRID2OP_CLASSES_ENV_FOLDER)
             if hasattr(module, name_cls):
-                my_class = getattr(module, name_cls)
+                my_class : Type["GridObjects"] = getattr(module, name_cls)
         except (ModuleNotFoundError, ImportError) as exc_:
             # normal behaviour i don't do anything there
             # TODO explain why
             pass
+        my_class.process_grid2op_compat()
+        my_class.process_detachment()
+        my_class.process_shunt_static_data()
         return my_class
 
     @staticmethod
@@ -4714,6 +4772,7 @@ class GridObjects:
             if res_cls.glop_version != grid2op.__version__:
                 res_cls.process_grid2op_compat()
             res_cls.process_shunt_static_data()
+            res_cls.process_detachment()
             # add the class in the "globals" for reuse later
             globals()[name_res] = res_cls
 
@@ -5135,7 +5194,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
 
     sub_info = {sub_info_str}
     dim_topo = {cls.dim_topo}
-
+    
     # to which substation is connected each element
     load_to_subid = {load_to_subid_str}
     gen_to_subid = {gen_to_subid_str}
@@ -5229,6 +5288,9 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     dim_alerts = {cls.dim_alerts}
     alertable_line_names = {alertable_line_names_str}
     alertable_line_ids = {alertable_line_ids_str}
+
+    # shedding
+    detachment_is_allowed = {cls.detachment_is_allowed}
 
 """
         return res
@@ -5416,3 +5478,214 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
                                                  obj_name=storage_name)
         sub_id = cls.storage_to_subid[storage_id]
         return storage_id, storage_name, sub_id
+    
+    
+    @classmethod
+    def _aux_kcl_eltype(cls,
+                        n_el : int, # cst eg. cls.n_gen
+                        el_to_subid : np.ndarray, # cst eg. cls.gen_to_subid
+                        el_bus : np.ndarray,  # cst eg. gen_bus
+                        el_p : np.ndarray,  # cst, eg. gen_p
+                        el_q : np.ndarray,  # cst, eg. gen_q
+                        el_v : np.ndarray,  # cst, eg. gen_v
+                        p_subs : np.ndarray, q_subs : np.ndarray,
+                        p_bus : np.ndarray, q_bus : np.ndarray,
+                        v_bus : np.ndarray,
+                        load_conv: bool=True  # whether the object is load convention (True) or gen convention (False)
+                        ):
+        """This function is used as an auxilliary function in the function :func:`grid2op.Observation.BaseObservation.check_kirchhoff`
+        and :func:`grid2op.Backend.Backend.check_kirchhoff`
+
+        Parameters
+        ----------
+        n_el : int
+            number of this element type (*eg* cls.n_gen)
+        el_to_subid : np.ndarray
+            for each element of this element type, on which substation this element is connected (*eg* cls.gen_to_subid)
+        el_bus : np.ndarray
+            for each element of this element type, on which busbar this element is connected (*eg* obs.gen_bus)
+        el_p : np.ndarray
+            for each element of this element type, it gives the active power value consumed / produced by this element (*eg* obs.gen_p)
+        el_q : np.ndarray
+            for each element of this element type, it gives the reactive power value consumed / produced by this element (*eg* obs.gen_q)
+        el_v : np.ndarray
+           for each element of this element type, it gives the voltage magnitude of the bus to which this element (*eg* obs.gen_v)
+           is connected
+        p_subs : np.ndarray
+            results, modified in place: p absorbed at each substation
+        q_subs : np.ndarray
+            results, modified in place: q absorbed at each substation
+        p_bus : np.ndarray
+            results, modified in place: p absorbed at each bus (shape nb_sub, max_nb_busbar_per_sub)
+        q_bus : np.ndarray
+            results, modified in place: q absorbed at each bus (shape nb_sub, max_nb_busbar_per_sub)
+        v_bus : np.ndarray
+            results, modified in place: min voltage and max voltage found per bus (shape nb_sub, max_nb_busbar_per_sub, 2)
+        load_conv : _type_, optional
+            Whetherthis object type use the "load convention" or "generator convention" for p and q, by default True
+        """
+        # bellow i'm "forced" to do a loop otherwise, numpy do not compute the "+=" the way I want it to.
+        # for example, if two powerlines are such that line_or_to_subid is equal (eg both connected to substation 0)
+        # then numpy do not guarantee that `p_subs[self.line_or_to_subid] += p_or` will add the two "corresponding p_or"
+        # TODO this can be vectorized with matrix product, see example in obs.flow_bus_matrix (BaseObervation.py)
+        for i in range(n_el):
+            psubid = el_to_subid[i]
+            if el_bus[i] == -1:
+                # el is disconnected
+                continue
+            
+            # for substations
+            if load_conv:
+                p_subs[psubid] += el_p[i]
+                q_subs[psubid] += el_q[i]
+            else:
+                p_subs[psubid] -= el_p[i]
+                q_subs[psubid] -= el_q[i]
+
+            # for bus
+            loc_bus = el_bus[i] - 1
+            if load_conv:
+                p_bus[psubid, loc_bus] += el_p[i]
+                q_bus[psubid, loc_bus] += el_q[i]
+            else:
+                p_bus[psubid, loc_bus] -= el_p[i]
+                q_bus[psubid, loc_bus] -= el_q[i]
+
+            # compute max and min values
+            if el_v is not None and el_v[i]:
+                # but only if gen is connected
+                v_bus[psubid, loc_bus][0] = min(
+                    v_bus[psubid, loc_bus][0],
+                    el_v[i],
+                )
+                v_bus[psubid, loc_bus][1] = max(
+                    v_bus[psubid, loc_bus][1],
+                    el_v[i],
+                )
+
+    @classmethod
+    def _aux_check_kirchhoff(cls,
+                             lineor_info : ElTypeInfo,
+                             lineex_info: ElTypeInfo, 
+                             load_info: ElTypeInfo, 
+                             gen_info: ElTypeInfo,
+                             storage_info: Optional[ElTypeInfo] = None,
+                             shunt_info : Optional[ElTypeInfo] = None,
+                             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Analogous to "backend.check_kirchhoff" but from the observation
+
+        .. versionadded:: 1.11.0
+        
+        Returns
+        -------
+        p_subs ``numpy.ndarray``
+            sum of injected active power at each substations (MW)
+        q_subs ``numpy.ndarray``
+            sum of injected reactive power at each substations (MVAr)
+        p_bus ``numpy.ndarray``
+            sum of injected active power at each buses. It is given in form of a matrix, with number of substations as
+            row, and number of columns equal to the maximum number of buses for a substation (MW)
+        q_bus ``numpy.ndarray``
+            sum of injected reactive power at each buses. It is given in form of a matrix, with number of substations as
+            row, and number of columns equal to the maximum number of buses for a substation (MVAr)
+        diff_v_bus: ``numpy.ndarray`` (2d array)
+            difference between maximum voltage and minimum voltage (computed for each elements)
+            at each bus. It is an array of two dimension:
+
+            - first dimension represents the the substation (between 1 and self.n_sub)
+            - second element represents the busbar in the substation (0 or 1 usually)
+
+        """        
+        # fist check the "substation law" : nothing is created at any substation
+        p_subs = np.zeros(cls.n_sub, dtype=dt_float)
+        q_subs = np.zeros(cls.n_sub, dtype=dt_float)
+
+        # check for each bus
+        p_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        q_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        v_bus = (
+            np.zeros((cls.n_sub, cls.n_busbar_per_sub, 2), dtype=dt_float) - 1.0
+        )  # sub, busbar, [min,max]
+        some_kind_of_inf = 1_000_000_000.
+        v_bus[:,:,0] = some_kind_of_inf
+        v_bus[:,:,1] = -1 * some_kind_of_inf
+        cls._aux_kcl_eltype(
+            cls.n_line, # cst eg. cls.n_gen
+            cls.line_or_to_subid, # cst eg. cls.gen_to_subid
+            lineor_info._bus, # cst eg. self.gen_bus
+            lineor_info._p,  # cst, eg. gen_p
+            lineor_info._q,  # cst, eg. gen_q
+            lineor_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        cls._aux_kcl_eltype(
+            cls.n_line, # cst eg. cls.n_gen
+            cls.line_ex_to_subid, # cst eg. cls.gen_to_subid
+            lineex_info._bus, # cst eg. self.gen_bus
+            lineex_info._p,  # cst, eg. gen_p
+            lineex_info._q,  # cst, eg. gen_q
+            lineex_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        cls._aux_kcl_eltype(
+            cls.n_load, # cst eg. cls.n_gen
+            cls.load_to_subid, # cst eg. cls.gen_to_subid
+            load_info._bus, # cst eg. self.gen_bus
+            load_info._p,  # cst, eg. gen_p
+            load_info._q,  # cst, eg. gen_q
+            load_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            )
+        cls._aux_kcl_eltype(
+            cls.n_gen, # cst eg. cls.n_gen
+            cls.gen_to_subid, # cst eg. cls.gen_to_subid
+            gen_info._bus, # cst eg. self.gen_bus
+            gen_info._p,  # cst, eg. gen_p
+            gen_info._q,  # cst, eg. gen_q
+            gen_info._v,  # cst, eg. gen_v
+            p_subs, q_subs,
+            p_bus, q_bus,
+            v_bus,
+            load_conv=False
+            )
+        if storage_info is not None:
+            cls._aux_kcl_eltype(
+                cls.n_storage, # cst eg. cls.n_gen
+                cls.storage_to_subid, # cst eg. cls.gen_to_subid
+                storage_info._bus, # cst eg. self.gen_bus
+                storage_info._p,  # cst, eg. gen_p
+                storage_info._q,  # cst, eg. gen_q
+                storage_info._v,  # cst, eg. gen_v
+                p_subs, q_subs,
+                p_bus, q_bus,
+                v_bus,
+                )
+
+        if shunt_info is not None:
+            GridObjects._aux_kcl_eltype(
+                cls.n_shunt, # cst eg. cls.n_gen
+                cls.shunt_to_subid, # cst eg. cls.gen_to_subid
+                shunt_info._bus, # cst eg. self.gen_bus
+                shunt_info._p,  # cst, eg. gen_p
+                shunt_info._q,  # cst, eg. gen_q
+                shunt_info._v,  # cst, eg. gen_v
+                p_subs, q_subs,
+                p_bus, q_bus,
+                v_bus,
+                )
+        else:
+            warnings.warn(
+                f"{cls.__name__}.check_kirchhoff Impossible to get shunt information. Reactive information might be "
+                "incorrect."
+            )
+        diff_v_bus = np.zeros((cls.n_sub, cls.n_busbar_per_sub), dtype=dt_float)
+        diff_v_bus[:, :] = v_bus[:, :, 1] - v_bus[:, :, 0]
+        diff_v_bus[np.abs(diff_v_bus - -2. * some_kind_of_inf) <= 1e-5 ] = 0.  # disconnected bus
+        return p_subs, q_subs, p_bus, q_bus, diff_v_bus

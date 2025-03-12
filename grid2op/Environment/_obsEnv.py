@@ -18,6 +18,7 @@ from grid2op.Exceptions import EnvError
 from grid2op.Chronics import ChangeNothing
 from grid2op.Chronics._obs_fake_chronics_handler import _ObsCH
 from grid2op.Rules import RulesChecker
+from grid2op.Space import DEFAULT_ALLOW_DETACHMENT
 from grid2op.operator_attention import LinearAttentionBudget
 
 from grid2op.Environment.baseEnv import BaseEnv
@@ -41,6 +42,7 @@ class _ObsEnv(BaseEnv):
 
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path,
         init_grid_path,
         backend_instanciated,
@@ -63,16 +65,17 @@ class _ObsEnv(BaseEnv):
         logger=None,
         highres_sim_counter=None,
         _complete_action_cls=None,
+        allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         _ptr_orig_obs_space=None,
         _local_dir_cls=None,  # only set at the first call to `make(...)` after should be false
         _read_from_local_dir=None,
     ):
         BaseEnv.__init__(
             self,
-            init_env_path,
-            init_grid_path,
-            copy.deepcopy(parameters),
-            thermal_limit_a,
+            init_env_path=init_env_path,
+            init_grid_path=init_grid_path,
+            parameters=copy.deepcopy(parameters),
+            thermal_limit_a=thermal_limit_a,
             other_rewards=other_rewards,
             epsilon_poly=epsilon_poly,
             tol_poly=tol_poly,
@@ -84,7 +87,8 @@ class _ObsEnv(BaseEnv):
             highres_sim_counter=highres_sim_counter,
             update_obs_after_reward=False,
             _local_dir_cls=_local_dir_cls,
-            _read_from_local_dir=_read_from_local_dir
+            _read_from_local_dir=_read_from_local_dir,
+            allow_detachment=allow_detachment
         )
         self._do_not_erase_local_dir_cls = True
         self.__unusable = False  # unsuable if backend cannot be copied
