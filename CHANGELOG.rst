@@ -187,6 +187,11 @@ Native multi agents support:
   that allows not to recompute it over and over again (this is internal API please do not change 
   it... unless you know what you are doing)
 - [IMPROVED] `ForecastEnv` is now part of the public API.
+    
+[1.10.5] - 2025-03-07
+------------------------
+- [FIXED] force pandapower < 3 otherwise pandapower backend does not work and 
+  lots of tests are failing.
 
 [1.10.5] - 2025-03-07
 ------------------------
