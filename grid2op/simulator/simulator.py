@@ -570,6 +570,7 @@ class Simulator(object):
             res = self.copy()
         else:
             res = self
+        
         this_act = act.copy()
 
         if new_gen_p is None:

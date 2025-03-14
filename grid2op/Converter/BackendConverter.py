@@ -165,10 +165,13 @@ class BackendConverter(Backend):
         # register the "n_busbar_per_sub" (set for the backend class)
         # TODO in case source supports the "more than 2" feature but not target
         # it's unclear how I can "reload" the grid...
-        from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB
+        from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
         type(self.source_backend).set_n_busbar_per_sub(DEFAULT_N_BUSBAR_PER_SUB)
         type(self.target_backend).set_n_busbar_per_sub(DEFAULT_N_BUSBAR_PER_SUB)
+        type(self.source_backend).set_detachment_is_allowed(DEFAULT_ALLOW_DETACHMENT)
+        type(self.target_backend).set_detachment_is_allowed(DEFAULT_ALLOW_DETACHMENT)
         self.cannot_handle_more_than_2_busbar()
+        self.cannot_handle_detachment()
         
         self.source_backend.load_grid(path, filename)
         # and now i load the target backend

@@ -1528,7 +1528,7 @@ class SerializableActionSpace(SerializableSpace):
                 )
                 return
 
-            curtail = np.full(obs.n_gen, fill_value=np.NaN)
+            curtail = np.full(obs.n_gen, fill_value=np.nan)
             curtail[is_curtailed] = 1.0
             act = self.actionClass()
             act.curtail = curtail
