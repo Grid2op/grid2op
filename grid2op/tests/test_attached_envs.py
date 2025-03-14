@@ -227,11 +227,11 @@ class TestL2RPN_CASE14_SANDBOX_DETACH(unittest.TestCase):
 
     def test_action_space(self):
         assert issubclass(self.env.action_space.subtype, PlayableAction)
-        assert self.env.action_space.n == 166, f"{self.env.action_space.n} instead of 166"
+        assert self.env.action_space.n == 177, f"{self.env.action_space.n} instead of 166"
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 518
+        size_th = 540
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )
