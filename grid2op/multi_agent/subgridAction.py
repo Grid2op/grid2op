@@ -76,12 +76,12 @@ class SubGridActionSpace(SubGridObjects, ActionSpace):
             rnd_update = self._sample_interco_change_bus()
         return rnd_update
     
-    @staticmethod
-    def _aux_get_powerline_id(action_space, sub_id_):
-        cls = type(action_space)
-        ids = super(ActionSpace, action_space)._aux_get_powerline_id(action_space, sub_id_)
-        interco_id = action_space.interco_to_sub_pos[
-            action_space.interco_to_subid == sub_id_
+    @classmethod
+    def _aux_get_element_busbar(cls, sub_id_: int):
+        """a configuration with an interco on a busbar is ok"""
+        ids = super(ActionSpace, cls)._aux_get_element_busbar(sub_id_)
+        interco_id = cls.interco_to_sub_pos[
+            cls.interco_to_subid == sub_id_
         ]
         ids = np.concatenate((ids, interco_id))
         return ids
