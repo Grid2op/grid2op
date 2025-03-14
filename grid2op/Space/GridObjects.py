@@ -4644,7 +4644,7 @@ class GridObjects:
         me_dict = {}
         cls._make_cls_dict_extended(cls, me_dict, as_list=False, copy_=False)
         other_cls_dict = {}
-        GridObjects._make_cls_dict_extended(other_cls, other_cls_dict, as_list=False, copy_=False) 
+        other_cls._make_cls_dict_extended(other_cls, other_cls_dict, as_list=False, copy_=False) 
 
         if me_dict.keys() - other_cls_dict.keys():
             # one key is in me but not in other
@@ -4743,7 +4743,7 @@ class GridObjects:
         # TODO this is not really a convenient use of that i'm sure !
         # Try to see if it can be better
         cls_attr_as_dict = {}
-        GridObjects._make_cls_dict_extended(type(self), cls_attr_as_dict, as_list=False)  # TODO save that in the class definition
+        type(self)._make_cls_dict_extended(type(self), cls_attr_as_dict, as_list=False)  # TODO save that in the class definition
         if hasattr(self, "__getstate__"):
             my_state = self.__getstate__()
         else:
