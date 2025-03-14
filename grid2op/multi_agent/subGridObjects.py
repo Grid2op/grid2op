@@ -9,15 +9,12 @@
 import pdb
 import numpy as np
 from grid2op.Exceptions import (EnvError, 
-                                IncorrectNumberOfElements, 
-                                IncorrectNumberOfGenerators, 
-                                IncorrectNumberOfLines, 
-                                IncorrectNumberOfLoads, 
-                                IncorrectNumberOfStorages)
+                                IncorrectNumberOfElements,
+                                )
 
 from grid2op.dtypes import dt_int
 from grid2op.Space.GridObjects import GridObjects
-from grid2op.Space.space_utils import extract_from_dict, save_to_dict
+from grid2op.Space.space_utils import save_to_dict
 import re
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 
