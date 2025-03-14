@@ -11,7 +11,7 @@ jobs:
   manylinux_build:
     name: Build linux ${{ matrix.python.name }} wheel
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux2014_x86_64
+    container: quay.io/pypa/manylinux_2_28_x86_64
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       GHA_USE_NODE_20: false
@@ -52,7 +52,7 @@ jobs:
     steps:
 
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -86,7 +86,7 @@ jobs:
           ls ./dist/*.whl
 
       - name: Upload wheel
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: grid2op-wheel-${{ matrix.config.name }}-${{ matrix.python.name }}
           path: dist/*.whl
@@ -134,7 +134,7 @@ jobs:
     steps:
 
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -212,7 +212,7 @@ jobs:
     steps:
 
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
 

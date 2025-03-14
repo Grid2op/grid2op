@@ -1190,7 +1190,13 @@ class SerializableActionSpace(SerializableSpace):
             else:
                 tmp += 1
         return tmp
-        
+    
+    @classmethod
+    def _aux_get_element_busbar(cls, sub_id_: int):
+        """For a topology to be considered as "ok" there """
+        powerlines_id = cls.get_powerline_id(sub_id_)
+        return powerlines_id
+    
     @staticmethod
     def get_all_unitary_topologies_set(action_space: Self,
                                        sub_id: int=None,
@@ -1290,12 +1296,12 @@ class SerializableActionSpace(SerializableSpace):
         S = list(range(1, cls.n_busbar_per_sub + 1))
         if sub_id is not None:            
             num_el = cls.sub_info[sub_id]
-            powerlines_id = action_space._aux_get_powerline_id(action_space, sub_id)
+            powerlines_id = cls._aux_get_element_busbar(sub_id)
             
             # computes all the topologies at 2 buses for this substation
             tmp = action_space._aux_get_all_unitary_topologies_set_comp_topo(S, num_el, action_space,
-                                                                       cls, powerlines_id, add_alone_line,
-                                                                       _count_only, sub_id)
+                                                                             cls, powerlines_id, add_alone_line,
+                                                                             _count_only, sub_id)
 
             if not _count_only and len(tmp) >= 2:
                 # if i have only one single topology on this substation, it doesn't make any action
@@ -1528,7 +1534,7 @@ class SerializableActionSpace(SerializableSpace):
                 )
                 return
 
-            curtail = np.full(obs.n_gen, fill_value=np.NaN)
+            curtail = np.full(obs.n_gen, fill_value=np.nan)
             curtail[is_curtailed] = 1.0
             act = self.actionClass()
             act.curtail = curtail

@@ -631,6 +631,7 @@ class __AuxBoxGymObsSpace:
 
         # handle the "functional" part
         self._template_obs = ob_sp._template_obj.copy()
+        self._template_obs.reset()
         self.__func = {}
 
         self._dims = None
@@ -854,7 +855,8 @@ class __AuxBoxGymObsSpace:
             key = "redispatch"  # "redispatch", "curtail", "set_storage"
             start_, end_ = gym_env.action_space.get_indexes(key)
             act[start_:end_] = np.random.uniform(high=1, low=-1, size=env.gen_redispatchable.sum())
-            # act only modifies the redispatch with the input given (here a uniform redispatching between -1 and 1)
+            # act only modifies the redispatch with the input given 
+            # (here a uniform redispatching between -1 and 1)
             
         """
         error_msg =(f"Impossible to use the grid2op action property \"{key}\""

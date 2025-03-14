@@ -204,6 +204,7 @@ class MultiAgentEnv(RandomObject):
                 warnings.warn("The central env has been heavily modified (parameters and reset) !")
             
             assert self._cent_env.parameters.MAX_LINE_STATUS_CHANGED == self.num_agents
+            assert self._cent_env.parameters.MAX_SUB_CHANGED == self.num_agents
             
         else:
             warnings.warn(("You cannot change the parameters of the distributed environment. Please visit: \n"
@@ -291,27 +292,31 @@ class MultiAgentEnv(RandomObject):
 
     def _build_global_action(self, action : ActionProfile, order : list):
         # The global action is do nothing at the beginning
-        self.global_action = self._cent_env.action_space({})
-        proposed_action = self.global_action.copy()
+        proposed_action = self._cent_env.action_space({})
         
         for agent in order:
             # We translate and add local actions one by one
             proposed_action += self._local_action_to_global(action[agent])
-
-        # We check if the resulted action is illegal
-        is_legal, reason = self._cent_env._game_rules(action=proposed_action, env=self._cent_env)
-        if not is_legal:
-            self._handle_illegal_action(reason)
             
         # We check if the resulted action is ambiguous
         ambiguous, except_tmp = proposed_action.is_ambiguous()
         if ambiguous:
             self._handle_ambiguous_action(except_tmp)
+
+        # We check if the resulted action is illegal
+        _ = proposed_action.get_topological_impact(self._cent_env.get_current_line_status(), _store_in_cache=True, _read_from_cache=False)
+        is_legal, reason = self._cent_env._game_rules(action=proposed_action, env=self._cent_env)
+        if not is_legal:
+            self._handle_illegal_action(reason)
             
         if is_legal and not ambiguous :
             # If the proposed action is valid, we adopt it
-            #Otherwise, the global action stays unchanged
+            # Otherwise, the global action stays unchanged
             self.global_action = proposed_action.copy()
+        else:
+            # action is either illegal or ambiguous
+            self.global_action = self._cent_env.action_space({})
+            
             
     def step(self, action : ActionProfile) -> Tuple[MADict, MADict, MADict, MADict]:
         """_summary_
@@ -345,8 +350,8 @@ class MultiAgentEnv(RandomObject):
     
     def _build_subgrids(self):
         self._subgrids_cls = {
-            'action' : dict(),
-            'observation' : dict()
+            'action' : {},
+            'observation' : {}
         }
         for agent_nm in self.agents : 
             # action space
@@ -658,7 +663,9 @@ class MultiAgentEnv(RandomObject):
             extra_name = f"_{type_}"
         else:
             extra_name += f"_{type_}"
-        res_cls = SubGridObjects.init_grid(gridobj=tmp_subgrid, extra_name=extra_name)
+        tmp_subgrid.env_name += extra_name
+        SubGridObjects._clear_grid_dependant_class_attributes()
+        res_cls = SubGridObjects.init_grid(gridobj=tmp_subgrid)
         # make sure the class is consistent
         res_cls.assert_grid_correct_cls()
         return res_cls
@@ -702,13 +709,6 @@ class MultiAgentEnv(RandomObject):
                                                           ma_env=self,
                                                           local_gridobj=this_subgrid,
                                                           is_complete_obs=self._is_global_obs)
-        
-        # if self._is_global_obs:
-        #     # in case of global observation, I simply copy the observation space
-        #     for agent_nm in self.agents:
-        #         self.observation_spaces[agent_nm] = self._cent_env.observation_space.copy(copy_backend=True)
-        # else:
-        #     raise NotImplementedError("Local observations are not available yet !")
     
     def _build_action_spaces(self):
         """Build action spaces from given domains for each agent
@@ -722,10 +722,8 @@ class MultiAgentEnv(RandomObject):
                                                                    extra_name=extra_name)
             self.action_spaces[agent_nm] = _cls_agent_action_space(
                 gridobj=this_subgrid,
-                agent_name=extra_name,
-                # actionClass=self._cent_env._actionClass_orig,  # TODO later: have a specific action class for MAEnv
-                actionClass=SubGridAction,  # TODO later: have a specific action class for MAEnv
-                legal_action=self._cent_env._game_rules.legal_action,  # TODO later: probably not no... But we'll see when we do the rules
+                actionClass=SubGridAction,
+                legal_action=self._cent_env._game_rules.legal_action,  # TODO later: probably not now... But we'll see when we do the rules
             )
     
     def _update_observations(self, cent_observation, _update_state=True):

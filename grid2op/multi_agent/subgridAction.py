@@ -9,7 +9,7 @@
 import copy
 import warnings
 import numpy as np
-from typing import Tuple
+from typing import Dict, Literal, Optional, Tuple
 
 from grid2op.dtypes import dt_bool, dt_int
 from grid2op.Exceptions import IllegalAction, AmbiguousAction, Grid2OpException
@@ -26,15 +26,13 @@ class SubGridActionSpace(SubGridObjects, ActionSpace):
         self,
         gridobj,
         legal_action,
-        agent_name,
         actionClass=BaseAction,  # need to be a base grid2op type (and not a type generated on the fly)
         ):
         SubGridObjects.__init__(self)
         ActionSpace.__init__(self,
                              gridobj=gridobj,
                              legal_action=legal_action,
-                             actionClass=actionClass,
-                             _extra_name=agent_name)
+                             actionClass=actionClass)
     
     def _get_possible_action_types(self):
         """Overrides an ActionSpace's method
@@ -78,12 +76,12 @@ class SubGridActionSpace(SubGridObjects, ActionSpace):
             rnd_update = self._sample_interco_change_bus()
         return rnd_update
     
-    @staticmethod
-    def _aux_get_powerline_id(action_space, sub_id_):
-        cls = type(action_space)
-        ids = super(ActionSpace, action_space)._aux_get_powerline_id(action_space, sub_id_)
-        interco_id = action_space.interco_to_sub_pos[
-            action_space.interco_to_subid == sub_id_
+    @classmethod
+    def _aux_get_element_busbar(cls, sub_id_: int):
+        """a configuration with an interco on a busbar is ok"""
+        ids = super(ActionSpace, cls)._aux_get_element_busbar(sub_id_)
+        interco_id = cls.interco_to_sub_pos[
+            cls.interco_to_subid == sub_id_
         ]
         ids = np.concatenate((ids, interco_id))
         return ids
@@ -224,9 +222,9 @@ class SubGridAction(SubGridObjects, PlayableAction):
     
     attr_list_set = set(attr_list_vect)
         
-    def __init__(self):
+    def __init__(self, _names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None):
         SubGridObjects.__init__(self)
-        PlayableAction.__init__(self)
+        PlayableAction.__init__(self, _names_chronics_to_backend)
     
         self.authorized_keys_to_digest["change_interco_status"] = self._digest_change_interco_status
         self.authorized_keys_to_digest["set_interco_status"] = self._digest_set_interco_status

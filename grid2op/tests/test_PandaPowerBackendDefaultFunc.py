@@ -64,7 +64,8 @@ class PandaPowerBackendDefault(PandaPowerBackend):
         """
         otherwise there are some infinite recursions
         """
-        res = np.full(self.dim_topo, fill_value=-1, dtype=dt_int)
+        self._topo_vect.flags.writeable = True
+        res = self._topo_vect
 
         line_status = np.concatenate(
             (
@@ -112,13 +113,14 @@ class PandaPowerBackendDefault(PandaPowerBackend):
         for bus_id in self._grid.gen["bus"].values:
             res[self.gen_pos_topo_vect[i]] = 1 if bus_id == self.gen_to_subid[i] else 2
             i += 1
-
+        res[self.gen_pos_topo_vect[~self._grid.gen["in_service"]]] = -1
         i = 0
         for bus_id in self._grid.load["bus"].values:
             res[self.load_pos_topo_vect[i]] = (
                 1 if bus_id == self.load_to_subid[i] else 2
             )
             i += 1
+        res[self.load_pos_topo_vect[~self._grid.load["in_service"]]] = -1
 
         # do not forget storage units !
         i = 0
@@ -127,6 +129,7 @@ class PandaPowerBackendDefault(PandaPowerBackend):
                 1 if bus_id == self.storage_to_subid[i] else 2
             )
             i += 1
+        self._topo_vect.flags.writeable = False
         return res
 
 

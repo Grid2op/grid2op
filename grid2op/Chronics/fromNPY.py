@@ -232,12 +232,12 @@ class FromNPY(GridValue):
         order_backend_subs,
         names_chronics_to_backend=None,
     ):
-        assert len(order_backend_prods) == self.n_gen
-        assert len(order_backend_loads) == self.n_load
+        assert len(order_backend_prods) == self.n_gen, f"len(order_backend_prods)={len(order_backend_prods)} vs self.n_gen={self.n_gen}"
+        assert len(order_backend_loads) == self.n_load, f"len(order_backend_loads)={len(order_backend_loads)} vs self.n_load={self.n_load}"
         if self.n_line is None:
             self.n_line = len(order_backend_lines)
         else:
-            assert len(order_backend_lines) == self.n_line
+            assert len(order_backend_lines) == self.n_line, f"len(order_backend_lines)={len(order_backend_lines)} vs self.n_line={self.n_line}"
 
         if self._forecasts is not None:
             self._forecasts.initialize(

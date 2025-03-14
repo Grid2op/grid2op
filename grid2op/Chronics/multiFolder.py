@@ -443,6 +443,8 @@ class Multifolder(GridValue):
             order_backend_subs,
             names_chronics_to_backend=names_chronics_to_backend,
         )
+        self.start_datetime = self.data.start_datetime
+        self.current_datetime = self.data.current_datetime
         if self.action_space is not None:
             self.data.action_space = self.action_space
         self._max_iter = self.data.max_iter
@@ -795,3 +797,8 @@ class Multifolder(GridValue):
         if self.data is None:
             return
         self.data.cleanup_action_space()
+
+    def set_current_datetime(self, str_: Union[str, datetime]):
+        super().set_current_datetime(str_)  # set the attribute of self
+        self.data.set_current_datetime(str_)  # set the attribute of the data
+        

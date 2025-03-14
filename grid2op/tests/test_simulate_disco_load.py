@@ -56,7 +56,7 @@ class TestSimulateDiscoLoad(unittest.TestCase):
         obs._obs_env._backend_action_set += self.env.action_space({"set_bus": {"loads_id": [(l_id, -1)]}})
         assert obs._obs_env._backend_action_set.current_topo.values[l_pos] == -1
         tmp = obs._obs_env._backend_action_set()  # do as if the action has been processed
-        assert not obs._obs_env._backend_action_set.load_p.changed[l_id]  # it's disconnected, so marked as unchanged now
+        assert obs._obs_env._backend_action_set.load_p.changed[l_id]  # it is not changed because disconnected
         assert np.allclose(obs._obs_env._backend_action_set.load_p.values[l_id], 22.3), f"{obs._obs_env._backend_action_set.load_p.values[l_id]:.2f} vs 22.3"
         
         

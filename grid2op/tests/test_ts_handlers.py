@@ -6,12 +6,14 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from datetime import timedelta
 import warnings
 import unittest
 
 from grid2op.tests.helper_path_test import *
 
 import grid2op
+from grid2op.Agent import BaseAgent
 from grid2op.Exceptions import NoForecastAvailable
 from grid2op.Chronics import GridStateFromFileWithForecasts, GridStateFromFile, GridStateFromFileWithForecastsWithoutMaintenance, FromHandlers
 from grid2op.Chronics.handlers import (CSVHandler,
@@ -33,6 +35,20 @@ import warnings
 # TODO check when there is also redispatching
 
 
+class TestAgent(BaseAgent):
+    def __init__(self, action_space, tester):
+        super().__init__(action_space)
+        self.tester = tester
+    def act(self, obs, reward, done=False):
+        # size of the forecast is always 12 even if it's "after" the size of the episode
+        self.tester._aux_test_obs(obs, max_it=12)
+        _ = self.tester.env.step(self.action_space())   # for TestPerfectForecastHandler: self.tester.env should be synch with the runner env...
+        return self.action_space()
+    def reset(self, obs):
+        self.tester.env.reset()  # for TestPerfectForecastHandler
+        return super().reset(obs)
+            
+            
 def _load_next_chunk_in_memory_hack(self):
     self._nb_call += 1
     # i load the next chunk as dataframes
@@ -510,18 +526,18 @@ class TestPersistenceHandler(unittest.TestCase):
         self.env.close()
         return super().tearDown()  
     
-    def _aux_test_obs(self, obs, max_it=12):
-        assert len(obs._forecasted_inj) == 13 # 12 + 1
+    def _aux_test_obs(self, obs, max_it=12, tol=1e-5):
+        assert len(obs._forecasted_inj) == max_it + 1, f"{len(obs._forecasted_inj)} vs {max_it + 1}"
         init_obj = obs._forecasted_inj[0]
-        for el in obs._forecasted_inj:
+        for for_h, el in enumerate(obs._forecasted_inj):
             for k_ in ["load_p", "load_q"]:
-                assert np.all(el[1]["injection"][k_] == init_obj[1]["injection"][k_])
+                assert np.abs(el[1]["injection"][k_] - init_obj[1]["injection"][k_]).max() <= tol, f'iter {for_h} : {el[1]["injection"][k_]} vs {init_obj[1]["injection"][k_]}'
             k_ = "prod_p"  # because of slack...
             assert np.all(el[1]["injection"][k_][:-1] == init_obj[1]["injection"][k_][:-1]) 
             
-        obs.simulate(self.env.action_space(), 12)
+        obs.simulate(self.env.action_space(), max_it)
         with self.assertRaises(NoForecastAvailable):
-            obs.simulate(self.env.action_space(), 13)
+            obs.simulate(self.env.action_space(), max_it + 1)
         
     def test_step(self):
         obs = self.env.reset()
@@ -552,20 +568,7 @@ class TestPersistenceHandler(unittest.TestCase):
             for k_ in ["load_p", "load_q", "prod_p"]:
                 assert np.all(el[1]["injection"][k_] == el_cpy[1]["injection"][k_])
     
-    def test_runner(self):
-        from grid2op.Agent import BaseAgent
-        class TestAgent(BaseAgent):
-            def __init__(self, action_space, tester):
-                super().__init__(action_space)
-                self.tester = tester
-            def act(self, obs, reward, done=False):
-                self.tester._aux_test_obs(obs, max_it=5 - obs.current_step)
-                _ = self.tester.env.step(self.action_space())   # for TestPerfectForecastHandler: self.tester.env should be synch with the runner env...
-                return self.action_space()
-            def reset(self, obs):
-                self.tester.env.reset()  # for TestPerfectForecastHandler
-                return super().reset(obs)
-            
+    def test_runner(self):            
         testagent = TestAgent(self.env.action_space, self)
         self.env.set_id(0)  # for TestPerfectForecastHandler
         runner = Runner(**self.env.get_params_for_runner(), agentClass=None, agentInstance=testagent)
@@ -725,6 +728,56 @@ class TestLoadQPHandler14(TestCSVHandlerEnv):
                                      test=True)
         self._aux_reproducibility()
                
-               
+
+class TestDoNothingAndForecastEnv(unittest.TestCase):
+    def setUp(self):
+        dict_ = {"chronics_class": FromHandlers,
+                 "data_feeding_kwargs": {"gen_p_handler": DoNothingHandler("prod_p"),
+                                         "load_p_handler": DoNothingHandler("load_p"),
+                                         "gen_v_handler": DoNothingHandler("prod_v"),
+                                         "load_q_handler": DoNothingHandler("load_q"),  # modifier pour les maintenances
+                                         "maintenance_handler": DoNothingHandler("maintenance"),
+                                         "h_forecast": [i * 30 for i in range(1, 48)],  # Every 30 mins ahead up for 47 timesteps
+                                         "time_interval": timedelta(minutes=30),
+                                         "gen_p_for_handler": PerfectForecastHandler("prod_p_forecasted"),
+                                         "gen_v_for_handler": PerfectForecastHandler("prod_v_forecasted"),
+                                         "load_p_for_handler": PerfectForecastHandler("load_p_forecasted"),
+                                         "load_q_for_handler": PerfectForecastHandler("load_q_forecasted"),
+             
+                                         }}
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("l2rpn_case14_sandbox",
+                                    test=True,
+                                    **dict_
+                                    )
+        return super().setUp()
+    
+    def tearDown(self):
+        self.env.close()
+        return super().tearDown()
+    
+    def test_forecast_env(self, tol=1e-5):
+        obs = self.env.reset(seed=0, options={"time serie id": 0})
+        # get the forecast env
+        params = self.env.parameters
+        params.NO_OVERFLOW_DISCONNECTION = True
+        for_env = obs.get_forecast_env()
+        for_env.change_parameters(params)
+        # check that forecast observations matches env data
+        sim_obs = for_env.reset()
+        assert (np.abs(obs.gen_p - sim_obs.gen_p) <= tol).all(), f"error: {np.abs(obs.gen_p - sim_obs.gen_p).max()}"
+        assert (np.abs(obs.load_p - sim_obs.load_p) <= tol).all(), f"error: {np.abs(obs.load_p - sim_obs.load_p).max()}"
+        assert (np.abs(obs.load_q - sim_obs.load_q) <= tol).all(), f"error: {np.abs(obs.load_q - sim_obs.load_q).max()}"
+        assert (np.abs(obs.a_or - sim_obs.a_or) <= 100. * tol).all(), f"error: {np.abs(obs.a_or - sim_obs.a_or).max()}"
+            
+        for i in range(47):
+            sim_obs, sim_r, sim_d, sim_i = for_env.step(self.env.action_space())
+            assert not sim_d, f"error for {i}"
+            assert (np.abs(obs.gen_p - sim_obs.gen_p) <= tol).all(), f"error for {i}: {np.abs(obs.gen_p - sim_obs.gen_p).max()}"
+            assert (np.abs(obs.load_p - sim_obs.load_p) <= tol).all(), f"error for {i}: {np.abs(obs.load_p - sim_obs.load_p).max()}"
+            assert (np.abs(obs.load_q - sim_obs.load_q) <= tol).all(), f"error for {i}: {np.abs(obs.load_q - sim_obs.load_q).max()}"
+            assert (np.abs(obs.a_or - sim_obs.a_or) <= 100. * tol).all(), f"error for {i}: {np.abs(obs.a_or - sim_obs.a_or).max()}"
+    
 if __name__ == "__main__":
     unittest.main()
