@@ -1081,8 +1081,8 @@ class MATesterGlobalObs(unittest.TestCase):
     
     def test_action_spaces(self):        
         action_domains = {
-            'agent_0' : [0,1,2,3, 4],
-            'agent_1' : [5,6,7,8,9,10,11,12,13]
+            'agent_0' : [0, 1, 2, 3, 4],
+            'agent_1' : [5, 6, 7, 8, 9, 10, 11, 12, 13]
         }
         space = "action"
         with warnings.catch_warnings():

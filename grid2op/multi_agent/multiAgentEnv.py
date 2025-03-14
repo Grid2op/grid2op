@@ -345,8 +345,8 @@ class MultiAgentEnv(RandomObject):
     
     def _build_subgrids(self):
         self._subgrids_cls = {
-            'action' : dict(),
-            'observation' : dict()
+            'action' : {},
+            'observation' : {}
         }
         for agent_nm in self.agents : 
             # action space
@@ -658,7 +658,9 @@ class MultiAgentEnv(RandomObject):
             extra_name = f"_{type_}"
         else:
             extra_name += f"_{type_}"
-        res_cls = SubGridObjects.init_grid(gridobj=tmp_subgrid, extra_name=extra_name)
+        tmp_subgrid.env_name += extra_name
+        SubGridObjects._clear_grid_dependant_class_attributes()
+        res_cls = SubGridObjects.init_grid(gridobj=tmp_subgrid)
         # make sure the class is consistent
         res_cls.assert_grid_correct_cls()
         return res_cls
@@ -702,13 +704,6 @@ class MultiAgentEnv(RandomObject):
                                                           ma_env=self,
                                                           local_gridobj=this_subgrid,
                                                           is_complete_obs=self._is_global_obs)
-        
-        # if self._is_global_obs:
-        #     # in case of global observation, I simply copy the observation space
-        #     for agent_nm in self.agents:
-        #         self.observation_spaces[agent_nm] = self._cent_env.observation_space.copy(copy_backend=True)
-        # else:
-        #     raise NotImplementedError("Local observations are not available yet !")
     
     def _build_action_spaces(self):
         """Build action spaces from given domains for each agent
@@ -722,10 +717,8 @@ class MultiAgentEnv(RandomObject):
                                                                    extra_name=extra_name)
             self.action_spaces[agent_nm] = _cls_agent_action_space(
                 gridobj=this_subgrid,
-                agent_name=extra_name,
-                # actionClass=self._cent_env._actionClass_orig,  # TODO later: have a specific action class for MAEnv
-                actionClass=SubGridAction,  # TODO later: have a specific action class for MAEnv
-                legal_action=self._cent_env._game_rules.legal_action,  # TODO later: probably not no... But we'll see when we do the rules
+                actionClass=SubGridAction,
+                legal_action=self._cent_env._game_rules.legal_action,  # TODO later: probably not now... But we'll see when we do the rules
             )
     
     def _update_observations(self, cent_observation, _update_state=True):

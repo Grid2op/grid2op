@@ -3076,7 +3076,21 @@ class GridObjects:
             it does not initialize it. Setting "force=True" will bypass this check and update it accordingly.
 
         """
-        # nothing to do now that the value are class member            
+        # TODO remove extra_name here, not used
+        return cls._gridobj_init_grid(gridobj, force, extra_name, force_module, _local_dir_cls)
+
+    @classmethod
+    def _gridobj_init_grid(cls, gridobj, force=False, extra_name=None, force_module=None, _local_dir_cls=None):
+        return cls._base_gridobj_init_grid(gridobj, force, extra_name, force_module, _local_dir_cls)
+    
+    @classmethod
+    def _get_cls_name(cls, gridobj)-> str:
+        # can be overriden
+        return cls._get_cls_name_gridobj(gridobj)
+    
+    @classmethod
+    def _get_cls_name_gridobj(cls, gridobj) -> str:
+        # do not attempt to overide it
         name_res = "{}_{}".format(cls.__name__, gridobj.env_name)
         if gridobj.glop_version != GRID2OP_CURRENT_VERSION_STR:
             name_res += f"_{gridobj.glop_version}"
@@ -3084,7 +3098,7 @@ class GridObjects:
         if gridobj._PATH_GRID_CLASSES is not None:
             # the configuration equires to initialize the classes from the local environment path
             # this might be usefull when using pickle module or multiprocessing on Windows for example
-            my_class = GridObjects._build_cls_from_import(name_res, gridobj._PATH_GRID_CLASSES)
+            my_class = cls._build_cls_from_import(name_res, gridobj._PATH_GRID_CLASSES)
             if my_class is not None:
                 return my_class
         
@@ -3103,7 +3117,12 @@ class GridObjects:
             
         if gridobj.detachment_is_allowed != DEFAULT_ALLOW_DETACHMENT:
             name_res += "_allowDetach"
-                
+        return name_res
+    
+    @classmethod
+    def _base_gridobj_init_grid(cls, gridobj, force=False, extra_name=None, force_module=None, _local_dir_cls=None):
+        name_res = cls._get_cls_name(gridobj)
+               
         if _local_dir_cls is not None and gridobj._PATH_GRID_CLASSES is not None:
             # new in grid2op 1.10.3:
             # if I end up here it's because (done in base_env.generate_classes()):
@@ -3136,7 +3155,7 @@ class GridObjects:
                 del globals()[name_res]
             
         cls_attr_as_dict = {}
-        GridObjects._make_cls_dict_extended(gridobj, cls_attr_as_dict, as_list=False)
+        cls._make_cls_dict_extended(gridobj, cls_attr_as_dict, as_list=False)
         res_cls = type(name_res, (cls,), cls_attr_as_dict)
         if hasattr(cls, "_INIT_GRID_CLS") and cls._INIT_GRID_CLS is not None:
             # original class is already from an initialized environment, i keep track of it
@@ -3171,7 +3190,7 @@ class GridObjects:
         globals()[name_res] = res_cls
         del res_cls
         return globals()[name_res]
-
+        
     @classmethod
     def _get_grid2op_version_as_version_obj(cls):
         if cls.glop_version == cls.BEFORE_COMPAT_VERSION:
