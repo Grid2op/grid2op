@@ -330,7 +330,7 @@ class SubGridObjects(GridObjects):
         if cls.n_line + cls.n_interco <= 0:
             raise EnvError(
                 "There should be at least one line or one interco for each "
-                "zone of your grid."
+                f"zone of your grid, None found for {cls.__name__}."
             )
     
     @classmethod

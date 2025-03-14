@@ -2163,10 +2163,6 @@ class GridObjects:
         :return: ``None``
         :raise: :class:`grid2op.EnvError` and possibly all of its derived class.
         """
-        # TODO refactor this method with the `_check***` methods.
-        # TODO refactor the `_check***` to use the same "base functions" that would be coded only once.
-        cls._check_for_gen_loads()
-        cls._check_for_lines()
 
         # TODO n_busbar_per_sub different num per substations
         if isinstance(cls.n_busbar_per_sub, (int, dt_int, np.int32, np.int64)):
@@ -2185,23 +2181,14 @@ class GridObjects:
         
         if (cls.n_busbar_per_sub < 1).any():
             raise EnvError(f"`n_busbar_per_sub` should be >= 1 found {cls.n_busbar_per_sub}")
-            
-        if cls.n_gen <= 0:
-            raise EnvError(
-                "n_gen is negative. Powergrid is invalid: there are no generator"
-            )
-        if cls.n_load <= 0:
-            raise EnvError(
-                "n_load is negative. Powergrid is invalid: there are no load"
-            )
-        if cls.n_line <= 0:
-            raise EnvError(
-                "n_line is negative. Powergrid is invalid: there are no line"
-            )
         if cls.n_sub <= 0:
             raise EnvError(
                 "n_sub is negative. Powergrid is invalid: there are no substations"
             )
+        # TODO refactor this method with the `_check***` methods.
+        # TODO refactor the `_check***` to use the same "base functions" that would be coded only once.
+        cls._check_for_gen_loads()
+        cls._check_for_lines()
 
         if (
             cls.n_storage == -1

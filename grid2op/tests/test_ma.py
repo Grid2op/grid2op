@@ -1037,7 +1037,8 @@ class MATesterGlobalObs(unittest.TestCase):
         for agent in self.ma_env.agents:
             action[agent] = self.ma_env.action_spaces[agent]({})
             action[agent].change_line_status = [local_id, local_id+1]
-        
+            
+        self.ma_env._cent_env.nb_time_step = 1 # rules are not checked at init
         self.ma_env._build_global_action(action, self.ma_env.agents)
         
         do_nothing = self.ma_env._cent_env.action_space({})
@@ -1046,8 +1047,8 @@ class MATesterGlobalObs(unittest.TestCase):
         assert do_nothing == self.ma_env.global_action
         # We check if info is updated
         assert (np.array([
-            self.ma_env.info[a]['action_is_illegal']
-            for a in self.ma_env.agents
+            self.ma_env.info[ag]['action_is_illegal']
+            for ag in self.ma_env.agents
         ])).all()
     
     def check_ambiguous_actions(self):

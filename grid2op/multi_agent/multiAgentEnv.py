@@ -204,6 +204,7 @@ class MultiAgentEnv(RandomObject):
                 warnings.warn("The central env has been heavily modified (parameters and reset) !")
             
             assert self._cent_env.parameters.MAX_LINE_STATUS_CHANGED == self.num_agents
+            assert self._cent_env.parameters.MAX_SUB_CHANGED == self.num_agents
             
         else:
             warnings.warn(("You cannot change the parameters of the distributed environment. Please visit: \n"
@@ -291,27 +292,31 @@ class MultiAgentEnv(RandomObject):
 
     def _build_global_action(self, action : ActionProfile, order : list):
         # The global action is do nothing at the beginning
-        self.global_action = self._cent_env.action_space({})
-        proposed_action = self.global_action.copy()
+        proposed_action = self._cent_env.action_space({})
         
         for agent in order:
             # We translate and add local actions one by one
             proposed_action += self._local_action_to_global(action[agent])
-
-        # We check if the resulted action is illegal
-        is_legal, reason = self._cent_env._game_rules(action=proposed_action, env=self._cent_env)
-        if not is_legal:
-            self._handle_illegal_action(reason)
             
         # We check if the resulted action is ambiguous
         ambiguous, except_tmp = proposed_action.is_ambiguous()
         if ambiguous:
             self._handle_ambiguous_action(except_tmp)
+
+        # We check if the resulted action is illegal
+        _ = proposed_action.get_topological_impact(self._cent_env.get_current_line_status(), _store_in_cache=True, _read_from_cache=False)
+        is_legal, reason = self._cent_env._game_rules(action=proposed_action, env=self._cent_env)
+        if not is_legal:
+            self._handle_illegal_action(reason)
             
         if is_legal and not ambiguous :
             # If the proposed action is valid, we adopt it
-            #Otherwise, the global action stays unchanged
+            # Otherwise, the global action stays unchanged
             self.global_action = proposed_action.copy()
+        else:
+            # action is either illegal or ambiguous
+            self.global_action = self._cent_env.action_space({})
+            
             
     def step(self, action : ActionProfile) -> Tuple[MADict, MADict, MADict, MADict]:
         """_summary_
