@@ -217,7 +217,7 @@ class TestAlarmFeature(unittest.TestCase):
         obs = self.env.reset()
         nb_th = 3
         assert abs(self.env._attention_budget._current_budget - nb_th) <= 1e-6
-        assert abs(obs.attention_budget - nb_th) <= 1e-6
+        assert abs(obs.attention_budget - nb_th) <= 1e-6, f"{obs.attention_budget} vs {nb_th}"
         assert obs.time_since_last_alarm == -1
         assert np.all(obs.last_alarm == [-1, -1, -1])
 

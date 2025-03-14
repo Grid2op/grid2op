@@ -16,6 +16,8 @@ import grid2op
 from grid2op.Action import ActionSpace, BaseAction, PlayableAction
 from grid2op.Exceptions import IllegalAction, SimulateError
 from grid2op.Observation import CompleteObservation
+from grid2op.gym_compat import DiscreteActSpace
+
 try:
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
@@ -1037,7 +1039,8 @@ class MATesterGlobalObs(unittest.TestCase):
         for agent in self.ma_env.agents:
             action[agent] = self.ma_env.action_spaces[agent]({})
             action[agent].change_line_status = [local_id, local_id+1]
-        
+            
+        self.ma_env._cent_env.nb_time_step = 1 # rules are not checked at init
         self.ma_env._build_global_action(action, self.ma_env.agents)
         
         do_nothing = self.ma_env._cent_env.action_space({})
@@ -1046,8 +1049,8 @@ class MATesterGlobalObs(unittest.TestCase):
         assert do_nothing == self.ma_env.global_action
         # We check if info is updated
         assert (np.array([
-            self.ma_env.info[a]['action_is_illegal']
-            for a in self.ma_env.agents
+            self.ma_env.info[ag]['action_is_illegal']
+            for ag in self.ma_env.agents
         ])).all()
     
     def check_ambiguous_actions(self):
@@ -1077,12 +1080,11 @@ class MATesterGlobalObs(unittest.TestCase):
         self.check_legal_actions()
         self.check_illegal_actions()
         self.check_ambiguous_actions()
-        
     
     def test_action_spaces(self):        
         action_domains = {
-            'agent_0' : [0,1,2,3, 4],
-            'agent_1' : [5,6,7,8,9,10,11,12,13]
+            'agent_0' : [0, 1, 2, 3, 4],
+            'agent_1' : [5, 6, 7, 8, 9, 10, 11, 12, 13]
         }
         space = "action"
         with warnings.catch_warnings():
@@ -1576,6 +1578,74 @@ class TestGlobalObservation(unittest.TestCase):
             if dones[self.ma_env.agents[0]]:
                 obs = self.ma_env.reset()
 
+     
+class TestBasicGymCompat(unittest.TestCase):
+    def setUp(self) -> None:
+        
+        self.action_domains = {
+            'agent_0' : [0, 1, 2, 3, 4],
+            'agent_1' : [5, 6, 7, 8, 9, 10, 11, 12, 13]
+        }
+        
+        self.observation_domains = {
+            'agent_0' : [0, 1, 2, 3, 4, 5, 6, 8],
+            'agent_1' : [5, 6, 7, 8, 9, 10, 11, 12, 13, 4, 3]
+        }
+        
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            
+            self.env = grid2op.make("educ_case14_storage",
+                                    test=True,
+                                    action_class=PlayableAction,
+                                    _add_to_name=type(self).__name__)
 
+        
+            self.ma_env = MultiAgentEnv(self.env, self.action_domains, self.observation_domains)
+            self.ma_env.seed(0)
+            self.ma_env.reset()
+            
+        return super().setUp()
+    
+    def tearDown(self) -> None:
+        self.env.close()
+        self.ma_env._cent_env.close()
+        return super().tearDown()
+    
+    def test_discrete(self):
+        # test default                    
+        _conv_action_space = {
+            agent_id : DiscreteActSpace(self.ma_env.action_spaces[agent_id])
+            for agent_id in self.ma_env.agents
+        }
+        assert _conv_action_space["agent_0"].n == 249
+        assert _conv_action_space["agent_1"].n == 424
+        li_attr = ["set_line_status", "set_line_status_simple",
+                   "change_line_status", "set_bus",
+                   "change_bus", "redispatch", "set_storage", "curtail", "curtail_mw"]
+        ref_attr = {
+            "set_line_status": {"agent_0": 36, "agent_1": 51},
+            "set_line_status_simple": {"agent_0": 15, "agent_1": 21},
+            "change_line_status": {"agent_0": 8, "agent_1": 11},
+            "set_bus": {"agent_0": 84, "agent_1": 152},
+            "change_bus": {"agent_0": 88, "agent_1": 168},
+            "redispatch": {"agent_0": 37, "agent_1": 1},
+            "set_storage": {"agent_0": 1, "agent_1": 25},
+            "curtail": {"agent_0": 1, "agent_1": 22},
+            "curtail_mw": {"agent_0": 1, "agent_1": 31},
+        }
+        for attr in li_attr:   
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore")                 
+                _conv_action_space = {
+                    agent_id : DiscreteActSpace(self.ma_env.action_spaces[agent_id],
+                                                attr_to_keep=[attr])
+                    for agent_id in self.ma_env.agents
+                }
+            assert _conv_action_space["agent_0"].n == ref_attr[attr]["agent_0"], f'{_conv_action_space["agent_0"].n} vs {ref_attr[attr]["agent_0"]}'
+            assert _conv_action_space["agent_1"].n == ref_attr[attr]["agent_1"], f'{_conv_action_space["agent_1"].n} vs {ref_attr[attr]["agent_1"]}'
+            
+        
+        
 if __name__ == "__main__":
     unittest.main()

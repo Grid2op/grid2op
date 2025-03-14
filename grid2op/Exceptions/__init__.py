@@ -59,7 +59,11 @@ __all__ = [
     "NotEnoughAttentionBudget",
     "AgentError",
     "SimulatorError",
-    "HandlerError"
+    "HandlerError",
+    "SomeGeneratorAbovePmax",
+    "SomeGeneratorBelowPmin",
+    "SomeGeneratorAboveRampmax", 
+    "SomeGeneratorBelowRampmin"
 ]
 
 from grid2op.Exceptions.grid2OpException import Grid2OpException
@@ -76,7 +80,11 @@ from grid2op.Exceptions.envExceptions import (EnvError,
                                               IncorrectPositionOfLines,
                                               IncorrectPositionOfStorages,
                                               UnknownEnv,
-                                              MultiEnvException)
+                                              MultiEnvException,
+                                              SomeGeneratorAbovePmax,
+                                              SomeGeneratorBelowPmin,
+                                              SomeGeneratorAboveRampmax, 
+                                              SomeGeneratorBelowRampmin)
 
 from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         OnProduction,

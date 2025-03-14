@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, RTE (https://www.rte-france.com)
+# Copyright (c) 2019-2024, RTE (https://www.rte-france.com)
 # See AUTHORS.txt
 # This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
 # If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
@@ -7,31 +7,25 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
+import datetime
 import numpy as np
 import warnings
 from typing import Dict, Union, Tuple, List, Optional, Any, Literal
 
 import grid2op
-from grid2op.Exceptions.envExceptions import EnvError
+import grid2op.Action
+from grid2op.Environment._env_prev_state import _EnvPreviousState
+import grid2op.Observation  # for type hints
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Environment.baseEnv import BaseEnv
+from grid2op.Exceptions import EnvError
 from grid2op.Chronics import ChangeNothing
+from grid2op.Chronics._obs_fake_chronics_handler import _ObsCH
 from grid2op.Rules import RulesChecker
+from grid2op.Space import DEFAULT_ALLOW_DETACHMENT
 from grid2op.operator_attention import LinearAttentionBudget
 
-
-class _ObsCH(ChangeNothing):
-    """
-    INTERNAL
-
-    .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
-
-    This class is reserved to internal use. Do not attempt to do anything with it.
-    """
-
-    def forecasts(self):
-        return []
+from grid2op.Environment.baseEnv import BaseEnv
 
 
 class _ObsEnv(BaseEnv):
@@ -52,6 +46,7 @@ class _ObsEnv(BaseEnv):
 
     def __init__(
         self,
+        *,  # since 1.11.0 I force kwargs
         init_env_path,
         init_grid_path,
         backend_instanciated,
@@ -67,23 +62,28 @@ class _ObsEnv(BaseEnv):
         tol_poly,
         max_episode_duration,
         delta_time_seconds,
-        other_rewards={},
+        other_rewards=None,
         has_attention_budget=False,
         attention_budget_cls=LinearAttentionBudget,
-        kwargs_attention_budget={},
+        kwargs_attention_budget=None,
         logger=None,
         highres_sim_counter=None,
         _complete_action_cls=None,
+        allow_detachment:bool=DEFAULT_ALLOW_DETACHMENT,
         _ptr_orig_obs_space=None,
-        _local_dir_cls=None,  # only set at the first call to `make(...)` after should be false
+        _local_dir_cls=None,
         _read_from_local_dir=None,
     ):
+        if other_rewards is None:
+            other_rewards = {}
+        if kwargs_attention_budget is None:
+            kwargs_attention_budget = {}
         BaseEnv.__init__(
             self,
-            init_env_path,
-            init_grid_path,
-            copy.deepcopy(parameters),
-            thermal_limit_a,
+            init_env_path=init_env_path,
+            init_grid_path=init_grid_path,
+            parameters=copy.deepcopy(parameters),
+            thermal_limit_a=thermal_limit_a,
             other_rewards=other_rewards,
             epsilon_poly=epsilon_poly,
             tol_poly=tol_poly,
@@ -95,7 +95,8 @@ class _ObsEnv(BaseEnv):
             highres_sim_counter=highres_sim_counter,
             update_obs_after_reward=False,
             _local_dir_cls=_local_dir_cls,
-            _read_from_local_dir=_read_from_local_dir
+            _read_from_local_dir=_read_from_local_dir,
+            allow_detachment=allow_detachment
         )
         self._do_not_erase_local_dir_cls = True
         self.__unusable = False  # unsuable if backend cannot be copied
@@ -157,12 +158,12 @@ class _ObsEnv(BaseEnv):
         if self.__unusable:
             self._backend_action_set = None
         else:
-            self._backend_action_set = self._backend_action_class()
+            self._backend_action_set : grid2op.Action._BackendAction._BackendAction = self._backend_action_class()
 
         if self.__unusable:
             self._disc_lines = np.zeros(shape=0, dtype=dt_int) - 1
         else:
-            self._disc_lines = np.zeros(shape=self.n_line, dtype=dt_int) - 1
+            self._disc_lines = np.zeros(shape=cls.n_line, dtype=dt_int) - 1
             
         self._max_episode_duration = max_episode_duration
 
@@ -322,10 +323,10 @@ class _ObsEnv(BaseEnv):
         
     def init(
         self,
-        new_state_action,
-        time_stamp,
-        obs,
-        time_step=1
+        new_state_action : "grid2op.Action.BaseAction",
+        time_stamp: datetime.datetime,
+        obs : "grid2op.Observation.CompleteObservation",
+        time_step : int=1,
     ):
         """
         INTERNAL
@@ -388,18 +389,25 @@ class _ObsEnv(BaseEnv):
         else:
             set_status = self._line_status_me
             topo_vect = self._topo_vect
-            
+        
         # TODO set the shunts here
         # update the action that set the grid to the real value
+        self._previous_conn_state.update_from_other(obs._prev_conn)
+        # remember the last connection state
+        self._backend_action_set.last_topo_registered.values[:] = obs._prev_conn._topo_vect
+        gen_p = obs._get_gen_p_for_forecasts()
+        gen_v = obs._get_gen_v_for_forecasts()
+        load_p = obs._get_load_p_for_forecasts()
+        load_q = obs._get_load_q_for_forecasts()
         self._backend_action_set += self._helper_action_env(
             {
                 "set_line_status": set_status,
                 "set_bus": topo_vect,
                 "injection": {
-                    "prod_p": obs.gen_p,
-                    "prod_v": obs.gen_v,
-                    "load_p": obs.load_p,
-                    "load_q": obs.load_q,
+                    "prod_p": gen_p,
+                    "prod_v": gen_v,
+                    "load_p": load_p,
+                    "load_q": load_q,
                 },
             }
         )
@@ -409,7 +417,6 @@ class _ObsEnv(BaseEnv):
             self._backend_action_set.storage_power.values[:] = 0.0
         self._backend_action_set.all_changed()
         self._backend_action = copy.deepcopy(self._backend_action_set)
-        
         # for curtailment
         if self._env_modification is not None:
             self._env_modification._dict_inj = {}
@@ -418,7 +425,7 @@ class _ObsEnv(BaseEnv):
         self.current_obs.reset()
         self.time_stamp = time_stamp
 
-    def _get_new_prod_setpoint(self, action):
+    def _get_new_prod_setpoint(self, action : "grid2op.Action.BaseAction"):
         new_p = 1.0 * self._backend_action_set.prod_p.values
         if "prod_p" in action._dict_inj:
             tmp = action._dict_inj["prod_p"]
@@ -440,6 +447,8 @@ class _ObsEnv(BaseEnv):
                            "environment that cannot be copied.")
         super().reset()
         self.current_obs = self.current_obs_init
+        # force the checking of the rules for the action
+        self._called_from_reset = False  
 
     def simulate(self, action : "grid2op.Action.BaseAction") -> Tuple["grid2op.Observation.BaseObservation", float, bool, STEP_INFO_TYPING]:
         """
@@ -491,7 +500,7 @@ class _ObsEnv(BaseEnv):
         obs, reward, done, info = self.step(action)
         return obs, reward, done, info
 
-    def get_obs(self, _update_state=True, _do_copy=True):
+    def get_obs(self, _update_state=True, _do_copy=True) -> "grid2op.Observation.BaseObservation":
         """
         INTERNAL
 
@@ -516,7 +525,7 @@ class _ObsEnv(BaseEnv):
             res = self.current_obs
         return res
 
-    def update_grid(self, env):
+    def update_grid(self, env : BaseEnv):
         """
         INTERNAL
 

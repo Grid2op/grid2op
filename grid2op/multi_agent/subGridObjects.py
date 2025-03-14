@@ -9,16 +9,14 @@
 import pdb
 import numpy as np
 from grid2op.Exceptions import (EnvError, 
-                                IncorrectNumberOfElements, 
-                                IncorrectNumberOfGenerators, 
-                                IncorrectNumberOfLines, 
-                                IncorrectNumberOfLoads, 
-                                IncorrectNumberOfStorages)
+                                IncorrectNumberOfElements,
+                                )
 
 from grid2op.dtypes import dt_int
 from grid2op.Space.GridObjects import GridObjects
-from grid2op.Space.space_utils import extract_from_dict, save_to_dict
+from grid2op.Space.space_utils import save_to_dict
 import re
+from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 
 
 class SubGridObjects(GridObjects):
@@ -54,8 +52,7 @@ class SubGridObjects(GridObjects):
         GridObjects.__init__(self)
     
     @staticmethod
-    def _make_cls_dict_extended(cls, res, as_list=True, copy_=True):
-        GridObjects._make_cls_dict_extended(cls, res, as_list=as_list, copy_=copy_)
+    def _make_cls_dict_extended(cls, res: CLS_AS_DICT_TYPING, as_list=True, copy_=True, _topo_vect_only=False):
         res["agent_name"] = str(cls.agent_name)
         
         # interco
@@ -204,7 +201,36 @@ class SubGridObjects(GridObjects):
             (lambda li: [bool(el) for el in li]) if as_list else None,
             copy_,
         )
-    
+        GridObjects._make_cls_dict_extended(cls, res=res, as_list=as_list, copy_=copy_, _topo_vect_only=_topo_vect_only)
+
+    @classmethod
+    def _clear_grid_dependant_class_attributes(cls) -> None:
+        GridObjects._clear_grid_dependant_class_attributes()
+        cls.sub_orig_ids = None
+        cls.load_orig_ids = None
+        cls.gen_orig_ids = None
+        cls.storage_orig_ids = None
+        cls.shunt_orig_ids = None
+        cls.line_orig_ids = None
+        
+        cls.mask_sub = None
+        cls.mask_load = None
+        cls.mask_gen = None
+        cls.mask_storage = None
+        cls.mask_line = None
+        cls.mask_shunt = None
+        cls.mask_interco = None
+        cls.agent_name : str = None
+        cls.mask_orig_pos_topo_vect = None
+        
+        cls.interco_to_subid = None
+        cls.interco_to_lineid = None
+        cls.interco_to_sub_pos = None
+        cls.interco_is_origin = None
+        cls.interco_pos_topo_vect = None
+        cls.name_interco = None
+        cls.n_interco = -1
+        
     @classmethod
     def get_obj_substations(cls, _sentinel=None, substation_id=None):
         """
@@ -233,18 +259,10 @@ class SubGridObjects(GridObjects):
         return res
     
     @classmethod
-    def init_grid(cls, gridobj, force=False, extra_name=None, force_module=None):
-        extr_nms = []
-        if gridobj.agent_name is not None:
-            extr_nms .append(f"{gridobj.agent_name}")
-        if extra_name is not None:
-            extr_nms.append(f"{extra_name}")
-            
-        if extr_nms:
-            extr_nms = "_".join(extr_nms)
-        else:
-            extr_nms = None
-        return cls.init_grid_gridobject(gridobj, force, extr_nms, force_module)
+    def _get_cls_name(cls, gridobj) -> str:
+        res = cls._get_cls_name_gridobj(gridobj)
+        res += gridobj.agent_name
+        return res
     
     @classmethod
     def _compute_nb_element(cls) -> int:
@@ -309,7 +327,7 @@ class SubGridObjects(GridObjects):
         if cls.n_line + cls.n_interco <= 0:
             raise EnvError(
                 "There should be at least one line or one interco for each "
-                "zone of your grid."
+                f"zone of your grid, None found for {cls.__name__}."
             )
     
     @classmethod

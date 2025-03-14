@@ -31,6 +31,7 @@ def _get_action_grid_class():
     GridObjects._clear_class_attribute()
     GridObjects.env_name = "test_action_env"
     GridObjects.n_busbar_per_sub = 2
+    GridObjects.detachment_is_allowed = False
     GridObjects.n_gen = 5
     GridObjects.name_gen = np.array(["gen_{}".format(i) for i in range(5)])
     GridObjects.n_load = 11
@@ -107,6 +108,7 @@ def _get_action_grid_class():
     json_ = {
         "glop_version": grid2op.__version__,
         "n_busbar_per_sub": "2",
+        "detachment_is_allowed": "False",
         "name_gen": ["gen_0", "gen_1", "gen_2", "gen_3", "gen_4"],
         "name_load": [
             "load_0",
@@ -434,7 +436,7 @@ class TestActionBase(ABC):
 
     def test_from_vect_nan(self):
         """test of the issue https://github.com/rte-france/Grid2Op/issues/173"""
-        vect = np.full(self.helper_action.n, fill_value=np.NaN, dtype=float)
+        vect = np.full(self.helper_action.n, fill_value=np.nan, dtype=float)
         if self.helper_action.n > 0:
             with self.assertRaises(NonFiniteElement):
                 act = self.helper_action.from_vect(vect)
@@ -868,20 +870,24 @@ class TestActionBase(ABC):
                 "set_bus": {"substations_id": [(id_2, arr2)]},
             }
         )
-
-        res = action.to_vect()
-        tmp = np.zeros(self.size_act)
-        if "curtail" in action.authorized_keys:
+        act_cls = type(action)
+        
+        act_serialized = action.to_vect()
+        th_res = np.zeros(self.size_act)
+        if "curtail" in act_cls.authorized_keys:
             # for curtailment, at the end, and by default its -1
-            tmp[-action.n_gen :] = -1
-
+            th_res[-action.n_gen :] = -1
+        # set to nan the first elements
+        # corresponding to prod_p, prod_v, load_p and load_q
+        if "injection" in act_cls.authorized_keys:
+            th_res[:(2 * (act_cls.n_gen + act_cls.n_load))] = np.nan
         # compute the "set_bus" vect
-        id_set = np.nonzero(np.array(type(action).attr_list_vect) == "_set_topo_vect")[0][0]
+        id_set = np.nonzero(np.array(act_cls.attr_list_vect) == "_set_topo_vect")[0][0]
         size_before = 0
-        for el in type(action).attr_list_vect[:id_set]:
+        for el in act_cls.attr_list_vect[:id_set]:
             arr_ = action._get_array_from_attr_name(el)
             size_before += arr_.shape[0]
-        tmp[size_before : (size_before + action.dim_topo)] = np.array(
+        th_res[size_before : (size_before + action.dim_topo)] = np.array(
             [
                 0,
                 0,
@@ -943,14 +949,14 @@ class TestActionBase(ABC):
                 0,
             ]
         )
-        id_change = np.nonzero(np.array(type(action).attr_list_vect) == "_change_bus_vect")[0][
+        id_change = np.nonzero(np.array(act_cls.attr_list_vect) == "_change_bus_vect")[0][
             0
         ]
         size_before = 0
-        for el in type(action).attr_list_vect[:id_change]:
+        for el in act_cls.attr_list_vect[:id_change]:
             arr_ = action._get_array_from_attr_name(el)
             size_before += arr_.shape[0]
-        tmp[size_before : (size_before + action.dim_topo)] = 1.0 * np.array(
+        th_res[size_before : (size_before + act_cls.dim_topo)] = 1.0 * np.array(
             [
                 False,
                 False,
@@ -1012,8 +1018,8 @@ class TestActionBase(ABC):
                 False,
             ]
         )
-        assert np.all(res[np.isfinite(tmp)] == tmp[np.isfinite(tmp)])
-        assert np.all(np.isfinite(res) == np.isfinite(tmp))
+        assert np.all(act_serialized[np.isfinite(th_res)] == th_res[np.isfinite(th_res)])
+        assert np.all(np.isfinite(act_serialized) == np.isfinite(th_res))
 
     def test__eq__(self):
         self._skipMissingKey("set_bus")
