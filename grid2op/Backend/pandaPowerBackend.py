@@ -19,6 +19,7 @@ import pandapower as pp
 import scipy
 # check that pandapower does not introduce some 
 from packaging import version
+from importlib.metadata import version as version_medata
 
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -27,6 +28,7 @@ from grid2op.Exceptions import BackendError
 from grid2op.Backend.backend import Backend
 
 MIN_LS_VERSION_VM_PU = version.parse("0.6.0")
+PP_CREATE_BUS_BUG = version.parse("3.0.0")
 
 try:
     import numba
@@ -536,11 +538,19 @@ class PandaPowerBackend(Backend):
         # "hack" to handle topological changes, for now only 2 buses per substation
         add_topo = copy.deepcopy(self._grid.bus)
         # TODO n_busbar: what if non contiguous indexing ???
+        pp_vers = version.parse(version_medata("pandapower"))
         for _ in range(self.n_busbar_per_sub - 1):   # self.n_busbar_per_sub and not type(self) here otherwise it erases can_handle_more_than_2_busbar / cannot_handle_more_than_2_busbar
             add_topo.index += add_topo.shape[0]
             add_topo["in_service"] = False
             for ind, el in add_topo.iterrows():
-                pp.create_bus(self._grid, index=ind, **el)
+                if pp_vers < PP_CREATE_BUS_BUG:
+                    pp.create_bus(self._grid, index=ind, **el)
+                else:
+                    tmp = dict(**el)
+                    if "geo" in tmp:
+                        # bug in pandapower 3.0.0 in this case
+                        del tmp["geo"]
+                    pp.create_bus(self._grid, index=ind, **tmp)
         self._init_private_attrs()
         self._aux_run_pf_init()  # run yet another powerflow with the added buses
 
