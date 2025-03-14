@@ -531,13 +531,13 @@ class __AuxBoxGymActSpace:
 
         if attr_nm == "curtail":
             gym_act_this_ = np.full(
-                self._act_space.n_gen, fill_value=np.NaN, dtype=dt_float
+                self._act_space.n_gen, fill_value=np.nan, dtype=dt_float
             )
             gym_act_this_[self._act_space.gen_renewable] = gym_act_this
             gym_act_this = gym_act_this_
         elif attr_nm == "curtail_mw":
             gym_act_this_ = np.full(
-                self._act_space.n_gen, fill_value=np.NaN, dtype=dt_float
+                self._act_space.n_gen, fill_value=np.nan, dtype=dt_float
             )
             gym_act_this_[self._act_space.gen_renewable] = gym_act_this
             gym_act_this = gym_act_this_

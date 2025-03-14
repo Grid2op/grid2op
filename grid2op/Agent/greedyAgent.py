@@ -61,7 +61,7 @@ class GreedyAgent(BaseAgent):
         self.tested_action = self._get_tested_action(observation)
         if len(self.tested_action) > 1:
             self.resulting_rewards = np.full(
-                shape=len(self.tested_action), fill_value=np.NaN, dtype=dt_float
+                shape=len(self.tested_action), fill_value=np.nan, dtype=dt_float
             )
             for i, action in enumerate(self.tested_action):
                 (

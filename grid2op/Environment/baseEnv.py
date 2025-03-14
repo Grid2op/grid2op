@@ -1942,7 +1942,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "Have you called `env.reset()` after last game over ?"
             )
         if isinstance(thermal_limit, dict):
-            tmp = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
+            tmp = np.full(self.n_line, fill_value=np.nan, dtype=dt_float)
             for key, val in thermal_limit.items():
                 if key not in self.name_line:
                     raise Grid2OpException(

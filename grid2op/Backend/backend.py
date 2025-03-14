@@ -2016,8 +2016,8 @@ class Backend(GridObjects, ABC):
                 sh_conn = bus_s > 0
                 p_s[sh_conn] *= (self._sh_vnkv[sh_conn] / sh_v[sh_conn]) ** 2
                 q_s[sh_conn] *= (self._sh_vnkv[sh_conn] / sh_v[sh_conn]) ** 2
-                p_s[bus_s == -1] = np.NaN
-                q_s[bus_s == -1] = np.NaN
+                p_s[bus_s == -1] = np.nan
+                q_s[bus_s == -1] = np.nan
                 dict_["shunt"]["shunt_p"] = p_s
                 dict_["shunt"]["shunt_q"] = q_s
 
@@ -2092,8 +2092,8 @@ class Backend(GridObjects, ABC):
                 mults = (self._sh_vnkv / obs._shunt_v) ** 2
                 sh_p = obs._shunt_p * mults
                 sh_q = obs._shunt_q * mults
-                sh_p[~shunt_co] = np.NaN
-                sh_q[~shunt_co] = np.NaN
+                sh_p[~shunt_co] = np.nan
+                sh_q[~shunt_co] = np.nan
                 dict_["shunt"]["shunt_p"] = sh_p
                 dict_["shunt"]["shunt_q"] = sh_q
         elif cls.shunts_data_available and not type(obs).shunts_data_available:

@@ -1379,25 +1379,25 @@ class BaseObservation(GridObjects):
         self.topo_vect[:] = 0
 
         # generators information
-        self.gen_p[:] = np.NaN
-        self.gen_q[:] = np.NaN
-        self.gen_v[:] = np.NaN
+        self.gen_p[:] = np.nan
+        self.gen_q[:] = np.nan
+        self.gen_v[:] = np.nan
         # loads information
-        self.load_p[:] = np.NaN
-        self.load_q[:] = np.NaN
-        self.load_v[:] = np.NaN
+        self.load_p[:] = np.nan
+        self.load_q[:] = np.nan
+        self.load_v[:] = np.nan
         # lines origin information
-        self.p_or[:] = np.NaN
-        self.q_or[:] = np.NaN
-        self.v_or[:] = np.NaN
-        self.a_or[:] = np.NaN
+        self.p_or[:] = np.nan
+        self.q_or[:] = np.nan
+        self.v_or[:] = np.nan
+        self.a_or[:] = np.nan
         # lines extremity information
-        self.p_ex[:] = np.NaN
-        self.q_ex[:] = np.NaN
-        self.v_ex[:] = np.NaN
-        self.a_ex[:] = np.NaN
+        self.p_ex[:] = np.nan
+        self.q_ex[:] = np.nan
+        self.v_ex[:] = np.nan
+        self.a_ex[:] = np.nan
         # lines relative flows
-        self.rho[:] = np.NaN
+        self.rho[:] = np.nan
 
         # cool down and reconnection time after hard overflow, soft overflow or cascading failure
         self.time_before_cooldown_line[:] = 0
@@ -1420,17 +1420,17 @@ class BaseObservation(GridObjects):
         self._env_internal_params = {}
 
         # redispatching
-        self.target_dispatch[:] = np.NaN
-        self.actual_dispatch[:] = np.NaN
+        self.target_dispatch[:] = np.nan
+        self.actual_dispatch[:] = np.nan
         
         # flexibility
-        self.target_flex[:] = np.NaN
-        self.actual_flex[:] = np.NaN
+        self.target_flex[:] = np.nan
+        self.actual_flex[:] = np.nan
 
         # storage units
-        self.storage_charge[:] = np.NaN
-        self.storage_power_target[:] = np.NaN
-        self.storage_power[:] = np.NaN
+        self.storage_charge[:] = np.nan
+        self.storage_power_target[:] = np.nan
+        self.storage_power[:] = np.nan
 
         # to save up computation time
         self._dictionnarized = None
@@ -1438,17 +1438,17 @@ class BaseObservation(GridObjects):
         self._bus_connectivity_matrix_ = None
 
         if type(self).shunts_data_available:
-            self._shunt_p[:] = np.NaN
-            self._shunt_q[:] = np.NaN
-            self._shunt_v[:] = np.NaN
+            self._shunt_p[:] = np.nan
+            self._shunt_q[:] = np.nan
+            self._shunt_v[:] = np.nan
             self._shunt_bus[:] = -1
 
         self.support_theta = False
-        self.theta_or[:] = np.NaN
-        self.theta_ex[:] = np.NaN
-        self.load_theta[:] = np.NaN
-        self.gen_theta[:] = np.NaN
-        self.storage_theta[:] = np.NaN
+        self.theta_or[:] = np.nan
+        self.theta_ex[:] = np.nan
+        self.load_theta[:] = np.nan
+        self.gen_theta[:] = np.nan
+        self.storage_theta[:] = np.nan
 
         # alarm feature
         self.is_alarm_illegal[:] = False
@@ -3268,10 +3268,10 @@ class BaseObservation(GridObjects):
             )
         cls = type(self)
         t, a = self._forecasted_inj[time_step]
-        prod_p_f = np.full(cls.n_gen, fill_value=np.NaN, dtype=dt_float)
-        prod_v_f = np.full(cls.n_gen, fill_value=np.NaN, dtype=dt_float)
-        load_p_f = np.full(cls.n_load, fill_value=np.NaN, dtype=dt_float)
-        load_q_f = np.full(cls.n_load, fill_value=np.NaN, dtype=dt_float)
+        prod_p_f = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+        prod_v_f = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
+        load_p_f = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
+        load_q_f = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
 
         if "prod_p" in a["injection"]:
             prod_p_f = a["injection"]["prod_p"]
