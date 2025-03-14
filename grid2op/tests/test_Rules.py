@@ -10,6 +10,7 @@ import pdb
 import warnings
 import unittest
 
+from grid2op.Observation.baseObservation import BaseObservation
 from grid2op.tests.helper_path_test import *
 
 import grid2op
@@ -684,23 +685,41 @@ class TestSubstationImpactLegality(unittest.TestCase):
             warnings.filterwarnings("ignore")
             self.params = Parameters()
             self.env = grid2op.make("rte_case5_example", test=True, param=self.params, _add_to_name=type(self).__name__)
-
+        self.env_or_obs = self.env
+        
     def tearDown(self):
         self.env.close()
 
+    def _aux_do_act(self, act):
+        if isinstance(self.env_or_obs, Environment):
+            _, _, _, info = self.env_or_obs.step(act)
+        elif isinstance(self.env_or_obs, BaseObservation):
+            _, _, _, info = self.env_or_obs.simulate(act)
+        else:
+            raise RuntimeError(f"Test not implemented for {type(self.env_or_obs)}")
+        return info
+    
+    def _aux_change_par(self, max_sub_changed):
+        if isinstance(self.env_or_obs, Environment):
+            self.env_or_obs._parameters.MAX_SUB_CHANGED = max_sub_changed
+        elif isinstance(self.env_or_obs, BaseObservation):
+            self.env_or_obs._obs_env._parameters.MAX_SUB_CHANGED = max_sub_changed
+        else:
+            raise RuntimeError(f"Test not implemented for {type(self.env_or_obs)}")
+        
     def test_setbus_line_no_sub_allowed_is_illegal(self):
         # Set 0 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 0
+        self._aux_change_par(0)
         # Make a setbus
         LINE_ID = 4
         bus_action = self.env.action_space({"set_bus": {"lines_ex_id": [(LINE_ID, 2)]}})
         # Make sure its illegal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == True
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == True
 
     def test_two_setbus_line_one_sub_allowed_is_illegal(self):
         # Set 1 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 1
+        self._aux_change_par(1)
         # Make a double setbus
         LINE1_ID = 4
         LINE2_ID = 5
@@ -708,24 +727,24 @@ class TestSubstationImpactLegality(unittest.TestCase):
             {"set_bus": {"lines_ex_id": [(LINE1_ID, 2), (LINE2_ID, 2)]}}
         )
         # Make sure its illegal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == True
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == True
 
     def test_one_setbus_line_one_sub_allowed_is_legal(self):
         # Set 1 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 1
+        self._aux_change_par(1)
         # Make a setbus
         LINE1_ID = 4
         bus_action = self.env.action_space(
             {"set_bus": {"lines_ex_id": [(LINE1_ID, 2)]}}
         )
         # Make sure its legal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == False
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == False
 
     def test_two_setbus_line_two_sub_allowed_is_legal(self):
         # Set 2 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 2
+        self._aux_change_par(2)
         # Make a double setbus
         LINE1_ID = 4
         LINE2_ID = 5
@@ -733,32 +752,32 @@ class TestSubstationImpactLegality(unittest.TestCase):
             {"set_bus": {"lines_ex_id": [(LINE1_ID, 2), (LINE2_ID, 2)]}}
         )
         # Make sure its legal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == False
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == False
 
     def test_changebus_line_no_sub_allowed_is_illegal(self):
         # Set 0 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 0
+        self._aux_change_par(0)
         # Make a changebus
         LINE_ID = 4
         bus_action = self.env.action_space({"change_bus": {"lines_ex_id": [LINE_ID]}})
         # Make sure its illegal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == True
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == True
 
     def test_changebus_line_one_sub_allowed_is_legal(self):
         # Set 1 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 1
+        self._aux_change_par(1)
         # Make a changebus
         LINE_ID = 4
         bus_action = self.env.action_space({"change_bus": {"lines_ex_id": [LINE_ID]}})
         # Make sure its legal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == False
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == False
 
     def test_changebus_two_line_one_sub_allowed_is_illegal(self):
         # Set 1 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 1
+        self._aux_change_par(1)
         # Make a changebus
         LINE1_ID = 4
         LINE2_ID = 5
@@ -766,12 +785,12 @@ class TestSubstationImpactLegality(unittest.TestCase):
             {"change_bus": {"lines_ex_id": [LINE1_ID, LINE2_ID]}}
         )
         # Make sure its illegal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == True
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == True
 
     def test_changebus_two_line_two_sub_allowed_is_legal(self):
         # Set 2 allowed substation changes
-        self.env._parameters.MAX_SUB_CHANGED = 2
+        self._aux_change_par(2)
         # Make a changebus
         LINE1_ID = 4
         LINE2_ID = 5
@@ -779,10 +798,25 @@ class TestSubstationImpactLegality(unittest.TestCase):
             {"change_bus": {"lines_ex_id": [LINE1_ID, LINE2_ID]}}
         )
         # Make sure its legal
-        _, _, _, i = self.env.step(bus_action)
-        assert i["is_illegal"] == False
+        info = self._aux_do_act(bus_action)
+        assert info["is_illegal"] == False
 
 
+class TestSubstationImpactLegalitySimulate(TestSubstationImpactLegality):
+    def setUp(self):
+        super().setUp()
+        self.env_or_obs = self.env.reset()
+        
+        
+class TestSubstationImpactLegalityForEnv(TestSubstationImpactLegality):
+    def setUp(self):
+        super().setUp()
+        obs = self.env.reset()
+        self.env_or_obs = obs.get_forecast_env()
+        self.env_or_obs.reset()
+# TODO TestSubstationImpactLegalitySimulate with chain simulate
+        
+        
 class TestLoadingFromInstance(unittest.TestCase):
     def test_correct(self):
         rules = AlwaysLegal()

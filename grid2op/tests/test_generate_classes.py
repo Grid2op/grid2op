@@ -6,12 +6,14 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import re
 import unittest
 import warnings
 from pathlib import Path
 from grid2op.Environment import Environment, MultiMixEnvironment
 from grid2op.tests.helper_path_test import *
 import grid2op
+from grid2op.Space import GRID2OP_CLASSES_ENV_FOLDER
 import shutil
 
 import pdb
@@ -19,16 +21,9 @@ import pdb
 
 class TestGenerateFile(unittest.TestCase):
     def _aux_assert_exists_then_delete(self, env):
-        if isinstance(env, MultiMixEnvironment):
-            # for mix in env:
-                # self._aux_assert_exists_then_delete(mix)
-            self._aux_assert_exists_then_delete(env.mix_envs[0])
-        elif isinstance(env, Environment):
-            path = Path(env.get_path_env()) / "_grid2op_classes"
-            assert path.exists(), f"path {path} does not exists"
-            shutil.rmtree(path, ignore_errors=True)
-        else:
-            raise RuntimeError("Unknown env type")
+        path = Path(env.get_path_env()) / GRID2OP_CLASSES_ENV_FOLDER
+        assert path.exists(), f"path {path} does not exists"
+        shutil.rmtree(path, ignore_errors=True)
         
     def list_env(self):
         env_with_alert = os.path.join(
@@ -56,6 +51,11 @@ class TestGenerateFile(unittest.TestCase):
                                    test=True,
                                    _add_to_name=_add_to_name)
             env.generate_classes()
+            cls_nm_tmp = f"PandaPowerBackend{_add_to_name}"
+            cls_nm_end = f"{cls_nm_tmp}$"
+            cls_nm_twice = f"{cls_nm_tmp}.+{cls_nm_end}"
+            assert re.search(cls_nm_end, type(env).__name__) is not None # name of the backend and "add_to_name" should appear once
+            assert re.search(cls_nm_twice, type(env).__name__) is None  # they should not appear twice !
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
                 try:

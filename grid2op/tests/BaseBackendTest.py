@@ -183,7 +183,7 @@ class BaseTestLoadingCase(MakeBackend):
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            p_subs, q_subs, p_bus, q_bus, v_bus = backend.check_kirchoff()
+            p_subs, q_subs, p_bus, q_bus, v_bus = backend.check_kirchhoff()
 
         assert np.max(np.abs(p_subs)) <= self.tolvect
         assert np.max(np.abs(p_bus.flatten())) <= self.tolvect
@@ -659,15 +659,15 @@ class BaseTestLoadingBackendFunc(MakeBackend):
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            p_subs, q_subs, p_bus, q_bus, v_bus = self.backend.check_kirchoff()
+            p_subs, q_subs, p_bus, q_bus, v_bus = self.backend.check_kirchhoff()
 
         # i'm in DC mode, i can't check for reactive values...
         assert (
             np.max(np.abs(p_subs)) <= self.tolvect
-        ), "problem with active values, at substation (kirchoff for DC)"
+        ), "problem with active values, at substation (Kirchhoff for DC)"
         assert (
             np.max(np.abs(p_bus.flatten())) <= self.tolvect
-        ), "problem with active values, at a bus (kirchoff for DC)"
+        ), "problem with active values, at a bus (Kirchhoff for DC)"
 
         assert self.compare_vect(
             new_pp, after_gp
@@ -846,10 +846,10 @@ class BaseTestTopoAction(MakeBackend):
     def compare_vect(self, pred, true):
         return np.max(np.abs(pred - true)) <= self.tolvect
 
-    def _check_kirchoff(self):
+    def _check_kirchhoff(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            p_subs, q_subs, p_bus, q_bus, v_bus = self.backend.check_kirchoff()
+            p_subs, q_subs, p_bus, q_bus, v_bus = self.backend.check_kirchhoff()
             assert (
                 np.max(np.abs(p_subs)) <= self.tolvect
             ), "problem with active values, at substation"
@@ -1043,7 +1043,7 @@ class BaseTestTopoAction(MakeBackend):
             ]
         )
         assert self.compare_vect(after_amps_flow, after_amps_flow_th)
-        self._check_kirchoff()
+        self._check_kirchhoff()
 
     def test_topo_change1sub(self):
         # check that switching the bus of 3 object is equivalent to set them to bus 2 (as above)
@@ -1117,7 +1117,7 @@ class BaseTestTopoAction(MakeBackend):
             ]
         )
         assert self.compare_vect(after_amps_flow, after_amps_flow_th)
-        self._check_kirchoff()
+        self._check_kirchhoff()
 
     def test_topo_change_1sub_twice(self):
         # check that switching the bus of 3 object is equivalent to set them to bus 2 (as above)
@@ -1192,7 +1192,7 @@ class BaseTestTopoAction(MakeBackend):
             ]
         )
         assert self.compare_vect(after_amps_flow, after_amps_flow_th)
-        self._check_kirchoff()
+        self._check_kirchhoff()
 
         action = self.helper_action({"change_bus": {"substations_id": [(id_, arr)]}})
         bk_action += action
@@ -1207,7 +1207,7 @@ class BaseTestTopoAction(MakeBackend):
         topo_vect = self.backend.get_topo_vect()
         assert np.min(topo_vect) == 1
         assert np.max(topo_vect) == 1
-        self._check_kirchoff()
+        self._check_kirchhoff()
 
     def test_topo_change_2sub(self):
         # check that maintenance vector is properly taken into account
@@ -1305,7 +1305,7 @@ class BaseTestTopoAction(MakeBackend):
             ]
         )
         assert self.compare_vect(after_amps_flow, after_amps_flow_th)
-        self._check_kirchoff()
+        self._check_kirchhoff()
 
     def _aux_test_back_orig(self, act_set, prod_p, load_p, p_or, sh_q):
         """function used for test_get_action_to_set"""
@@ -2092,7 +2092,7 @@ class BaseTestShuntAction(MakeBackend):
                 backend=backend,
                 _add_to_name=type(self).__name__ + "_1"
             ) as env_case2:
-                with self.assertRaises(AmbiguousAction):
+                with self.assertRaises(IllegalAction):
                     act = env_case2.action_space({"shunt": {"set_bus": [(0, 2)]}})
 
     def test_shunt_effect(self):
@@ -2413,16 +2413,16 @@ class BaseTestChangeBusSlack(MakeBackend):
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            p_subs, q_subs, p_bus, q_bus, v_bus = env.backend.check_kirchoff()
+            p_subs, q_subs, p_bus, q_bus, v_bus = env.backend.check_kirchhoff()
         assert np.all(np.abs(p_subs) <= self.tol_one)
         assert np.all(np.abs(p_bus) <= self.tol_one)
 
 
 class BaseTestStorageAction(MakeBackend):
-    def _aux_test_kirchoff(self):
+    def _aux_test_kirchhoff(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchoff()
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchhoff()
         assert np.all(
             np.abs(p_subs) <= self.tol_one
         ), "error with active value at some substations"
@@ -2461,7 +2461,7 @@ class BaseTestStorageAction(MakeBackend):
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - array_modif) <= self.tol_one)
         assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         array_modif = np.array([2, 8], dtype=dt_float)
         act = self.env.action_space({"set_storage": array_modif})
@@ -2470,7 +2470,7 @@ class BaseTestStorageAction(MakeBackend):
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - array_modif) <= self.tol_one)
         assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # illegal action
         array_modif = np.array([2, 12], dtype=dt_float)
@@ -2480,7 +2480,7 @@ class BaseTestStorageAction(MakeBackend):
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - [0.0, 0.0]) <= self.tol_one)
         assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # full discharge now
         array_modif = np.array([-1.5, -10.0], dtype=dt_float)
@@ -2495,7 +2495,7 @@ class BaseTestStorageAction(MakeBackend):
             assert np.all(
                 np.abs(storage_q - 0.0) <= self.tol_one
             ), f"error for Q for time step {nb_ts}"
-            self._aux_test_kirchoff()
+            self._aux_test_kirchhoff()
 
         obs, reward, done, info = self.env.step(act)
         assert not info["exception"]
@@ -2503,7 +2503,7 @@ class BaseTestStorageAction(MakeBackend):
         storage_p, *_ = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - [-1.5, -4.4599934]) <= self.tol_one)
         assert np.all(np.abs(obs.storage_charge[1] - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         obs, reward, done, info = self.env.step(act)
         assert not info["exception"]
@@ -2511,7 +2511,7 @@ class BaseTestStorageAction(MakeBackend):
         storage_p, *_ = self.env.backend.storages_info()
         assert np.all(np.abs(storage_p - [-1.5, 0.0]) <= self.tol_one)
         assert np.all(np.abs(obs.storage_charge[1] - 0.0) <= self.tol_one)
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
     def test_storage_action_topo(self):
         """test the modification of the bus of a storage unit"""
@@ -2564,7 +2564,7 @@ class BaseTestStorageAction(MakeBackend):
         assert obs.storage_bus[0] == 2
         assert obs.line_or_bus[8] == 2
         assert obs.gen_bus[3] == 2
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # second case, still standard modification (set to orig)
         array_modif = np.array([1.5, 10.0], dtype=dt_float)
@@ -2586,7 +2586,7 @@ class BaseTestStorageAction(MakeBackend):
         assert obs.storage_bus[0] == 1
         assert obs.line_or_bus[8] == 1
         assert obs.gen_bus[3] == 1
-        self._aux_test_kirchoff()
+        self._aux_test_kirchhoff()
 
         # fourth case: isolated storage on a busbar (so it is disconnected, but with 0. production => so thats fine)
         array_modif = np.array([0.0, 7.0], dtype=dt_float)
@@ -2619,7 +2619,7 @@ class BaseTestStorageAction(MakeBackend):
         # assert storage_v[0] == 0.0, "storage 0 should be disconnected"
         # assert obs.line_or_bus[8] == 1
         # assert obs.gen_bus[3] == 1
-        # self._aux_test_kirchoff()
+        # self._aux_test_kirchhoff()
 
         # check that if i don't touch it it's set to 0
         # act = self.env.action_space()
@@ -2636,7 +2636,7 @@ class BaseTestStorageAction(MakeBackend):
         # assert storage_v[0] == 0.0, "storage 0 should be disconnected"
         # assert obs.line_or_bus[8] == 1
         # assert obs.gen_bus[3] == 1
-        # self._aux_test_kirchoff()
+        # self._aux_test_kirchhoff()
 
         # # trying to act on a disconnected storage => illegal)
         # array_modif = np.array([2.0, 7.0], dtype=dt_float)
@@ -2644,7 +2644,7 @@ class BaseTestStorageAction(MakeBackend):
         # obs, reward, done, info = self.env.step(act)
         # assert info["exception"]  # action should be illegal
         # assert not done  # this is fine, as it's illegal it's replaced by do nothing
-        # self._aux_test_kirchoff()
+        # self._aux_test_kirchhoff()
 
         # # trying to reconnect a storage alone on a bus => game over, not connected bus
         # array_modif = np.array([1.0, 7.0], dtype=dt_float)

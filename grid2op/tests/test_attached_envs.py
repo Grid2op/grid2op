@@ -182,7 +182,52 @@ class TestL2RPN_CASE14_SANDBOX(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 467
+        # size_th = 467
+        size_th = 473  # gen_delta
+        assert self.env.observation_space.n == size_th, (
+            f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
+        )
+
+    def test_random_action(self):
+        """test i can perform some step (random)"""
+        i = 0
+        for i in range(10):
+            act = self.env.action_space.sample()
+            obs, reward, done, info = self.env.step(act)
+            if done:
+                break
+        assert i >= 1, (
+            "could not perform the random action test because it games over first time step. "
+            "Please fix the test and try again"
+        )
+
+
+class TestL2RPN_CASE14_SANDBOX_DETACH(unittest.TestCase):
+    def setUp(self) -> None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("l2rpn_case14_sandbox", test=True, _add_to_name=type(self).__name__, allow_detachment=True)
+            self.env.seed(42)
+            _ = self.env.reset()
+
+    def test_elements(self):
+        assert type(self.env).n_sub == 14
+        assert type(self.env).n_line == 20
+        assert type(self.env).n_load == 11
+        assert type(self.env).n_gen == 6
+        assert type(self.env).n_storage == 0
+
+    def test_opponent(self):
+        assert issubclass(self.env._opponent_action_class, DontAct)
+        assert self.env._opponent_action_space.n == 0
+
+    def test_action_space(self):
+        assert issubclass(self.env.action_space.subtype, PlayableAction)
+        assert self.env.action_space.n == 166, f"{self.env.action_space.n} instead of 166"
+
+    def test_observation_space(self):
+        assert issubclass(self.env.observation_space.subtype, CompleteObservation)
+        size_th = 518
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )
@@ -226,7 +271,8 @@ class TestEDUC_CASE14_REDISP(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 467
+        # size_th = 467
+        size_th = 473  # gen_p_delta
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )
@@ -270,7 +316,8 @@ class TestEDUC_STORAGE(unittest.TestCase):
 
     def test_observation_space(self):
         assert issubclass(self.env.observation_space.subtype, CompleteObservation)
-        size_th = 475
+        # size_th = 475
+        size_th = 481  # gen_p_delta
         assert self.env.observation_space.n == size_th, (
             f"obs space size is {self.env.observation_space.n}," f"should be {size_th}"
         )

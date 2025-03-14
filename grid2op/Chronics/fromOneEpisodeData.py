@@ -177,12 +177,11 @@ class FromOneEpisodeData(GridValue):
         if self.path is not None:
             # logger: this has no impact
             pass
-        
         if isinstance(ep_data, EpisodeData):
             self._episode_data = ep_data
         elif isinstance(ep_data, (str, Path)):
             try:
-                self._episode_data = EpisodeData.from_disk(*os.path.split(ep_data))
+                self._episode_data = EpisodeData.from_disk(*os.path.split(ep_data), _only_act_obs=True)
             except Exception as exc_:
                 raise ChronicsError("Impossible to build the FromOneEpisodeData with the `ep_data` provided.") from exc_
         elif isinstance(ep_data, (tuple, list)):
@@ -190,7 +189,7 @@ class FromOneEpisodeData(GridValue):
                 raise ChronicsError("When you provide a tuple, or a list, FromOneEpisodeData can only be used if this list has length 2. "
                                     f"Length {len(ep_data)} found.")
             try:
-                self._episode_data = EpisodeData.from_disk(*ep_data)
+                self._episode_data = EpisodeData.from_disk(*ep_data, _only_act_obs=True)
             except Exception as exc_:
                 raise ChronicsError("Impossible to build the FromOneEpisodeData with the `ep_data` provided.") from exc_
         else:
