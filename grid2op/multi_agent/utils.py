@@ -8,6 +8,7 @@
 
 from numpy.random import shuffle
 
+
 def random_order(agents : list, *args, **kwargs):
     """Returns the random order
 
@@ -73,3 +74,4 @@ class AgentSelector:
             and self._current_agent == other._current_agent
             and self.selected_agent == other.selected_agent
         )
+        
