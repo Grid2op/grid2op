@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from cluster_utils.louvainClustering import LouvainClustering
+from grid2op.multi_agent import LouvainClustering
 import grid2op
 from lightsim2grid.lightSimBackend import LightSimBackend
 
