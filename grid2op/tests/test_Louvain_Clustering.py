@@ -7,7 +7,7 @@ from lightsim2grid.lightSimBackend import LightSimBackend
 try:
     from grid2op.multi_agent import LouvainClustering
     # Check if Louvain is available within the class
-    louvain_available = LouvainClustering.Louvain is not None
+    louvain_available = LouvainClustering.is_louvain_available()
 except ImportError:
     louvain_available = False
 

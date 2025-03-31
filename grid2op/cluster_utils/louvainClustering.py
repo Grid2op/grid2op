@@ -81,3 +81,13 @@ class LouvainClustering:
         formatted_clusters = {f'agent_{i}': nodes for i, nodes in enumerate(clusters.values())}
         
         return formatted_clusters
+    
+    @staticmethod
+    def is_louvain_available():
+        """
+        Checks if the Louvain algorithm is available.
+        
+        Returns:
+            bool: True if Louvain is available, False otherwise.
+        """
+        return Louvain is not None
