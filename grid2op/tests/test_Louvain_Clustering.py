@@ -1,8 +1,15 @@
 import unittest
 import numpy as np
-from grid2op.multi_agent import LouvainClustering
 import grid2op
 from lightsim2grid.lightSimBackend import LightSimBackend
+
+# Try to import LouvainClustering
+try:
+    from grid2op.multi_agent import LouvainClustering
+    # Check if Louvain is available within the class
+    louvain_available = LouvainClustering.Louvain is not None
+except ImportError:
+    louvain_available = False
 
 class TestLouvainClustering(unittest.TestCase):
 
@@ -10,6 +17,11 @@ class TestLouvainClustering(unittest.TestCase):
         """
         Test the creation of the connectivity matrix
         """
+        
+        if not louvain_available:
+            self.skipTest("Louvain algorithm is not available. Skipping test.")
+
+        
         env_name = "l2rpn_case14_sandbox"
         env = grid2op.make(env_name, backend=LightSimBackend(), test=True)
         
@@ -33,6 +45,7 @@ class TestLouvainClustering(unittest.TestCase):
         
         # Generate the connectivity matrix
         actual_matrix = LouvainClustering.create_connectivity_matrix(env)
+    
 
         # Validate the generated matrix
         np.testing.assert_array_almost_equal(actual_matrix, expected_matrix, err_msg="Connectivity matrix does not match the expected matrix.")
@@ -44,6 +57,10 @@ class TestLouvainClustering(unittest.TestCase):
         """
         Test the clustering of substations using the Louvain algorithm
         """
+        
+        if not louvain_available:
+            self.skipTest("Louvain algorithm is not available. Skipping test.")
+        
         env_name = "l2rpn_case14_sandbox"
         env = grid2op.make(env_name, backend=LightSimBackend(), test=True)
         

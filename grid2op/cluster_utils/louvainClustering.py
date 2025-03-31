@@ -1,7 +1,13 @@
 from grid2op.Environment import Environment
 import numpy as np
-from sknetwork.clustering import Louvain
 from scipy.sparse import csr_matrix
+
+# Try/except for scikit-network imports
+try:
+    from sknetwork.clustering import Louvain
+except ImportError:
+    Louvain = None
+    print("Warning: scikit-network is not installed. Louvain clustering will not be available.")
 
 class LouvainClustering:
     """
@@ -52,6 +58,9 @@ class LouvainClustering:
                     - keys : agents' names 
                     - values : list of substations' id under the control of the agent.
         """
+        # Check if Louvain is available
+        if Louvain is None:
+            raise ImportError("scikit-network is required for Louvain clustering but is not installed.")
 
         # Generate the connectivity matrix
         matrix = LouvainClustering.create_connectivity_matrix(env)

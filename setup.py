@@ -47,7 +47,7 @@ pkgs = {
             "psutil>=5.7.0",
             "gymnasium",
             "lightsim2grid",
-            "scikit-network>=0.32.1",
+           "scikit-network>=0.32.1; python_version>'3.8'", # added
         ],
         "gym": [
             "gym>=0.17.2",
@@ -76,7 +76,8 @@ pkgs = {
                  "gymnasium",
                 #  "stable-baselines3>=2.0",
                  "nbconvert",
-                 "jinja2"
+                 "jinja2",
+                "scikit-network>=0.32.1; python_version>'3.8'", # added
                  ],
         "chronix2grid": [
             "ChroniX2Grid>=1.2.0.post1"
