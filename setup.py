@@ -47,6 +47,7 @@ pkgs = {
             "psutil>=5.7.0",
             "gymnasium",
             "lightsim2grid",
+            "scikit-network>=0.32.1",
         ],
         "gym": [
             "gym>=0.17.2",
