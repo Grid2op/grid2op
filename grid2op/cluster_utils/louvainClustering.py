@@ -7,7 +7,8 @@ try:
     from sknetwork.clustering import Louvain
 except ImportError:
     Louvain = None
-    print("Warning: scikit-network is not installed. Louvain clustering will not be available.")
+    import warnings
+    warnings.warn(" scikit-network is not installed. Louvain clustering will not be available.")
 
 class LouvainClustering:
     """
