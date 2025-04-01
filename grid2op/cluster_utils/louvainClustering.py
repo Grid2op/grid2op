@@ -11,7 +11,33 @@ except ImportError:
 
 class LouvainClustering:
     """
-    Outputs clustered substation based on the Louvain graph clustering method.
+    Clusters substations in a power grid environment using the Louvain community detection algorithm.
+
+    This class provides functionality to analyze the electrical connectivity between substations in a 
+    Grid2Op environment and cluster them into communities based on their structural proximity and 
+    interaction within the grid network. 
+
+    The Louvain algorithm is used for this purpose due to its efficiency, scalability, and ability to 
+    detect high modularity communities — areas where substations are densely connected internally and 
+    sparsely connected externally. These characteristics make the algorithm particularly well-suited for 
+    substation clustering, as it helps form cohesive subgrids, enabling more efficient and optimized 
+    multi-agent operation strategies.
+
+    Key Features:
+    - Builds a substation-level connectivity matrix based on line connections in the environment.
+    - Applies the Louvain algorithm to detect community structures (clusters of substations).
+    - Returns a dictionary that maps agents to groups of clustered substations.
+
+    The Louvain algorithm operates in two main iterative phases:
+    1. **Partitioning**: Nodes are greedily assigned to communities to maximize modularity.
+    2. **Aggregation**: Discovered communities are treated as super-nodes and the process is repeated 
+       until no further modularity gain is possible.
+
+    Note:
+        scikit-network must be installed for this clustering method to function.
+    
+    References:
+        More information on the Louvain Algorithm is available at https://web.stanford.edu/class/cs246/slides/11-graphs1.pdf
     """
     
     # Create connectivity matrix
