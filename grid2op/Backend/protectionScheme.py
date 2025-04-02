@@ -11,7 +11,7 @@ from grid2op.Backend.thermalLimits import ThermalLimits
 
 class DefaultProtection:
     """
-    Classe avancée pour gérer les protections réseau et les déconnexions.
+    Advanced class to manage network protections and disconnections.
     """
 
     def __init__(
@@ -23,7 +23,7 @@ class DefaultProtection:
         logger: Optional[logging.Logger] = None,
     ):
         """
-        Initialise l'état du réseau avec des protections personnalisables.
+        Initializes the network state with customizable protections.
         """
         self.backend = backend
         self._parameters = copy.deepcopy(parameters) if parameters else Parameters()
@@ -53,9 +53,9 @@ class DefaultProtection:
 
     def _validate_input(self, backend: Backend, parameters: Optional[Parameters]) -> None:
         if not isinstance(backend, Backend):
-            raise Grid2OpException(f"Argument 'backend' doit être de type 'Backend', reçu : {type(backend)}")
+            raise Grid2OpException(f"Argument 'backend' must be of type 'Backend', received: {type(backend)}")
         if parameters and not isinstance(parameters, Parameters):
-            raise Grid2OpException(f"Argument 'parameters' doit être de type 'Parameters', reçu : {type(parameters)}")
+            raise Grid2OpException(f"Argument 'parameters' must be of type 'Parameters', received: {type(parameters)}")
 
     def _get_value_from_parameters(self, parameter_name: str) -> Any:
         return getattr(self._parameters, parameter_name, None)
@@ -66,7 +66,7 @@ class DefaultProtection:
         except Exception as e:
             if self.logger is not None:
                 self.logger.error(
-                    f"Erreur flux de puissance : {e}"
+                    f"Power flow error: {e}"
                 )
             return e
 
@@ -78,7 +78,7 @@ class DefaultProtection:
                 )
             raise ValueError("Thermal limits must be provided for overflow calculations.")
 
-        lines_status = self.backend.get_line_status() # self._thermal_limit_a reste fixe. self._soft_overflow_threshold = 1 
+        lines_status = self.backend.get_line_status() # self._thermal_limit_a remains fixed. self._soft_overflow_threshold = 1 
         is_overflowing = (lines_flows >= self._thermal_limit_a * self._soft_overflow_threshold) & lines_status
         self._timestep_overflow[is_overflowing] += 1
         # self._hard_overflow_threshold = 1.5
@@ -93,8 +93,7 @@ class DefaultProtection:
             self.backend._disconnect_line(line_idx)
             self.disconnected_during_cf[line_idx] = timestep
             if self.logger is not None:
-                self.logger.warning(f"Ligne {line_idx} déconnectée au pas de temps {timestep}.")         
-            
+                self.logger.warning(f"Line {line_idx} disconnected at timestep {timestep}.")
 
     def next_grid_state(self) -> Tuple[np.ndarray, List[Any], Union[None, Exception]]:
         try:
@@ -117,19 +116,19 @@ class DefaultProtection:
 
         except Exception as e:
             if self.logger is not None:
-                self.logger.exception("Erreur inattendue dans le calcul de l'état du réseau.")
+                self.logger.exception("Unexpected error in calculating the network state.")
             return self.disconnected_during_cf, self.infos, e
 
 class NoProtection(DefaultProtection):
     """
-    Classe qui désactive les protections de débordement tout en conservant la structure de DefaultProtection.
+    Class that disables overflow protections while keeping the structure of DefaultProtection.
     """
     def __init__(self, backend: Backend, thermal_limits: ThermalLimits, is_dc: bool = False):
         super().__init__(backend, parameters=None, thermal_limits=thermal_limits, is_dc=is_dc)
 
     def next_grid_state(self) -> Tuple[np.ndarray, List[Any], None]:
         """
-        Ignore les protections et retourne l'état du réseau sans déconnexions.
+        Ignores protections and returns the network state without disconnections.
         """
         return self.disconnected_during_cf, self.infos, self.conv_
 

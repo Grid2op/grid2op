@@ -7,7 +7,7 @@ from grid2op.Exceptions import Grid2OpException
 class TestThermalLimits(unittest.TestCase):
     
     def setUp(self):
-        """Initialisation avant chaque test."""
+        """Initialization before each test."""
         self.logger = logging.getLogger("test_logger")
         self.logger.disabled = True
         
@@ -23,30 +23,30 @@ class TestThermalLimits(unittest.TestCase):
         )
 
     def test_initialization(self):
-        """Test de l'initialisation de ThermalLimits."""
+        """Test the initialization of ThermalLimits."""
         self.assertEqual(self.thermal_limit_instance.n_line, self.n_lines)
         self.assertEqual(self.thermal_limit_instance.name_line, self.line_names)
         np.testing.assert_array_equal(self.thermal_limit_instance.limits, self.thermal_limits)
 
     def test_set_n_line(self):
-        """Test du setter de n_line."""
+        """Test the setter for n_line."""
         self.thermal_limit_instance.n_line = 5
         self.assertEqual(self.thermal_limit_instance.n_line, 5)
 
         with self.assertRaises(ValueError):
-            self.thermal_limit_instance.n_line = -1  # Doit lever une erreur
+            self.thermal_limit_instance.n_line = -1  # Should raise an error
 
     def test_set_name_line(self):
-        """Test du setter de name_line."""
+        """Test the setter for name_line."""
         new_names = ["L4", "L5", "L6"]
         self.thermal_limit_instance.name_line = new_names
         self.assertEqual(self.thermal_limit_instance.name_line, new_names)
 
         with self.assertRaises(ValueError):
-            self.thermal_limit_instance.name_line = ["L4", 123, "L6"]  # Doit lever une erreur
+            self.thermal_limit_instance.name_line = ["L4", 123, "L6"]  # Should raise an error
 
     def test_set_limits(self):
-        """Test du setter de limits avec np.array et dict."""
+        """Test the setter for limits with np.array and dict."""
         new_limits = np.array([400.0, 500.0, 600.0])
         self.thermal_limit_instance.limits = new_limits
         np.testing.assert_array_equal(self.thermal_limit_instance.limits, new_limits)
@@ -58,10 +58,10 @@ class TestThermalLimits(unittest.TestCase):
         )
 
         with self.assertRaises(Grid2OpException):
-            self.thermal_limit_instance.limits = {"InvalidLine": 100.0}  # Ligne inexistante
+            self.thermal_limit_instance.limits = {"InvalidLine": 100.0}  # Non-existent line
 
     def test_copy(self):
-        """Test de la méthode copy."""
+        """Test the copy method."""
         copied_instance = self.thermal_limit_instance.copy()
         self.assertIsNot(copied_instance, self.thermal_limit_instance)
         np.testing.assert_array_equal(copied_instance.limits, self.thermal_limit_instance.limits)
