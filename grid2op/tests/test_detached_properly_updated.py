@@ -22,8 +22,12 @@ class DetachmentBackendOutputTester(unittest.TestCase):
                                      test=True,
                                      allow_detachment=True,
                                      action_class=CompleteAction)
-        self.env.reset(seed=0, options={"time serie id": 0})
-        obs = self.env.reset()
+        parameters = self.env.parameters
+        parameters.ENV_DOES_REDISPATCHING = False
+        self.env.change_parameters(parameters)
+        self.env.change_forecast_parameters(parameters)
+        # values are hard coded for time serie id = 1, do not modify
+        self.obs = self.env.reset(seed=0, options={"time serie id": 1})
         return super().setUp()
     
     def tearDown(self) -> None:
@@ -38,31 +42,34 @@ class DetachmentBackendOutputTester(unittest.TestCase):
                 "set_bus": {"generators_id": [(gen_id, -1)]}
             }
         ))
-        assert not done
+        assert not done, info["exception"]
+        assert not info["exception"]
         assert obs.gen_detached[gen_id]
         assert obs.gen_p[gen_id] == 0.
         assert obs.gen_v[gen_id] == 0.
         assert obs.gen_q[gen_id] == 0.
         assert obs.gen_theta[gen_id] == 0., f"{obs.gen_theta[gen_id]} vs 0."
-        assert abs(obs.gen_p_detached[gen_id] - 79.8) <= 1e-5
+        assert abs(obs.gen_p_detached[gen_id] - 79.8) <= 1e-5, f"{obs.gen_p_detached[gen_id]} vs {79.8}"
         
         obs1, _, done, info = self.env.step(self.env.action_space({}))
-        assert not done
+        assert not done, info["exception"]
+        assert not info["exception"]
         assert obs.gen_detached[gen_id]
         assert obs1.gen_p[gen_id] == 0.
         assert obs1.gen_v[gen_id] == 0.
         assert obs1.gen_q[gen_id] == 0.
         assert obs1.gen_theta[gen_id] == 0., f"{obs1.gen_theta[gen_id]} vs 0."
-        assert abs(obs1.gen_p_detached[gen_id] - 80.5) <= 1e-5
+        assert abs(obs1.gen_p_detached[gen_id] - 80.5) <= 1e-5, f"{obs.gen_p_detached[gen_id]} vs {80.5}"
         
         obs2, _, done, info = self.env.step(self.env.action_space({}))
-        assert not done
+        assert not done, info["exception"]
+        assert not info["exception"]
         assert obs.gen_detached[gen_id]
         assert obs2.gen_p[gen_id] == 0.
         assert obs2.gen_v[gen_id] == 0.
         assert obs2.gen_q[gen_id] == 0.
         assert obs2.gen_theta[gen_id] == 0., f"{obs2.gen_theta[gen_id]} vs 0."
-        assert abs(obs2.gen_p_detached[gen_id] - 80.5) <= 1e-5
+        assert abs(obs2.gen_p_detached[gen_id] - 80.5) <= 1e-5, f"{obs.gen_p_detached[gen_id]} vs {80.5}"
         
     def test_disco_load(self):
         """test i can disconnect a load"""

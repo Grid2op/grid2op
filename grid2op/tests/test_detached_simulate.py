@@ -6,9 +6,8 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import copy
+
 import grid2op
-from grid2op.Agent import BaseAgent
 from grid2op.Action import CompleteAction
 from grid2op.Chronics import ChangeNothing
 import unittest
@@ -29,12 +28,14 @@ class TestDetachSimulate(unittest.TestCase):
                                     chronics_class=ChangeNothing,
                                     data_feeding_kwargs={"h_forecast": [5, 10, 15, 20, 25, 30]},
                                     )
-        paramerters = self.env.parameters
-        paramerters.MAX_SUB_CHANGED = 99999
-        paramerters.MAX_LINE_STATUS_CHANGED = 99999
-        paramerters.NB_TIMESTEP_COOLDOWN_LINE = 0
-        paramerters.NB_TIMESTEP_COOLDOWN_SUB = 0
-        self.env.change_parameters(paramerters)
+        parameters = self.env.parameters
+        parameters.MAX_SUB_CHANGED = 99999
+        parameters.MAX_LINE_STATUS_CHANGED = 99999
+        parameters.NB_TIMESTEP_COOLDOWN_LINE = 0
+        parameters.NB_TIMESTEP_COOLDOWN_SUB = 0
+        parameters.ENV_DOES_REDISPATCHING = False
+        self.env.change_parameters(parameters)
+        self.env.change_forecast_parameters(parameters)
         self.init_obs = self.env.reset(seed=0, options={"time serie id": 0})
         
     def tearDown(self):
@@ -48,62 +49,62 @@ class TestDetachSimulate(unittest.TestCase):
         act_deco = self.env.action_space({"set_bus": {"generators_id": [(gen_id, -1)]}})
         act_reco = self.env.action_space({"set_bus": {"generators_id": [(gen_id, +1)]}})
         next_obs, reward, done, info = self.env.step(act_deco)
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert next_obs.gen_detached[gen_id]
         assert next_obs.gen_v[gen_id] == 0.
         assert next_obs.gen_p[gen_id] == 0.
         
         # test simulate
         next_obs_sim00, reward, done, info = next_obs.simulate(self.env.action_space())
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert next_obs_sim00.gen_detached[gen_id]
         assert next_obs_sim00.gen_v[gen_id] == 0.
         assert next_obs_sim00.gen_p[gen_id] == 0.
         next_obs_sim0, reward, done, info = next_obs.simulate(act_reco)
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert not next_obs_sim0.gen_detached[gen_id]
         assert np.abs(next_obs_sim0.gen_v[gen_id] - normal_v[gen_id]) <= tol, f"error {np.abs(next_obs_sim0.gen_v[gen_id] - normal_v[gen_id]).max()}"
         assert np.abs(next_obs_sim0.gen_p[gen_id] - normal_p[gen_id]) <= tol, f"error {np.abs(next_obs_sim0.gen_p[gen_id] - normal_p[gen_id]).max()}"
         next_obs_sim1, reward, done, info = next_obs.simulate(act_deco)
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert next_obs_sim1.gen_detached[gen_id]
         assert next_obs_sim1.gen_v[gen_id] == 0.
         assert next_obs_sim1.gen_p[gen_id] == 0.
         next_obs_sim2, reward, done, info = next_obs.simulate(self.env.action_space())
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert next_obs_sim2.gen_detached[gen_id]
         assert next_obs_sim2.gen_v[gen_id] == 0.
         assert next_obs_sim2.gen_p[gen_id] == 0.
         next_obs_sim3, reward, done, info = next_obs.simulate(act_reco)
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert not next_obs_sim3.gen_detached[gen_id]
         assert np.abs(next_obs_sim3.gen_v[gen_id] - normal_v[gen_id]) <= tol, f"error {np.abs(next_obs_sim3.gen_v[gen_id] - normal_v[gen_id]).max()}"
         assert np.abs(next_obs_sim3.gen_p[gen_id] - normal_p[gen_id]) <= tol, f"error {np.abs(next_obs_sim3.gen_p[gen_id] - normal_p[gen_id]).max()}"
         # now change the setpoint
         next_obs_sim4, reward, done, info = next_obs.simulate(act_reco + self.env.action_space({"injection": {"prod_v": normal_v * 1.01}}))
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert not next_obs_sim4.gen_detached[gen_id]
         assert np.abs(next_obs_sim4.gen_v[gen_id] - 1.01 * normal_v[gen_id]) <= tol, f"error {np.abs(next_obs_sim4.gen_v[gen_id] - 1.01 * normal_v[gen_id]).max()}"
         assert np.abs(next_obs_sim4.gen_p[gen_id] - normal_p[gen_id]) <= tol, f"error {np.abs(next_obs_sim4.gen_p[gen_id] - normal_p[gen_id]).max()}"
         # disco
         next_obs_sim5, reward, done, info = next_obs.simulate(act_deco)
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert next_obs_sim5.gen_detached[gen_id]
         assert next_obs_sim5.gen_v[gen_id] == 0.
         assert next_obs_sim5.gen_p[gen_id] == 0.
         
         # reco again (and check the setpoint is not the last one used in obs.simulate but is the one of the observation)
         next_obs_sim6, reward, done, info = next_obs.simulate(act_reco)
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert not next_obs_sim6.gen_detached[gen_id]
         assert np.abs(next_obs_sim6.gen_v[gen_id] - normal_v[gen_id]) <= tol, f"error {np.abs(next_obs_sim6.gen_v[gen_id] - normal_v[gen_id]).max()}"
         assert np.abs(next_obs_sim6.gen_p[gen_id] - normal_p[gen_id]) <= tol, f"error {np.abs(next_obs_sim6.gen_p[gen_id] - normal_p[gen_id]).max()}"
@@ -111,8 +112,8 @@ class TestDetachSimulate(unittest.TestCase):
         
         # test step
         next_next_obs, reward, done, info = self.env.step(act_reco)
-        assert not done
-        assert len(info["exception"]) == 0
+        assert not done, info["exception"]
+        assert len(info["exception"]) == 0, info["exception"]
         assert not next_next_obs.gen_detached[gen_id]
         assert np.abs(next_next_obs.gen_v[gen_id] - normal_v[gen_id]) <= tol, f"error {np.abs(next_next_obs.gen_v[gen_id] - normal_v[gen_id]).max()}"
         assert np.abs(next_next_obs.gen_p[gen_id] - normal_p[gen_id]) <= tol, f"error {np.abs(next_next_obs.gen_p[gen_id] - normal_p[gen_id]).max()}"

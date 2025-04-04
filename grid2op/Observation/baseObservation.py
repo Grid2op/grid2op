@@ -4360,6 +4360,8 @@ class BaseObservation(GridObjects):
             "_amount_storage_prev": 1.0 * env._amount_storage_prev,
             "_sum_curtailment_mw": 1.0 * env._sum_curtailment_mw,
             "_sum_curtailment_mw_prev": 1.0 * env._sum_curtailment_mw_prev,
+            "_detached_elements_mw": 1.0 * env._detached_elements_mw,
+            "_detached_elements_mw_prev": 1.0 * env._detached_elements_mw_prev,
             "_line_status_env": env.get_current_line_status().astype(dt_int),  # false -> 0 true -> 1
             "_gen_activeprod_t": 1.0 * env._gen_activeprod_t,
             "_gen_activeprod_t_redisp": 1.0 * env._gen_activeprod_t_redisp,

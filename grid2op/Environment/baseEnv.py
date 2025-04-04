@@ -13,7 +13,7 @@ import time
 import copy
 import os
 import json
-from typing import Optional, Tuple, Union, Dict, Any, Literal
+from typing import List, Optional, Tuple, Union, Dict, Any, Literal
 import importlib
 import sys
 
@@ -592,6 +592,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._gen_before_curtailment = None
         self._sum_curtailment_mw = None
         self._sum_curtailment_mw_prev = None
+        self._detached_elements_mw = None
+        self._detached_elements_mw_prev = None
         self._limited_before = 0.0  # TODO curt
 
         # attention budget
@@ -931,6 +933,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj._gen_before_curtailment = copy.deepcopy(self._gen_before_curtailment)
         new_obj._sum_curtailment_mw = copy.deepcopy(self._sum_curtailment_mw)
         new_obj._sum_curtailment_mw_prev = copy.deepcopy(self._sum_curtailment_mw_prev)
+        new_obj._detached_elements_mw = copy.deepcopy(self._detached_elements_mw)
+        new_obj._detached_elements_mw_prev = copy.deepcopy(self._detached_elements_mw_prev)
         new_obj._limited_before = copy.deepcopy(self._limited_before)
 
         # attention budget
@@ -1450,6 +1454,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._gen_before_curtailment = np.zeros(bk_type.n_gen, dtype=dt_float)  # in MW
         self._sum_curtailment_mw = dt_float(0.0)
         self._sum_curtailment_mw_prev = dt_float(0.0)
+        self._detached_elements_mw = dt_float(0.0)
+        self._detached_elements_mw_prev = dt_float(0.0)
         self._reset_curtailment()
 
         # register this is properly initialized
@@ -1609,6 +1615,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._storage_p_detached[:] = 0.
         
         self._delta_gen_p[:] = 0.
+        
+        self._detached_elements_mw = 0.
+        self._detached_elements_mw_prev = 0.
         
     def _reset_alert(self):
         self._last_alert[:] = False
@@ -2119,6 +2128,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             or np.max(mismatch) >= self._tol_poly
             or np.abs(self._amount_storage) >= self._tol_poly
             or np.abs(self._sum_curtailment_mw) >= self._tol_poly
+            or np.abs(self._detached_elements_mw) >= self._tol_poly
         ):
             except_ = self._compute_dispatch_vect(already_modified_gen, new_p)
             valid = except_ is None
@@ -2141,6 +2151,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             | (self._target_dispatch != self._actual_dispatch)
         )
         gen_participating[~self.gen_redispatchable] = False
+        if type(self).detachment_is_allowed:
+            gen_participating[self._backend_action.get_gen_detached()] = False
         incr_in_chronics = new_p - (
             self._gen_activeprod_t_redisp - self._actual_dispatch
         )
@@ -2168,6 +2180,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 and self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF
             ):
                 gen_participating_tmp = self.gen_redispatchable
+                if type(self).detachment_is_allowed:
+                    gen_participating_tmp[self._backend_action.get_gen_detached()] = False
                 p_min_down_tmp = (
                     self.gen_pmin[gen_participating_tmp]
                     - self._gen_activeprod_t_redisp[gen_participating_tmp]
@@ -2202,6 +2216,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._target_dispatch[gen_participating]
             - self._actual_dispatch[gen_participating]
         )
+        
         already_modified_gen_me = already_modified_gen[gen_participating]
         target_vals_me = target_vals[already_modified_gen_me]
         nb_dispatchable = gen_participating.sum()
@@ -2241,7 +2256,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             np.zeros(1, dtype=dt_float)
             + self._amount_storage
             - self._sum_curtailment_mw
+            + self._detached_elements_mw
         )
+        
         # gen increase in the chronics
         new_p_th = new_p[gen_participating] + self._actual_dispatch[gen_participating]
 
@@ -2382,7 +2399,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """This function is an attempt to give more detailed log by detecting infeasible dispatch"""
         except_ = None
         sum_move = (
-            incr_in_chronics.sum() + self._amount_storage - self._sum_curtailment_mw
+            incr_in_chronics.sum() + self._amount_storage - self._sum_curtailment_mw + self._detached_elements_mw
         )
         avail_down_sum = avail_down.sum()
         avail_up_sum = avail_up.sum()
@@ -3079,7 +3096,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._backend_action += attack
         return lines_attacked, subs_attacked, attack_duration
 
-    def _aux_apply_redisp(self, action, new_p, new_p_th, gen_curtailed, except_, powerline_status):
+    def _aux_apply_redisp(self,
+                          action: BaseAction,
+                          new_p: np.ndarray,
+                          new_p_th: np.ndarray,
+                          gen_curtailed: np.ndarray,
+                          except_: List[Exception],
+                          powerline_status):
+        cls = type(self)
         is_illegal_redisp = False
         is_done = False
         is_illegal_reco = False
@@ -3098,12 +3122,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             action.reset_cache_topological_impact()
             action = self._action_space({})
             _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
-            if type(self).dim_alerts:
+            if cls.dim_alerts:
                 action.raise_alert = orig_action.raise_alert
             is_illegal_redisp = True
             except_.append(except_tmp)
 
-            if type(self).n_storage > 0:
+            if cls.n_storage > 0:
                 # TODO curtailment: cancel it here too !
                 self._storage_current_charge[:] = self._storage_previous_charge
                 self._amount_storage -= self._amount_storage_prev
@@ -3132,7 +3156,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             action.reset_cache_topological_impact()
             res_action = self._action_space({})
             _ = res_action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
-            if type(self).dim_alerts:
+            if cls.dim_alerts:
                 res_action.raise_alert = action.raise_alert
             is_illegal_redisp = True
             except_.append(except_tmp)
@@ -3156,32 +3180,45 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             action.reset_cache_topological_impact()
             res_action = self._action_space({})
             _ = res_action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
-            if type(self).dim_alerts:
+            if cls.dim_alerts:
                 res_action.raise_alert = action.raise_alert
             except_.append(except_tmp)
         else:
             res_action = action
+            # self._backend_action.set_redispatch(self._actual_dispatch)
         return res_action, is_illegal_redisp, is_illegal_reco, is_done
 
     def _aux_update_backend_action(self,
                                    action: BaseAction,
                                    action_storage_power: np.ndarray,
                                    init_disp: np.ndarray):
+        """updates the backend action with the agent action"""
         # make sure the dispatching action is not implemented "as is" by the backend.
         # the environment must make sure it's a zero-sum action.
         # same kind of limit for the storage
         res_exc_ = None
-        action._redispatch[:] = 0.0
-        action._storage_power[:] = self._storage_power
+        # cancel the redisp and storage tags (set later in the code)
+        tag_redisp = action._modif_redispatch
+        tag_storage = action._modif_storage
+        action._modif_redispatch = False
+        action._modif_storage = False
+        # cancel the values
+        action._redispatch[:] = 0.0  # redispatch is added after everything in the code (even after the opponent)
+        action._storage_power[:] = 0.0  # storage is also added after everything
+        # add the action
         self._backend_action += action
+        # put initial value
         action._storage_power[:] = action_storage_power
         action._redispatch[:] = init_disp
-        # TODO storage: check the original action, even when replaced by do nothing is not modified
-        self._backend_action += self._env_modification
-        self._backend_action.set_redispatch(self._actual_dispatch)
+        # put back the tags
+        action._modif_redispatch = tag_redisp
+        action._modif_storage = tag_storage
         return res_exc_
 
-    def _update_alert_properties(self, action, lines_attacked, subs_attacked):
+    def _update_alert_properties(self,
+                                 action: BaseAction,
+                                 lines_attacked,
+                                 subs_attacked):
         # update the environment with the alert information from the
         # action (if env supports it)
         if type(self).dim_alerts == 0:
@@ -3362,7 +3399,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._storage_power[self._storages_detached] = 0.
             
     def _aux_run_pf_after_state_properly_set(
-        self, action, init_line_status, new_p, except_
+        self,
+        action: BaseAction,
+        init_line_status,
+        new_p,
+        except_ : List[Exception]
     ):
         has_error = True
         detailed_info = None
@@ -3393,6 +3434,29 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 )
         return detailed_info, has_error
 
+    def _aux_apply_detachment(self, new_p, new_p_th):
+        gen_detached_user = self._backend_action.get_gen_detached()
+        load_detached_user = self._backend_action.get_load_detached()
+        
+        # handle gen
+        mw_gen_lost_this = new_p[gen_detached_user].sum() 
+        
+        # handle loads
+        mw_load_lost_this = self._prev_load_p[load_detached_user].sum() 
+        
+        # put everything together
+        total_power_lost = -mw_gen_lost_this + mw_load_lost_this
+        self._detached_elements_mw = (-total_power_lost + 
+                                      self._actual_dispatch[gen_detached_user].sum() - 
+                                      self._detached_elements_mw_prev)
+        self._detached_elements_mw_prev = -total_power_lost
+        
+        # and now modifies the vectors
+        new_p[gen_detached_user] = 0.
+        new_p_th[gen_detached_user] = 0.
+        self._actual_dispatch[gen_detached_user] = 0.
+        return new_p, new_p_th
+        
     def step(self, action: BaseAction) -> Tuple[BaseObservation,
                                                 float,
                                                 bool,
@@ -3596,7 +3660,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             )
             new_p = self._get_new_prod_setpoint(action)
             new_p_th = 1.0 * new_p
-            self._feed_data_for_detachment(new_p_th)
+            self._feed_data_for_detachment(new_p_th)  # should be called before _axu_apply_detachment
             
             # storage unit
             if cls.n_storage > 0:
@@ -3608,9 +3672,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # it is feasible)
             self._gen_before_curtailment[cls.gen_renewable] = new_p[cls.gen_renewable]
             gen_curtailed = self._aux_handle_curtailment_without_limit(action, new_p)
+            
+            # TODO detachment
+            self._aux_update_backend_action(action, action_storage_power, init_disp)
+            new_p, new_p_th = self._aux_apply_detachment(new_p, new_p_th)
 
             beg__redisp = time.perf_counter()
-            if (cls.redispatching_unit_commitment_availble or cls.n_storage > 0.0) and self._parameters.ENV_DOES_REDISPATCHING:
+            if (cls.redispatching_unit_commitment_availble or cls.n_storage > 0) and self._parameters.ENV_DOES_REDISPATCHING:
                 # this computes the "optimal" redispatching
                 # and it is also in this function that the limiting of the curtailment / storage actions
                 # is perform to make the state "feasible"
@@ -3622,7 +3690,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._time_redisp += time.perf_counter() - beg__redisp
             
             if not is_done:
-                self._aux_update_backend_action(action, action_storage_power, init_disp)
+                # TODO ?
+                # self._aux_update_backend_action(action, action_storage_power, init_disp)
+                
+                # TODO storage: check the original action, even when replaced by do nothing is not modified
+                self._backend_action += self._env_modification
+                self._backend_action.set_redispatch(self._actual_dispatch)
+                self._backend_action.set_storage(self._storage_power)
 
                 # now get the new generator voltage setpoint
                 voltage_control_act = self._voltage_control(action, prod_v_chronics)
@@ -3986,6 +4060,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             "_gen_before_curtailment",
             "_sum_curtailment_mw",
             "_sum_curtailment_mw_prev",
+            "_detached_elements_mw",
+            "_detached_elements_mw_prev",
             "_has_attention_budget",
             "_attentiong_budget",
             "_attention_budget_cls",
@@ -4625,6 +4701,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._gen_before_curtailment[:] = obs.gen_p_before_curtail
         self._sum_curtailment_mw = obs._env_internal_params["_sum_curtailment_mw"]
         self._sum_curtailment_mw_prev = obs._env_internal_params["_sum_curtailment_mw_prev"]
+        self._detached_elements_mw = obs._env_internal_params["_detached_elements_mw"]
+        self._detached_elements_mw_prev = obs._env_internal_params["_detached_elements_mw"]
 
         # line status
         self._line_status[:] = obs._env_internal_params["_line_status_env"] == 1

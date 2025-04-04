@@ -669,6 +669,14 @@ class _BackendAction(GridObjects):
             This is called by the environment, do not alter.
         """
         self.prod_p.change_val(new_redispatching)
+        
+    def set_storage(self, new_storage):
+        """
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+            
+            This is called by the environment, do not alter.
+        """
+        self.storage_power.set_val(new_storage)
 
     def _aux_iadd_inj(self, dict_injection):
         """

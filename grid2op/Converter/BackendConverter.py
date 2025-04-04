@@ -173,13 +173,13 @@ class BackendConverter(Backend):
         self.cannot_handle_more_than_2_busbar()
         self.cannot_handle_detachment()
         
-        self.source_backend.load_grid(path, filename)
+        self.source_backend.load_grid_public(path, filename)
         # and now i load the target backend
         if self.target_backend_grid_path is not None:
-            self.target_backend.load_grid(path=self.target_backend_grid_path)
+            self.target_backend.load_grid_public(path=self.target_backend_grid_path)
         else:
             # both source and target backend understands the same format
-            self.target_backend.load_grid(path, filename)
+            self.target_backend.load_grid_public(path, filename)
         
         self.source_backend._compute_pos_big_topo()
         self.target_backend._compute_pos_big_topo()
@@ -205,9 +205,13 @@ class BackendConverter(Backend):
                     "storage_to_sub_pos",
                     "storage_pos_topo_vect"
                     ]
+        
+        if type(self.source_backend).shunts_data_available:
+            li_attrs += ["n_shunt", "name_shunt", "shunts_data_available"]
+            
         for attr_nm in li_attrs:
             setattr(self, attr_nm, getattr(self.source_backend, attr_nm))
-        
+            
         # TODO in case source supports the "more than 2" feature but not target
         # it's unclear how I can "reload" the grid...
         # if (not self.target_backend._missing_two_busbars_support_info and

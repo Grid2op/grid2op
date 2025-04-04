@@ -8,11 +8,30 @@ exclude_lines =
     raise NotImplementedError
     if 0:
     if __name__ == .__main__.:
+omit =
+    # omit anything in a .local directory anywhere
+    */.local/*
+    data/*
+    data_test/*
+    data_grid2op/*
+    # omit this single file
+    *test*.py
+    *BaseBackendTest.py
+    *BaseRedispTest.py
+    *__init__.py
+    *config.py
+    dtypes.py
 [run]
 omit =
     # omit anything in a .local directory anywhere
     */.local/*
     # omit everything in /usr
     /usr/*
+    data/*
+    data_test/*
+    data_grid2op/*
     # omit this single file
     *test*.py
+    *BaseBackendTest.py
+    *BaseRedispTest.py
+    *__init__.py

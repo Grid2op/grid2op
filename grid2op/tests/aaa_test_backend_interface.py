@@ -820,7 +820,7 @@ class AAATestBackendAPI(MakeBackend):
         if not isinstance(maybe_exc, BackendError):
             warnings.warn("The error returned by your backend when it stopped (due to isolated element) should preferably inherit from BackendError")
                 
-    def _aux_test_detachment(self, backend : Backend, is_dc=True, detachment_should_pass = False):
+    def _aux_test_detachment(self, backend : Backend, is_dc=True, detachment_should_pass=False):
         """auxilliary method to handle the "legacy" code, when the backend was expected to 
         handle the error """
         str_ = "DC" if is_dc else "AC"
@@ -866,7 +866,6 @@ class AAATestBackendAPI(MakeBackend):
         """
         self.skip_if_needed()
         backend = self.aux_make_backend(allow_detachment=allow_detachment)
-        cls = type(backend)
         
         # a load alone on a bus
         action = type(backend)._complete_action_class()
@@ -874,7 +873,6 @@ class AAATestBackendAPI(MakeBackend):
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
         backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=False)  
         self._aux_test_detachment(backend, is_dc=False)
         
         backend.reset_public(self.get_path(), self.get_casefile())
@@ -1031,7 +1029,7 @@ class AAATestBackendAPI(MakeBackend):
         self.skip_if_needed()
         backend = self.aux_make_backend(allow_detachment=allow_detachment)
         
-        # a load alone on a bus
+        # a load disconnected
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"loads_id": [(0, -1)]}})
         bk_act = type(backend).my_bk_act_class()
@@ -1040,7 +1038,7 @@ class AAATestBackendAPI(MakeBackend):
         self._aux_test_detachment(backend, is_dc=False, detachment_should_pass=True)
         
         backend.reset_public(self.get_path(), self.get_casefile())
-        # a load alone on a bus
+        # a load disconnected
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"loads_id": [(0, -1)]}})
         bk_act = type(backend).my_bk_act_class()
@@ -1801,7 +1799,8 @@ class AAATestBackendAPI(MakeBackend):
             
         self.test_16_isolated_load_stops_computation(allow_detachment=True)
         self.test_17_isolated_gen_stops_computation(allow_detachment=True)
-        self.test_18_isolated_shunt_stops_computation(allow_detachment=True)
+        if cls.shunts_data_available:
+            self.test_18_isolated_shunt_stops_computation(allow_detachment=True)
         if cls.n_storage > 0:
             self.test_19_isolated_storage_stops_computation(allow_detachment=True)
         self.test_20_disconnected_load_stops_computation(allow_detachment=True)

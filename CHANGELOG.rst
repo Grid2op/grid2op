@@ -156,6 +156,8 @@ Native multi agents support:
   function is called. This is to ensure proper behaviour if env is used without being reset.
 - [FIXED] no error was catched if the backend could not properly apply the action sent by the environment.
 - [FIXED] an issue in the AAA tests: when backend does not support storages, some tests were skipped not correctly
+- [FIXED] an issue when computing the cascading failure routine, in case multiple iterations were performed, 
+  the cooldowns were not updated correctly.
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 

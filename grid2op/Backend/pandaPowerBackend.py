@@ -730,7 +730,7 @@ class PandaPowerBackend(Backend):
         
         self._compute_pos_big_topo()
         
-        self._topo_vect = np.full(self.dim_topo, fill_value=-1, dtype=dt_int)
+        self._topo_vect : np.ndarray = np.full(self.dim_topo, fill_value=-1, dtype=dt_int)
 
         # utilities for imeplementing apply_action
         self._corresp_name_fun = {}
@@ -841,7 +841,7 @@ class PandaPowerBackend(Backend):
         self.storage_q = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
         self.storage_v = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
         self._topo_vect.flags.writeable = True
-        self._topo_vect.resize(cls.dim_topo)
+        self._topo_vect.resize(cls.dim_topo, refcheck=False)
         self._topo_vect.flags.writeable = False
         self._get_topo_vect()
 

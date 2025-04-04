@@ -1711,6 +1711,101 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         assert not infos  # check that don't simulate a cascading failure
         assert np.sum(disco >= 0) == 0
 
+    def test_next_grid_state_multiple_iteration_no_cooldown(self):
+        # first cases: the overflow counter is too low (0, with 1 time step on overflow allowed)
+        self.skip_if_needed()
+        case_file = self.case_file
+        env_params = copy.deepcopy(self.env_params)
+        env_params.HARD_OVERFLOW_THRESHOLD = 1.5
+        env_params.NB_TIMESTEP_OVERFLOW_ALLOWED = 1
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = Environment(
+                init_grid_path=os.path.join(self.path_matpower, case_file),
+                init_env_path=os.path.join(self.path_matpower, case_file),
+                backend=self.backend,
+                chronics_handler=self.chronics_handler,
+                parameters=env_params,
+                name="test_pp_env2" + type(self).__name__,
+            )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.backend.load_grid_public(self.path_matpower, case_file)
+        type(self.backend).set_no_storage()
+        self.backend.assert_grid_correct()
+        conv, *_ = self.backend.runpf()
+        assert conv, f"powerflow should converge at loading, error: {_}"
+        
+        a_or = np.array([  638.2897  ,   305.0504  , 17658.967   , 26534.043   ,
+                         10869.238   ,  4686.7173  , 15612.659   ,   300.07916 ,
+                           229.80608 ,   169.97293 ,   100.40193 ,   265.47507 ,
+                         21193.87    , 21216.445   , 49701.156   ,   124.796844,
+                            67.5976  ,   192.19424 ,   666.7696  ,  1113.5277  ])
+        
+        th_lims = 30. * a_or
+        th_lims[0] = 600  # should stay connected (even though there are 2 iterations)
+        th_lims[10] = a_or[10] / 2.  # disconnected at first iteration
+        th_lims[2] = 18849.43 / 1.6  # disconnected at second iteration
+        self.backend.set_thermal_limit(th_lims)
+        
+        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        res_a = self.backend.lines_or_info()[-1]
+        assert conv_ is None
+        assert disco[10] == 0  # line 10 disco 1st iteration
+        assert disco[2] == 1  # line 2 disco 2nd iteration
+        assert disco[0] == -1  # line 0 not disco
+        assert res_a[0] > 0.  # line 0 should stay connected
+        assert np.abs(res_a[10]) <= 1e-8  # lines 10 is disconnected
+        assert np.abs(res_a[2]) <= 1e-8
+        
+    def test_next_grid_state_multiple_iteration_cooldown(self):
+        # second cases: the overflow counter is too low (0, with 1 time step on overflow allowed)
+        self.skip_if_needed()
+        case_file = self.case_file
+        env_params = copy.deepcopy(self.env_params)
+        env_params.HARD_OVERFLOW_THRESHOLD = 1.5
+        env_params.NB_TIMESTEP_OVERFLOW_ALLOWED = 2
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = Environment(
+                init_grid_path=os.path.join(self.path_matpower, case_file),
+                init_env_path=os.path.join(self.path_matpower, case_file),
+                backend=self.backend,
+                chronics_handler=self.chronics_handler,
+                parameters=env_params,
+                name="test_pp_env2" + type(self).__name__,
+            )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.backend.load_grid_public(self.path_matpower, case_file)
+        type(self.backend).set_no_storage()
+        self.backend.assert_grid_correct()
+        conv, *_ = self.backend.runpf()
+        assert conv, f"powerflow should converge at loading, error: {_}"
+        
+        a_or = np.array([  638.2897  ,   305.0504  , 17658.967   , 26534.043   ,
+                         10869.238   ,  4686.7173  , 15612.659   ,   300.07916 ,
+                           229.80608 ,   169.97293 ,   100.40193 ,   265.47507 ,
+                         21193.87    , 21216.445   , 49701.156   ,   124.796844,
+                            67.5976  ,   192.19424 ,   666.7696  ,  1113.5277  ])
+        
+        th_lims = 30. * a_or
+        th_lims[0] = 650  # should stay connected (even though there are 2 iterations)
+        th_lims[10] = a_or[10] / 2.  # disconnected at first iteration
+        th_lims[2] = 18849.43 / 1.6  # disconnected at second iteration
+        self.backend.set_thermal_limit(th_lims)
+        
+        env._timestep_overflow[0] = 2  # already 1 step on overflow
+        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        res_a = self.backend.lines_or_info()[-1]
+        assert conv_ is None
+        assert disco[10] == 0  # line 10 disco 1st iteration
+        assert disco[2] == 1  # line 2 disco 2nd iteration
+        assert disco[0] == 1  # line 0 is disco (but not at the first iteration)
+        assert np.abs(res_a[0]) <= 1e-8  # lines 10 is disconnected
+        assert np.abs(res_a[10]) <= 1e-8  # lines 10 is disconnected
+        assert np.abs(res_a[2]) <= 1e-8
+    
     def test_set_thermal_limit(self):
         thermal_limit = np.arange(self.backend.n_line)
         self.backend.set_thermal_limit(thermal_limit)
@@ -2541,8 +2636,8 @@ class BaseTestStorageAction(MakeBackend):
             not done
         ), f"i should be able to do a step with some storage units error is {exc_}"
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
-        assert np.all(np.abs(storage_p - 0.0) <= self.tol_one)
-        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
+        assert np.all(np.abs(storage_p - 0.0) <= self.tol_one), f"{storage_p} vs 0."
+        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one), f"{storage_q} vs 0."
 
         # first case, standard modification
         array_modif = np.array([-1.5, -10.0], dtype=dt_float)
@@ -2559,8 +2654,8 @@ class BaseTestStorageAction(MakeBackend):
         obs, reward, done, info = self.env.step(act)
         assert not info["exception"]
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
-        assert np.all(np.abs(storage_p - array_modif) <= self.tol_one)
-        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
+        assert np.all(np.abs(storage_p - array_modif) <= self.tol_one), f"{storage_p} vs {array_modif}"
+        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one), f"{storage_q} vs {0.}"
         assert obs.storage_bus[0] == 2
         assert obs.line_or_bus[8] == 2
         assert obs.gen_bus[3] == 2

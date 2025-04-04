@@ -35,6 +35,7 @@ from grid2op.Exceptions import (
     DivergingPowerflow,
     Grid2OpException,
 )
+import grid2op.Environment  # for type hints
 from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 import grid2op.Observation  # for type hints
 import grid2op.Action  # for type hints
@@ -193,6 +194,7 @@ class Backend(GridObjects, ABC):
         self._load_bus_target = None
         self._gen_bus_target = None
         self._storage_bus_target = None
+        self._shunt_bus_target = None
         
         #: .. versionadded: 1.11.0
         # will be used later on in future grid2op version
@@ -259,7 +261,6 @@ class Backend(GridObjects, ABC):
                           "upgrade it to a newer version.")
         self.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
 
-        
     def can_handle_detachment(self):
         """
         .. versionadded:: 1.11.0
@@ -278,7 +279,8 @@ class Backend(GridObjects, ABC):
             :func:`Backend.cannot_handle_detachment`.
             
             If not, then the environments created with your backend will not be able to 
-            "operate" grid with load and generator detachment.
+            "operate" the grid with load and generator detached (episode will be terminated
+            if this happens).
             
         .. danger::
             We highly recommend you do not try to override this function. 
@@ -390,6 +392,8 @@ class Backend(GridObjects, ABC):
         self._load_bus_target = np.empty(self.n_load, dtype=dt_int)
         self._gen_bus_target =  np.empty(self.n_gen, dtype=dt_int)
         self._storage_bus_target = np.empty(self.n_storage, dtype=dt_int)
+        if self.shunts_data_available:
+            self._shunt_bus_target = np.empty(self.n_shunt, dtype=dt_int)
         
         if self._missing_detachment_support_info:
             self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
@@ -474,10 +478,16 @@ class Backend(GridObjects, ABC):
         self._storage_bus_target.flags.writeable = True
         self._storage_bus_target[stos_bus.changed] = stos_bus.values[stos_bus.changed]
         self._storage_bus_target.flags.writeable = False
-        # TODO shunts
+        
+        if type(self).shunts_data_available:
+            shunts_bus = backend_action.shunt_bus
+            self._shunt_bus_target.flags.writeable = True
+            self._shunt_bus_target[shunts_bus.changed] = shunts_bus.values[shunts_bus.changed]
+            self._shunt_bus_target.flags.writeable = False
+            
         return self.apply_action(backend_action)
         
-    def update_bus_target_after_pf(self, loads_bus, gens_bus, stos_bus):
+    def update_bus_target_after_pf(self, loads_bus, gens_bus, stos_bus, shunt_bus=None):
         self._load_bus_target.flags.writeable = True
         self._load_bus_target[:] = loads_bus
         self._load_bus_target.flags.writeable = False
@@ -487,6 +497,10 @@ class Backend(GridObjects, ABC):
         self._storage_bus_target.flags.writeable = True
         self._storage_bus_target[:] = stos_bus
         self._storage_bus_target.flags.writeable = False
+        if type(self).shunts_data_available and shunt_bus is not None:
+            self._shunt_bus_target.flags.writeable = True
+            self._shunt_bus_target[:] = shunt_bus
+            self._shunt_bus_target.flags.writeable = False
         
     def handle_grid2op_compat(self):
         """This function will resize the _load_bus_target, _gen_bus_target and _storage_bus_target
@@ -500,8 +514,13 @@ class Backend(GridObjects, ABC):
         self._gen_bus_target.resize(cls.n_gen)
         self._gen_bus_target.flags.writeable = False
         self._storage_bus_target.flags.writeable = True
-        self._storage_bus_target.resize(cls.n_storage)
+        self._storage_bus_target.resize(cls.n_storage, refcheck=False)
         self._storage_bus_target.flags.writeable = False
+        if cls.shunts_data_available:
+            self._shunt_bus_target.flags.writeable = True
+            self._shunt_bus_target.resize(cls.n_shunt)
+            self._shunt_bus_target.flags.writeable = False
+            
         
     @abstractmethod
     def apply_action(self, backend_action: "grid2op.Action._backendAction._BackendAction") -> None:
@@ -847,6 +866,7 @@ class Backend(GridObjects, ABC):
         res._load_bus_target = copy.deepcopy(self._load_bus_target)
         res._gen_bus_target = copy.deepcopy(self._gen_bus_target)
         res._storage_bus_target = copy.deepcopy(self._storage_bus_target)
+        res._shunt_bus_target = copy.deepcopy(self._shunt_bus_target)
         res._prevent_automatic_disconnection = copy.deepcopy(self._prevent_automatic_disconnection)
         return res
     
@@ -1318,46 +1338,87 @@ class Backend(GridObjects, ABC):
             # .. versionadded:: 1.11.0
             topo_vect = self.get_topo_vect()            
             load_buses = topo_vect[cls.load_pos_topo_vect]
-            if not cls.detachment_is_allowed and (load_buses == -1).any():
-                raise BackendError(cls.ERR_DETACHMENT.format("loads", "loads",  (load_buses == -1).nonzero()[0]))
+            load_disco = (load_buses == -1)
+            if not cls.detachment_is_allowed and load_disco.any():
+                raise BackendError(cls.ERR_DETACHMENT.format("loads", "loads", load_disco.nonzero()[0]))
 
             gen_buses = topo_vect[cls.gen_pos_topo_vect]
-            if not cls.detachment_is_allowed and (gen_buses == -1).any():
-                raise BackendError(cls.ERR_DETACHMENT.format("gens", "gens",  (gen_buses == -1).nonzero()[0]))
+            gen_disco = (gen_buses == -1)
+            if not cls.detachment_is_allowed and gen_disco.any():
+                raise BackendError(cls.ERR_DETACHMENT.format("gens", "gens", gen_disco.nonzero()[0]))
             
             if cls.n_storage > 0:
                 storage_buses = topo_vect[cls.storage_pos_topo_vect]
                 storage_p, *_ = self.storages_info()
-                sto_maybe_error = (storage_buses == -1) & (np.abs(storage_p) >= 1e-6)
+                storage_p_withpower = np.abs(storage_p) >= 1e-6
+                sto_maybe_error = (storage_buses == -1) & storage_p_withpower
                 if not cls.detachment_is_allowed and sto_maybe_error.any():
                     raise BackendError((cls.ERR_DETACHMENT.format("storages", "storages", sto_maybe_error.nonzero()[0]) + 
                                         " NB storage units are allowed to be disconnected even if "
-                                        "`detachment_is_allowed` is False but only if the don't produce active power."))
-            
+                                        "`detachment_is_allowed` is False but only if the don't produce / absorb active power."))
+            else:
+                sto_maybe_error = None
             # additional check: if the backend detach some things incorrectly
             if cls.detachment_is_allowed:
                 # if the backend automatically disconnect things, I need to catch them
                 # with grid2op 1.11.0 it is not feasible
-                if self._prevent_automatic_disconnection and ((self._load_bus_target != -1) & (load_buses == -1)).any():
-                    issue = (self._load_bus_target != -1) & (load_buses == -1)
-                    raise BackendError(f"Your backend apparently disconnected load(s) id {issue.nonzero()[0]}, "
-                                       f"named {type(self).name_load[issue.nonzero()[0]]}")
-                if self._prevent_automatic_disconnection and ((self._gen_bus_target != -1) & (gen_buses == -1)).any():
-                    issue = (self._gen_bus_target != -1) & (gen_buses == -1)
-                    raise BackendError(f"Your backend apparently disconnected gens(s) id {issue.nonzero()[0]}, "
-                                       f"named {type(self).name_gen[issue.nonzero()[0]]}")
-                # TODO storage units
+                self._catch_automatic_disconnection(load_disco, gen_disco, sto_maybe_error)
                     
         except Grid2OpException as exc_:
             exc_me = exc_
             
         if not conv and exc_me is None:
             exc_me = BackendError(
-                "GAME OVER: Powerflow has diverged during computation "
-                "or a load has been disconnected or a generator has been disconnected."
+                f"GAME OVER: {exc_me}"
             )
         return exc_me
 
+    def _catch_automatic_disconnection(self,
+                                       load_disco: np.ndarray,
+                                       gen_disco: np.ndarray,
+                                       sto_maybe_error: Optional[np.ndarray]):
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+        This function "automatically" detects if elements have been disconnected (bus -1 in the results table but bus > 0 in 
+        the target table). If that is the case, it is expected that (provided that 
+        :attr:`Backend._prevent_automatic_disconnection` is ``True`` - default) the backend raises a BackendError exception.
+        
+        Args:
+            load_disco (np.ndarray): _description_
+            gen_disco (np.ndarray): _description_
+            sto_maybe_error (Optional[np.ndarray]): _description_
+            
+        """
+        if not self._prevent_automatic_disconnection:
+            # in this case, the backend is allowed to disconnect some things
+            return
+        
+        cls = type(self)
+        if ((self._load_bus_target != -1) & load_disco).any():
+            issue = (self._load_bus_target != -1) & load_disco
+            raise BackendError(f"Your backend apparently disconnected load(s) id {issue.nonzero()[0]}, "
+                                f"named {cls.name_load[issue.nonzero()[0]]}")
+        if ((self._gen_bus_target != -1) & gen_disco).any():
+            issue = (self._gen_bus_target != -1) & gen_disco
+            raise BackendError(f"Your backend apparently disconnected gens(s) id {issue.nonzero()[0]}, "
+                                f"named {cls.name_gen[issue.nonzero()[0]]}")
+        
+        if cls.shunts_data_available:
+            *_, shunt_buses = self.shunt_info()
+            if ((self._shunt_bus_target != -1) & (shunt_buses == -1)).any():
+                issue = (self._shunt_bus_target != -1) & (shunt_buses == -1)
+                raise BackendError(f"Your backend apparently disconnected shunt(s) id {issue.nonzero()[0]}, "
+                                    f"named {cls.name_shunt[issue.nonzero()[0]]}")
+        
+        if cls.n_storage > 0:
+            if ((self._storage_bus_target != -1) & sto_maybe_error).any():
+                issue = (self._storage_bus_target != -1) & (sto_maybe_error)
+                raise BackendError(f"Your backend apparently disconnected stprage unit(s) id {issue.nonzero()[0]}, "
+                                    f"named {cls.name_storage[issue.nonzero()[0]]}")
+                
     def next_grid_state(self,
                         env: "grid2op.Environment.BaseEnv",
                         is_dc: Optional[bool]=False):
@@ -1392,14 +1453,15 @@ class Backend(GridObjects, ABC):
 
         """
         infos = []
-        disconnected_during_cf = np.full(self.n_line, fill_value=-1, dtype=dt_int)
+        disconnected_during_cf = np.full(type(self).n_line, fill_value=-1, dtype=dt_int)
         conv_ = self._runpf_with_diverging_exception(is_dc)
         if env._no_overflow_disconnection or conv_ is not None:
             return disconnected_during_cf, infos, conv_
 
         # the environment disconnect some powerlines
         init_time_step_overflow = copy.deepcopy(env._timestep_overflow)
-        ts = 0
+        counter_increased = np.zeros_like(init_time_step_overflow, dtype=dt_bool)
+        iter_num = 0
         while True:
             # simulate the cascading failure
             lines_flows = 1.0 * self.get_line_flow()
@@ -1412,7 +1474,10 @@ class Backend(GridObjects, ABC):
             ) & lines_status
 
             # b) deals with soft overflow (disconnect them if lines still connected)
-            init_time_step_overflow[(lines_flows >= thermal_limits) & lines_status] += 1
+            mask_inc = (lines_flows >= thermal_limits) & lines_status
+            mask_inc[counter_increased] = False
+            init_time_step_overflow[mask_inc] += 1
+            counter_increased[mask_inc] = True
             to_disc[
                 (init_time_step_overflow > env._nb_timestep_overflow_allowed)
                 & lines_status
@@ -1423,7 +1488,7 @@ class Backend(GridObjects, ABC):
                 # no powerlines have been disconnected at this time step, 
                 # i stop the computation there
                 break
-            disconnected_during_cf[to_disc] = ts
+            disconnected_during_cf[to_disc] = iter_num
             
             # perform the disconnection action
             for i, el in enumerate(to_disc):
@@ -1437,7 +1502,7 @@ class Backend(GridObjects, ABC):
 
             if conv_ is not None:
                 break
-            ts += 1
+            iter_num += 1
         return disconnected_during_cf, infos, conv_
 
     def storages_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
