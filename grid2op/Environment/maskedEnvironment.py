@@ -5,8 +5,9 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
-
+import warnings
 import copy
+import warnings
 import numpy as np
 import os
 from typing import Tuple, Union, List
@@ -14,8 +15,7 @@ from typing import Tuple, Union, List
 from grid2op.Environment.environment import Environment
 from grid2op.Exceptions import EnvError
 from grid2op.dtypes import dt_bool, dt_float, dt_int
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB
-from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 
 
 class MaskedEnvironment(Environment):
@@ -107,7 +107,7 @@ class MaskedEnvironment(Environment):
     def _reset_vectors_and_timings(self):
         super()._reset_vectors_and_timings()
         self._hard_overflow_threshold[~self._lines_of_interest] = type(self).INF_VAL_THM_LIM
-        self._nb_timestep_overflow_allowed[~self._lines_of_interest] = type(self).INF_VAL_TS_OVERFLOW_ALLOW
+        self._nb_ts_max_protection_counter[~self._lines_of_interest] = type(self).INF_VAL_TS_OVERFLOW_ALLOW
 
     def get_kwargs(self, with_backend=True, with_chronics_handler=True):
         res = {}
@@ -163,7 +163,8 @@ class MaskedEnvironment(Environment):
                              _read_from_local_dir,
                              _overload_name_multimix,
                              _local_dir_cls,
-                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB):
+                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+                             allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         grid2op_env = {"init_env_path": init_env_path,
                        "init_grid_path": init_grid_path,
                        "chronics_handler": chronics_handler,
@@ -195,6 +196,7 @@ class MaskedEnvironment(Environment):
                        "observation_bk_class": observation_bk_class,
                        "observation_bk_kwargs": observation_bk_kwargs,
                        "n_busbar": int(n_busbar),
+                       "allow_detachment": bool(allow_detachment),
                        "_raw_backend_class": _raw_backend_class,
                        "_read_from_local_dir": _read_from_local_dir,
                        "_local_dir_cls": _local_dir_cls,

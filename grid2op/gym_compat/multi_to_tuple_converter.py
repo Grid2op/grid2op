@@ -35,6 +35,7 @@ class __AuxFixedTuple:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import Tuple
     FixedTupleLegacyGym = type("FixedTupleLegacyGym",
                                (__AuxFixedTuple, Tuple, ),
@@ -143,6 +144,7 @@ class __AuxMultiToTupleConverter:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import (MultiBinary as LegacyGymMultiBinary,
                             MultiDiscrete as LegacyGymMultiDiscrete, 
                             Discrete as LegacyGymDiscrete)

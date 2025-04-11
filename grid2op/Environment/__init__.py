@@ -6,7 +6,8 @@ __all__ = [
     "MultiEnvMultiProcess",
     "MultiMixEnvironment",
     "TimedOutEnvironment",
-    "MaskedEnvironment"
+    "MaskedEnvironment",
+    "ForecastEnv"
 ]
 
 from grid2op.Environment.baseEnv import BaseEnv
@@ -17,3 +18,4 @@ from grid2op.Environment.multiEnvMultiProcess import MultiEnvMultiProcess
 from grid2op.Environment.multiMixEnv import MultiMixEnvironment
 from grid2op.Environment.timedOutEnv import TimedOutEnvironment
 from grid2op.Environment.maskedEnvironment import MaskedEnvironment
+from grid2op.Environment.forecast_env import ForecastEnv

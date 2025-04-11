@@ -202,6 +202,7 @@ class ObservationSpace(SerializableObservationSpace):
             _ptr_orig_obs_space=self,
             _local_dir_cls=env._local_dir_cls,
             _read_from_local_dir=env._read_from_local_dir,
+            allow_detachment=type(env.backend).detachment_is_allowed
         )
         for k, v in self.obs_env.other_rewards.items():
             v.initialize(self.obs_env)
@@ -212,7 +213,7 @@ class ObservationSpace(SerializableObservationSpace):
         observation_bk_class_used = observation_bk_class.init_grid(type(env.backend), _local_dir_cls=_local_dir_cls)
         self._backend_obs = observation_bk_class_used(**observation_bk_kwargs)   
         self._backend_obs.set_env_name(env.name)
-        self._backend_obs.load_grid(path_grid_for)
+        self._backend_obs.load_grid_public(path_grid_for)
         self._backend_obs.assert_grid_correct()
         self._backend_obs.runpf()
         self._backend_obs.assert_grid_correct_after_powerflow()
@@ -244,7 +245,7 @@ class ObservationSpace(SerializableObservationSpace):
             # case where I can copy the backend for the 'simulate' and I don't need to build 
             # it (uses same class and same grid)
             try:
-                self._backend_obs = env.backend.copy()
+                self._backend_obs = env.backend.copy_public()
             except Exception as exc_:
                 self._backend_obs = None
                 self.logger.warn(f"Backend cannot be copied, simulate feature will "
@@ -494,8 +495,8 @@ class ObservationSpace(SerializableObservationSpace):
         
         # real env kwargs, these is a "pointer" anyway
         if env is not None:
-            from grid2op.Environment import Environment
-            new_obj._real_env_kwargs = Environment.get_kwargs(env, False, False)
+            new_obj._real_env_kwargs = {}
+            new_obj.set_real_env_kwargs(env)
         else:
             new_obj._real_env_kwargs = self._real_env_kwargs
         new_obj._observation_bk_class = self._observation_bk_class

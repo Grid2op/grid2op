@@ -177,12 +177,14 @@ class RedispReward(BaseReward):
             res = self._reward_illegal_ambiguous
 
         if res is None:
+            dts_ = env.delta_time_seconds / 3600.0
+            
             # compute the losses
             gen_p, *_ = env.backend.generators_info()
             load_p, *_ = env.backend.loads_info()
+            
             # don't forget to convert MW to MWh !
-            losses = (gen_p.sum() - load_p.sum()) * env.delta_time_seconds / 3600.0
-
+            losses = (gen_p.sum() - load_p.sum()) * dts_
             # compute the marginal cost
             gen_activeprod_t = env._gen_activeprod_t
             marginal_cost = np.max(env.gen_cost_per_MW[gen_activeprod_t > 0.0])
@@ -190,14 +192,14 @@ class RedispReward(BaseReward):
             # redispatching amount
             actual_dispatch = env._actual_dispatch
             redisp_cost = (
-                self._alpha_redisp * np.abs(actual_dispatch).sum() * marginal_cost * env.delta_time_seconds / 3600.0
+                self._alpha_redisp * np.abs(actual_dispatch).sum() * marginal_cost * dts_
             )
 
             # cost of losses
             losses_cost = losses * marginal_cost
 
             # cost of storage
-            c_storage = np.abs(env._storage_power).sum() * marginal_cost * env.delta_time_seconds / 3600.0
+            c_storage = np.abs(env._storage_power).sum() * marginal_cost * dts_
             
             # total "regret"
             regret = losses_cost + redisp_cost + c_storage
@@ -207,5 +209,4 @@ class RedispReward(BaseReward):
 
             # divide it by load, to be less sensitive to load variation
             res = dt_float(reward / load_p.sum())
-
         return res

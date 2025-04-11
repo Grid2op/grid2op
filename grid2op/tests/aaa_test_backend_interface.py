@@ -14,6 +14,7 @@ from grid2op.Backend import Backend
 from grid2op.dtypes import dt_int
 from grid2op.tests.helper_path_test import HelperTests, MakeBackend, PATH_DATA
 from grid2op.Exceptions import BackendError, Grid2OpException
+from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
 
 
 class AAATestBackendAPI(MakeBackend):
@@ -39,21 +40,46 @@ class AAATestBackendAPI(MakeBackend):
         """do not run nor modify ! (used for this test class only)"""
         return "BasicTest_load_grid_" + type(self).__name__
 
-    def aux_make_backend(self, n_busbar=2) -> Backend:
+    def aux_make_backend(self,
+                         n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+                         allow_detachment=DEFAULT_ALLOW_DETACHMENT,
+                         extra_name=None) -> Backend:
         """do not run nor modify ! (used for this test class only)"""
-        backend = self.make_backend_with_glue_code(n_busbar=n_busbar)
-        backend.load_grid(self.get_path(), self.get_casefile())
+        
+        if extra_name is None:
+            extra_name = self.aux_get_env_name()
+        backend = self.make_backend_with_glue_code(n_busbar=n_busbar,
+                                                   allow_detachment=allow_detachment,
+                                                   extra_name=extra_name)
+        backend.load_grid_public(self.get_path(), self.get_casefile())
         backend.load_redispacthing_data("tmp")  # pretend there is no generator
         backend.load_storage_data(self.get_path())
-        env_name = self.aux_get_env_name()
-        backend.env_name = env_name
-        backend.assert_grid_correct()  
+        backend.assert_grid_correct()
+        try:
+            
+            topo_ = backend.get_topo_vect()
+            cls = type(backend)
+            backend.update_bus_target_after_pf(topo_[cls.load_pos_topo_vect],
+                                               topo_[cls.gen_pos_topo_vect],
+                                               topo_[cls.storage_pos_topo_vect])
+        except Grid2OpException as exc_:
+            # impossible to retrieve the topology without running a powerflow
+            backend.update_bus_target_after_pf(1, 1, 1)
         return backend
     
     def test_00create_backend(self):
         """Tests the backend can be created (not integrated in a grid2op environment yet)"""
         self.skip_if_needed()
         backend = self.make_backend_with_glue_code()
+        if backend._missing_two_busbars_support_info:
+            warnings.warn("You should call either `self.can_handle_more_than_2_busbar()` "
+                          "or `self.cannot_handle_more_than_2_busbar()` in the `load_grid` "
+                          "method of your backend. Please refer to documentation for more information.")
+    
+        if backend._missing_detachment_support_info:
+            warnings.warn("You should call either `self.can_handle_detachment()` "
+                          "or `self.cannot_handle_detachment()` in the `load_grid` "
+                          "method of your backend. Please refer to documentation for more information.")
     
     def test_01load_grid(self):
         """Tests the grid can be loaded (supposes that your backend can read the grid.json in educ_case14_storage)*
@@ -68,7 +94,7 @@ class AAATestBackendAPI(MakeBackend):
         """
         self.skip_if_needed()
         backend = self.make_backend()
-        backend.load_grid(self.get_path(), self.get_casefile())  # both argument filled
+        backend.load_grid_public(self.get_path(), self.get_casefile())  # both argument filled
         backend.load_redispacthing_data(self.get_path())
         backend.load_storage_data(self.get_path())
         env_name = "BasicTest_load_grid0_" + type(self).__name__
@@ -667,11 +693,11 @@ class AAATestBackendAPI(MakeBackend):
         if not cls.shunts_data_available:
             warnings.warn(f"{type(self).__name__} test_14change_topology: This test is not performed in depth as your backend does not support shunts")
         else:
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchoff()
-            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
-            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
-            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
-            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): kirchoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchhoff()
+            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
+            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
+            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for p (creation or suppression of active). Check the handling of the slack bus(se) maybe ?"
+            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): Kirchhoff laws are not met for q (creation or suppression of reactive). Check the handling of the slack bus(se) maybe ?"
             assert np.allclose(diff_v_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (no modif): some nodes have two different voltages. Check the accessor for voltage in all the `***_info()` (*eg* `loads_info()`)"
             
         p_or, q_or, v_or, a_or = backend.lines_or_info()
@@ -690,11 +716,11 @@ class AAATestBackendAPI(MakeBackend):
         if not cls.shunts_data_available:
             warnings.warn(f"{type(self).__name__} test_14change_topology: This test is not performed in depth as your backend does not support shunts")
         else:
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchoff()
-            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for q (creation or suppression of reactive)."
-            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): kirchoff laws are not met for q (creation or suppression of reactive)."
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchhoff()
+            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
+            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with no impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
             assert np.allclose(diff_v_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow: some nodes have two different voltages. Check the accessor for voltage in all the `***_info()` (*eg* `loads_info()`)"
         
         p_after_or, q_after_or, v_after_or, a_after_or = backend.lines_or_info()
@@ -710,17 +736,17 @@ class AAATestBackendAPI(MakeBackend):
         bk_act = type(backend).my_bk_act_class()
         bk_act += action1
         bk_act += action2
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
         res = backend.runpf(is_dc=False)
         assert res[0], "Your powerflow has diverged after a topology action (but should not). Check `apply_action` for topology"
         if not cls.shunts_data_available:
             warnings.warn(f"{type(self).__name__} test_14change_topology: This test is not performed in depth as your backend does not support shunts")
         else:
-            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchoff()
-            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for q (creation or suppression of reactive)."
-            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for p (creation or suppression of active)."
-            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): kirchoff laws are not met for q (creation or suppression of reactive)."
+            p_subs, q_subs, p_bus, q_bus, diff_v_bus = backend.check_kirchhoff()
+            assert np.allclose(p_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_subs, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
+            assert np.allclose(p_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for p (creation or suppression of active)."
+            assert np.allclose(q_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow (modif with a real impact): Kirchhoff laws are not met for q (creation or suppression of reactive)."
             assert np.allclose(diff_v_bus, 0., atol=3 * self.tol_one), "there are some discrepency in the backend after a powerflow: some nodes have two different voltages. Check the accessor for voltage in all the `***_info()` (*eg* `loads_info()`)"
         
         p_after_or, q_after_or, v_after_or, a_after_or = backend.lines_or_info()
@@ -762,7 +788,7 @@ class AAATestBackendAPI(MakeBackend):
                                          "load_p": load_p}})
             bk_act = type(backend).my_bk_act_class()
             bk_act += action
-            backend.apply_action(bk_act)
+            backend.apply_action_public(bk_act)
             res = backend.runpf(is_dc=False)
             converged, exc_ = res
             if converged:
@@ -776,7 +802,7 @@ class AAATestBackendAPI(MakeBackend):
                                    "something like 50 (1.5**10). I suppose it's an error. "
                                    "It should stop in approx 3 iteration (so when multiplied by 1.5**3)")
                 
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         res = backend.runpf(is_dc=False)
         assert res[0], "your backend has diverged after being reset"
         res_ref = backend2.runpf(is_dc=False)
@@ -787,8 +813,40 @@ class AAATestBackendAPI(MakeBackend):
         assert np.allclose(q2_or, q_or), f"The q_or flow differ between its original value and after a reset. Check backend.reset()"
         assert np.allclose(v2_or, v_or), f"The v_or differ between its original value and after a reset. Check backend.reset()"
         assert np.allclose(a2_or, a_or), f"The a_or flow differ between its original value and after a reset. Check backend.reset()"
-                                       
-    def test_16_isolated_load_stops_computation(self):
+    
+    def _aux_aux_test_detachment_should_fail(self, maybe_exc):
+        assert maybe_exc is not None, "When your backend diverges, we expect it throws an exception (second return value)"  
+        assert isinstance(maybe_exc, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(maybe_exc)}"  
+        if not isinstance(maybe_exc, BackendError):
+            warnings.warn("The error returned by your backend when it stopped (due to isolated element) should preferably inherit from BackendError")
+                
+    def _aux_test_detachment(self, backend : Backend, is_dc=True, detachment_should_pass=False):
+        """auxilliary method to handle the "legacy" code, when the backend was expected to 
+        handle the error """
+        str_ = "DC" if is_dc else "AC"
+        if backend._missing_detachment_support_info:
+            # legacy behaviour, should behave as if it diverges
+            # for new (>= 1.11.0) behaviour, it is catched in the method `_runpf_with_diverging_exception`
+            res = backend.runpf(is_dc=is_dc)  
+            assert not res[0], f"It is expected (at time of writing) that your backend returns `False` in case of isolated elements (eg load, gen or storage unit) in {str_}."           
+            maybe_exc = res[1]      
+            detachment_allowed = False    
+        else:
+            # new (1.11.0) test here
+            maybe_exc = backend._runpf_with_diverging_exception(is_dc=is_dc)           
+            detachment_allowed = type(backend).detachment_is_allowed
+        if not detachment_allowed:
+            # should raise in all cases as the backend prevent detachment
+            self._aux_aux_test_detachment_should_fail(maybe_exc)
+        elif not detachment_should_pass:
+            # it expected that even if the backend supports detachment, 
+            # this test should fail (kwargs detachment_should_pass set to False)
+            self._aux_aux_test_detachment_should_fail(maybe_exc)
+        else:
+            # detachment should not make things diverge
+            assert maybe_exc is None, f"Your backend supports detachment of loads or generator, yet it diverges when some loads / generators are disconnected."
+            
+    def test_16_isolated_load_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         """Tests that an isolated load will be spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
         
         This test supposes that :
@@ -802,41 +860,31 @@ class AAATestBackendAPI(MakeBackend):
             Currently this stops the computation of the environment and lead to a game over. 
             
             This behaviour might change in the future.
+            
+        .. note::
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
         """
         self.skip_if_needed()
-        backend = self.aux_make_backend()
-        cls = type(backend)
+        backend = self.aux_make_backend(allow_detachment=allow_detachment)
         
         # a load alone on a bus
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"loads_id": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=False)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated loads in AC."                 
-        assert res[1] is not None, "When your backend diverges, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated shunt) should preferably inherit from BackendError")
-                    
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=False)
+        
+        backend.reset_public(self.get_path(), self.get_casefile())
         # a load alone on a bus
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"loads_id": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=True)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated loads in DC."                 
-        assert res[1] is not None, "When your backend diverges, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated shunt) should preferably inherit from BackendError")
-                
-    def test_17_isolated_gen_stops_computation(self):
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=True)
+        
+    def test_17_isolated_gen_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         """Tests that an isolated generator will be spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
         
         This test supposes that :
@@ -850,9 +898,12 @@ class AAATestBackendAPI(MakeBackend):
             Currently this stops the computation of the environment and lead to a game over. 
             
             This behaviour might change in the future.
+            
+        .. note::
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
         """
         self.skip_if_needed()
-        backend = self.aux_make_backend()
+        backend = self.aux_make_backend(allow_detachment=allow_detachment)
         cls = type(backend)
         
         # disconnect a gen
@@ -860,31 +911,19 @@ class AAATestBackendAPI(MakeBackend):
         action.update({"set_bus": {"generators_id": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=False)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated gen."                 
-        assert res[1] is not None, "When your backend diverges, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated shunt) should preferably inherit from BackendError")
-                               
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=False)
+        
+        backend.reset_public(self.get_path(), self.get_casefile())
         # disconnect a gen
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"generators_id": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=True)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated gen."                 
-        assert res[1] is not None, "When your backend diverges, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated shunt) should preferably inherit from BackendError")
-                           
-    def test_18_isolated_shunt_stops_computation(self):
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=True)
+        
+    def test_18_isolated_shunt_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         """Tests test that an isolated shunt will be spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
         
         This test supposes that :
@@ -900,9 +939,12 @@ class AAATestBackendAPI(MakeBackend):
             Currently this stops the computation of the environment and lead to a game over. 
             
             This behaviour might change in the future.
+            
+        .. note::
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
         """
         self.skip_if_needed()
-        backend = self.aux_make_backend()
+        backend = self.aux_make_backend(allow_detachment=allow_detachment)
         cls = type(backend)
         if not cls.shunts_data_available:
             self.skipTest("Your backend does not support shunts")
@@ -914,31 +956,19 @@ class AAATestBackendAPI(MakeBackend):
         action.update({"shunt": {"shunt_bus": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=False)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated shunt."                 
-        assert res[1] is not None, "When your backend diverges, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated shunt) should preferably inherit from BackendError")
-                    
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=False)
+        
+        backend.reset_public(self.get_path(), self.get_casefile())
         # make a shunt alone on a bus
         action = type(backend)._complete_action_class()
         action.update({"shunt": {"shunt_bus": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=True)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated shunt in DC."                  
-        assert res[1] is not None, "When your backend stops, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend returns `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated shunt) should preferably inherit from BackendError")
-                       
-    def test_19_isolated_storage_stops_computation(self):
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=True)
+        
+    def test_19_isolated_storage_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         """Teststest that an isolated storage unit will be spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
         
         This test supposes that :
@@ -953,10 +983,11 @@ class AAATestBackendAPI(MakeBackend):
         .. note::
             Currently this stops the computation of the environment and lead to a game over. 
             
-            This behaviour might change in the future.
+        .. note::
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
         """
         self.skip_if_needed()
-        backend = self.aux_make_backend()
+        backend = self.aux_make_backend(allow_detachment=allow_detachment)
         cls = type(backend)
         if cls.n_storage == 0:
             self.skipTest("Your backend does not support storage units")
@@ -965,31 +996,22 @@ class AAATestBackendAPI(MakeBackend):
         action.update({"set_bus": {"storages_id": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=False)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated storage units in AC."                  
-        assert res[1] is not None, "When your backend stops, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated storage units) should preferably inherit from BackendError")
-                
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=False)
+        
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"storages_id": [(0, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=True)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of isolated storage unit."                 
-        assert res[1] is not None, "When your backend stops, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to isolated storage units) should preferably inherit from BackendError")
-                  
-    def test_20_disconnected_load_stops_computation(self):
-        """Tests that a disconnected load unit will be spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=True)
+        
+    def test_20_disconnected_load_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
+        """
+        Tests that a disconnected load unit will be caught by the `_runpf_with_diverging_exception` method
+        if loads are not allowed to be "detached" from the grid (or if your backend does not support 
+        the "detachment" feature.)
         
         This test supposes that :
         
@@ -998,47 +1020,37 @@ class AAATestBackendAPI(MakeBackend):
         - backend.apply_action() for topology modification
         - backend.reset() is implemented
         
-        NB: this test is skipped if your backend does not (yet :-) ) supports storage units
-        
         .. note::
             Currently this stops the computation of the environment and lead to a game over. 
             
-            This behaviour might change in the future.
+        .. note::
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
         """
         self.skip_if_needed()
-        backend = self.aux_make_backend()
+        backend = self.aux_make_backend(allow_detachment=allow_detachment)
         
-        # a load alone on a bus
+        # a load disconnected
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"loads_id": [(0, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=False)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of disconnected load in AC."                  
-        assert res[1] is not None, "When your backend stops, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to disconnected load) should preferably inherit from BackendError")
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=False, detachment_should_pass=True)
         
-        backend.reset(self.get_path(), self.get_casefile())
-        # a load alone on a bus
+        backend.reset_public(self.get_path(), self.get_casefile())
+        # a load disconnected
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"loads_id": [(0, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=True)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of disconnected load in DC."                  
-        assert res[1] is not None, "When your backend stops, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to disconnected load) should preferably inherit from BackendError")
-                                   
-    def test_21_disconnected_gen_stops_computation(self):
-        """Tests that a disconnected generator will be spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=True, detachment_should_pass=True)
+             
+    def test_21_disconnected_gen_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
+        """
+        Tests that a disconnected generator will be caught by the `_runpf_with_diverging_exception` method
+        if generators are not allowed to be "detached" from the grid (or if your backend does not support 
+        the "detachment" feature.)
         
         This test supposes that :
         
@@ -1047,45 +1059,32 @@ class AAATestBackendAPI(MakeBackend):
         - backend.apply_action() for topology modification
         - backend.reset() is implemented
         
-        NB: this test is skipped if your backend does not (yet :-) ) supports storage units
-        
         .. note::
             Currently this stops the computation of the environment and lead to a game over. 
             
-            This behaviour might change in the future.
+        .. note::
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
         """
         self.skip_if_needed()
-        backend = self.aux_make_backend()
+        backend = self.aux_make_backend(allow_detachment=allow_detachment)
         
         # a disconnected generator
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"generators_id": [(0, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=False)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of disconnected gen in AC."                 
-        assert res[1] is not None, "When your backend stops, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to disconnected gen) should preferably inherit from BackendError")
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=False, detachment_should_pass=True)
         
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         # a disconnected generator
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"generators_id": [(0, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
-        res = backend.runpf(is_dc=True)  
-        assert not res[0], "It is expected (at time of writing) that your backend returns `False` in case of disconnected gen in DC."                 
-        assert res[1] is not None, "When your backend stops, we expect it throws an exception (second return value)"  
-        error = res[1]
-        assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
-        if not isinstance(error, BackendError):
-            warnings.warn("The error returned by your backend when it stopped (due to disconnected gen) should preferably inherit from BackendError")
-
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
+        self._aux_test_detachment(backend, is_dc=True, detachment_should_pass=True)
+        
     def test_22_islanded_grid_stops_computation(self):
         """Tests that when the grid is split in two different "sub_grid" is spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
         
@@ -1100,8 +1099,6 @@ class AAATestBackendAPI(MakeBackend):
         - backend.apply_action() for topology modification
         - backend.reset() is implemented
         
-        NB: this test is skipped if your backend does not (yet :-) ) supports storage units
-        
         .. note::
             Currently this stops the computation of the environment and lead to a game over. 
             
@@ -1115,23 +1112,23 @@ class AAATestBackendAPI(MakeBackend):
                                    "lines_ex_id": [(7, 2), (14, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
         res = backend.runpf(is_dc=False)  
         assert not res[0], f"It is expected that your backend return `(False, _)` in case of non connected grid in AC."                 
         error = res[1]
         assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
         if not isinstance(error, BackendError):
             warnings.warn("The error returned by your backend when it stopped (due to non connected grid) should preferably inherit from BackendError")
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         
         # a non connected grid
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"lines_or_id": [(17, 2)],
                                    "lines_ex_id": [(7, 2), (14, 2)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)  # mix of bus 1 and 2 on substation 1
+        backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
         res = backend.runpf(is_dc=True)  
         assert not res[0], f"It is expected that your backend return `(False, _)` in case of non connected grid in DC."                    
         error = res[1]
@@ -1159,7 +1156,7 @@ class AAATestBackendAPI(MakeBackend):
         action.update({"set_bus": {"lines_or_id": [(line_id, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         
         res = backend.runpf(is_dc=False)  
         assert res[0], f"Your backend diverged in AC after a line disconnection, error was {res[1]}"   
@@ -1171,12 +1168,12 @@ class AAATestBackendAPI(MakeBackend):
         assert np.allclose(a_ex[line_id], 0.), f"v_ex should be 0. for disconnected line, but is currently {v_ex[line_id]} (AC)" 
         
         # reset and do the same in DC
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"lines_or_id": [(line_id, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         
         res = backend.runpf(is_dc=True)  
         assert res[0],  f"Your backend diverged in DC after a line disconnection, error was {res[1]}"    
@@ -1214,7 +1211,7 @@ class AAATestBackendAPI(MakeBackend):
         action.update({"shunt": {"shunt_bus": [(shunt_id, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after a shunt disconnection, error was {res[1]}"    
         p_, q_, v_, bus_ = backend.shunt_info()
@@ -1222,12 +1219,12 @@ class AAATestBackendAPI(MakeBackend):
         assert bus_[shunt_id] == -1, f"bus_ should be -1 for disconnected shunt, but is currently {bus_[shunt_id]} (AC)" 
         
         # a disconnected shunt
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"shunt": {"shunt_bus": [(shunt_id, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=True)  
         assert res[0],  f"Your backend diverged in DC after a shunt disconnection, error was {res[1]}"    
         p_, q_, v_, bus_ = backend.shunt_info()
@@ -1251,7 +1248,7 @@ class AAATestBackendAPI(MakeBackend):
         backend = self.aux_make_backend()
         cls = type(backend)
         if cls.n_storage == 0:
-            self.skipTest("Your backend does not support storage unit")
+            self.skipTest("Your backend does not support storage unit (or there is none on your grid)")
         
         storage_id = 0
         # a disconnected storage
@@ -1259,7 +1256,7 @@ class AAATestBackendAPI(MakeBackend):
         action.update({"set_bus": {"storages_id": [(storage_id, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after a storage disconnection, error was {res[1]}"    
@@ -1267,16 +1264,16 @@ class AAATestBackendAPI(MakeBackend):
         assert np.allclose(v_[storage_id], 0.), f"v should be 0. for disconnected storage, but is currently {v_[storage_id]} (AC)" 
         
         # disconnect a storage
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"storages_id": [(storage_id, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=True)  
         assert res[0],  f"Your backend diverged in DC after a storage disconnection, error was {res[1]}"    
         p_, q_, v_ = backend.storages_info()
-        assert np.allclose(v_[storage_id], 0.), f"v should be 0. for disconnected storage, but is currently {v_[storage_id]} (AC)" 
+        assert np.allclose(v_[storage_id], 0.), f"v should be 0. for disconnected storage, but is currently {v_[storage_id]} (DC)" 
     
     def test_26_copy(self):    
         """Tests that the backend can be copied (and that the copied backend and the 
@@ -1298,11 +1295,11 @@ class AAATestBackendAPI(MakeBackend):
         backend = self.aux_make_backend()
         if not backend._can_be_copied:
             with self.assertRaises(BackendError):
-                backend_cpy = backend.copy()
+                backend_cpy = backend.copy_public()
             return
         
         # backend can be copied
-        backend_cpy = backend.copy()
+        backend_cpy = backend.copy_public()
         assert isinstance(backend_cpy, type(backend)), f"backend.copy() is supposed to return an object of the same type as your backend. Check backend.copy()"
         res = backend.runpf(is_dc=False)
         assert res[0],  f"Your backend diverged in AC after a copy, error was {res[1]}"    
@@ -1315,7 +1312,7 @@ class AAATestBackendAPI(MakeBackend):
                                      "load_p": 1.1 * init_load_p}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=True) 
         res_cpy = backend_cpy.runpf(is_dc=True) 
         assert res_cpy[0],  f"Your backend diverged in DC after a copy, error was {res_cpy[1]}"    
@@ -1352,12 +1349,12 @@ class AAATestBackendAPI(MakeBackend):
         
         # disconnect line
         line_id = 0
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"set_line_status": [(line_id, -1)]})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after a line disconnection, error was {res[1]}"    
         topo_vect = self._aux_check_topo_vect(backend)
@@ -1371,12 +1368,12 @@ class AAATestBackendAPI(MakeBackend):
         # disconnect storage
         if cls.n_storage > 0:
             sto_id = 0
-            backend.reset(self.get_path(), self.get_casefile())
+            backend.reset_public(self.get_path(), self.get_casefile())
             action = type(backend)._complete_action_class()
             action.update({"set_bus": {"storages_id": [(sto_id, -1)]}})
             bk_act = type(backend).my_bk_act_class()
             bk_act += action
-            backend.apply_action(bk_act)
+            backend.apply_action_public(bk_act)
             res = backend.runpf(is_dc=False)  
             assert res[0],  f"Your backend diverged in AC after a storage disconnection, error was {res[1]}"    
             topo_vect = self._aux_check_topo_vect(backend)
@@ -1394,12 +1391,12 @@ class AAATestBackendAPI(MakeBackend):
         else:
             # so cls.shunts_data_available and cls.n_shunt >= 1
             shunt_id = 0
-            backend.reset(self.get_path(), self.get_casefile())
+            backend.reset_public(self.get_path(), self.get_casefile())
             action = type(backend)._complete_action_class()
             action.update({"shunt": {"shunt_bus": [(shunt_id, -1)]}})
             bk_act = type(backend).my_bk_act_class()
             bk_act += action
-            backend.apply_action(bk_act)
+            backend.apply_action_public(bk_act)
             res = backend.runpf(is_dc=False)  
             assert res[0],  f"Your backend diverged in AC after a shunt disconnection, error was {res[1]}"    
             topo_vect = self._aux_check_topo_vect(backend)
@@ -1485,8 +1482,8 @@ class AAATestBackendAPI(MakeBackend):
                         key_: val  # move the line
                         }})
         bk_act = type(backend).my_bk_act_class()
-        bk_act += action
-        backend.apply_action(bk_act)  # apply the action
+        bk_act += action  # "compile" all the user action into one single action sent to the backend
+        backend.apply_action_public(bk_act)  # apply the action
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after setting a {el_nm} on busbar {busbar_id}, error was {res[1]}"    
         # now check the topology vector
@@ -1520,12 +1517,12 @@ class AAATestBackendAPI(MakeBackend):
         # line or
         line_id = 0
         busbar_id = 2
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"lines_or_id": [(line_id, busbar_id)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after setting a line (or side) on busbar 2, error was {res[1]}"    
         topo_vect = self._aux_check_topo_vect(backend)
@@ -1536,12 +1533,12 @@ class AAATestBackendAPI(MakeBackend):
         # line ex
         line_id = 0
         busbar_id = 2
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = type(backend)._complete_action_class()
         action.update({"set_bus": {"lines_ex_id": [(line_id, busbar_id)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after setting a line (ex side) on busbar 2, error was {res[1]}"    
         topo_vect = self._aux_check_topo_vect(backend)
@@ -1550,7 +1547,7 @@ class AAATestBackendAPI(MakeBackend):
         assert topo_vect[cls.line_ex_pos_topo_vect[line_id]] == busbar_id, error_msg
         
         # load
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         busbar_id = 2
         nb_el = cls.n_load
         el_to_subid = cls.load_to_subid
@@ -1561,7 +1558,7 @@ class AAATestBackendAPI(MakeBackend):
                                    el_nm, el_key, el_pos_topo_vect)
         
         # generator
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         busbar_id = 2
         nb_el = cls.n_gen
         el_to_subid = cls.gen_to_subid
@@ -1573,7 +1570,7 @@ class AAATestBackendAPI(MakeBackend):
         
         # storage
         if cls.n_storage > 0:
-            backend.reset(self.get_path(), self.get_casefile())
+            backend.reset_public(self.get_path(), self.get_casefile())
             busbar_id = 2
             nb_el = cls.n_storage
             el_to_subid = cls.storage_to_subid
@@ -1635,12 +1632,12 @@ class AAATestBackendAPI(MakeBackend):
         # line or
         line_id = 0
         busbar_id = n_busbar
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = cls._complete_action_class()
         action.update({"set_bus": {"lines_or_id": [(line_id, busbar_id)]}})
         bk_act = cls.my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after setting a line (or side) on busbar 3, error was {res[1]}"    
         topo_vect = self._aux_check_topo_vect(backend)
@@ -1651,12 +1648,12 @@ class AAATestBackendAPI(MakeBackend):
         # line ex
         line_id = 0
         busbar_id = n_busbar
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         action = cls._complete_action_class()
         action.update({"set_bus": {"lines_ex_id": [(line_id, busbar_id)]}})
         bk_act = cls.my_bk_act_class()
         bk_act += action
-        backend.apply_action(bk_act)
+        backend.apply_action_public(bk_act)
         res = backend.runpf(is_dc=False)  
         assert res[0],  f"Your backend diverged in AC after setting a line (ex side) on busbar 3, error was {res[1]}"    
         topo_vect = self._aux_check_topo_vect(backend)
@@ -1665,7 +1662,7 @@ class AAATestBackendAPI(MakeBackend):
         assert topo_vect[cls.line_ex_pos_topo_vect[line_id]] == busbar_id, error_msg
         
         # load
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         busbar_id = n_busbar
         nb_el = cls.n_load
         el_to_subid = cls.load_to_subid
@@ -1676,7 +1673,7 @@ class AAATestBackendAPI(MakeBackend):
                                    el_nm, el_key, el_pos_topo_vect)
         
         # generator
-        backend.reset(self.get_path(), self.get_casefile())
+        backend.reset_public(self.get_path(), self.get_casefile())
         busbar_id = n_busbar
         nb_el = cls.n_gen
         el_to_subid = cls.gen_to_subid
@@ -1688,7 +1685,7 @@ class AAATestBackendAPI(MakeBackend):
         
         # storage
         if cls.n_storage > 0:
-            backend.reset(self.get_path(), self.get_casefile())
+            backend.reset_public(self.get_path(), self.get_casefile())
             busbar_id = n_busbar
             nb_el = cls.n_storage
             el_to_subid = cls.storage_to_subid
@@ -1699,4 +1696,213 @@ class AAATestBackendAPI(MakeBackend):
                                        el_nm, el_key, el_pos_topo_vect)
         else:
              warnings.warn(f"{type(self).__name__} test_30_n_busbar_per_sub_ok: This test is not performed in depth as your backend does not support storage units (or there are none on the grid)")
+    
+    def _aux_disco_sto_then_add_sto_p(self, backend: Backend):
+        action = type(backend)._complete_action_class()
+        action.update({"set_bus": {"storages_id": [(0, -1)]}})
+        bk_act = type(backend).my_bk_act_class()
+        bk_act += action
+        backend.apply_action_public(bk_act)
+        action = type(backend)._complete_action_class()
+        action.update({"set_storage": [(0, 0.1)]})
+        bk_act = type(backend).my_bk_act_class()
+        bk_act += action
+        backend.apply_action_public(bk_act)
         
+    def test_31_disconnected_storage_with_p_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
+        """
+        Tests that a disconnected storage unit that is asked to produce active power 
+        raise an error if the backend does not support `allow_detachment`
+        
+        This test supposes that :
+        
+        - backend.load_grid(...) is implemented
+        - backend.runpf() (AC and DC mode) is implemented
+        - backend.apply_action() for topology modification
+        - backend.reset() is implemented
+        
+        NB: this test is skipped if your backend does not (yet :-) ) supports storage units
+        
+        .. note::
+            Currently this stops the computation of the environment and lead to a game over. 
+            
+        .. note::
+            This test is also used in `attr:AAATestBackendAPI.test_33_allow_detachment`
+            
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend(allow_detachment=allow_detachment)
+        if type(backend).n_storage == 0:
+            self.skipTest("Your backend does not support storage unit")
+        
+        # a disconnected generator
+        self._aux_disco_sto_then_add_sto_p(backend)
+        self._aux_test_detachment(backend, is_dc=False, detachment_should_pass=True)
+        
+        backend.reset_public(self.get_path(), self.get_casefile())
+        # a disconnected generator
+        self._aux_disco_sto_then_add_sto_p(backend)
+        self._aux_test_detachment(backend, is_dc=True, detachment_should_pass=True)
+        
+    def test_32_xxx_handle_detachment_called(self):    
+        """Tests that at least one of the function:
+        
+        - :func:`grid2op.Backend.Backend.can_handle_detachment`
+        - :func:`grid2op.Backend.Backend.cannot_handle_detachment`
+        
+        has been implemented in the :func:`grid2op.Backend.Backend.load_grid`
+        implementation.
+        
+        This test supposes that :
+        
+        - backend.load_grid(...) is implemented
+        
+        .. versionadded:: 1.11.0
+        
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend()
+        assert not backend._missing_detachment_support_info
+        
+    def test_33_allow_detachment(self):
+        """Tests that your backend model disconnected load / generator (is the proper flag is present.)
+        
+        Concretely it will run the tests
+        
+        - :attr:`TestBackendAPI.test_16_isolated_load_stops_computation`
+        - :attr:`TestBackendAPI.test_17_isolated_gen_stops_computation`
+        - :attr:`TestBackendAPI.test_18_isolated_shunt_stops_computation`
+        - :attr:`TestBackendAPI.test_19_isolated_storage_stops_computation`
+        - :attr:`TestBackendAPI.test_20_disconnected_load_stops_computation`
+        - :attr:`TestBackendAPI.test_21_disconnected_gen_stops_computation`
+        
+        When your backend is initialized with "allow_detachment=True".
+        
+        NB: of course these tests have been modified such that things that should pass
+        will pass and things that should fail will fail.
+        
+        .. versionadded:: 1.11.0
+        
+        """    
+        self.skip_if_needed()
+        backend = self.aux_make_backend(allow_detachment=True)
+        cls = type(backend)
+        if backend._missing_detachment_support_info:
+            self.skipTest("Cannot perform this test as you have not specified whether "
+                          "the backend class supports the 'detachement' of loads and "
+                          "generators. Falling back to default grid2op behaviour, which "
+                          "is to fail if a load or a generator is disconnected.")
+        if not type(backend).detachment_is_allowed:
+            self.skipTest("Cannot perform this test as your backend does not appear "
+                          "to support the `detachment` information: a disconnect load "
+                          "or generator is necessarily causing a game over.")
+            
+        self.test_16_isolated_load_stops_computation(allow_detachment=True)
+        self.test_17_isolated_gen_stops_computation(allow_detachment=True)
+        if cls.shunts_data_available:
+            self.test_18_isolated_shunt_stops_computation(allow_detachment=True)
+        if cls.n_storage > 0:
+            self.test_19_isolated_storage_stops_computation(allow_detachment=True)
+        self.test_20_disconnected_load_stops_computation(allow_detachment=True)
+        self.test_21_disconnected_gen_stops_computation(allow_detachment=True)
+        if cls.n_storage > 0:
+            self.test_31_disconnected_storage_with_p_stops_computation(allow_detachment=True)
+    
+    def test_34_load_disco_v_zero(self):
+        """Tests that your backend properly says that a disconnected load has a v of 0.
+        
+        This test supposes that :
+        
+        - backend.load_grid(...) is implemented
+        - backend.runpf() (AC and DC mode) is implemented
+        - backend.apply_action() for topology modification (on load)
+        
+        It is only performed if you backend supports detachment
+        
+        .. versionadded:: 1.11.0
+        
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend(allow_detachment=True)
+        cls = type(backend)
+        if not cls.detachment_is_allowed:
+            self.skipTest("Cannot perform this test as your backend does not appear "
+                          "to support the `detachment` information: a disconnect load "
+                          "or generator is necessarily causing a game over.")
+            
+        # a load is disconnected
+        action = type(backend)._complete_action_class()
+        action.update({"set_bus": {"loads_id": [(0, -1)]}})
+        bk_act = type(backend).my_bk_act_class()
+        bk_act += action
+        backend.apply_action_public(bk_act)
+        
+        # DC
+        res = backend.runpf(is_dc=True)  
+        assert len(res) == 2
+        assert res[0], "your backend should have converged with disconnect of load 0 (DC)"
+        assert res[1] is None, "your backend should have converged with disconnect of load 0 (DC)"
+        load_p, load_q, load_v = backend.loads_info()
+        assert np.abs(load_p[0]) <= 1e-8, f"disconnected load should have a p of 0, found {load_p[0]} (DC)"
+        assert np.abs(load_q[0]) <= 1e-8, f"disconnected load should have a q of 0, found {load_q[0]} (DC)"
+        assert np.abs(load_v[0]) <= 1e-8, f"disconnected load should have a voltage set to 0, found {load_v[0]} (DC)"
+        
+        # AC
+        res = backend.runpf(is_dc=False)  
+        assert len(res) == 2
+        assert res[0], "your backend should have converged with disconnect of load 0 (AC)"
+        assert res[1] is None, "your backend should have converged with disconnect of load 0 (AC)"
+        load_p, load_q, load_v = backend.loads_info()
+        assert np.abs(load_p[0]) <= 1e-8, f"disconnected load should have a p of 0, found {load_p[0]} (AC)"
+        assert np.abs(load_q[0]) <= 1e-8, f"disconnected load should have a q of 0, found {load_q[0]} (AC)"
+        assert np.abs(load_v[0]) <= 1e-8, f"disconnected load should have a voltage set to 0, found {load_v[0]} (AC)"
+        
+    def test_35_gen_disco_v_zero(self):
+        """Tests that your backend properly says that a disconnected generator has a v of 0.
+        
+        This test supposes that :
+        
+        - backend.load_grid(...) is implemented
+        - backend.runpf() (AC and DC mode) is implemented
+        - backend.apply_action() for topology modification (on gen)
+        
+        It is only performed if you backend supports detachment
+        
+        .. versionadded:: 1.11.0
+        
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend(allow_detachment=True)
+        cls = type(backend)
+        if not cls.detachment_is_allowed:
+            self.skipTest("Cannot perform this test as your backend does not appear "
+                          "to support the `detachment` information: a disconnect load "
+                          "or generator is necessarily causing a game over.")
+            
+        # a load is disconnected
+        action = type(backend)._complete_action_class()
+        action.update({"set_bus": {"generators_id": [(0, -1)]}})
+        bk_act = type(backend).my_bk_act_class()
+        bk_act += action
+        backend.apply_action_public(bk_act)
+        # DC
+        res = backend.runpf(is_dc=True)  
+        assert len(res) == 2
+        assert res[0], "your backend should have converged with disconnect of gen 0 (DC)"
+        assert res[1] is None, "your backend should have converged with disconnect of gen 0 (DC)"
+        gen_p, gen_q, gen_v = backend.generators_info()
+        assert np.abs(gen_p[0]) <= 1e-8, f"disconnected gen should have a p of 0, found {gen_p[0]} (DC)"
+        assert np.abs(gen_q[0]) <= 1e-8, f"disconnected gen should have a q of 0, found {gen_q[0]} (DC)"
+        assert np.abs(gen_v[0]) <= 1e-8, f"disconnected gen should have a v of 0, found {gen_v[0]} (DC)"
+        
+        # AC
+        res = backend.runpf(is_dc=False)  
+        assert len(res) == 2
+        assert res[0], "your backend should have converged with disconnect of gen 0 (AC)"
+        assert res[1] is None, "your backend should have converged with disconnect of gen 0 (AC)"
+        gen_p, gen_q, gen_v = backend.generators_info()
+        assert np.abs(gen_p[0]) <= 1e-8, f"disconnected gen should have a p of 0, found {gen_p[0]} (AC)"
+        assert np.abs(gen_q[0]) <= 1e-8, f"disconnected gen should have a q of 0, found {gen_q[0]} (AC)"
+        assert np.abs(gen_v[0]) <= 1e-8, f"disconnected gen should have a voltage set to 0, found {gen_v[0]} (AC)"
+            
+    # TODO test: disconnect a gen a load a conso and then connect it again and see what you end up with.

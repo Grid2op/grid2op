@@ -398,14 +398,14 @@ class TestMultiGrid(unittest.TestCase):
     def test_can_make_lineor(self):
         act : BaseAction = self.env1.action_space({"set_bus": {"lines_or_id": [(0, 2), (5, 1), (15, 2)]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'set_bus': {'lines_or_id': [(0, 2), (5, 1), (15, 2)]}}
+        assert dict_ == {'set_bus': {'lines_or_id': [('0_1_0', 2), ('2_3_5', 1), ('3_6_15', 2)]}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
         
         act : BaseAction = self.env1.action_space({"change_bus": {"lines_or_id": [0, 5, 15]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'change_bus': {'lines_or_id': [0, 5, 15]}}
+        assert dict_ == {'change_bus': {'lines_or_id': ['0_1_0', '2_3_5', '3_6_15']}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
@@ -413,14 +413,14 @@ class TestMultiGrid(unittest.TestCase):
     def test_can_make_lineex(self):
         act : BaseAction = self.env1.action_space({"set_bus": {"lines_ex_id": [(0, 2), (5, 1), (15, 2)]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'set_bus': {'lines_ex_id': [(0, 2), (5, 1), (15, 2)]}}
+        assert dict_ == {'set_bus': {'lines_ex_id': [('0_1_0', 2), ('2_3_5', 1), ('3_6_15', 2)]}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
         
         act : BaseAction = self.env1.action_space({"change_bus": {"lines_ex_id": [0, 5, 15]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'change_bus': {'lines_ex_id': [0, 5, 15]}}
+        assert dict_ == {'change_bus': {'lines_ex_id': ['0_1_0', '2_3_5', '3_6_15']}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
@@ -428,14 +428,14 @@ class TestMultiGrid(unittest.TestCase):
     def test_can_make_gen(self):
         act : BaseAction = self.env1.action_space({"set_bus": {"generators_id": [(0, 2), (5, 1)]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'set_bus': {'generators_id': [(0, 2), (5, 1)]}}
+        assert dict_ == {'set_bus': {'generators_id': [('gen_1_0', 2), ('gen_0_5', 1)]}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
         
         act : BaseAction = self.env1.action_space({"change_bus": {"generators_id": [0, 5]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'change_bus': {'generators_id': [0, 5]}}
+        assert dict_ == {'change_bus': {'generators_id': ['gen_1_0', 'gen_0_5']}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
@@ -443,14 +443,14 @@ class TestMultiGrid(unittest.TestCase):
     def test_can_make_load(self):
         act : BaseAction = self.env1.action_space({"set_bus": {"loads_id": [(0, 2), (5, 1)]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'set_bus': {'loads_id': [(0, 2), (5, 1)]}}
+        assert dict_ == {'set_bus': {'loads_id': [('load_1_0', 2), ('load_8_5', 1)]}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
         
         act : BaseAction = self.env1.action_space({"change_bus": {"loads_id": [0, 5]}})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'change_bus': {'loads_id': [0, 5]}}
+        assert dict_ == {'change_bus': {'loads_id': ['load_1_0', 'load_8_5']}}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
         assert dict_ == dict_2
@@ -462,10 +462,10 @@ class TestMultiGrid(unittest.TestCase):
                                                                "lines_or_id": [(0, 2), (5, 1), (15, 2)]
                                                                }})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'set_bus': {'loads_id': [(0, 2), (5, 1)],
-                                     'generators_id': [(0, 2), (5, 1)],
-                                     'lines_ex_id': [(0, 2), (5, 1), (15, 2)],
-                                     'lines_or_id': [(0, 2), (5, 1), (15, 2)]
+        assert dict_ == {'set_bus': {'loads_id': [('load_1_0', 2), ('load_8_5', 1)],
+                                     'generators_id': [('gen_1_0', 2), ('gen_0_5', 1)],
+                                     'lines_ex_id': [('0_1_0', 2), ('2_3_5', 1), ('3_6_15', 2)],
+                                     'lines_or_id': [('0_1_0', 2), ('2_3_5', 1), ('3_6_15', 2)]
                                      }}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()
@@ -477,10 +477,10 @@ class TestMultiGrid(unittest.TestCase):
                                                                   'lines_or_id': [0, 5, 15]
                                                                   }})
         dict_ = act.as_serializable_dict()
-        assert dict_ == {'change_bus': {'loads_id': [0, 5],
-                                        'generators_id': [0, 5],
-                                        'lines_ex_id': [0, 5, 15],
-                                        'lines_or_id': [0, 5, 15]
+        assert dict_ == {'change_bus': {'loads_id': ["load_1_0", "load_8_5"],
+                                        'generators_id': ["gen_1_0", "gen_0_5"],
+                                        'lines_ex_id': ["0_1_0", "2_3_5", "3_6_15"],
+                                        'lines_or_id': ["0_1_0", "2_3_5", "3_6_15"]
                                         }}
         act2 = self.env2.action_space(dict_)
         dict_2 = act2.as_serializable_dict()

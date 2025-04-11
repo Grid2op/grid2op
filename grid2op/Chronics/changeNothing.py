@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import copy
 import numpy as np
 from datetime import datetime, timedelta
 
@@ -64,6 +65,7 @@ class ChangeNothing(GridValue):
         max_iter=-1,
         start_datetime=datetime(year=2019, month=1, day=1),
         chunk_size=None,
+        h_forecast=None,
         **kwargs
     ):
         GridValue.__init__(
@@ -80,7 +82,11 @@ class ChangeNothing(GridValue):
         self.maintenance_time = None
         self.maintenance_duration = None
         self.hazard_duration = None
-        
+        if h_forecast is None:
+            self._h_forecast = []
+        else:
+            self._h_forecast = copy.deepcopy(h_forecast)
+            
     def initialize(
         self,
         order_backend_loads,
@@ -116,3 +122,11 @@ class ChangeNothing(GridValue):
     def next_chronics(self):
         self.current_datetime = self.start_datetime
         self.curr_iter = 0
+        
+    def forecasts(self):
+        res = []
+        for h_id, h in enumerate(self._h_forecast):
+            res_d = {}
+            forecast_datetime = self.current_datetime + timedelta(minutes=h)
+            res.append((forecast_datetime, res_d))
+        return res

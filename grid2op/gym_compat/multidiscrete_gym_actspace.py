@@ -535,13 +535,13 @@ class __AuxMultiDiscreteActSpace:
             tmp = funct(vect)
             if attr_nm == "redispatch":
                 gym_act_this_ = np.full(
-                    self._act_space.n_gen, fill_value=np.NaN, dtype=dt_float
+                    self._act_space.n_gen, fill_value=np.nan, dtype=dt_float
                 )
                 gym_act_this_[self._act_space.gen_redispatchable] = tmp
                 tmp = gym_act_this_
             elif attr_nm == "curtail" or attr_nm == "curtail_mw":
                 gym_act_this_ = np.full(
-                    self._act_space.n_gen, fill_value=np.NaN, dtype=dt_float
+                    self._act_space.n_gen, fill_value=np.nan, dtype=dt_float
                 )
                 gym_act_this_[self._act_space.gen_renewable] = tmp
                 tmp = gym_act_this_
@@ -585,6 +585,7 @@ class __AuxMultiDiscreteActSpace:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import Box as LegacyGymBox, MultiDiscrete as LegacyGymMultiDiscrete
     from grid2op.gym_compat.box_gym_actspace import BoxLegacyGymActSpace
     from grid2op.gym_compat.continuous_to_discrete import ContinuousToDiscreteConverterLegacyGym

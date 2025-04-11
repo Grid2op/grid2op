@@ -29,7 +29,7 @@ from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.dtypes import dt_float
 from grid2op.Opponent import BaseOpponent, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 from grid2op.Episode import EpisodeData
 # on windows if i start using sequential, i need to continue using sequential
 # if i start using parallel i need to continue using parallel
@@ -354,6 +354,7 @@ class Runner(object):
         init_grid_path: str,
         path_chron,  # path where chronics of injections are stored
         n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+        allow_detachment=DEFAULT_ALLOW_DETACHMENT,
         name_env="unknown",
         parameters_path=None,
         names_chronics_to_backend=None,
@@ -466,6 +467,7 @@ class Runner(object):
         # TOOD doc for the attention budget
         """
         self._n_busbar = n_busbar
+        self._allow_detachment = allow_detachment
         self.with_forecast = with_forecast
         self.name_env = name_env
         self._overload_name_multimix = _overload_name_multimix
@@ -765,6 +767,7 @@ class Runner(object):
             res = self.envClass.init_obj_from_kwargs(
                 other_env_kwargs=self.other_env_kwargs,
                 n_busbar=self._n_busbar,
+                allow_detachment=self._allow_detachment,
                 init_env_path=self.init_env_path,
                 init_grid_path=self.init_grid_path,
                 chronics_handler=chronics_handler,
@@ -1301,6 +1304,7 @@ class Runner(object):
             "_overload_name_multimix": self._overload_name_multimix,
             "other_env_kwargs": self.other_env_kwargs,
             "n_busbar": self._n_busbar,
+            "allow_detachment": self._allow_detachment,
             "mp_context": None,  # this is used in multi processing context, avoid to multi process a multi process stuff
             "_local_dir_cls": self._local_dir_cls,
         }

@@ -6,9 +6,13 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from typing import List
 import numpy as np
 
 from grid2op.dtypes import dt_bool
+from grid2op.Observation import BaseObservation
+from grid2op.Action import BaseAction, ActionSpace
+
 from grid2op.Agent.greedyAgent import GreedyAgent
 
 
@@ -27,20 +31,14 @@ class PowerLineSwitch(GreedyAgent):
 
     """
 
-    def __init__(self, action_space):
-        GreedyAgent.__init__(self, action_space)
+    def __init__(self, action_space: ActionSpace, simulated_time_step : int =1):
+        GreedyAgent.__init__(self, action_space, simulated_time_step=simulated_time_step)
 
-    def _get_tested_action(self, observation):
+    def _get_tested_action(self, observation: BaseObservation) -> List[BaseAction]:
         res = [self.action_space({})]  # add the do nothing
         for i in range(self.action_space.n_line):
             tmp = np.full(self.action_space.n_line, fill_value=False, dtype=dt_bool)
             tmp[i] = True
             action = self.action_space({"change_line_status": tmp})
-            if not observation.line_status[i]:
-                # so the action consisted in reconnecting the powerline
-                # i need to say on which bus (always on bus 1 for this type of agent)
-                action = action.update(
-                    {"set_bus": {"lines_or_id": [(i, 1)], "lines_ex_id": [(i, 1)]}}
-                )
             res.append(action)
         return res

@@ -195,6 +195,59 @@ There are 4 **__main__** types of method you need to implement if you want to us
     be the case for *eg* :func:`grid2op.Observation.BaseObservation.simulate` or
     for :class:`grid2op.simulator.Simulator`.
 
+init function
+----------------
+
+The `__init__` function of your backend class should accept key-word arguments
+`detailed_infos_for_cascading_failures` and `can_be_copied`.
+
+It should also avoid regular arguments (some part of the code recreate backend instanced based on
+key-wrod arguments).
+
+We recommend you do something like this :
+
+.. code-block:: python
+
+        def __init__(self,
+                     detailed_infos_for_cascading_failures:bool=False,
+                     can_be_copied:bool=True,
+                     OTHER_KWARGS_1, 
+                     OTHER_KWARGS_2,
+                     ETC):
+        Backend.__init__(
+            self,
+            detailed_infos_for_cascading_failures=detailed_infos_for_cascading_failures,
+            can_be_copied=can_be_copied,
+            OTHER_KWARGS_1=OTHER_KWARGS_1,
+            OTHER_KWARGS_2=OTHER_KWARGS_2,
+        )
+
+
+For example the top first lines of the code of PandaPowerBackend looks like:
+
+.. code-block:: python
+
+    def __init__(
+        self,
+        detailed_infos_for_cascading_failures : bool=False,
+        lightsim2grid : bool=False,  # use lightsim2grid as pandapower powerflow solver
+        dist_slack : bool=False,
+        max_iter : int=10,
+        can_be_copied: bool=True,
+        with_numba: bool=NUMBA_,
+    ):
+    
+        # small irrelevant piece of code
+
+        Backend.__init__(
+            self,
+            detailed_infos_for_cascading_failures=detailed_infos_for_cascading_failures,
+            can_be_copied=can_be_copied,
+            lightsim2grid=lightsim2grid,
+            dist_slack=dist_slack,
+            max_iter=max_iter,
+            with_numba=with_numba,
+        )
 
 .. _grid-description:
 
@@ -215,10 +268,28 @@ Basically the `load_grid` function would look something like:
 
         # from grid2op 1.10.0 you need to call one of
         self.can_handle_more_than_2_busbar()  # see doc for more information
-        OR
+        # OR
         self.cannot_handle_more_than_2_busbar()  # see doc for more information
         # It is important you include it at the top of this method, otherwise you
         # will not have access to self.n_busbar_per_sub
+
+        # from grid2op 1.11.0 you need to call one of
+        self.can_handle_detachment()  # see doc for more information
+        # OR
+        self.cannot_handle_detachment()  # see doc for more information
+        # It is important you include it at the top of this method,
+        # if you don't, by default grid2op will suppose that your backend
+        # cannot disconnect element
+
+        # from grid2op 1.11.0, "detachment" feature is implemented. This
+        # means the agent is able to disconnect element from the grid.
+        # But it is still "required" (post processing) that the backend
+        # does not automatically disconnect elements.
+        # If you backend disconnects automatically elements, you probably want
+        # to turn off the internal checks (so that if your backend disconnect
+        # things, the environment is not "done")
+        # To do that, set the flags
+        # self._prevent_automatic_disconnection = False
 
         # load the grid in your favorite format, located at `full_path`:
         self._grid = ... # the way you do that depends on the "solver" you use
@@ -539,10 +610,8 @@ At the end, the `apply_action` function of the backend should look something lik
 
 .. code-block:: python
 
-    def apply_action(self, backendAction=None):
-        if backendAction is None:
-            return
-        active_bus, (prod_p, prod_v, load_p, load_q), _, shunts__ = backendAction()
+    def apply_action(self, backend_action=None):
+        active_bus, (prod_p, prod_v, load_p, load_q, storage_p), _, shunts__ = backend_action()
 
         # modify the injections [see paragraph "Modifying the injections (productions and loads)"]
         for gen_id, new_p in prod_p:
@@ -560,7 +629,7 @@ At the end, the `apply_action` function of the backend should look something lik
             ...  # the way you do that depends on the `internal representation of the grid`
 
         # modify the topology [see paragraph "Modifying the topology (status and busbar)"]
-        loads_bus = backendAction.get_loads_bus()
+        loads_bus = backend_action.get_loads_bus()
         for load_id, new_bus in loads_bus:
             # modify the "busbar" of the loads
             if new_bus == -1:
@@ -570,7 +639,7 @@ At the end, the `apply_action` function of the backend should look something lik
                 # the load is moved to either busbar 1 (in this case `new_bus` will be `1`)
                 # or to busbar 2 (in this case `new_bus` will be `2`)
                 ... # the way you do that depends on the `internal representation of the grid`
-        gens_bus = backendAction.get_gens_bus()
+        gens_bus = backend_action.get_gens_bus()
         for gen_id, new_bus in gens_bus:
             # modify the "busbar" of the generators
             if new_bus == -1:
@@ -580,7 +649,7 @@ At the end, the `apply_action` function of the backend should look something lik
                 # the gen is moved to either busbar 1 (in this case `new_bus` will be `1`)
                 # or to busbar 2 (in this case `new_bus` will be `2`)
                 ... # the way you do that depends on the `internal representation of the grid`
-        lines_or_bus = backendAction.get_lines_or_bus()
+        lines_or_bus = backend_action.get_lines_or_bus()
         for line_id, new_bus in lines_or_bus:
             # modify the "busbar" of the origin side of powerline line_id
             if new_bus == -1:
@@ -590,7 +659,7 @@ At the end, the `apply_action` function of the backend should look something lik
                 # the origin side of powerline is moved to either busbar 1 (in this case `new_bus` will be `1`)
                 # or to busbar 2 (in this case `new_bus` will be `2`)
                 ... # the way you do that depends on the `internal representation of the grid`
-        lines_ex_bus = backendAction.get_lines_ex_bus()
+        lines_ex_bus = backend_action.get_lines_ex_bus()
         for line_id, new_bus in lines_ex_bus:
             # modify the "busbar" of the extremity side of powerline line_id
             if new_bus == -1:
@@ -979,7 +1048,241 @@ TODO there are ways to use the `create_test_suite` but they have not been tested
 
 Advanced usage and speed optimization
 --------------------------------------
+
+Storage units (feature)
+++++++++++++++++++++++++
+
+You can deactivate the support of storage units by calling `self.set_no_storage()` in the
+`load_grid()` implementation.
+
+If you want to support storage units, you need to implement:
+
+- in `load_grid()`:
+
+  - `self.n_storage` : number of storage unit on the grid
+  - `self.storages_to_subid`  : for each storage units, at which substation they are connected on the grid
+  - (optional): `self.name_storage`, `self.storage_to_sub_pos`, `self.storage_pos_topo_vect`
+
+- in `apply_action()`:
+
+  - you receive same kind of information for which bus storages needs to be
+    connected to with `stos_bus = backend_action.get_storages_bus()` (use it like
+    you would other element)
+  - you receive the information in the `storage_p` variable about the amount of 
+    power that the storage unit is asked to absorb / produce. This is given in MW
+    with load convention (positive power = power is absorbed by the storage unit)
+
+- in the "getters" you need to implement the :func:`grid2op.Backend.Backend.storages_info()` methods that returns
+  3 vectors: `storage_p`, `storage_q`, `storage_v` (similar to `loads_info` or `generators_info`)
+
+.. note:: 
+    In order for the "storage units" to be configured correctly, for now, the default behaviour
+    is to have a separate file giving the storage information. Please
+    consult the documentation of :func:`grid2op.Backend.Backend.load_storage_data` for
+    more information.
+
+Shunts (feature)
++++++++++++++++++
+
+It is also possible to support shunts in grid2op.
+
+For now the support of shunts is pretty basic. User provides a target in p and q as well
+as a busbar on which to connect it.
+
+There is no (yet) notion of `tap` or anything more realistic at the moment. 
+
+.. note::
+    The above sentence does NOT mean grid2op cannot handle this or that 
+    if your backend supports it then you cannot make it a grid2op backend.
+
+    This means that a grid2op agent, using only grid2op functions will not 
+    be able to operate the shunts in a "fine grained" / "more realistic"
+    fashion.
+
+If you don't do anything about shunts, they will be deactivated, the agent
+will not be able to directly operate the shunts using grid2op functions (
+this does not mean shunts will be (or should be) removed from the powerflow
+computation)
+
+If you want to support them you need to define:
+
+- in `load_grid()`:
+
+  - call `self.shunts_data_available = True`
+  - `self.n_shunt` : number of shunts on the grid
+  - `self.shunts_to_subid`  : for each shunts, at which substation they are connected on the grid
+  - (optional): `self.name_shunt`. There is nothing comparable to 
+    `self.gen_to_sub_pos` or `self.gen_pos_topo_vect` for shunts.
+
+- in `apply_action()`:
+
+  - you receive most of the information on the shunt with `shunts_` variable. It is a 
+    tuple with 3 elements (`shunt_p, shunt_q, shunt_bus = shunts__`) with:
+
+    - `shunt_p` the each shunt MW (given in the form a `ValueStore` as always)
+    - `shunt_q` the each shunt MVAr (given in the form a `ValueStore` as always)
+    - `shunt_bus` the each shunt MVAr (given in the form a `ValueStore` as always)
+
+- in the "getters" you need to implement the :func:`grid2op.Backend.Backend.shunt_info()` methods that returns
+  4 vectors: `shunt_p`, `shunt_q`, `shunt_v` and `shunt_bus`
+  This is similar to :func:`grid2op.Backend.Backend.loads_info` or 
+  :func:`grid2op.Backend.Backend.generators_info` for the `p`, `q` and `v` attributes.
+  The `bus` gives the bus to which each shunt is connected.
+
+
+Voltage angle (feature)
+++++++++++++++++++++++++
+
+If you want your backend to output voltage angle values, you can specify it by invoking
+(in the `__init__` or in `load_grid`) `self.can_output_theta = True`
+
+In this case you need to implement :func:`grid2op.Backend.Backend.get_theta()` 
+
+.. note::
+    At time of writing, grid2op does not offer a way to retrieve the theta values
+    of shunts. Shunts theta should not be retrieved by `get_theta`
+
+.. warning::
+    Even if your backend does not support storage units, you are expected to 
+    return a `storage_theta` vector which would be empty, for example
+    `storage_theta = np.empty(0, dtype=float)`
+
+.. note::
+    Voltage angles are expected to be given in degree and not in radian
+
+
+Copy (feature)
++++++++++++++++++
+
+By default, your backend is supposed to be "copy able".
+
+The default implementation of :func:`grid2op.Backend.Backend.copy` might
+not be optimal for all backend.
+
+You might want to overload it for a faster copy.
+
+Non copy-able (feature)
+++++++++++++++++++++++++
+
+If your backend cannot be copied (for example if it relies on a software
+with license check), you can specify that `self._can_be_copied = False`
+in the `load_grid` implementation.
+
+Faster line disconnection (speed)
+++++++++++++++++++++++++++++++++++
+
+During the emulation of the "cascading failure" / "protections", performed
+in :func:`grid2op.Backend.Backend.next_grid_state`, the special function
+:func:`grid2op.Backend.Backend._disconnect_line` is called.
+
+It has a default implementation relying on the building 
+of a `backend_action` and then calling 
+:func:`grid2op.Backend.Backend.apply_action` which might be rather slow.
+
+You can bypass everything by overloading this function 
+with a faster implementation.
+
+.. note::
+    This is definitely a "marginal gain".
+
+Number of independant buses per substation
++++++++++++++++++++++++++++++++++++++++++++
+
+Before grid2op <1.10.0, the "grid2op modelling" imposed that every substations
+counted exactly 2 independant buses, and that each elements could be either connected
+to one busbar OR the other.
+
+From grid2op >=1.10.0 onwargs, the user might indicate the maximum number of 
+busbars wanted per substation with a call to `grid2op.make(..., n_busbar_per_sub=XXX)`.
+
+If your backend does not provide this feature (yet ?) then you need to call 
+`self.cannot_handle_more_than_2_busbar()` in the `load_grid` implementation, preferably
+at the beginning of it.
+
+However, if your implementation can handle this (which is the case for most real
+powerflow...) you need to call `self.can_handle_more_than_2_busbar()`
+
+.. warning::
+
+    In all cases then, you should either call : 
+
+    - :func:`grid2op.Backend.Backend.cannot_handle_more_than_2_busbar`
+    - OR
+    - :func:`grid2op.Backend.Backend.can_handle_more_than_2_busbar`
+
+    In the implementation of `load_grid`
+
+    If you don't, the default grid2op behaviour is to fall back to "legacy mode"
+    where only 2 independant busbars per substation was supported. 
+
+    This fall back erases the user defined behaviour in the call to env.make
+
+
+Detachment
++++++++++++
+
+Before grid2op <1.11, if an element (load, gen, storage units producing power) 
+was disconnected, then the episode stopped (done=True).
+
+Starting from grid2op 1.11, the user can decide to allow the detachement of some 
+elements (load, gen, storage units) by calling `grid2op.make(..., allow_detachment=XXX)`
+
+If your backend has been coded before this feature, then you need to call 
+`self.cannot_handle_detachment()`, preferably at the top of the `load_grid` function.
+
+If however your backend can support this feature, then you need to call
+`self.can_handle_detachment()`, preferably at the top of the `load_grid` function.
+
+.. warning::
+
+    In all cases then, you should either call : 
+
+    - :func:`grid2op.Backend.Backend.cannot_handle_detachment`
+    - OR
+    - :func:`grid2op.Backend.Backend.can_handle_detachment`
+
+    In the implementation of `load_grid`
+
+    If you don't, the default grid2op behaviour is to fall back to "legacy mode"
+    where detachment was not supported: agent will not have the possibility
+    to disconnect things.
+
+    This fall back erases the user defined behaviour in the call to env.make
+
+Automatic disconnection of elements
+++++++++++++++++++++++++++++++++++++
+
+One of the stopping criteria of a grid2op episode is that the grid is split in 
+2 or more independant connected component.
+
+This is (at time of writing, grid2op 1.11.0) still "more or less" the case (but might evolve in the
+next major release).
+
+Realistic backends (used for real powergrid) might be "robust" to such cases, for example
+by running different powerflow, one for each connected component, or by running a 
+powerflow only on the "main" connected component.
+
+If that is the case, then the backend will "automatically" disconnect element not in the 
+"main" connected component before performing the computation for example.
+
+As of writing, grid2op will stop an episode if the backend automatically disconnects 
+elements (loads, generators, lines etc.) by default. 
+
+To bypass the default behaviour, a "partial" support for this feature (=possibility for
+a backend to continue a episode even if part of the grid is in blackout) is possible
+if the backend implementation calls `self._prevent_automatic_disconnection = False`
+
+Internally, this will deactivate some checking that ensure "done=True" is returned.
+
+Vectorization in `apply_action` (speed)
+++++++++++++++++++++++++++++++++++++++++
 TODO this will be explained "soon".
+
+Overriding the public methods (speed)
+++++++++++++++++++++++++++++++++++++++++
+TODO this will be explained "soon".
+
+*eg* `load_grid_public`
 
 Detailed Documentation by class
 -------------------------------

@@ -41,6 +41,7 @@ except ImportError:
 if GYMNASIUM_AVAILABLE:
     from gymnasium.spaces import Dict as DictType
 elif GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import Dict as DictType
 else:
     from typing import TypeVar

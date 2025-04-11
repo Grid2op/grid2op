@@ -33,8 +33,8 @@ class Issue561Tester(unittest.TestCase):
         obs_init = env.reset()
         assert not type(obs_init).shunts_data_available
         assert not type(env.backend).shunts_data_available
-        backend = env.backend.copy()
-        backend1 = env.backend.copy()
+        backend = env.backend.copy_public()
+        backend1 = env.backend.copy_public()
         obs, *_ = env.step(env.action_space())
         obs.load_p[:] += 1.  # to make sure everything changes
         backend.update_from_obs(obs)

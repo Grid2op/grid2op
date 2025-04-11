@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 
 import grid2op
+from grid2op.Action import BaseAction
 from grid2op.Agent import (BaseAgent, DoNothingAgent)
 from grid2op.Reward import L2RPNWCCI2022ScoreFun
 from grid2op.utils import ScoreL2RPN2022
@@ -32,7 +33,6 @@ class WCCI2022Tester(unittest.TestCase):
         self.scen_id = 0
         self.nb_scenario = 2
         self.max_iter = 13
-        
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             self.env = grid2op.make("educ_case14_storage",

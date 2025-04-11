@@ -5,7 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
-
+import warnings
 import time
 from math import floor
 from typing import Any, Dict, Tuple, Union, List, Literal
@@ -15,7 +15,7 @@ from grid2op.Environment.environment import Environment
 from grid2op.Action import BaseAction
 from grid2op.Observation import BaseObservation
 from grid2op.Exceptions import EnvError
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
 
@@ -232,7 +232,8 @@ class TimedOutEnvironment(Environment):  # TODO heritage ou alors on met un truc
                              _read_from_local_dir,
                              _local_dir_cls,
                              _overload_name_multimix,
-                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB):
+                             n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+                             allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         grid2op_env={"init_env_path": init_env_path,
                      "init_grid_path": init_grid_path,
                      "chronics_handler": chronics_handler,
@@ -266,6 +267,7 @@ class TimedOutEnvironment(Environment):  # TODO heritage ou alors on met un truc
                      "_raw_backend_class": _raw_backend_class,
                      "_read_from_local_dir": _read_from_local_dir,
                      "n_busbar": int(n_busbar),
+                     "allow_detachment": bool(allow_detachment),
                      "_local_dir_cls": _local_dir_cls,
                      "_overload_name_multimix": _overload_name_multimix}
         if not "time_out_ms" in other_env_kwargs:

@@ -6,12 +6,14 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import datetime
 import grid2op
 import unittest
 import warnings
 import numpy as np
 from grid2op.Exceptions import EnvError
 from grid2op.gym_compat import GymEnv
+from grid2op.Exceptions import Grid2OpException
 
 
 class TestNewReset(unittest.TestCase):
@@ -79,4 +81,51 @@ class TestNewReset(unittest.TestCase):
         # self._aux_obs_equals(obs_seed, obs)
         self._aux_obs_equals(obs_ts, obs_seed)
         self._aux_obs_equals(obs_both, obs_seed)
+        
+    def test_init_datetime(self):
+        # test from str
+        ref_datetime = datetime.datetime(year=2024, month=12, day=6, hour=0, minute=0)
+        obs_ts = self.env.reset(options={"init datetime": "2024-12-06 00:00"})
+        assert obs_ts.year == 2024, f"{obs_ts.year} vs 2024"
+        assert obs_ts.month == 12, f"{obs_ts.month} vs 12"
+        assert obs_ts.day == 6, f"{obs_ts.day} vs 6"
+        assert obs_ts.hour_of_day == 0, f"{obs_ts.hour_of_day} vs 0"
+        assert obs_ts.minute_of_hour == 0, f"{obs_ts.minute_of_hour} vs 0"
+        assert self.env.chronics_handler.start_datetime == ref_datetime
+        assert self.env.chronics_handler.real_data.data.start_datetime == ref_datetime
+        
+        # test from datetime
+        obs_ts = self.env.reset(options={"init datetime": ref_datetime})
+        assert obs_ts.year == 2024, f"{obs_ts.year} vs 2024"
+        assert obs_ts.month == 12, f"{obs_ts.month} vs 12"
+        assert obs_ts.day == 6, f"{obs_ts.day} vs 6"
+        assert obs_ts.hour_of_day == 0, f"{obs_ts.hour_of_day} vs 0"
+        assert obs_ts.minute_of_hour == 0, f"{obs_ts.minute_of_hour} vs 0"
+        assert self.env.chronics_handler.start_datetime == ref_datetime
+        assert self.env.chronics_handler.real_data.data.start_datetime == ref_datetime
+        
+        # test an error is raised if format not understood
+        with self.assertRaises(Grid2OpException):
+            obs_ts = self.env.reset(options={"init datetime": 1})
+        with self.assertRaises(Grid2OpException):
+            obs_ts = self.env.reset(options={"init datetime": "06-12-2024 00:00"})
+            
+        # test when also skip ts is used
+        obs_ts = self.env.reset(options={"init datetime": ref_datetime, "init ts": 12})
+        assert obs_ts.year == 2024, f"{obs_ts.year} vs 2024"
+        assert obs_ts.month == 12, f"{obs_ts.month} vs 12"
+        assert obs_ts.day == 6, f"{obs_ts.day} vs 6"
+        assert obs_ts.hour_of_day == 0, f"{obs_ts.hour_of_day} vs 0"
+        assert obs_ts.minute_of_hour == 0, f"{obs_ts.minute_of_hour} vs 0"
+        this_ref_next = ref_datetime - datetime.timedelta(hours=1) + self.env.chronics_handler.time_interval
+        assert self.env.chronics_handler.real_data.data.start_datetime == this_ref_next
+        
+        # special case when skipping 1 step
+        obs_ts = self.env.reset(options={"init datetime": ref_datetime, "init ts": 1})
+        assert obs_ts.year == 2024, f"{obs_ts.year} vs 2024"
+        assert obs_ts.month == 12, f"{obs_ts.month} vs 12"
+        assert obs_ts.day == 6, f"{obs_ts.day} vs 6"
+        assert obs_ts.hour_of_day == 0, f"{obs_ts.hour_of_day} vs 0"
+        assert obs_ts.minute_of_hour == 0, f"{obs_ts.minute_of_hour} vs 0"
+        assert self.env.chronics_handler.real_data.data.start_datetime == ref_datetime
         

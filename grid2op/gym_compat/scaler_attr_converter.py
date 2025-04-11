@@ -95,6 +95,7 @@ class __AuxScalerAttrConverter:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import Box as LegacyGymBox
     from grid2op.gym_compat.base_gym_attr_converter import BaseLegacyGymAttrConverter
     ScalerAttrConverterLegacyGym = type("ScalerAttrConverterLegacyGym",

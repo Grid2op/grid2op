@@ -221,8 +221,10 @@ class TestMaskedEnvironmentGym(unittest.TestCase):
         env_gym_in.reset()
         env_gym_out.reset()
         act = env_gym_in.action_space.sample()
-        act[:] = 0
-        self._aux_run_envs(act, env_gym_in, env_gym_out)
+        act[:] = 0  # this is not the do nothing action...
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self._aux_run_envs(act, env_gym_in, env_gym_out)
 
 
 if __name__ == "__main__":

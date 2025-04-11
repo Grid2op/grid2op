@@ -213,7 +213,10 @@ class __AuxBaseGymSpaceConverter:
         -------
 
         """
-        return copy.deepcopy(self._keys_encoding)
+        res = {}
+        for k, v in self._keys_encoding.items():
+            res[k] = v  # TODO shedding, why I can't deep copy this anymore ?
+        return res
 
     def reencode_space(self, key, func):
         """
@@ -282,6 +285,7 @@ class __AuxBaseGymSpaceConverter:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import (Discrete as LegGymDiscrete,
                             Box as LegGymBox,
                             Dict as LegGymDict,

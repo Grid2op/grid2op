@@ -180,23 +180,23 @@ def _aux_run_one_episode(
         )
         
         if efficient_storing:
-            times = np.full(nb_timestep_max, fill_value=np.NaN, dtype=dt_float)
-            rewards = np.full(nb_timestep_max, fill_value=np.NaN, dtype=dt_float)
+            times = np.full(nb_timestep_max, fill_value=np.nan, dtype=dt_float)
+            rewards = np.full(nb_timestep_max, fill_value=np.nan, dtype=dt_float)
             actions = np.full(
-                (nb_timestep_max, env.action_space.n), fill_value=np.NaN, dtype=dt_float
+                (nb_timestep_max, env.action_space.n), fill_value=np.nan, dtype=dt_float
             )
             env_actions = np.full(
                 (nb_timestep_max, env._helper_action_env.n),
-                fill_value=np.NaN,
+                fill_value=np.nan,
                 dtype=dt_float,
             )
             observations = np.full(
                 (nb_timestep_max + 1, env.observation_space.n),
-                fill_value=np.NaN,
+                fill_value=np.nan,
                 dtype=dt_float,
             )
             disc_lines = np.full(
-                (nb_timestep_max, env.backend.n_line), fill_value=np.NaN, dtype=dt_bool
+                (nb_timestep_max, env.backend.n_line), fill_value=np.nan, dtype=dt_bool
             )
             attack = np.full(
                 (nb_timestep_max, env._opponent_action_space.n),
@@ -206,16 +206,16 @@ def _aux_run_one_episode(
             legal = np.full(nb_timestep_max, fill_value=True, dtype=dt_bool)
             ambiguous = np.full(nb_timestep_max, fill_value=False, dtype=dt_bool)
         else:
-            times = np.full(0, fill_value=np.NaN, dtype=dt_float)
-            rewards = np.full(0, fill_value=np.NaN, dtype=dt_float)
-            actions = np.full((0, env.action_space.n), fill_value=np.NaN, dtype=dt_float)
+            times = np.full(0, fill_value=np.nan, dtype=dt_float)
+            rewards = np.full(0, fill_value=np.nan, dtype=dt_float)
+            actions = np.full((0, env.action_space.n), fill_value=np.nan, dtype=dt_float)
             env_actions = np.full(
-                (0, env._helper_action_env.n), fill_value=np.NaN, dtype=dt_float
+                (0, env._helper_action_env.n), fill_value=np.nan, dtype=dt_float
             )
             observations = np.full(
-                (0, env.observation_space.n), fill_value=np.NaN, dtype=dt_float
+                (0, env.observation_space.n), fill_value=np.nan, dtype=dt_float
             )
-            disc_lines = np.full((0, env.backend.n_line), fill_value=np.NaN, dtype=dt_bool)
+            disc_lines = np.full((0, env.backend.n_line), fill_value=np.nan, dtype=dt_bool)
             attack = np.full(
                 (0, env._opponent_action_space.n), fill_value=0.0, dtype=dt_float
             )

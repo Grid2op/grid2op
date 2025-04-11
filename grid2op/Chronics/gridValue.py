@@ -15,7 +15,7 @@ from typing import Union, Dict, Literal
 import grid2op
 from grid2op.dtypes import dt_int
 from grid2op.Space import RandomObject
-from grid2op.Exceptions import EnvError, Grid2OpException
+from grid2op.Exceptions import EnvError, Grid2OpException, ChronicsNotFoundError
 
 # TODO sous echantillonner ou sur echantilloner les scenario: need to modify everything that affect the number
 # TODO of time steps there, for example "Space.gen_min_time_on" or "params.NB_TIMESTEP_POWERFLOW_ALLOWED" for
@@ -90,7 +90,12 @@ class GridValue(RandomObject, ABC):
     """
 
     NAN_BUT_IN_INT = -9999999
-    
+    ERROR_FORMAT_DATETIME = ChronicsNotFoundError(
+            'Impossible to understand the content of the provided "datetime". Make sure '
+            'it can be transformed to a python datetime.datetime object with format'
+            '"%Y-%m-%d %H:%M"'
+        )     
+        
     def __init__(
         self,
         time_interval=timedelta(minutes=5),
@@ -474,6 +479,73 @@ class GridValue(RandomObject, ABC):
         res[prev_:] = 0
         return res
 
+    def _datetime_from_str(self, str_: str):   
+        try:
+            res = datetime.strptime(str_, "%Y-%m-%d %H:%M")
+        except ValueError:
+            try:
+                res = datetime.strptime(str_, "%Y-%m-%d")
+            except Exception as exc_:
+                raise type(self).ERROR_FORMAT_DATETIME from exc_
+        except Exception as exc_:
+            raise type(self).ERROR_FORMAT_DATETIME from exc_ 
+        return res
+    
+    def set_current_datetime(self, str_: Union[str, datetime]):
+        """INTERNAL
+
+        ..versionadded: 1.11.0
+        
+        This function adds the possibility to change the current datetime of the current time series (`chronics`)
+        used.
+        
+        It makes things "as if" as many steps were performed since the beginning of the episode as the current number
+        of steps.
+        
+        This means that it impacts:
+
+            - :attr:`GridValue.start_datetime`
+            - :attr:`GridValue.current_datetime`
+            
+        Please provide either a python native "datetime.datetime" object or a datetime encoded as
+        a string in the format `"%Y-%m-%d %H:%M"`
+        
+        Examples
+        --------
+        
+        You should not use this function directly, but rather by a call to `init datetime` in the
+        `options` information of the environment, for example with:
+        
+        .. code-block:: python
+        
+            import grid2op
+            env_name = "l2rpn_case14_sandbox"
+            
+            env = grid2op.make(env_name)
+            obs = env.reset(options={"init datetime": "2024-12-06 00:00"})
+            
+        Parameters
+        ----------
+        str_ : Union[str, datetime]
+            _description_
+
+        Raises
+        ------
+        Grid2OpException
+            _description_
+        """
+        if isinstance(str_, str):
+            dt_ = self._datetime_from_str(str_)
+        elif isinstance(str_, datetime):
+            dt_ = str_
+        else:
+            raise Grid2OpException("Impossible to set the current date and time with your input. "
+                                   "You have provided a string or a datetime.datetime object but provided "
+                                   f"{type(str_)}.")
+        diff_ = dt_ - self.current_datetime
+        self.current_datetime = dt_ - self.time_interval
+        self.start_datetime += diff_
+    
     @abstractmethod
     def load_next(self):
         """

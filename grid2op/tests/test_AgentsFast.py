@@ -71,8 +71,6 @@ class TestAgentFaster(HelperTests, unittest.TestCase):
             cum_reward += reward
             # print("reward: {}".format(reward))
             # print("_______________")
-            # if reward <= 0 or np.any(obs.prod_p < 0):
-            #     pdb.set_trace()
             i += 1
             if i > i_max:
                 break

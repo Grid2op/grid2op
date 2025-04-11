@@ -9,11 +9,14 @@
 # do some generic tests that can be implemented directly to test if a backend implementation can work out of the box
 # with grid2op.
 # see an example of test_Pandapower for how to use this suit.
+import copy
 import unittest
 import numpy as np
 import warnings
 
 import grid2op
+from grid2op.dtypes import dt_float
+from grid2op.Action._backendAction import ValueStore
 from grid2op.Runner import Runner
 from grid2op.Agent import RandomAgent, DoNothingAgent
 from grid2op.Backend import PandaPowerBackend
@@ -370,5 +373,92 @@ class TestXXXBus(unittest.TestCase):
         assert res_ref == res_test
 
 
+class TestValueStore(unittest.TestCase):
+    def setUp(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    test=True,
+                                    _add_to_name=type(self).__name__)
+        self.obs = self.env.reset(seed=0, options={"time serie id": 0})
+        return super().setUp()
+    
+    def tearDown(self):
+        self.env.close()
+        return super().tearDown()
+    
+    def test_len(self):
+        assert len(self.env._backend_action.load_p) == type(self.env).n_load
+        assert len(self.env._backend_action.load_q) == type(self.env).n_load
+        assert len(self.env._backend_action.prod_p) == type(self.env).n_gen
+        assert len(self.env._backend_action.storage_power) == type(self.env).n_storage
+        assert len(self.env._backend_action.shunt_bus) == type(self.env).n_shunt
+
+    def test_all_changed(self):
+        assert np.all(~self.env._backend_action.load_p.changed)
+        self.env._backend_action.load_p.all_changed()
+        assert np.all(self.env._backend_action.load_p.changed)
+        
+    def test_new_order(self):
+        new_order = np.array([1, 0] + (2 + np.arange(self.env.n_load-2)).tolist())
+        init_vals = 1. * self.env._backend_action.load_p.values
+        self.env._backend_action.load_p.reorder(new_order)
+        assert np.abs(self.env._backend_action.load_p.values[[1, 0]] - init_vals[[0,1]]).max() <= 1e-8
+    
+    def test_copy(self):
+        cpy_ = copy.copy(self.env._backend_action.load_p)
+        dcpy_ = copy.deepcopy(self.env._backend_action.load_p)
+        cpy2_ = ValueStore(self.env.n_load, dt_float)
+        cpy2_.copy_from(self.env._backend_action.load_p)
+        for cp, cp_nm in zip([cpy_, dcpy_, cpy2_], ["cpy_", "dcpy_", "cpy2_"]):
+            for attr_nm in ["values", "changed"]:
+                assert np.array_equal(getattr(cp, attr_nm), getattr(self.env._backend_action.load_p, attr_nm)), f"error for {cp_nm}, {attr_nm}"                
+
+
+class TestBackendAction_Base(unittest.TestCase):
+    def setUp(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    test=True,
+                                    _add_to_name=type(self).__name__)
+        self.obs = self.env.reset(seed=0, options={"time serie id": 0})
+        return super().setUp()
+    
+    def tearDown(self):
+        self.env.close()
+        return super().tearDown()
+    
+    def test_deepcopy(self):
+        dcpy = copy.deepcopy(self.env._backend_action)
+        for base_attr in ["prod_p", "load_p", "storage_power", "current_topo"]:
+            attr_cp = getattr(dcpy, base_attr)
+            attr_ref = getattr(self.env._backend_action, base_attr)
+            for attr_nm in ["values", "changed"]:
+                assert np.array_equal(getattr(attr_cp, attr_nm), getattr(attr_ref, attr_nm)), f"error for {base_attr}, {attr_nm}"  
+    
+    def test_copy(self):
+        dcpy = copy.copy(self.env._backend_action)
+        for base_attr in ["prod_p", "load_p", "storage_power", "current_topo"]:
+            attr_cp = getattr(dcpy, base_attr)
+            attr_ref = getattr(self.env._backend_action, base_attr)
+            for attr_nm in ["values", "changed"]:
+                assert np.array_equal(getattr(attr_cp, attr_nm), getattr(attr_ref, attr_nm)), f"error for {base_attr}, {attr_nm}"   
+        
+    def test_get_bus_global(self):
+        # shunts
+        global_ = self.env._backend_action.get_shunts_bus_global().values
+        local = self.env._backend_action.shunt_bus.values
+        assert (type(self.env).local_bus_to_global(local, type(self.env).shunt_to_subid) == global_).all()
+        
+        # other
+        for attr_nm, attr_nm_env in zip(["storages", "lines_ex", "lines_or", "gens", "loads"],
+                                        ["storage", "line_ex", "line_or", "gen", "load"]):
+            global_ = getattr(self.env._backend_action, f"get_{attr_nm}_bus_global")().values
+            local_ = getattr(self.env._backend_action, f"get_{attr_nm}_bus")().values
+            assert (type(self.env).local_bus_to_global(local_, getattr(type(self.env), f"{attr_nm_env}_to_subid")) == global_).all()
+             
+        
+        
 if __name__ == "__main__":
     unittest.main()

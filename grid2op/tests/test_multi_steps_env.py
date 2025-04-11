@@ -89,17 +89,17 @@ class ForecastEnvTester(unittest.TestCase):
         un_act = self.env.action_space({"set_line_status": [(5, +1)]})
         obs = self.env.reset()
         obs, *_ = self.env.step(act)
-        assert obs.time_before_cooldown_line[5] == 3
+        assert obs.time_before_cooldown_line[5] == 3, f"{obs.time_before_cooldown_line[5]} vs 3"
         
         forecast_env = obs.get_forecast_env()
         f_obs = forecast_env.reset()
-        assert f_obs.time_before_cooldown_line[5] == 3
+        assert f_obs.time_before_cooldown_line[5] == 3, f"{f_obs.time_before_cooldown_line[5]} vs 3"
         f_obs2, *_ = forecast_env.step(self.dn)
-        assert f_obs2.time_before_cooldown_line[5] == 2
+        assert f_obs2.time_before_cooldown_line[5] == 2, f"{f_obs2.time_before_cooldown_line[5]} vs 2"
         f_obs3, *_ = forecast_env.step(self.dn)
-        assert f_obs3.time_before_cooldown_line[5] == 1
+        assert f_obs3.time_before_cooldown_line[5] == 1, f"{f_obs3.time_before_cooldown_line[5]} vs 1"
         f_obs4, r, done, info = forecast_env.step(un_act)
-        assert f_obs4.time_before_cooldown_line[5] == 0
+        assert f_obs4.time_before_cooldown_line[5] == 0, f"{f_obs4.time_before_cooldown_line[5]} vs 0"
         assert info["is_illegal"]  # because cooldown is 1 when i took the action
         
         # now I can reco

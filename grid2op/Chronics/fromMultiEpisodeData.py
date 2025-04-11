@@ -7,16 +7,9 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 from datetime import datetime, timedelta
-import os
-import numpy as np
-import copy
-import warnings
 from typing import Optional, Union, List, Dict, Literal
-from pathlib import Path
 
-from grid2op.Exceptions import (
-    ChronicsError, ChronicsNotFoundError
-)
+from grid2op.Exceptions import ChronicsError
 
 from grid2op.Chronics.gridValue import GridValue
 
@@ -40,6 +33,17 @@ class FromMultiEpisodeData(GridValue):
         - to make sure you are running the exact same episode, you need to create the environment
           with the :class:`grid2op.Opponent.FromEpisodeDataOpponent` opponent
 
+    .. versionchanged:: 1.11.0
+        Before versin 1.11.0 this class would load all the data in memory at the creation of the environment,
+        which could take lots of time and memory but once done a call to `env.reset` would be really fast.
+        
+        From grid2op >= 1.11.0 a kwargs `caching` has been added (default value is ``FALSE``) which
+        does not load everything in memory which makes it more memory efficient and (maybe) more time saving
+        (if some data happened to be loaded but never used). The default behaviour has then
+        changed.
+        
+        You can still benefit from previous behaviour by loading with `caching=True`
+        
     Examples
     ---------
     You can use this class this way:
@@ -110,21 +114,38 @@ class FromMultiEpisodeData(GridValue):
                  max_iter=-1,
                  start_datetime=datetime(year=2019, month=1, day=1),
                  chunk_size=None,
-                 list_perfect_forecasts=None,  # TODO
+                 list_perfect_forecasts=None,
+                 caching : bool=False,
                  **kwargs,  # unused
                  ):
         super().__init__(time_interval, max_iter, start_datetime, chunk_size)
-        self.li_ep_data = [FromOneEpisodeData(path,
-                                              ep_data=el,
-                                              time_interval=time_interval,
-                                              max_iter=max_iter,
-                                              chunk_size=chunk_size,
-                                              list_perfect_forecasts=list_perfect_forecasts,
-                                              start_datetime=start_datetime)
-                           for el in li_ep_data
-                           ]
+        self._caching : bool = bool(caching)
+        self._path = path
+        self._chunk_size = chunk_size
+        self._list_perfect_forecasts = list_perfect_forecasts
+        self._input_li_ep_data = li_ep_data
+        if self._caching:
+            self.li_ep_data = [FromOneEpisodeData(path,
+                                                  ep_data=el,
+                                                  time_interval=time_interval,
+                                                  max_iter=max_iter,
+                                                  chunk_size=chunk_size,
+                                                  list_perfect_forecasts=list_perfect_forecasts,
+                                                  start_datetime=start_datetime)
+                               for el in li_ep_data
+                              ]
+        else:
+            self.li_ep_data = [None for _ in li_ep_data]
         self._prev_cache_id = len(self.li_ep_data) - 1
         self.data = self.li_ep_data[self._prev_cache_id]
+        if self.data is None:
+            self.data = FromOneEpisodeData(self._path,
+                                           ep_data=self._input_li_ep_data[self._prev_cache_id],
+                                           time_interval=self.time_interval,
+                                           max_iter=self.max_iter,
+                                           chunk_size=self._chunk_size,
+                                           list_perfect_forecasts=self._list_perfect_forecasts,
+                                           start_datetime=self.start_datetime)
         self._episode_data = self.data._episode_data  # used by the fromEpisodeDataOpponent
         
     def next_chronics(self):
@@ -144,6 +165,15 @@ class FromMultiEpisodeData(GridValue):
     ):
 
         self.data = self.li_ep_data[self._prev_cache_id]
+        if self.data is None:
+            # data was not in cache:
+            self.data = FromOneEpisodeData(self._path,
+                                           ep_data=self._input_li_ep_data[self._prev_cache_id],
+                                           time_interval=self.time_interval,
+                                           max_iter=self.max_iter,
+                                           chunk_size=self._chunk_size,
+                                           list_perfect_forecasts=self._list_perfect_forecasts,
+                                           start_datetime=self.start_datetime)
         self.data.initialize(
             order_backend_loads,
             order_backend_prods,
@@ -168,12 +198,19 @@ class FromMultiEpisodeData(GridValue):
     def forecasts(self):
         return self.data.forecasts()
     
-    def tell_id(self, id_num, previous=False):
-        id_num = int(id_num)
-        if not isinstance(id_num, (int, dt_int)):
+    def tell_id(self, id_num: str, previous=False):
+        try:
+            id_num = int(id_num)
+            path_ = None
+        except ValueError:
+            path_, id_num = id_num.split("@")
+            id_num = int(id_num)
+            
+        if path_ is not None and path_ != self._path:
             raise ChronicsError("FromMultiEpisodeData can only be used with `tell_id` being an integer "
-                                "at the moment. Feel free to write a feature request if you want more.")
-
+                                "or if tell_id has the same path as the original file. "
+                                "Feel free to write a feature request if you want more.")
+        
         self._prev_cache_id = id_num
         self._prev_cache_id %= len(self.li_ep_data)
 
@@ -182,7 +219,7 @@ class FromMultiEpisodeData(GridValue):
             self._prev_cache_id %= len(self.li_ep_data)
     
     def get_id(self) -> str:
-        return f'{self._prev_cache_id }'
+        return f'{self._path}@{self._prev_cache_id}'
     
     def max_timestep(self):
         return self.data.max_timestep()

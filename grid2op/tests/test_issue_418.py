@@ -37,10 +37,8 @@ class Issue418Tester(unittest.TestCase):
             obs = gymenv.reset(seed=42)
             curt = np.array([1,1.,0.18852758,0.5537014,0.43770432,1])
             curt = np.array([-1,-1.,0.18852758,0.5537014,0.43770432,-1])
-            year = 571
+            year = 1476  # gen_p_delta being sampled before
             day = 9
-            # year = 1887
-            # day = 9
         
         # test that the seeding worked also in action space and observation space
         sampled_act = gymenv.action_space.sample()

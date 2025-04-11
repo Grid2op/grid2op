@@ -71,7 +71,7 @@ pkgs = {
         "plot": ["imageio"],
         "test": ["lightsim2grid",
                  "numba",
-                 "gym>=0.26",
+                #  "gym>=0.26",
                  "gymnasium",
                 #  "stable-baselines3>=2.0",
                  "nbconvert",
