@@ -80,7 +80,10 @@ pkgs = {
                  ],
         "chronix2grid": [
             "ChroniX2Grid>=1.2.0.post1"
-            ]
+            ],
+        "powermodels": [
+                "PandaModelsBackend"
+            ],
     }
 }
 pkgs["extras"]["test"] += pkgs["extras"]["optional"]
