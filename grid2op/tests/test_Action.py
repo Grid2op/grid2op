@@ -436,7 +436,7 @@ class TestActionBase(ABC):
 
     def test_from_vect_nan(self):
         """test of the issue https://github.com/rte-france/Grid2Op/issues/173"""
-        vect = np.full(self.helper_action.n, fill_value=np.NaN, dtype=float)
+        vect = np.full(self.helper_action.n, fill_value=np.nan, dtype=float)
         if self.helper_action.n > 0:
             with self.assertRaises(NonFiniteElement):
                 act = self.helper_action.from_vect(vect)
@@ -1409,7 +1409,6 @@ class TestActionBase(ABC):
         assert np.all(
             res.line_ex_pos_topo_vect == self.helper_action.line_ex_pos_topo_vect
         )
-        # pdb.set_trace()
         assert issubclass(res.actionClass, self.helper_action._init_subtype)
 
     def test_json_serializable(self):

@@ -523,6 +523,7 @@ class TestRunner(HelperTests, unittest.TestCase):
             "1.10.3",
             "1.10.4",
             "1.10.5",
+            "1.11.0",
         ]
         curr_version = "test_version"
         assert (

@@ -26,12 +26,13 @@ pkgs = {
         "numpy",
         "scipy>=1.4.1",
         "pandas>=1.0.3",
-        "pandapower>=2.2.2",
+        "pandapower>=2.2.2,<3",
         "tqdm>=4.45.0",
         "networkx>=2.4",
         "requests>=2.23.0",
         "packaging",  # because gym changes the way it uses numpy prng in version 0.26 and i need both gym before and after...
         "typing_extensions",
+        "orderly_set<5.4.0; python_version<='3.8'"
         "pyarrow>=18.1.0"
     ],
     "extras": {
@@ -72,7 +73,7 @@ pkgs = {
         "plot": ["imageio"],
         "test": ["lightsim2grid",
                  "numba",
-                 "gym>=0.26",
+                #  "gym>=0.26",
                  "gymnasium",
                 #  "stable-baselines3>=2.0",
                  "nbconvert",

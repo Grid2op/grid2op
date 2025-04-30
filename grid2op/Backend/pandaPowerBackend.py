@@ -19,6 +19,7 @@ import pandapower as pp
 import scipy
 # check that pandapower does not introduce some 
 from packaging import version
+from importlib.metadata import version as version_medata
 
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -27,6 +28,8 @@ from grid2op.Exceptions import BackendError
 from grid2op.Backend.backend import Backend
 
 MIN_LS_VERSION_VM_PU = version.parse("0.6.0")
+PP_CREATE_BUS_BUG = version.parse("3.0.0")
+
 
 try:
     import numba
@@ -251,7 +254,7 @@ class PandaPowerBackend(Backend):
                     warnings.warn(
                         f'There are "{el_nm}" in the pandapower grid. These '
                         f"elements are not modeled on grid2op side (the environment will "
-                        f"work, but you won't be able to modify them)."
+                        f"work, but you won't be able to modify them with 'pure grid2op' API)."
                     )
 
     def get_theta(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -536,11 +539,19 @@ class PandaPowerBackend(Backend):
         # "hack" to handle topological changes, for now only 2 buses per substation
         add_topo = copy.deepcopy(self._grid.bus)
         # TODO n_busbar: what if non contiguous indexing ???
+        pp_vers = version.parse(version_medata("pandapower"))
         for _ in range(self.n_busbar_per_sub - 1):   # self.n_busbar_per_sub and not type(self) here otherwise it erases can_handle_more_than_2_busbar / cannot_handle_more_than_2_busbar
             add_topo.index += add_topo.shape[0]
             add_topo["in_service"] = False
             for ind, el in add_topo.iterrows():
-                pp.create_bus(self._grid, index=ind, **el)
+                if pp_vers < PP_CREATE_BUS_BUG:
+                    pp.create_bus(self._grid, index=ind, **el)
+                else:
+                    tmp = dict(**el)
+                    if "geo" in tmp:
+                        # bug in pandapower 3.0.0 in this case
+                        del tmp["geo"]
+                    pp.create_bus(self._grid, index=ind, **tmp)
         self._init_private_attrs()
         self._aux_run_pf_init()  # run yet another powerflow with the added buses
 
@@ -719,7 +730,7 @@ class PandaPowerBackend(Backend):
         
         self._compute_pos_big_topo()
         
-        self._topo_vect = np.full(self.dim_topo, fill_value=-1, dtype=dt_int)
+        self._topo_vect : np.ndarray = np.full(self.dim_topo, fill_value=-1, dtype=dt_int)
 
         # utilities for imeplementing apply_action
         self._corresp_name_fun = {}
@@ -763,26 +774,26 @@ class PandaPowerBackend(Backend):
         )
         self.thermal_limit_a = self.thermal_limit_a.astype(dt_float)
 
-        self.p_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.q_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.v_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.a_or = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.p_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.q_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.v_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.a_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.NaN)
-        self.load_p = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
-        self.load_q = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
-        self.load_v = np.full(self.n_load, dtype=dt_float, fill_value=np.NaN)
-        self.prod_p = np.full(self.n_gen, dtype=dt_float, fill_value=np.NaN)
-        self.prod_v = np.full(self.n_gen, dtype=dt_float, fill_value=np.NaN)
-        self.prod_q = np.full(self.n_gen, dtype=dt_float, fill_value=np.NaN)
-        self.storage_p = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_q = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_v = np.full(self.n_storage, dtype=dt_float, fill_value=np.NaN)
+        self.p_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.q_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.v_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.a_or = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.p_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.q_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.v_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.a_ex = np.full(self.n_line, dtype=dt_float, fill_value=np.nan)
+        self.load_p = np.full(self.n_load, dtype=dt_float, fill_value=np.nan)
+        self.load_q = np.full(self.n_load, dtype=dt_float, fill_value=np.nan)
+        self.load_v = np.full(self.n_load, dtype=dt_float, fill_value=np.nan)
+        self.prod_p = np.full(self.n_gen, dtype=dt_float, fill_value=np.nan)
+        self.prod_v = np.full(self.n_gen, dtype=dt_float, fill_value=np.nan)
+        self.prod_q = np.full(self.n_gen, dtype=dt_float, fill_value=np.nan)
+        self.storage_p = np.full(self.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_q = np.full(self.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_v = np.full(self.n_storage, dtype=dt_float, fill_value=np.nan)
         self._nb_bus_before = None
         
-        self.line_status = np.full(self.n_line, dtype=dt_bool, fill_value=np.NaN)
+        self.line_status = np.full(self.n_line, dtype=dt_bool, fill_value=np.nan)
         self.line_status.flags.writeable = False
 
         # store the topoid -> objid
@@ -804,11 +815,11 @@ class PandaPowerBackend(Backend):
         # store the topoid -> objid
         self._init_big_topo_to_bk()
 
-        self.theta_or = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
-        self.theta_ex = np.full(self.n_line, fill_value=np.NaN, dtype=dt_float)
-        self.load_theta = np.full(self.n_load, fill_value=np.NaN, dtype=dt_float)
-        self.gen_theta = np.full(self.n_gen, fill_value=np.NaN, dtype=dt_float)
-        self.storage_theta = np.full(self.n_storage, fill_value=np.NaN, dtype=dt_float)
+        self.theta_or = np.full(self.n_line, fill_value=np.nan, dtype=dt_float)
+        self.theta_ex = np.full(self.n_line, fill_value=np.nan, dtype=dt_float)
+        self.load_theta = np.full(self.n_load, fill_value=np.nan, dtype=dt_float)
+        self.gen_theta = np.full(self.n_gen, fill_value=np.nan, dtype=dt_float)
+        self.storage_theta = np.full(self.n_storage, fill_value=np.nan, dtype=dt_float)
 
         self._get_topo_vect()
         self.tol = 1e-5  # this is NOT the pandapower tolerance !!!! this is used to check if a storage unit
@@ -825,12 +836,12 @@ class PandaPowerBackend(Backend):
 
     def storage_deact_for_backward_comaptibility(self) -> None:
         cls = type(self)
-        self.storage_theta = np.full(cls.n_storage, fill_value=np.NaN, dtype=dt_float)
-        self.storage_p = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_q = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
-        self.storage_v = np.full(cls.n_storage, dtype=dt_float, fill_value=np.NaN)
+        self.storage_theta = np.full(cls.n_storage, fill_value=np.nan, dtype=dt_float)
+        self.storage_p = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_q = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
+        self.storage_v = np.full(cls.n_storage, dtype=dt_float, fill_value=np.nan)
         self._topo_vect.flags.writeable = True
-        self._topo_vect.resize(cls.dim_topo)
+        self._topo_vect.resize(cls.dim_topo, refcheck=False)
         self._topo_vect.flags.writeable = False
         self._get_topo_vect()
 
@@ -848,7 +859,7 @@ class PandaPowerBackend(Backend):
         """
         return self._big_topo_to_obj[id_big_topo]
 
-    def apply_action(self, backendAction: Union["grid2op.Action._backendAction._BackendAction", None]) -> None:
+    def apply_action(self, backend_action: "grid2op.Action._backendAction._BackendAction") -> None:
         """
         INTERNAL
 
@@ -856,9 +867,6 @@ class PandaPowerBackend(Backend):
 
         Specific implementation of the method to apply an action modifying a powergrid in the pandapower format.
         """
-        if backendAction is None:
-            return
-    
         cls = type(self)
         
         (
@@ -866,8 +874,8 @@ class PandaPowerBackend(Backend):
             (prod_p, prod_v, load_p, load_q, storage),
             topo__,
             shunts__,
-        ) = backendAction()
-
+        ) = backend_action()
+        
         # handle bus status
         self._grid.bus["in_service"] = pd.Series(data=active_bus.T.reshape(-1),
                                                  index=np.arange(cls.n_sub * cls.n_busbar_per_sub),
@@ -903,7 +911,7 @@ class PandaPowerBackend(Backend):
             if (storage.changed).any():
                 tmp_stor_p.iloc[storage.changed] = storage.values[storage.changed]
             # topology of the storage
-            stor_bus = backendAction.get_storages_bus()
+            stor_bus = backend_action.get_storages_bus()
             new_bus_num = dt_int(1) * self._grid.storage["bus"].values
             new_bus_id = stor_bus.values[stor_bus.changed]
             new_bus_num[stor_bus.changed] = cls.local_bus_to_global(new_bus_id, cls.storage_to_subid[stor_bus.changed])
@@ -914,22 +922,22 @@ class PandaPowerBackend(Backend):
             self._grid.storage.loc[stor_bus.changed & ~deactivated, "in_service"] = True
             self._grid.storage["bus"] = new_bus_num
         
-        if type(backendAction).shunts_data_available:
+        if type(backend_action).shunts_data_available:
             shunt_p, shunt_q, shunt_bus = shunts__
 
             if (shunt_p.changed).any():
-                self._grid.shunt["p_mw"].iloc[shunt_p.changed] = shunt_p.values[
+                self._grid.shunt.loc[shunt_p.changed, "p_mw"] = shunt_p.values[
                     shunt_p.changed
                 ]
             if (shunt_q.changed).any():
-                self._grid.shunt["q_mvar"].iloc[shunt_q.changed] = shunt_q.values[
+                self._grid.shunt.loc[shunt_q.changed, "q_mvar"] = shunt_q.values[
                     shunt_q.changed
                 ]
             if (shunt_bus.changed).any():
                 sh_service = shunt_bus.values[shunt_bus.changed] != -1
-                self._grid.shunt["in_service"].iloc[shunt_bus.changed] = sh_service           
+                self._grid.shunt.loc[shunt_bus.changed, "in_service"] = sh_service           
                 chg_and_in_service = sh_service & shunt_bus.changed
-                self._grid.shunt["bus"].loc[chg_and_in_service] = cls.local_bus_to_global(shunt_bus.values[chg_and_in_service],
+                self._grid.shunt.loc[chg_and_in_service, "bus"] = cls.local_bus_to_global(shunt_bus.values[chg_and_in_service],
                                                                                           cls.shunt_to_subid[chg_and_in_service])
 
         # i made at least a real change, so i implement it in the backend
@@ -1135,6 +1143,7 @@ class PandaPowerBackend(Backend):
                             ):
                                 self.load_v[l_id] = self.prod_v[g_id]
                                 break
+                self.load_v[~self._grid.load["in_service"]] = 0.
             
             # I retrieve the data once for the flows, so has to not re read multiple dataFrame
             self.p_or[:] = self._aux_get_line_info("p_from_mw", "p_hv_mw")
@@ -1189,6 +1198,14 @@ class PandaPowerBackend(Backend):
             if not self._grid.converged:
                 raise pp.powerflow.LoadflowNotConverged("Divergence without specific reason (self._grid.converged is False)")
             self.div_exception = None
+            
+            if is_dc:
+                # pandapower apparently does not set 0 for q in DC...
+                self.prod_q[:] = 0.
+                self.load_q[:] = 0.
+                self.storage_q[:] = 0.
+                self.q_or[:] = 0.
+                self.q_ex[:] = 0.
             return True, None
 
         except pp.powerflow.LoadflowNotConverged as exc_:
@@ -1199,36 +1216,37 @@ class PandaPowerBackend(Backend):
             return False, BackendError(f'powerflow diverged with error :"{msg}", you can check `env.backend.div_exception` for more information')
 
     def _reset_all_nan(self) -> None:
-        self.p_or[:] = np.NaN
-        self.q_or[:] = np.NaN
-        self.v_or[:] = np.NaN
-        self.a_or[:] = np.NaN
-        self.p_ex[:] = np.NaN
-        self.q_ex[:] = np.NaN
-        self.v_ex[:] = np.NaN
-        self.a_ex[:] = np.NaN
-        self.prod_p[:] = np.NaN
-        self.prod_q[:] = np.NaN
-        self.prod_v[:] = np.NaN
-        self.load_p[:] = np.NaN
-        self.load_q[:] = np.NaN
-        self.load_v[:] = np.NaN
-        self.storage_p[:] = np.NaN
-        self.storage_q[:] = np.NaN
-        self.storage_v[:] = np.NaN
+        self.p_or[:] = np.nan
+        self.q_or[:] = np.nan
+        self.v_or[:] = np.nan
+        self.a_or[:] = np.nan
+        self.p_ex[:] = np.nan
+        self.q_ex[:] = np.nan
+        self.v_ex[:] = np.nan
+        self.a_ex[:] = np.nan
+        self.prod_p[:] = np.nan
+        self.prod_q[:] = np.nan
+        self.prod_v[:] = np.nan
+        self.load_p[:] = np.nan
+        self.load_q[:] = np.nan
+        self.load_v[:] = np.nan
+        self.storage_p[:] = np.nan
+        self.storage_q[:] = np.nan
+        self.storage_v[:] = np.nan
         self._nb_bus_before = None
 
-        self.theta_or[:] = np.NaN
-        self.theta_ex[:] = np.NaN
-        self.load_theta[:] = np.NaN
-        self.gen_theta[:] = np.NaN
-        self.storage_theta[:] = np.NaN
+        self.theta_or[:] = np.nan
+        self.theta_ex[:] = np.nan
+        self.load_theta[:] = np.nan
+        self.gen_theta[:] = np.nan
+        self.storage_theta[:] = np.nan
         self._topo_vect.flags.writeable = True
         self._topo_vect[:] = -1
         self._topo_vect.flags.writeable = False
         self.line_status.flags.writeable = True
         self.line_status[:] = False
         self.line_status.flags.writeable = False
+        
     def copy(self) -> "PandaPowerBackend":
         """
         INTERNAL
@@ -1485,6 +1503,9 @@ class PandaPowerBackend(Backend):
         load_theta = self._grid.res_bus.loc[self._grid.load["bus"].values][
             "va_degree"
         ].values.astype(dt_float)
+        load_disco = ~self._grid.load["in_service"]
+        load_v[load_disco] = 0.
+        load_theta[load_disco] = 0.
         return load_p, load_q, load_v, load_theta
 
     def generators_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -1543,7 +1564,7 @@ class PandaPowerBackend(Backend):
         )
 
     def _storages_info(self):
-        if self.n_storage:
+        if self.n_storage > 0:
             # this is because we support "backward comaptibility" feature. So the storage can be
             # deactivated from the Environment...
             # p_storage = self._grid.res_storage["p_mw"].values.astype(dt_float)

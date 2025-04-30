@@ -36,7 +36,7 @@ class AuxTestBugShuntDC:
     
     def _aux_modify_shunt(self):
         self.bk_act += self.env.action_space({"shunt": {"set_bus": np.array([2], dtype=int)}})
-        self.env.backend.apply_action(self.bk_act)
+        self.env.backend.apply_action_public(self.bk_act)
         if isinstance(self.env.backend, PandaPowerBackend):
             assert self.env.backend._grid.shunt["bus"][0] == 22
             assert self.env.backend._grid.bus["in_service"][self.env.backend._grid.shunt["bus"][0]]

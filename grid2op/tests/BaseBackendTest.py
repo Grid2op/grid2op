@@ -103,7 +103,7 @@ class BaseTestLoadingCase(MakeBackend):
         case_file = self.get_casefile()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            backend.load_grid(path_matpower, case_file)
+            backend.load_grid_public(path_matpower, case_file)
         type(backend).set_env_name("BaseTestLoadingCase")
         backend.assert_grid_correct()
 
@@ -197,7 +197,7 @@ class BaseTestLoadingCase(MakeBackend):
         case_file = self.get_casefile()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            backend.load_grid(path_matpower, case_file)
+            backend.load_grid_public(path_matpower, case_file)
         type(backend).set_env_name("TestLoadingCase_env2_test_assert_grid_correct")
         backend.assert_grid_correct()
         conv, *_  = backend.runpf()
@@ -218,7 +218,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         self.case_file = self.get_casefile()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, self.case_file)
+            self.backend.load_grid_public(self.path_matpower, self.case_file)
         type(self.backend).set_env_name("TestLoadingBackendFunc_env")
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
@@ -393,7 +393,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         l_id = 3
 
         p_or_orig, *_ = self.backend.lines_or_info()
-        backend_cpy = self.backend.copy()
+        backend_cpy = self.backend.copy_public()
 
         self.backend._disconnect_line(l_id)
         conv, *_ = self.backend.runpf(is_dc=is_dc)
@@ -419,7 +419,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         conv, *_  = self.backend.runpf(is_dc=False)
         p_or_orig, *_ = self.backend.lines_or_info()
 
-        adn_backend_cpy = self.backend.copy()
+        adn_backend_cpy = self.backend.copy_public()
         adn_backend_cpy._disconnect_line(11)
         assert not adn_backend_cpy.get_line_status()[8]
         assert not adn_backend_cpy.get_line_status()[11]
@@ -571,7 +571,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
             if i == 18:
                 # powerflow diverge if line 1 is removed, unfortunately
                 continue
-            backend_cpy = self.backend.copy()
+            backend_cpy = self.backend.copy_public()
             backend_cpy._disconnect_line(i)
             conv, *_  = backend_cpy.runpf()
             assert (
@@ -595,7 +595,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         action = self.action_env({})  # update the action
         bk_action = self.bkact_class()
         bk_action += action
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         after_lp, *_ = self.backend.loads_info()
         after_gp, *_ = self.backend.generators_info()
         after_ls = self.backend.get_line_status()
@@ -629,7 +629,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         )  # update the action
         bk_action = self.bkact_class()
         bk_action += action
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf(is_dc=True)
         assert conv, f"powergrid diverge with error {_}"
         # now the system has exactly 0 losses (ie sum load = sum gen)
@@ -648,7 +648,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         )  # update the action
         bk_action = self.bkact_class()
         bk_action += action
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf(is_dc=True)
         assert conv, "Cannot perform a powerflow after doing nothing (dc)"
 
@@ -690,7 +690,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         )  # update the action
         bk_action = self.bkact_class()
         bk_action += action
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf(is_dc=False)
         assert conv, f"Cannot perform a powerflow after modifying the powergrid with error {_}"
 
@@ -715,7 +715,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         bk_action += action
 
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
 
         # compute a load flow an performs more tests
         conv, *_ = self.backend.runpf()
@@ -749,7 +749,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         bk_action = self.bkact_class()
         bk_action += action
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
 
         # compute a load flow an performs more tests
         conv, *_  = self.backend.runpf()
@@ -786,7 +786,7 @@ class BaseTestLoadingBackendFunc(MakeBackend):
         bk_action = self.bkact_class()
         bk_action += action
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
 
         # compute a load flow an performs more tests
         conv, *_  = self.backend.runpf()
@@ -828,7 +828,7 @@ class BaseTestTopoAction(MakeBackend):
         self.case_file = self.get_casefile()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, self.case_file)
+            self.backend.load_grid_public(self.path_matpower, self.case_file)
         type(self.backend).set_env_name("BaseTestTopoAction")
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
@@ -878,7 +878,7 @@ class BaseTestTopoAction(MakeBackend):
         bk_action = self.bkact_class()
         bk_action += action
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf()
         assert conv, f"powerflow diverge with , error: {_}"
         after_amps_flow = self.backend.get_line_flow()
@@ -962,7 +962,7 @@ class BaseTestTopoAction(MakeBackend):
         bk_action += action
 
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf()
         assert conv, f"powerflow diverge with , error: {_}"
         after_amps_flow = self.backend.get_line_flow()
@@ -1059,7 +1059,7 @@ class BaseTestTopoAction(MakeBackend):
         bk_action = self.bkact_class()
         bk_action += action
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
 
         # run the powerflow
         conv, *_  = self.backend.runpf()
@@ -1135,7 +1135,7 @@ class BaseTestTopoAction(MakeBackend):
         bk_action += action
 
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf()
         bk_action.reset()
         assert conv, f"powerflow diverge with , error: {_}"
@@ -1198,7 +1198,7 @@ class BaseTestTopoAction(MakeBackend):
         bk_action += action
 
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf()
         assert conv, f"powerflow diverge with error: {_}"
 
@@ -1226,7 +1226,7 @@ class BaseTestTopoAction(MakeBackend):
         bk_action += action
 
         # apply the action here
-        self.backend.apply_action(bk_action)
+        self.backend.apply_action_public(bk_action)
         conv, *_  = self.backend.runpf()
         assert conv, f"powerflow diverge it should not, error: {_}"
 
@@ -1311,7 +1311,7 @@ class BaseTestTopoAction(MakeBackend):
         """function used for test_get_action_to_set"""
         bk_act = self.backend.my_bk_act_class()
         bk_act += act_set
-        self.backend.apply_action(bk_act)
+        self.backend.apply_action_public(bk_act)
         self._aux_aux_check_if_matches(prod_p, load_p, p_or, sh_q)
 
     def _aux_aux_check_if_matches(self, prod_p, load_p, p_or, sh_q):
@@ -1360,7 +1360,7 @@ class BaseTestTopoAction(MakeBackend):
         act2._dict_inj["load_p"] *= 1.5
         bk_act2 = self.backend.my_bk_act_class()
         bk_act2 += act2
-        self.backend.apply_action(bk_act2)
+        self.backend.apply_action_public(bk_act2)
         self.backend.runpf()
         prod_p2, prod_q2, prod_v2 = self.backend.generators_info()
         load_p2, load_q2, load_v2 = self.backend.loads_info()
@@ -1382,7 +1382,7 @@ class BaseTestTopoAction(MakeBackend):
         act2._set_topo_vect[act2.line_ex_pos_topo_vect[l_id]] = -1
         bk_act2 = self.backend.my_bk_act_class()
         bk_act2 += act2
-        self.backend.apply_action(bk_act2)
+        self.backend.apply_action_public(bk_act2)
         self.backend.runpf()
         p_or2, *_ = self.backend.lines_or_info()
         assert np.abs(p_or2[l_id]) <= self.tol_one, "line has not been disconnected"
@@ -1399,7 +1399,7 @@ class BaseTestTopoAction(MakeBackend):
         act2._set_topo_vect[6:9] = 2
         bk_act2 = self.backend.my_bk_act_class()
         bk_act2 += act2
-        self.backend.apply_action(bk_act2)
+        self.backend.apply_action_public(bk_act2)
         self.backend.runpf()
         p_or2, *_ = self.backend.lines_or_info()
         assert np.any(np.abs(p_or2 - p_or) >= self.tol_one)
@@ -1415,7 +1415,7 @@ class BaseTestTopoAction(MakeBackend):
             act2.shunt_q[:] = -25.0
             bk_act2 = self.backend.my_bk_act_class()
             bk_act2 += act2
-            self.backend.apply_action(bk_act2)
+            self.backend.apply_action_public(bk_act2)
             self.backend.runpf()
             prod_p2, prod_q2, prod_v2 = self.backend.generators_info()
             _, sh_q2, *_ = self.backend.shunt_info()
@@ -1449,7 +1449,7 @@ class BaseTestTopoAction(MakeBackend):
 
         bk_act2 = env2.backend.my_bk_act_class()
         bk_act2 += act
-        env2.backend.apply_action(bk_act2)
+        env2.backend.apply_action_public(bk_act2)
         env2.backend.runpf()
         assert np.all(env2.backend.storages_info()[0] == env.backend.storages_info()[0])
 
@@ -1490,7 +1490,7 @@ class BaseTestTopoAction(MakeBackend):
         act2._dict_inj["load_p"] *= 1.5
         bk_act2 = self.backend.my_bk_act_class()
         bk_act2 += act2
-        self.backend.apply_action(bk_act2)
+        self.backend.apply_action_public(bk_act2)
         self.backend.runpf()
         prod_p2, prod_q2, prod_v2 = self.backend.generators_info()
         load_p2, load_q2, load_v2 = self.backend.loads_info()
@@ -1512,7 +1512,7 @@ class BaseTestTopoAction(MakeBackend):
         act2._set_topo_vect[act2.line_ex_pos_topo_vect[l_id]] = -1
         bk_act2 = self.backend.my_bk_act_class()
         bk_act2 += act2
-        self.backend.apply_action(bk_act2)
+        self.backend.apply_action_public(bk_act2)
         self.backend.runpf()
         p_or2, *_ = self.backend.lines_or_info()
         assert np.abs(p_or2[l_id]) <= self.tol_one, "line has not been disconnected"
@@ -1529,7 +1529,7 @@ class BaseTestTopoAction(MakeBackend):
         act2._set_topo_vect[6:9] = 2
         bk_act2 = self.backend.my_bk_act_class()
         bk_act2 += act2
-        self.backend.apply_action(bk_act2)
+        self.backend.apply_action_public(bk_act2)
         self.backend.runpf()
         p_or2, *_ = self.backend.lines_or_info()
         assert np.any(np.abs(p_or2 - p_or) >= self.tol_one)
@@ -1545,7 +1545,7 @@ class BaseTestTopoAction(MakeBackend):
             act2.shunt_q[:] = -25.0
             bk_act2 = self.backend.my_bk_act_class()
             bk_act2 += act2
-            self.backend.apply_action(bk_act2)
+            self.backend.apply_action_public(bk_act2)
             self.backend.runpf()
             prod_p2, prod_q2, prod_v2 = self.backend.generators_info()
             _, sh_q2, *_ = self.backend.shunt_info()
@@ -1577,7 +1577,7 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         self.case_file = self.get_casefile()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, self.case_file)
+            self.backend.load_grid_public(self.path_matpower, self.case_file)
         type(self.backend).set_env_name("TestEnvPerformsCorrectCascadingFailures_env")
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
@@ -1659,7 +1659,7 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, case_file)
+            self.backend.load_grid_public(self.path_matpower, case_file)
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
 
@@ -1694,7 +1694,7 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, case_file)
+            self.backend.load_grid_public(self.path_matpower, case_file)
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
         conv, *_ = self.backend.runpf()
@@ -1711,6 +1711,101 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         assert not infos  # check that don't simulate a cascading failure
         assert np.sum(disco >= 0) == 0
 
+    def test_next_grid_state_multiple_iteration_no_cooldown(self):
+        # first cases: the overflow counter is too low (0, with 1 time step on overflow allowed)
+        self.skip_if_needed()
+        case_file = self.case_file
+        env_params = copy.deepcopy(self.env_params)
+        env_params.HARD_OVERFLOW_THRESHOLD = 1.5
+        env_params.NB_TIMESTEP_OVERFLOW_ALLOWED = 1
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = Environment(
+                init_grid_path=os.path.join(self.path_matpower, case_file),
+                init_env_path=os.path.join(self.path_matpower, case_file),
+                backend=self.backend,
+                chronics_handler=self.chronics_handler,
+                parameters=env_params,
+                name="test_pp_env2" + type(self).__name__,
+            )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.backend.load_grid_public(self.path_matpower, case_file)
+        type(self.backend).set_no_storage()
+        self.backend.assert_grid_correct()
+        conv, *_ = self.backend.runpf()
+        assert conv, f"powerflow should converge at loading, error: {_}"
+        
+        a_or = np.array([  638.2897  ,   305.0504  , 17658.967   , 26534.043   ,
+                         10869.238   ,  4686.7173  , 15612.659   ,   300.07916 ,
+                           229.80608 ,   169.97293 ,   100.40193 ,   265.47507 ,
+                         21193.87    , 21216.445   , 49701.156   ,   124.796844,
+                            67.5976  ,   192.19424 ,   666.7696  ,  1113.5277  ])
+        
+        th_lims = 30. * a_or
+        th_lims[0] = 600  # should stay connected (even though there are 2 iterations)
+        th_lims[10] = a_or[10] / 2.  # disconnected at first iteration
+        th_lims[2] = 18849.43 / 1.6  # disconnected at second iteration
+        self.backend.set_thermal_limit(th_lims)
+        
+        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        res_a = self.backend.lines_or_info()[-1]
+        assert conv_ is None
+        assert disco[10] == 0  # line 10 disco 1st iteration
+        assert disco[2] == 1  # line 2 disco 2nd iteration
+        assert disco[0] == -1  # line 0 not disco
+        assert res_a[0] > 0.  # line 0 should stay connected
+        assert np.abs(res_a[10]) <= 1e-8  # lines 10 is disconnected
+        assert np.abs(res_a[2]) <= 1e-8
+        
+    def test_next_grid_state_multiple_iteration_cooldown(self):
+        # second cases: the overflow counter is too low (0, with 1 time step on overflow allowed)
+        self.skip_if_needed()
+        case_file = self.case_file
+        env_params = copy.deepcopy(self.env_params)
+        env_params.HARD_OVERFLOW_THRESHOLD = 1.5
+        env_params.NB_TIMESTEP_OVERFLOW_ALLOWED = 2
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = Environment(
+                init_grid_path=os.path.join(self.path_matpower, case_file),
+                init_env_path=os.path.join(self.path_matpower, case_file),
+                backend=self.backend,
+                chronics_handler=self.chronics_handler,
+                parameters=env_params,
+                name="test_pp_env2" + type(self).__name__,
+            )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.backend.load_grid_public(self.path_matpower, case_file)
+        type(self.backend).set_no_storage()
+        self.backend.assert_grid_correct()
+        conv, *_ = self.backend.runpf()
+        assert conv, f"powerflow should converge at loading, error: {_}"
+        
+        a_or = np.array([  638.2897  ,   305.0504  , 17658.967   , 26534.043   ,
+                         10869.238   ,  4686.7173  , 15612.659   ,   300.07916 ,
+                           229.80608 ,   169.97293 ,   100.40193 ,   265.47507 ,
+                         21193.87    , 21216.445   , 49701.156   ,   124.796844,
+                            67.5976  ,   192.19424 ,   666.7696  ,  1113.5277  ])
+        
+        th_lims = 30. * a_or
+        th_lims[0] = 650  # should stay connected (even though there are 2 iterations)
+        th_lims[10] = a_or[10] / 2.  # disconnected at first iteration
+        th_lims[2] = 18849.43 / 1.6  # disconnected at second iteration
+        self.backend.set_thermal_limit(th_lims)
+        
+        env._protection_counter[0] = 2  # already 1 step on overflow
+        disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
+        res_a = self.backend.lines_or_info()[-1]
+        assert conv_ is None
+        assert disco[10] == 0  # line 10 disco 1st iteration
+        assert disco[2] == 1  # line 2 disco 2nd iteration
+        assert disco[0] == 1  # line 0 is disco (but not at the first iteration)
+        assert np.abs(res_a[0]) <= 1e-8  # lines 10 is disconnected
+        assert np.abs(res_a[10]) <= 1e-8  # lines 10 is disconnected
+        assert np.abs(res_a[2]) <= 1e-8
+    
     def test_set_thermal_limit(self):
         thermal_limit = np.arange(self.backend.n_line)
         self.backend.set_thermal_limit(thermal_limit)
@@ -1738,7 +1833,7 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, case_file)
+            self.backend.load_grid_public(self.path_matpower, case_file)
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
         conv, *_ = self.backend.runpf()
@@ -1783,11 +1878,11 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, case_file)
+            self.backend.load_grid_public(self.path_matpower, case_file)
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
 
-        env._timestep_overflow[self.id_2nd_line_disco] = 0
+        env._protection_counter[self.id_2nd_line_disco] = 0
         thermal_limit = 10 * self.lines_flows_init
         thermal_limit[self.id_first_line_disco] = (
             self.lines_flows_init[self.id_first_line_disco] / 2
@@ -1825,11 +1920,11 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, case_file)
+            self.backend.load_grid_public(self.path_matpower, case_file)
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
 
-        env._timestep_overflow[self.id_2nd_line_disco] = 1
+        env._protection_counter[self.id_2nd_line_disco] = 1
 
         thermal_limit = 10 * self.lines_flows_init
         thermal_limit[self.id_first_line_disco] = (
@@ -1868,12 +1963,11 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.backend.load_grid(self.path_matpower, case_file)
+            self.backend.load_grid_public(self.path_matpower, case_file)
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
 
-        env._timestep_overflow[self.id_2nd_line_disco] = 2
-
+        env._protection_counter[self.id_2nd_line_disco] = 2
         thermal_limit = 10 * self.lines_flows_init
         thermal_limit[self.id_first_line_disco] = (
             self.lines_flows_init[self.id_first_line_disco] / 2
@@ -1883,7 +1977,7 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
 
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         assert conv_ is None
-        assert len(infos) == 2  # check that there is a cascading failure of length 2
+        assert len(infos) == 2, f"{len(infos)} vs 2"  # check that there is a cascading failure of length 2
         assert disco[self.id_first_line_disco] >= 0
         assert disco[self.id_2nd_line_disco] >= 0
         assert np.sum(disco >= 0) == 2
@@ -2299,6 +2393,7 @@ class BaseTestResetEqualsLoadGrid(MakeBackend):
         assert np.all(obs1.line_status == obs2.line_status)
         assert np.all(obs1.topo_vect == obs2.topo_vect)
         assert np.all(obs1.timestep_overflow == obs2.timestep_overflow)
+        assert np.all(obs1.timestep_protection_engaged == obs2.timestep_protection_engaged)
         assert np.all(obs1.time_before_cooldown_line == obs2.time_before_cooldown_line)
         assert np.all(obs1.time_before_cooldown_sub == obs2.time_before_cooldown_sub)
         assert np.all(obs1.time_next_maintenance == obs2.time_next_maintenance)
@@ -2541,8 +2636,8 @@ class BaseTestStorageAction(MakeBackend):
             not done
         ), f"i should be able to do a step with some storage units error is {exc_}"
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
-        assert np.all(np.abs(storage_p - 0.0) <= self.tol_one)
-        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
+        assert np.all(np.abs(storage_p - 0.0) <= self.tol_one), f"{storage_p} vs 0."
+        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one), f"{storage_q} vs 0."
 
         # first case, standard modification
         array_modif = np.array([-1.5, -10.0], dtype=dt_float)
@@ -2559,8 +2654,8 @@ class BaseTestStorageAction(MakeBackend):
         obs, reward, done, info = self.env.step(act)
         assert not info["exception"]
         storage_p, storage_q, storage_v = self.env.backend.storages_info()
-        assert np.all(np.abs(storage_p - array_modif) <= self.tol_one)
-        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one)
+        assert np.all(np.abs(storage_p - array_modif) <= self.tol_one), f"{storage_p} vs {array_modif}"
+        assert np.all(np.abs(storage_q - 0.0) <= self.tol_one), f"{storage_q} vs {0.}"
         assert obs.storage_bus[0] == 2
         assert obs.line_or_bus[8] == 2
         assert obs.gen_bus[3] == 2

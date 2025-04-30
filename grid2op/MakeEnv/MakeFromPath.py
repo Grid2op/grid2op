@@ -147,6 +147,11 @@ def make_from_dataset_path(
         Prefer using the :func:`grid2op.make` function.
 
 
+    .. danger::
+        The :func:`grid2op.make` function can execute arbitrary code. Do not attempt
+        to "make" an environment for which you don't trust (or even know) the authors.
+        
+
     This function is a shortcut to rapidly create environments within the grid2op Framework. We don't
     recommend using directly this function. Prefer using the :func:`make` function.
 
@@ -920,13 +925,13 @@ def make_from_dataset_path(
             _add_to_name = ''  # already defined in the first mix
             name_env = _overload_name_multimix.name_env
     
-    
+    name_env = name_env + _add_to_name
     default_kwargs = dict(
         init_env_path=os.path.abspath(dataset_path),
         init_grid_path=grid_path_abs,
         backend=backend,
         parameters=param,
-        name=name_env + _add_to_name,
+        name=name_env,
         names_chronics_to_backend=names_chronics_to_backend,
         actionClass=action_class,
         observationClass=observation_class,

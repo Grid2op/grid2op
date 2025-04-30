@@ -153,7 +153,7 @@ class _AuxTestGymCompatModule:
                 for el in env_gym.observation_space.spaces
             ]
         )
-        size_th = 542  # as of grid2Op 1.11.0 (with obs.gen_p_delta)
+        size_th = 562  # as of grid2Op 1.11.0 (with obs.gen_p_delta + timestep_protection_engaged)
         assert (
             dim_obs_space == size_th
         ), f"Size should be {size_th} but is {dim_obs_space}"

@@ -9,15 +9,16 @@
 from typing import Tuple
 
 from grid2op.typing_variables import STEP_INFO_TYPING
+
+import grid2op.Observation
 from grid2op.Action import BaseAction
-from grid2op.Observation import BaseObservation
 from grid2op.Environment.environment import Environment
 
 
-class _ForecastEnv(Environment):
+class ForecastEnv(Environment):
     """Type of environment that increments the `highres_simulator` when it calls the env.step method.
     
-    It is used by obs.get_forecast_env.
+    It is the returned value of :func:`grid2op.Observation.BaseObservation.get_forecast_env`.
     """
     def __init__(self,**kwargs):
         if "_update_obs_after_reward" not in kwargs:
@@ -25,6 +26,9 @@ class _ForecastEnv(Environment):
         super().__init__(**kwargs)
         self._do_not_erase_local_dir_cls = True
         
-    def step(self, action: BaseAction) -> Tuple[BaseObservation, float, bool, STEP_INFO_TYPING]:
+    def step(self, action: BaseAction) -> Tuple["grid2op.Observation.BaseObservation",
+                                                float,
+                                                bool,
+                                                STEP_INFO_TYPING]:
         self._highres_sim_counter += 1
         return super().step(action)

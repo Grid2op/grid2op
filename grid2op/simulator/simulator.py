@@ -58,7 +58,7 @@ class Simulator(object):
                     'make sure you set the kwarg "env=None"'
                 )
             if backend._can_be_copied:
-                self.backend: Backend = backend.copy()
+                self.backend: Backend = backend.copy_public()
             else:
                 raise SimulatorError("Impossible to make a Simulator when you "
                                      "cannot copy the backend.")
@@ -75,7 +75,7 @@ class Simulator(object):
                     f"inheriting from BaseEnv"
                 )
             if env.backend._can_be_copied:
-                self.backend: Backend = env.backend.copy()
+                self.backend: Backend = env.backend.copy_public()
             else:
                 raise SimulatorError("Impossible to make a Simulator when you "
                                      "cannot copy the backend of the environment.")
@@ -125,7 +125,7 @@ class Simulator(object):
                 "Have you used `simulator.set_state(obs, ...)` with a valid observation before ?"
             )
         res = copy.copy(self)
-        res.backend = res.backend.copy()
+        res.backend = res.backend.copy_public()
         res.current_obs = res.current_obs.copy()
         # do not copy this !
         res._highres_sim_counter = self._highres_sim_counter
@@ -161,7 +161,7 @@ class Simulator(object):
                 " be an object (an not a class) of type backend"
             )
         self.backend.close()
-        self.backend = backend.copy()  # backend_class.init_grid(type(self.backend))
+        self.backend = backend.copy_public()  # backend_class.init_grid(type(self.backend))
         self.set_state(obs=self.current_obs)
 
     def change_backend_type(self, backend_type: type, grid_path: os.PathLike, **kwargs):
@@ -217,7 +217,7 @@ class Simulator(object):
             grid_path_loaded = os.path.join(path_env, grid_forecast_name)
         else:
             grid_path_loaded = grid_path 
-        tmp_backend.load_grid(grid_path_loaded)
+        tmp_backend.load_grid_public(grid_path_loaded)
         tmp_backend.assert_grid_correct()
         tmp_backend.runpf()
         tmp_backend.assert_grid_correct_after_powerflow()

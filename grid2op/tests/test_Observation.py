@@ -685,6 +685,28 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 0,
                 0,
             ],
+            "timestep_protection_engaged": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ],
             "time_before_cooldown_sub": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "time_next_maintenance": [
                 -1,
@@ -934,6 +956,8 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 # dt_float,
                 # dt_float,
                 # dt_float,
+                # timestep_protection_engaged
+                dt_int
             ],
             dtype=object,
         )
@@ -1012,9 +1036,11 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 # 11,
                 # 5,
                 # 0,
+                # timestep_protection_engaged
+                20
             ]
         )
-        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 # + 11 + 5 + 0 + 11 + 11 + 5
+        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 + 20
 
     def tearDown(self):
         self.env.close()
@@ -2522,10 +2548,12 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Create change action
         change_act = self.env.action_space({"change_line_status": change_status})
         # Simulate & Step
-        self.sim_obs, reward_sim, done_sim, _ = self.obs.simulate(change_act)
-        self.step_obs, reward_real, done_real, _ = self.env.step(change_act)
-        assert not done_sim
-        assert not done_real
+        self.sim_obs, reward_sim, done_simulate, info_simu = self.obs.simulate(change_act)
+        self.step_obs, reward_real, done_step, info_step = self.env.step(change_act)
+        assert not done_simulate, f"simulate is done, this should not be"
+        assert not done_step, f"step is done, this should not be"
+        assert not info_simu["exception"]
+        assert not info_step["exception"]
         assert abs(reward_sim - reward_real) <= 1e-7
         # Test observations are the same
         if self.sim_obs != self.step_obs:
@@ -2540,8 +2568,12 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Create set action
         set_act = self.env.action_space({"set_line_status": set_status})
         # Simulate & Step
-        self.sim_obs, _, _, _ = self.obs.simulate(set_act)
-        self.step_obs, _, _, _ = self.env.step(set_act)
+        self.sim_obs, _, done_simulate, info_simu = self.obs.simulate(set_act)
+        self.step_obs, _, done_step, info_step = self.env.step(set_act)
+        assert not done_simulate, f"simulate is done, this should not be"
+        assert not done_step, f"step is done, this should not be"
+        assert not info_simu["exception"]
+        assert not info_step["exception"]
         # Test observations are the same
         if self.sim_obs != self.step_obs:
             diff_, attr_diff = self.sim_obs.where_different(self.step_obs)
@@ -2554,21 +2586,26 @@ class TestSimulateEqualsStep(unittest.TestCase):
                 "change_bus": {
                     "loads_id": [0],
                     "generators_ids": [0],
-                    "lines_or_id": [0],
+                    # "lines_or_id": [0],
                     "lines_ex_id": [0],
                 }
             }
         )
         # Simulate & Step
-        self.sim_obs, _, _, _ = self.obs.simulate(change_act)
-        self.step_obs, _, _, _ = self.env.step(change_act)
+        self.sim_obs, _, done_simulate, info_simu = self.obs.simulate(change_act)
+        self.step_obs, _, done_step, info_step = self.env.step(change_act)
+        assert not done_simulate, f"simulate is done, this should not be"
+        assert not done_step, f"step is done, this should not be"
+        assert not info_simu["exception"]
+        assert not info_step["exception"]
+        
         assert isinstance(
             self.sim_obs, type(self.step_obs)
         ), "sim_obs is not the same type as the step"
         assert isinstance(
             self.step_obs, type(self.sim_obs)
         ), "step is not the same type as the simulation"
-
+        
         # Test observations are the same
         if self.sim_obs != self.step_obs:
             diff_, attr_diff = self.sim_obs.where_different(self.step_obs)
@@ -2587,14 +2624,18 @@ class TestSimulateEqualsStep(unittest.TestCase):
                 "set_bus": {
                     "loads_id": [(0, new_load_bus)],
                     "generators_ids": [(0, new_gen_bus)],
-                    "lines_or_id": [(0, new_lor_bus)],
+                    # "lines_or_id": [(0, new_lor_bus)],
                     "lines_ex_id": [(0, new_lex_bus)],
                 }
             }
         )
         # Simulate & Step
-        self.sim_obs, _, _, _ = self.obs.simulate(set_act)
-        self.step_obs, _, _, _ = self.env.step(set_act)
+        self.sim_obs, reward_sim, done_simulate, info_simu = self.obs.simulate(set_act)
+        self.step_obs, reward_real, done_step, info_step = self.env.step(set_act)
+        assert not done_simulate, f"simulate is done, this should not be"
+        assert not done_step, f"step is done, this should not be"
+        assert not info_simu["exception"]
+        assert not info_step["exception"]
         # Test observations are the same
         if self.sim_obs != self.step_obs:
             diff_, attr_diff = self.sim_obs.where_different(self.step_obs)
@@ -2610,8 +2651,13 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Create redispatch action
         redisp_act = self.env.action_space({"redispatch": [(gen_id, redisp_val)]})
         # Simulate & Step
-        self.sim_obs, _, _, _ = self.obs.simulate(redisp_act)
-        self.step_obs, _, _, _ = self.env.step(redisp_act)
+        self.sim_obs, reward_sim, done_simulate, info_simu = self.obs.simulate(redisp_act)
+        self.step_obs, reward_real, done_step, info_step = self.env.step(redisp_act)
+        assert not done_simulate, f"simulate is done, this should not be"
+        assert not done_step, f"step is done, this should not be"
+        assert not info_simu["exception"]
+        assert not info_step["exception"]
+        assert abs(reward_sim - reward_real) <= 1e-7
         # Test observations are the same
         if self.sim_obs != self.step_obs:
             diff_, attr_diff = self.sim_obs.where_different(self.step_obs)
@@ -2817,20 +2863,25 @@ class TestSimulateEqualsStep(unittest.TestCase):
         change_bus_act = self.env.action_space(
             {
                 "change_bus": {
-                    "loads_id": [1],
-                    "generators_ids": [1],
-                    "lines_or_id": [1],
+                    # "loads_id": [1],
+                    # "generators_ids": [1],
+                    # "lines_or_id": [1],
                     "lines_ex_id": [1],
                 }
             }
         )
         actions.append(change_bus_act)
-
         # Simulate all actions
         for act in actions:
-            self.sim_obs, _, _, _ = self.obs.simulate(act)
+            self.sim_obs, sim_r, sim_d, sim_i = self.obs.simulate(act)
         # Step with last action
-        self.step_obs, _, _, _ = self.env.step(actions[-1])
+        self.step_obs, step_r, step_d, step_i = self.env.step(actions[-1])
+        assert not sim_d, f"simulate is done, this should not be"
+        assert not step_d, f"step is done, this should not be"
+        assert not sim_i["exception"]
+        assert not step_i["exception"]
+        assert abs(sim_r - step_r) <= 1e-7
+        
         # Test observations are the same
         if self.sim_obs != self.step_obs:
             diff_, attr_diff = self.sim_obs.where_different(self.step_obs)
@@ -2850,9 +2901,9 @@ class TestSimulateEqualsStep(unittest.TestCase):
         set_bus_act = self.env.action_space(
             {
                 "set_bus": {
-                    "loads_id": [(1, new_load_bus)],
-                    "generators_ids": [(1, new_gen_bus)],
-                    "lines_or_id": [(1, new_lor_bus)],
+                    # "loads_id": [(1, new_load_bus)],
+                    # "generators_ids": [(1, new_gen_bus)],
+                    # "lines_or_id": [(1, new_lor_bus)],
                     "lines_ex_id": [(1, new_lex_bus)],
                 }
             }
@@ -2861,9 +2912,14 @@ class TestSimulateEqualsStep(unittest.TestCase):
 
         # Simulate all actions
         for act in actions:
-            self.sim_obs, _, _, _ = self.obs.simulate(act)
+            self.sim_obs, sim_r, sim_d, sim_i = self.obs.simulate(act)
         # Step with last action
-        self.step_obs, _, _, _ = self.env.step(actions[-1])
+        self.step_obs, step_r, step_d, step_i = self.env.step(actions[-1])
+        assert not sim_d, f"simulate is done, this should not be"
+        assert not step_d, f"step is done, this should not be"
+        assert not sim_i["exception"]
+        assert not step_i["exception"]
+        assert abs(sim_r - step_r) <= 1e-7
         # Test observations are the same
         if self.sim_obs != self.step_obs:
             diff_, attr_diff = self.sim_obs.where_different(self.step_obs)

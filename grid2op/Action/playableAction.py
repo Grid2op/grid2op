@@ -28,7 +28,10 @@ class PlayableAction(BaseAction):
         "set_storage",
         "curtail",
         "raise_alarm",
-        "raise_alert"
+        "raise_alert",
+        "detach_load",  # new in 1.11.0
+        "detach_gen",  # new in 1.11.0
+        "detach_storage",  # new in 1.11.0
     }
 
     attr_list_vect = [
@@ -40,7 +43,10 @@ class PlayableAction(BaseAction):
         "_storage_power",
         "_curtail",
         "_raise_alarm",
-        "_raise_alert"
+        "_raise_alert",
+        "_detach_load",  # new in 1.11.0
+        "_detach_gen",  # new in 1.11.0
+        "_detach_storage",  # new in 1.11.0
     ]
     attr_list_set = set(attr_list_vect)
     shunt_added = True  # no shunt here

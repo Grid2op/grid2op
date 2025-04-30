@@ -21,7 +21,7 @@ class ActionSpace(SerializableActionSpace):
     :class:`ActionSpace` should be created by an :class:`grid2op.Environment.Environment`
     with its parameters coming from a properly
     set up :class:`grid2op.Backend.Backend` (ie a Backend instance with a loaded powergrid.
-    See :func:`grid2op.Backend.Backend.load_grid` for
+    See :func:`grid2op.Backend.Backend.load_grid_public` for
     more information).
 
     It will allow, thanks to its :func:`ActionSpace.__call__` method to create valid :class:`BaseAction`. It is the

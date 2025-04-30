@@ -67,7 +67,7 @@ class N1Reward(BaseReward):
         self.l_id = l_id
 
     def initialize(self, env):
-        self._backend = env.backend.copy()
+        self._backend = env.backend.copy_public()
         bk_act_cls = _BackendAction.init_grid(env.backend)
         self._backend_action = bk_act_cls()
 

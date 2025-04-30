@@ -384,6 +384,7 @@ class __AuxGymActionSpace:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import (Discrete as LegGymDiscrete,
                             Box as LegGymBox,
                             Dict as LegGymDict,

@@ -25,6 +25,7 @@ General grid2op improvments:
 - Code and test the "load from disk" method
 - add a "plot action" method
 - does not read every data of the backend if not used
+- backend converter: now test it properly with pandapower / lightsim2grid and pypowsybl2grid
 
 Better multi processing support: 
 
@@ -96,8 +97,10 @@ Native multi agents support:
 
 - cf ad-hoc branch (dev-multiagents)
 - properly model interconnecting powerlines
+- add detachment
+- add change_bus / set_bus
 
-[1.11.0] - 202x-yy-zz
+[1.11.0] - 2025-04-14
 -----------------------
 - [BREAKING] Change for `FromMultiEpisodeData` that disables the caching by default
   when creating the data.
@@ -112,6 +115,17 @@ Native multi agents support:
 - [BREAKING] the way actions is serialized has been changed with respect to the `from_vect` /
   `to_vect` method. This might introduce some issues when loading previously saved actions
   with this methods.
+- [BREAKING] first kwargs of `backend.apply_action` method is now spelled `backend_action` 
+  (instead of backendAction)
+- [BREAKING] (not yet) rationalization of the backend public / private API part. The 
+  environment (and simulator, forecast env etc.) will always call the method `_public` 
+  for example `load_grid_public`, `reset_public`, `copy_public` and `apply_action_public`. 
+  These function of the base `Backend` should NOT be overriden, and will internally call 
+  the functions `load_grid`, `reset`, `copy` and `apply_action` which were part of the public
+  API. These last member functions will be renamed (in a later version) `_load_grid`,
+  `_reset`, `_copy` and `_apply_action` to reflect this change. NOT for this version however !
+- [BREAKING] removal of the `rest_server` grid2op module (it will be release as a separate package instead)
+  It has been removed from grid2op core package for securtiy reasons.
 - [FIXED] issue https://github.com/Grid2op/grid2op/issues/657
 - [FIXED] missing an import on the `MaskedEnvironment` class
 - [FIXED] a bug when trying to set the load_p, load_q, gen_p, gen_v by names.
@@ -133,6 +147,26 @@ Native multi agents support:
 - [FIXED] deprecated call to `tostring_rgb` (replaced `tostring_argb`) in the env.render function.
 - [FIXED] warnings not properly issued in the AAA test when backend failed to call
   `can_handle_XXX` functions (*eg* `can_handle_more_than_2_busbar()` or `can_handle_detachment()`)
+- [FIXED] an issue with `obs.get_forecast_env` with changeNothing and DoNothingHandler time series
+- [FIXED] a bug in updating the shunt in PandaPowerBackend (depdending on pandas version)
+- [FIXED] a bug when action that reconnect loads, storage units or shunts are done
+  in the "obs.simulate" (results could depend from previous "obs.simulate" calls)
+- [FIXED] a bug in "obs.simulate" and "obs.get_forecast_env" : when a line was disconnected
+  and the user tried to reconnect it (without specifying on which bus) it could do something
+  different than "env.step" (with the same action)
+- [FIXED] a powerflow is run when the environment is first created even before the initial "env.step"
+  function is called. This is to ensure proper behaviour if env is used without being reset.
+- [FIXED] no error was catched if the backend could not properly apply the action sent by the environment.
+- [FIXED] an issue in the AAA tests: when backend does not support storages, some tests were skipped not correctly
+- [FIXED] an issue when computing the cascading failure routine, in case multiple iterations were performed, 
+  the cooldowns were not updated correctly.
+- [FIXED] cascading failure could be started at the first observation (t=0, just after a reset).
+- [FIXED] a bug when "SOFT_OVERFLOW_THRESHOLD" was not 1.: it also impacted "instantaneous overcurrent protections" 
+  (it was triggered when `flow > SOFT_OVERFLOW_THRESHOLD * HARD_OVERFLOW_THRESHOLD * th_lim`)
+- [FIXED] a bug when "SOFT_OVERFLOW_THRESHOLD" was not 1.: the backend routine to compute the protections 
+  disconnected the lines with a counter based on `flow > th_lim` and not `flow > th_lim * SOFT_OVERFLOW_THRESHOLD`
+- [ADDED] Possibility to disconnect loads, generators and storage units (if proper flag set in the environment).
+  See documentation.
 - [ADDED] possibility to set the "thermal limits" when calling `env.reset(..., options={"thermal limit": xxx})`
 - [ADDED] possibility to retrieve some structural information about elements with
   with `gridobj.get_line_info(...)`, `gridobj.get_load_info(...)`, `gridobj.get_gen_info(...)` 
@@ -147,6 +181,11 @@ Native multi agents support:
   generators is not met (see `params.STOP_EP_IF_SLACK_BREAK_CONSTRAINTS`)
 - [ADDED] possibility to set the initial time stamp of the observation in the `env.reset`
   kwargs by using `env.reset(..., options={"init datetime": XXX})`
+- [ADDED] the `ChangeNothing` time series class now supports forecast
+- [ADDED] test coverage on the CI
+- [ADDED] the `obs.timestep_protection_triggered` counter which counts whether or not the 
+  "time overcurrent protection" (soft overflow) will be triggered: lines will be disconnected
+  if `time overcurrent protection > parameters.NB_TIMESTEP_POWERFLOW_ALLOWED`
 - [IMPROVED] possibility to set the injections values with names
   to be consistent with other way to set the actions (*eg* set_bus)
 - [IMPROVED] error messages when creating an action which changes the injections
@@ -175,7 +214,16 @@ Native multi agents support:
 - [IMPROVED] the function `action.get_topological_impact(...)` has now a "caching" mechanism
   that allows not to recompute it over and over again (this is internal API please do not change 
   it... unless you know what you are doing)
-    
+- [IMPROVED] `ForecastEnv` is now part of the public API.
+- [IMPROVED] no need to call `self._compute_pos_big_top()` at the end of the implementation of `backend.load_grid()`
+- [IMPROVED] type hints in various files.
+- [IMPROVED] documentation of the backend
+- [IMRPOVED] `SOFT_OVERFLOW_THRESHOLD` can now be lower than 1
+
+[1.10.5] - 2025-03-07
+------------------------
+- [FIXED] force pandapower < 3 otherwise pandapower backend does not work and 
+  lots of tests are failing.
 
 [1.10.4] - 2024-10-15
 -------------------------

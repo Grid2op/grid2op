@@ -32,9 +32,8 @@ from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageControll
 from grid2op.Environment.baseEnv import BaseEnv
 from grid2op.Opponent import BaseOpponent, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT, GRID2OP_CURRENT_VERSION_STR
 from grid2op.typing_variables import RESET_OPTIONS_TYPING, N_BUSBAR_PER_SUB_TYPING
-from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
 
 class Environment(BaseEnv):
@@ -94,7 +93,7 @@ class Environment(BaseEnv):
         rewardClass=FlatReward,
         legalActClass=AlwaysLegal,
         voltagecontrolerClass=ControlVoltageFromFile,
-        other_rewards={},
+        other_rewards=None,
         thermal_limit_a=None,
         with_forecast=True,
         epsilon_poly=1e-4,  # precision of the redispatching algorithm we don't recommend to go above 1e-4
@@ -107,9 +106,9 @@ class Environment(BaseEnv):
         opponent_budget_class=NeverAttackBudget,
         opponent_attack_duration=0,
         opponent_attack_cooldown=99999,
-        kwargs_opponent={},
+        kwargs_opponent=None,
         attention_budget_cls=LinearAttentionBudget,
-        kwargs_attention_budget={},
+        kwargs_attention_budget=None,
         has_attention_budget=False,
         logger=None,
         kwargs_observation=None,
@@ -126,6 +125,15 @@ class Environment(BaseEnv):
         _local_dir_cls=None,  # only set at the first call to `make(...)` after should be false
         _overload_name_multimix=None,
     ):
+        if other_rewards is None:
+            other_rewards = {}
+            
+        if kwargs_opponent is None:
+             kwargs_opponent = {}
+        
+        if kwargs_attention_budget is None:
+            kwargs_attention_budget = {}
+            
         BaseEnv.__init__(
             self,
             init_env_path=init_env_path,
@@ -193,6 +201,7 @@ class Environment(BaseEnv):
         self._allow_loaded_backend : bool = _allow_loaded_backend
 
         # for gym compatibility (action_spacen and observation_space initialized below)
+        # for plotting
         self.reward_range = None
         self._viewer = None
         self.metadata = None
@@ -203,7 +212,8 @@ class Environment(BaseEnv):
         # needs to be done before "_init_backend" otherwise observationClass is not defined in the
         # observation space (real_env_kwargs)
         self._observationClass_orig = observationClass
-        # for plotting
+        
+        # init the backend
         self._init_backend(
             chronics_handler,
             backend,
@@ -288,7 +298,7 @@ class Environment(BaseEnv):
             if self._compat_glop_version is not None:
                 type(self.backend).glop_version = self._compat_glop_version
             
-            self.backend.load_grid(
+            self.backend.load_grid_public(
                 self._init_grid_path
             )  # the real powergrid of the environment
             self.backend.load_storage_data(self.get_path_env())
@@ -480,6 +490,8 @@ class Environment(BaseEnv):
         # thermal limits are set AFTER this initial step
         _no_overflow_disconnection = self._no_overflow_disconnection
         self._no_overflow_disconnection = True
+        self._last_obs = None
+        self._called_from_reset = True
         *_, fail_to_start, info = self.step(do_nothing)
         self._no_overflow_disconnection = _no_overflow_disconnection
         
@@ -488,7 +500,8 @@ class Environment(BaseEnv):
                 "Impossible to initialize the powergrid, the powerflow diverge at iteration 0. "
                 "Available information are: {}".format(info)
             ) from info["exception"][0]
-
+        self._called_from_reset = False
+        
         # test the backend returns object of the proper size
         if need_process_backend:
             
@@ -647,7 +660,7 @@ class Environment(BaseEnv):
     def _handle_compat_glop_version(self, need_process_backend):
         if (
             self._compat_glop_version is not None
-            and self._compat_glop_version != grid2op.__version__
+            and self._compat_glop_version != GRID2OP_CURRENT_VERSION_STR
         ):
             warnings.warn(
                 'You are using a grid2op "compatibility" environment. This means that some '
@@ -659,6 +672,7 @@ class Environment(BaseEnv):
             if need_process_backend:
                 # the following line must be called BEFORE "self.backend.assert_grid_correct()" !
                 self.backend.storage_deact_for_backward_comaptibility()
+                self.backend.handle_grid2op_compat()
 
     def _voltage_control(self, agent_action, prod_v_chronics):
         """
@@ -945,19 +959,30 @@ class Environment(BaseEnv):
         If the thermal has been modified, it also modify them into the new backend.
 
         """
-        self.backend.reset(
-            self._init_grid_path,
-        )  # the real powergrid of the environment
+        # force the first observation to be generated properly
+        self._last_obs = None
+        
+        # the real powergrid of the environment
+        self.backend.reset_public(self._init_grid_path)  
+        
         # self.backend.assert_grid_correct()
+        self._previous_conn_state.update_from_other(self._cst_prev_state_at_init)
 
         if self._thermal_limit_a is not None:
             self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
 
-        self._backend_action = self._backend_action_class()
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
         
         if self._init_obs is not None:
-            self.backend.update_from_obs(self._init_obs)
+            # update the backend
+            self._backend_action = self.backend.update_from_obs(self._init_obs)
+            self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
+        else:
+            self._backend_action = self._backend_action_class()
+        
+        if self._init_obs is not None:
+            # NB this is called twice (once at the end of reset), this is the first call
+            self._reset_to_orig_state(self._init_obs)
             
         init_action = None
         if not self._parameters.IGNORE_INITIAL_STATE_TIME_SERIE:
@@ -969,9 +994,15 @@ class Environment(BaseEnv):
         else:
             # do as if everything was connected to busbar 1
             # TODO logger: log that
-            init_action = self._helper_action_env({"set_bus": np.ones(type(self).dim_topo, dtype=dt_int)})
-            if type(self).shunts_data_available:
-                init_action += self._helper_action_env({"shunt": {"set_bus": np.ones(type(self).n_shunt, dtype=dt_int)}})
+            if self._init_obs is None:
+                init_action = self._helper_action_env({"set_bus": np.ones(type(self).dim_topo, dtype=dt_int)})
+                if type(self).shunts_data_available:
+                    init_action += self._helper_action_env({"shunt": {"set_bus": np.ones(type(self).n_shunt, dtype=dt_int)}})
+            else:
+                init_action = self._helper_action_env({"set_bus": self._init_obs.topo_vect})
+                if type(self).shunts_data_available:
+                    init_action += self._helper_action_env({"shunt": {"set_bus": self._init_obs._shunt_bus}})
+                    
         if init_action is None:
             # default behaviour for grid2op < 1.10.2
             init_action = self._helper_action_env({})
@@ -989,7 +1020,7 @@ class Environment(BaseEnv):
                 raise Grid2OpException(f"kwargs `method` used to set the initial state of the grid "
                                        f"is not understood (use one of `combine` or `ignore` and "
                                        f"not `{method}`)")
-        init_action._set_topo_vect.nonzero()
+                
         *_, fail_to_start, info = self.step(init_action)
         if fail_to_start:
             raise Grid2OpException(
@@ -1038,6 +1069,7 @@ class Environment(BaseEnv):
         # process the "options" kwargs
         # (if there is an init state then I need to process it to remove the 
         # some keys)
+        self._called_from_reset = False
         self._max_step = None
         method = "combine"
         init_state = None
@@ -1097,6 +1129,7 @@ class Environment(BaseEnv):
             
         if options is not None and "init datetime" in options:
             self.chronics_handler.set_current_datetime(options["init datetime"])
+            
         self.reset_grid(init_state, method)
         if self.viewer_fig is not None:
             del self.viewer_fig
@@ -1117,6 +1150,8 @@ class Environment(BaseEnv):
                 self._init_obs = None
                 if init_dt is not None:
                     self.chronics_handler.set_current_datetime(init_dt) 
+                self._last_obs = None  # properly initialize the last observation
+                self._called_from_reset = True
                 self.step(self.action_space())
             elif skip_ts == 2:
                 self.fast_forward_chronics(1, init_dt)
@@ -1137,11 +1172,14 @@ class Environment(BaseEnv):
         # and reset also the "simulated env" in the observation space
         self._observation_space.reset(self)
         self._observation_space.set_real_env_kwargs(self)
-
-        self._last_obs = None  # force the first observation to be generated properly
+        self._called_from_reset = False        
         
+        # reset cooldowns and all
         if self._init_obs is not None:
+            # NB this is called twice (once in reset_grid), this is the second call
             self._reset_to_orig_state(self._init_obs)
+        # force the first observation to be generated properly
+        self._last_obs = None
         return self.get_obs()
 
     def render(self, mode="rgb_array"):
@@ -1268,7 +1306,7 @@ class Environment(BaseEnv):
             if not self.backend._can_be_copied:
                 raise RuntimeError("Impossible to get the kwargs for this "
                                    "environment, the backend cannot be copied.")
-            res["backend"] = self.backend.copy()
+            res["backend"] = self.backend.copy_public()
             res["backend"]._is_loaded = False  # i can reload a copy of an environment
         
         res["parameters"] = copy.deepcopy(self._parameters)

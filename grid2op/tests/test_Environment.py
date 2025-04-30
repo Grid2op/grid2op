@@ -857,13 +857,13 @@ class TestDeactivateForecast(unittest.TestCase):
         assert env._nb_ts_reco == param.NB_TIMESTEP_RECONNECTION
 
         assert np.all(
-            env._nb_timestep_overflow_allowed == param.NB_TIMESTEP_OVERFLOW_ALLOWED
+            env._nb_ts_max_protection_counter == param.NB_TIMESTEP_OVERFLOW_ALLOWED
         )
 
         # hard overflow part
         assert env._env_dc == param.ENV_DC
         assert np.all(
-            env._nb_timestep_overflow_allowed == param.NB_TIMESTEP_OVERFLOW_ALLOWED
+            env._nb_ts_max_protection_counter == param.NB_TIMESTEP_OVERFLOW_ALLOWED
         )
         assert (
             env._max_timestep_line_status_deactivated == param.NB_TIMESTEP_COOLDOWN_LINE

@@ -1157,7 +1157,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 act = self.env.action_space({"set_bus": {"loads_id": [(el_id, new_bus)], "lines_ex_id": [(line_ex_id, new_bus)]}})
             bk_act = self.env._backend_action_class()
             bk_act += act
-            self.env.backend.apply_action(bk_act)
+            self.env.backend.apply_action_public(bk_act)
             global_bus = sub_id + (new_bus -1) * cls.n_sub 
             if new_bus >= 1:
                 assert self.env.backend._grid.load.iloc[el_id]["bus"] == global_bus
@@ -1189,7 +1189,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 act = self.env.action_space({"set_bus": {"generators_id": [(el_id, new_bus)], "lines_ex_id": [(line_ex_id, new_bus)]}})
             bk_act = self.env._backend_action_class()
             bk_act += act
-            self.env.backend.apply_action(bk_act)
+            self.env.backend.apply_action_public(bk_act)
             global_bus = sub_id + (new_bus -1) * cls.n_sub 
             if new_bus >= 1:
                 assert self.env.backend._grid.gen.iloc[el_id]["bus"] == global_bus
@@ -1221,7 +1221,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 act = self.env.action_space({"set_bus": {"storages_id": [(el_id, new_bus)], "lines_ex_id": [(line_ex_id, new_bus)]}})
             bk_act = self.env._backend_action_class()
             bk_act += act
-            self.env.backend.apply_action(bk_act)
+            self.env.backend.apply_action_public(bk_act)
             global_bus = sub_id + (new_bus -1) * cls.n_sub 
             if new_bus >= 1:
                 assert self.env.backend._grid.storage.iloc[el_id]["bus"] == global_bus
@@ -1247,7 +1247,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
             act = self.env.action_space({"set_bus": {"lines_or_id": [(line_id, new_bus)]}})
             bk_act = self.env._backend_action_class()
             bk_act += act
-            self.env.backend.apply_action(bk_act)
+            self.env.backend.apply_action_public(bk_act)
             global_bus = cls.line_or_to_subid[line_id] + (new_bus -1) * cls.n_sub 
             if new_bus >= 1:
                 assert self.env.backend._grid.line.iloc[line_id]["from_bus"] == global_bus
@@ -1268,7 +1268,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
             act = self.env.action_space({"set_bus": {"lines_ex_id": [(line_id, new_bus)]}})
             bk_act = self.env._backend_action_class()
             bk_act += act
-            self.env.backend.apply_action(bk_act)
+            self.env.backend.apply_action_public(bk_act)
             global_bus = cls.line_ex_to_subid[line_id] + (new_bus -1) * cls.n_sub 
             if new_bus >= 1:
                 assert self.env.backend._grid.line.iloc[line_id]["to_bus"] == global_bus
@@ -1296,7 +1296,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 act = self.env.action_space({"shunt": {"set_bus": [(el_id, new_bus)]}, "set_bus": {"lines_ex_id": [(line_ex_id, new_bus)]}})
             bk_act = self.env._backend_action_class()
             bk_act += act
-            self.env.backend.apply_action(bk_act)
+            self.env.backend.apply_action_public(bk_act)
             global_bus = sub_id + (new_bus -1) * cls.n_sub 
             if new_bus >= 1:
                 assert self.env.backend._grid.shunt.iloc[el_id]["bus"] == global_bus
@@ -1328,7 +1328,7 @@ class TestPandapowerBackend_3busbars(unittest.TestCase):
                 act = self.env.action_space({"set_bus": {"loads_id": [(el_id, new_bus)], "lines_ex_id": [(line_ex_id, new_bus)]}})
             bk_act = self.env._backend_action_class()
             bk_act += act
-            self.env.backend.apply_action(bk_act)
+            self.env.backend.apply_action_public(bk_act)
             conv, maybe_exc = self.env.backend.runpf()
             assert conv, f"error : {maybe_exc}"
             p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchhoff()

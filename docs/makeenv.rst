@@ -33,6 +33,10 @@ a new algorithm of "Reinforcement Learning" and you used the openai gymnasium fr
 in a few minutes (basically this consists in adapting the input and output dimension of your BaseAgent) and make it work
 with a Grid2Op environment. An example of such modifications is exposed in the getting_started/ notebooks.
 
+.. danger::
+    The :func:`grid2op.make` function can execute arbitrary code. Do not attempt
+    to "make" an environment for which you don't trust (or even know) the authors.
+
 .. _usage:
 
 Usage

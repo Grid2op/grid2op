@@ -314,13 +314,17 @@ def make(
 
     .. versionadded:: 1.11.0
         The `allow_detachment` parameter
+    
+    .. danger::
+        The :func:`grid2op.make` function can execute arbitrary code. Do not attempt
+        to "make" an environment for which you don't trust (or even know) the authors.
         
     Parameters
     ----------
 
     dataset: ``str`` or path
         Name of the environment you want to create
-
+        
     test: ``bool``
         Whether you want to use a test environment (**NOT** recommended). Use at your own risk.
 

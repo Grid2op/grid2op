@@ -804,7 +804,4 @@ if __name__ == "__main__":
     # rho_dn, ids = stats_dn.get("rho")
     score_op_cost, ids = stats_dn.get("grid_operational_cost_scores")
     score_att_cost, ids = stats_dn.get("operator_attention_scores")
-    import pdb
-
-    pdb.set_trace()
     assert score_att_cost.shape[0] == ids.shape[0]

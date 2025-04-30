@@ -16,7 +16,6 @@ from grid2op.Environment.environment import Environment
 from grid2op.Exceptions import EnvError
 from grid2op.dtypes import dt_bool, dt_float, dt_int
 from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
-from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
 
 class MaskedEnvironment(Environment):
@@ -108,7 +107,7 @@ class MaskedEnvironment(Environment):
     def _reset_vectors_and_timings(self):
         super()._reset_vectors_and_timings()
         self._hard_overflow_threshold[~self._lines_of_interest] = type(self).INF_VAL_THM_LIM
-        self._nb_timestep_overflow_allowed[~self._lines_of_interest] = type(self).INF_VAL_TS_OVERFLOW_ALLOW
+        self._nb_ts_max_protection_counter[~self._lines_of_interest] = type(self).INF_VAL_TS_OVERFLOW_ALLOW
 
     def get_kwargs(self, with_backend=True, with_chronics_handler=True):
         res = {}

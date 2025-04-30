@@ -3,6 +3,7 @@
 [![Downloads](https://pepy.tech/badge/grid2op)](https://pepy.tech/project/grid2op)
 [![PyPi_Version](https://img.shields.io/pypi/v/grid2op.svg)](https://pypi.org/project/Grid2Op/)
 [![PyPi_Compat](https://img.shields.io/pypi/pyversions/grid2op.svg)](https://pypi.org/project/Grid2Op/)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10367/badge)](https://www.bestpractices.dev/projects/10367)
 [![LICENSE](https://img.shields.io/pypi/l/grid2op.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Documentation Status](https://readthedocs.org/projects/grid2op/badge/?version=latest)](https://grid2op.readthedocs.io/en/latest/?badge=latest)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/3a4e666ba20f4f20b9131e9a6081622c)](https://app.codacy.com/gh/Grid2op/grid2op/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
@@ -201,6 +202,9 @@ interesting part of this framework:
 * [11_IntegrationWithExistingRLFrameworks](getting_started/11_IntegrationWithExistingRLFrameworks.ipynb)
   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Grid2Op/grid2op/blob/master/getting_started/11_IntegrationWithExistingRLFrameworks.ipynb)
   explains how to use grid2op with other reinforcement learning framework. TODO: this needs to be redone
+* [12_DetachmentOfLoadsAndGenerators.ipynb](getting_started/12_DetachmentOfLoadsAndGenerators.ipynb.ipynb)
+  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Grid2Op/grid2op/blob/master/getting_started/12_DetachmentOfLoadsAndGenerators.ipynb.ipynb)
+  explains briefly what is detachment.
 
 Try them out in your own browser without installing
 anything with the help of mybinder:

@@ -802,9 +802,7 @@ class TestExtremeStorage(unittest.TestCase):
         param = self.env.parameters
         param.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION = True
         self.env.change_parameters(param)
-        self.env.seed(0)
-        self.env.set_id(0)
-        obs = self.env.reset()
+        obs = self.env.reset(seed=0, options={"time serie id": 0})
         obs1, reward, done, info = self.env.step(self.storage_ko_up)
         assert not done
         amount_storage_first_step = 1.0 * self.env._amount_storage

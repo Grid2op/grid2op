@@ -23,7 +23,7 @@ import grid2op
 from grid2op.typing_variables import DICT_ACT_TYPING
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.Exceptions import *
-from grid2op.Space import GridObjects
+from grid2op.Space import GridObjects, GRID2OP_CURRENT_VERSION_STR
 
 # TODO time delay somewhere (eg action is implemented after xxx timestep, and not at the time where it's proposed)
 
@@ -339,7 +339,7 @@ class BaseAction(GridObjects):
     Typically `0 <= storage_id < env.n_storage` and `amount` is a floating point between the maximum
     power and minimum power the storage unit can absorb / produce.
 
-    Finally, in order to perform curtailment action on renewable generators, you can:
+    In order to perform curtailment action on renewable generators, you can:
 
     .. code-block:: python
 
@@ -354,7 +354,40 @@ class BaseAction(GridObjects):
     giving the limit of power you allow each renewable generator to produce (expressed in ratio of
     Pmax). For example if `gen_id=1` and `amount=0.7` it means you limit the production of
     generator 1 to 70% of its Pmax.
+    
+    Finally, provided that the environment is loaded with `allow_detachment=True`, you can also
+    perform "detachment" action on the grid with:
+    
+    .. code-block:: python
+    
+        import grid2op
+        from grid2op.Action import BaseAction
+        env_name = "l2rpn_case14_sandbox"  # or any other name
+        env = grid2op.make(env_name, allow_detachment=True)
 
+        # method 1
+        act = env.action_space({"detach_load": [load1_id, load2_id, ...]})
+
+        # method 2
+        act = env.action_space()
+        act.detach_load = [load1_id, load2_id, ...]
+
+    You can do similar action for storage and generator, for example
+    
+    .. code-block:: python
+    
+        import grid2op
+        from grid2op.Action import BaseAction
+        env_name = "educ_case14_storage"  # or any other name
+        env = grid2op.make(env_name, test=True, allow_detachment=True)
+
+        # for generators (method 1 showed here, but method 2 works, of course)
+        act = env.action_space({"detach_gen": [gen1_id, gen2_id, ...]})
+        
+        # for storage units (method 2 showed here, but method 1 works too, of course)
+        act = env.action_space()
+        act.detach_storage = [storage1_id, storage2_id, ...]
+    
     """
 
     authorized_keys = {
@@ -471,10 +504,10 @@ class BaseAction(GridObjects):
         # shunts
         if cls.shunts_data_available:
             self.shunt_p = np.full(
-                shape=cls.n_shunt, fill_value=np.NaN, dtype=dt_float
+                shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
             )
             self.shunt_q = np.full(
-                shape=cls.n_shunt, fill_value=np.NaN, dtype=dt_float
+                shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
             )
             self.shunt_bus = np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
         else:
@@ -550,19 +583,6 @@ class BaseAction(GridObjects):
                 if el in cls.authorized_keys:
                     cls.authorized_keys.remove(el)
             cls._update_value_set()
-        # else:
-        #     # I support detachment, I need to make sure this is registered
-        #     cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
-        #     cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
-        #     # add the detachment from the list to vector
-        #     for el in ["_detach_load", "_detach_gen", "_detach_storage"]:
-        #         if el not in cls.attr_list_vect:
-        #             cls.attr_list_vect.append(el)
-        #     # add the detachment from the allowed action
-        #     for el in ["detach_load", "detach_gen", "detach_storage"]:
-        #         if el not in cls.authorized_keys:
-        #             cls.authorized_keys.add(el)
-        #     cls._update_value_set()
         return super().process_detachment()
         
     def copy(self) -> "BaseAction":
@@ -1805,8 +1825,8 @@ class BaseAction(GridObjects):
 
         # shunts
         if type(self).shunts_data_available:
-            self.shunt_p[:] = np.NaN
-            self.shunt_q[:] = np.NaN
+            self.shunt_p[:] = np.nan
+            self.shunt_q[:] = np.nan
             self.shunt_bus[:] = 0
 
         # alarm
@@ -2425,7 +2445,7 @@ class BaseAction(GridObjects):
             except IllegalAction as exc_:
                 cls = type(self)
                 # only raise the error if I am not in compat mode
-                if cls.glop_version == grid2op.__version__:
+                if cls.glop_version == GRID2OP_CURRENT_VERSION_STR:
                     raise exc_
                 else:
                     # TODO be more specific on the version
@@ -2439,7 +2459,7 @@ class BaseAction(GridObjects):
             except IllegalAction as exc_:
                 cls = type(self)
                 # only raise the error if I am not in compat mode
-                if cls.glop_version == grid2op.__version__:
+                if cls.glop_version == GRID2OP_CURRENT_VERSION_STR:
                     raise exc_
                 else:
                     # TODO be more specific on the version
@@ -3569,6 +3589,16 @@ class BaseAction(GridObjects):
                 res.append(f"\t - Raise alert(s) {line_str}")
             else:
                 res.append("\t - Not raise any alert")
+        
+        if my_cls.detachment_is_allowed:
+            for el in my_cls.OBJ_SUPPORT_DETACH:
+                _modif_detach_xxx = getattr(self, f"_modif_detach_{el}")
+                _detach_xxx = getattr(self, f"_detach_{el}")
+                if _modif_detach_xxx:
+                    res.append(f"\t - Detach {el}: {_detach_xxx.nonzero()[0]}")
+                else:
+                    res.append(f"\t - Not detach any {el}")
+                    
         return "\n".join(res)
 
     def impact_on_objects(self) -> dict:
@@ -3990,7 +4020,7 @@ class BaseAction(GridObjects):
             )
         if load_id < 0:
             raise Grid2OpException(f"`load_id` should be positive.")
-        res = {"new_p": np.NaN, "new_q": np.NaN, "change_bus": False, "set_bus": 0}
+        res = {"new_p": np.nan, "new_q": np.nan, "change_bus": False, "set_bus": 0}
         if "load_p" in self._dict_inj:
             res["new_p"] = self._dict_inj["load_p"][load_id]
         if "load_q" in self._dict_inj:
@@ -4008,7 +4038,7 @@ class BaseAction(GridObjects):
             )
         if gen_id < 0:
             raise Grid2OpException(f"`gen_id` should be positive.")
-        res = {"new_p": np.NaN, "new_v": np.NaN, "set_bus": 0, "change_bus": False}
+        res = {"new_p": np.nan, "new_v": np.nan, "set_bus": 0, "change_bus": False}
         if "prod_p" in self._dict_inj:
             res["new_p"] = self._dict_inj["prod_p"][gen_id]
         if "prod_v" in self._dict_inj:
@@ -4051,7 +4081,7 @@ class BaseAction(GridObjects):
             )
         if storage_id < 0:
             raise Grid2OpException(f"`storage_id` should be positive.")
-        res = {"power": np.NaN, "set_bus": 0, "change_bus": False}
+        res = {"power": np.nan, "set_bus": 0, "change_bus": False}
         my_id = self.storage_pos_topo_vect[storage_id]
         res["change_bus"] = self._change_bus_vect[my_id]
         res["set_bus"] = self._set_topo_vect[my_id]
@@ -4266,7 +4296,7 @@ class BaseAction(GridObjects):
             New bus of the loads, affected with "change_bus" command
         """
         cls = type(self)
-        load_p = np.full(cls.n_load, fill_value=np.NaN, dtype=dt_float)
+        load_p = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
         if "load_p" in self._dict_inj:
             load_p[:] = self._dict_inj["load_p"]
         load_q = 1.0 * load_p
@@ -4295,7 +4325,7 @@ class BaseAction(GridObjects):
 
         """
         cls = type(self)
-        gen_p = np.full(cls.n_gen, fill_value=np.NaN, dtype=dt_float)
+        gen_p = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
         if "prod_p" in self._dict_inj:
             gen_p[:] = self._dict_inj["prod_p"]
         gen_v = 1.0 * gen_p
