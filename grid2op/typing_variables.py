@@ -15,7 +15,7 @@ import numpy as np
 STEP_INFO_TYPING = Dict[Literal["disc_lines",
                                 "is_illegal",
                                 "is_ambiguous",
-                                "is_dispatching_illegal",
+                                "failed_redisp",
                                 "is_illegal_reco",
                                 "reason_alarm_illegal",
                                 "reason_alert_illegal",
