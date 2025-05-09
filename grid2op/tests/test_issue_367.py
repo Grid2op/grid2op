@@ -41,7 +41,7 @@ class Issue367Tester(unittest.TestCase):
         act.redispatch = [(gen_id, -3.5)]
         obs, reward, done, info = self.env.step(act)
         assert not done
-        assert not info['is_dispatching_illegal']
+        assert not info['failed_redispatching']
         assert obs.target_dispatch[gen_id] == -3.5, f"should be -3.5, but is {obs.target_dispatch[gen_id]:.2f}"
 
         act = self.env.action_space()
@@ -54,7 +54,7 @@ class Issue367Tester(unittest.TestCase):
         act.redispatch = [(gen_id, +1.5)]
         obs, reward, done, info = self.env.step(act)
         assert not done
-        assert not info['is_dispatching_illegal']
+        assert not info['failed_redispatching']
         assert abs(obs.target_dispatch[gen_id] - 1.5) <= 1e-2, f"should be 1.5, but is {obs.target_dispatch[gen_id]:.2f}"
 
     def tearDown(self) -> None:
