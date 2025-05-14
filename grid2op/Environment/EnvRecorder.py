@@ -5,17 +5,19 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+import json
 from abc import ABC
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Union, Callable, List
 
-from grid2op.Action import BaseAction, baseAction
+import pyarrow as pa
+import pyarrow.parquet
+
+from grid2op.Action import BaseAction
 from grid2op.Environment.EnvInterface import EnvInterface
 from grid2op.Observation import BaseObservation
 from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
-import pyarrow as pa
-import pyarrow.parquet
 
 
 class AbstractTable(ABC):
@@ -103,7 +105,8 @@ class ActionTable(AbstractTable):
 
     def append(self, time: datetime, act: BaseAction):
         self._buffer[0].append(int(time.timestamp()))
-        self._buffer[1].append(str(act.as_dict()))
+        json_str = json.dumps(act.as_serializable_dict())
+        self._buffer[1].append(json_str)
         self._flush(False)
 
 
@@ -131,17 +134,56 @@ class EnvRecorder(EnvInterface):
         self._env = env
         self._directory = directory
 
+        # save the grid
+        grid_path = Path(self._env._init_grid_path)
+        (directory / grid_path.name).write_bytes(grid_path.read_bytes())
+
+        # env general data
+        env_data = {
+            "n_sub": env.n_sub,
+            "n_busbar_per_sub": env.n_busbar_per_sub
+        }
+        with open(directory / "env.json", "w") as f:
+            json.dump(env_data, f, indent=4)
+
         # one table for each kind of element
-        self.write_element_table([env.name_gen, env.gen_type], ['name', 'type'], directory, 'gen')
-        self.write_element_table([env.name_load], ['name'], directory, 'load')
+        self.write_element_table([env.name_gen, env.gen_type, env.gen_to_subid], ['name', 'type', 'gen_to_subid'], directory, 'gen')
+        self.write_element_table([env.name_load, env.load_to_subid], ['name', 'load_to_subid'], directory, 'load')
+        self.write_element_table([env.name_shunt, env.shunt_to_subid], ['name', 'shunt_to_subid'], directory, 'shunt')
+        self.write_element_table([env.name_line, env.line_or_to_subid, env.line_ex_to_subid], ['name', 'line_or_to_subid', 'line_ex_to_subid'], directory, 'line')
 
         # one table per element attributs.
         self._tables = [
             ObservationTable(self._env.name_gen, lambda obs: obs.gen_p_before_curtail, directory, 'gen_p_before_curtail', write_chunk_size),
             ObservationTable(self._env.name_gen, lambda obs: obs.gen_p, directory, 'gen_p', write_chunk_size),
+            ObservationTable(self._env.name_gen, lambda obs: obs.gen_p_detached, directory, 'gen_p_detached', write_chunk_size),
+            ObservationTable(self._env.name_gen, lambda obs: obs.gen_q, directory, 'gen_q', write_chunk_size),
+            ObservationTable(self._env.name_gen, lambda obs: obs.gen_bus, directory, 'gen_bus', write_chunk_size),
+            ObservationTable(self._env.name_gen, lambda obs: obs.gen_detached, directory, 'gen_detached', write_chunk_size),
             ObservationTable(self._env.name_gen, lambda obs: obs.gen_v, directory, 'gen_v', write_chunk_size),
+            ObservationTable(self._env.name_gen, lambda obs: obs.gen_theta, directory, 'gen_theta', write_chunk_size),
+
             ObservationTable(self._env.name_load, lambda obs: obs.load_p, directory, 'load_p', write_chunk_size),
-            ObservationTable(self._env.name_load, lambda obs: obs.load_q, directory, 'load_q', write_chunk_size)
+            ObservationTable(self._env.name_load, lambda obs: obs.load_p_detached, directory, 'load_p_detached', write_chunk_size),
+            ObservationTable(self._env.name_load, lambda obs: obs.load_q, directory, 'load_q', write_chunk_size),
+            ObservationTable(self._env.name_load, lambda obs: obs.load_q_detached, directory, 'load_q_detached', write_chunk_size),
+            ObservationTable(self._env.name_load, lambda obs: obs.load_bus, directory, 'load_bus', write_chunk_size),
+            ObservationTable(self._env.name_load, lambda obs: obs.load_v, directory, 'load_v', write_chunk_size),
+            ObservationTable(self._env.name_load, lambda obs: obs.load_theta, directory, 'load_theta', write_chunk_size),
+
+            ObservationTable(self._env.name_line, lambda obs: obs.line_or_bus, directory, 'line_or_bus', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.line_ex_bus, directory, 'line_ex_bus', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.line_ex_bus, directory, 'line_status', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.p_or, directory, 'line_or_p', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.p_ex, directory, 'line_ex_p', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.q_or, directory, 'line_or_q', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.q_ex, directory, 'line_ex_q', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.v_or, directory, 'line_or_v', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.v_ex, directory, 'line_ex_v', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.theta_or, directory, 'line_or_theta', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.theta_ex, directory, 'line_ex_theta', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.rho, directory, 'line_rho', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.thermal_limit, directory, 'line_thermal_limit', write_chunk_size)
         ]
 
         self._actions_table = ActionTable(directory, 'actions', write_chunk_size)
@@ -164,19 +206,24 @@ class EnvRecorder(EnvInterface):
 
         self._actions_table.reset()
 
-        return self._env.reset(seed=seed, options=options)
+        obs = self._env.reset(seed=seed, options=options)
+        self._append_obs(obs)
+        self._actions_table.append(obs.get_time_stamp(), self._env.action_space())
+        return obs
+
+    def _append_obs(self, obs: BaseObservation):
+        for table in self._tables:
+            table.append(obs)
 
     def step(self, action: BaseAction) -> Tuple[BaseObservation,
                                                 float,
                                                 bool,
                                                 STEP_INFO_TYPING]:
         result = self._env.step(action)
-        obs = result[0]
-
-        for table in self._tables:
-            table.append(obs)
-
-        self._actions_table.append(obs.get_time_stamp(), action)
+        if not result[2]:
+            obs = result[0]
+            self._append_obs(obs)
+            self._actions_table.append(obs.get_time_stamp(), action)
 
         return result
 
