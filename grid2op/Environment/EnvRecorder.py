@@ -135,12 +135,11 @@ class EnvRecorder(EnvInterface):
         self._env = env
         self._directory = directory
 
-        # save the grid
-        grid_path = Path(self._env._init_grid_path)
-        (directory / grid_path.name).write_bytes(grid_path.read_bytes())
-
         # env general data
         env_data = {
+            "name": env.name,
+            "path": self._env._init_env_path,
+            "backend": self._env.backend.__class__.__name__,
             "n_sub": env.n_sub,
             "n_busbar_per_sub": env.n_busbar_per_sub
         }
@@ -151,6 +150,7 @@ class EnvRecorder(EnvInterface):
         self.write_element_table([env.name_gen, env.gen_type, env.gen_to_subid], ['name', 'type', 'gen_to_subid'], directory, 'gen')
         self.write_element_table([env.name_load, env.load_to_subid], ['name', 'load_to_subid'], directory, 'load')
         self.write_element_table([env.name_shunt, env.shunt_to_subid], ['name', 'shunt_to_subid'], directory, 'shunt')
+        self.write_element_table([env.name_storage, env.storage_to_subid], ['name', 'storage_to_subid'], directory, 'storage')
         self.write_element_table([env.name_line, env.line_or_to_subid, env.line_ex_to_subid], ['name', 'line_or_to_subid', 'line_ex_to_subid'], directory, 'line')
 
         # one table per element attributs.
@@ -174,13 +174,28 @@ class EnvRecorder(EnvInterface):
             ObservationTable(self._env.name_load, lambda obs: obs.load_v, directory, 'load_v', write_chunk_size),
             ObservationTable(self._env.name_load, lambda obs: obs.load_theta, directory, 'load_theta', write_chunk_size),
 
+            ObservationTable(self._env.name_shunt, lambda obs: obs._shunt_p, directory, 'shunt_p', write_chunk_size),
+            ObservationTable(self._env.name_shunt, lambda obs: obs._shunt_q, directory, 'shunt_q', write_chunk_size),
+            ObservationTable(self._env.name_shunt, lambda obs: obs._shunt_v, directory, 'shunt_v', write_chunk_size),
+            ObservationTable(self._env.name_shunt, lambda obs: obs._shunt_bus, directory, 'shunt_bus', write_chunk_size),
+
+            ObservationTable(self._env.name_storage, lambda obs: obs.storage_power_target, directory, 'storage_power_target', write_chunk_size),
+            ObservationTable(self._env.name_storage, lambda obs: obs.storage_power, directory, 'storage_power', write_chunk_size),
+            ObservationTable(self._env.name_storage, lambda obs: obs.storage_charge, directory, 'storage_charge', write_chunk_size),
+            ObservationTable(self._env.name_storage, lambda obs: obs.storage_theta, directory, 'storage_theta', write_chunk_size),
+            ObservationTable(self._env.name_storage, lambda obs: obs.storage_detached, directory, 'storage_detached', write_chunk_size),
+            ObservationTable(self._env.name_storage, lambda obs: obs.storage_p_detached, directory, 'storage_p_detached', write_chunk_size),
+            ObservationTable(self._env.name_storage, lambda obs: obs.storage_bus, directory, 'storage_bus', write_chunk_size),
+
             ObservationTable(self._env.name_line, lambda obs: obs.line_or_bus, directory, 'line_or_bus', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.line_ex_bus, directory, 'line_ex_bus', write_chunk_size),
-            ObservationTable(self._env.name_line, lambda obs: obs.line_ex_bus, directory, 'line_status', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.line_status, directory, 'line_status', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.p_or, directory, 'line_or_p', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.p_ex, directory, 'line_ex_p', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.q_or, directory, 'line_or_q', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.q_ex, directory, 'line_ex_q', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.a_or, directory, 'line_or_a', write_chunk_size),
+            ObservationTable(self._env.name_line, lambda obs: obs.a_ex, directory, 'line_ex_a', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.v_or, directory, 'line_or_v', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.v_ex, directory, 'line_ex_v', write_chunk_size),
             ObservationTable(self._env.name_line, lambda obs: obs.theta_or, directory, 'line_or_theta', write_chunk_size),
