@@ -33,7 +33,7 @@ pkgs = {
         "packaging",  # because gym changes the way it uses numpy prng in version 0.26 and i need both gym before and after...
         "typing_extensions",
         "orderly_set<5.4.0; python_version<='3.8'",
-        "pyarrow>=18.1.0"
+        "pyarrow>=17.0.0"
     ],
     "extras": {
         "optional": [
