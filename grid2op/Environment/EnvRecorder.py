@@ -101,12 +101,13 @@ class ObservationTable(AbstractTable):
 class ActionTable(AbstractTable):
 
     def __init__(self, directory: Path, table_name: str, write_chunk_size: int):
-        super().__init__(['action'], directory, table_name, write_chunk_size)
+        super().__init__(['action', 'done'], directory, table_name, write_chunk_size)
 
-    def append(self, time: datetime, act: BaseAction):
+    def append(self, time: datetime, act: BaseAction, done: bool):
         self._buffer[0].append(int(time.timestamp()))
         json_str = json.dumps(act.as_serializable_dict())
         self._buffer[1].append(json_str)
+        self._buffer[2].append(done)
         self._flush(False)
 
 
@@ -162,6 +163,8 @@ class EnvRecorder(EnvInterface):
             ObservationTable(self._env.name_gen, lambda obs: obs.gen_detached, directory, 'gen_detached', write_chunk_size),
             ObservationTable(self._env.name_gen, lambda obs: obs.gen_v, directory, 'gen_v', write_chunk_size),
             ObservationTable(self._env.name_gen, lambda obs: obs.gen_theta, directory, 'gen_theta', write_chunk_size),
+            ObservationTable(self._env.name_gen, lambda obs: obs.actual_dispatch, directory, 'gen_actual_dispatch', write_chunk_size),
+            ObservationTable(self._env.name_gen, lambda obs: obs.target_dispatch, directory, 'gen_target_dispatch', write_chunk_size),
 
             ObservationTable(self._env.name_load, lambda obs: obs.load_p, directory, 'load_p', write_chunk_size),
             ObservationTable(self._env.name_load, lambda obs: obs.load_p_detached, directory, 'load_p_detached', write_chunk_size),
@@ -208,7 +211,7 @@ class EnvRecorder(EnvInterface):
 
         obs = self._env.reset(seed=seed, options=options)
         self._append_obs(obs)
-        self._actions_table.append(obs.get_time_stamp(), self._env.action_space())
+        self._actions_table.append(obs.get_time_stamp(), self._env.action_space(), False)
         return obs
 
     def _append_obs(self, obs: BaseObservation):
@@ -220,11 +223,10 @@ class EnvRecorder(EnvInterface):
                                                 bool,
                                                 STEP_INFO_TYPING]:
         result = self._env.step(action)
-        if not result[2]:
-            obs = result[0]
-            self._append_obs(obs)
-            self._actions_table.append(obs.get_time_stamp(), action)
-
+        done = result[2]
+        obs = result[0]
+        self._append_obs(obs)
+        self._actions_table.append(obs.get_time_stamp(), action, done)
         return result
 
     def render(self, mode="rgb_array"):
