@@ -5,6 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+import json
 import unittest
 import warnings
 from pathlib import Path
@@ -95,7 +96,17 @@ class TestEnvRecorder(unittest.TestCase):
                     pq_file = tmp_dir_path / f"{file_name}"
                     assert pq_file.is_file()
 
-                # check one of the file content
+                # check one of the table file content
                 gen_p_pq = pd.read_parquet(tmp_dir_path / "gen_p.parquet")
                 assert gen_p_pq.shape == (96, 3)
                 assert gen_p_pq.columns.tolist() == ['time', 'gen_0_0', 'gen_1_1']
+
+                # check the environment infos file content
+                with open(tmp_dir_path / "env.json", "r", encoding="utf-8") as f:
+                    env_infos = json.load(f)
+                    assert env_infos['grid2op_version']
+                    assert env_infos['name'] == 'rte_case5_examplePandaPowerBackendTestEnvRecorder'
+                    assert env_infos['path']
+                    assert env_infos['backend'] == 'PandaPowerBackend_rte_case5_examplePandaPowerBackendTestEnvRecorder'
+                    assert env_infos['n_sub'] == 5
+                    assert env_infos['n_busbar_per_sub'] == 2
