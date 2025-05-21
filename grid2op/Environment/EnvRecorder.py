@@ -17,6 +17,7 @@ import pyarrow.parquet
 from grid2op.Action import BaseAction
 from grid2op.Environment.EnvInterface import EnvInterface
 from grid2op.Observation import BaseObservation
+from grid2op.Space import GRID2OP_CURRENT_VERSION_STR
 from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
 
 
@@ -63,7 +64,7 @@ class AbstractTable(ABC):
         self.close() # or with discard buffered data ?
 
     def _flush(self, force: bool):
-        if force or len(self._buffer[0]) >= self._write_chunk_size:
+        if len(self._buffer[0]) > 0 and (force or len(self._buffer[0]) >= self._write_chunk_size):
             table = pa.table(self._buffer, ['time'] + list(self._columns))
             if self._writer is None:
                 parquet_file = self._directory / f"{self._table_name}.parquet"
@@ -137,6 +138,7 @@ class EnvRecorder(EnvInterface):
 
         # env general data
         env_data = {
+            "grid2op_version": GRID2OP_CURRENT_VERSION_STR,
             "name": env.name,
             "path": self._env._init_env_path,
             "backend": self._env.backend.__class__.__name__,

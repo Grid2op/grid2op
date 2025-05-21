@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 
 import pandas as pd
 
-from getting_started import grid2op
+import grid2op
 from grid2op.Backend import PandaPowerBackend
 from grid2op.Environment.EnvRecorder import EnvRecorder
 
@@ -41,10 +41,61 @@ class TestEnvRecorder(unittest.TestCase):
                     while not done:
                         _, _, done, _ = env_rec.step(do_nothing)
 
-                for file_name in ['gen_p_before_curtail', 'gen_p', 'gen_v', 'load_p', 'load_q']:
-                    pq_file = tmp_dir_path / f"{file_name}.parquet"
+                # check all files have been generated
+                for file_name in ['gen_detached.parquet',
+                                  'line_ex_q.parquet',
+                                  'storage.parquet',
+                                  'storage_detached.parquet',
+                                  'line_rho.parquet',
+                                  'gen_p_before_curtail.parquet',
+                                  'line_or_bus.parquet',
+                                  'line_ex_theta.parquet',
+                                  'load_q.parquet',
+                                  'line_ex_a.parquet',
+                                  'line_or_v.parquet',
+                                  'line_or_q.parquet',
+                                  'line_or_theta.parquet',
+                                  'line_or_p.parquet',
+                                  'storage_power.parquet',
+                                  'load_p.parquet',
+                                  'gen_theta.parquet',
+                                  'line_ex_v.parquet',
+                                  'shunt_bus.parquet',
+                                  'line_ex_p.parquet',
+                                  'storage_p_detached.parquet',
+                                  'gen_bus.parquet',
+                                  'line_thermal_limit.parquet',
+                                  'load_p_detached.parquet',
+                                  'gen_actual_dispatch.parquet',
+                                  'shunt_q.parquet',
+                                  'line_or_a.parquet',
+                                  'gen_q.parquet',
+                                  'storage_theta.parquet',
+                                  'gen.parquet',
+                                  'load_v.parquet',
+                                  'gen_p.parquet',
+                                  'load.parquet',
+                                  'storage_power_target.parquet',
+                                  'load_q_detached.parquet',
+                                  'shunt_v.parquet',
+                                  'line_status.parquet',
+                                  'gen_target_dispatch.parquet',
+                                  'shunt.parquet',
+                                  'storage_charge.parquet',
+                                  'env.json',
+                                  'line.parquet',
+                                  'load_theta.parquet',
+                                  'storage_bus.parquet',
+                                  'load_bus.parquet',
+                                  'gen_v.parquet',
+                                  'line_ex_bus.parquet',
+                                  'gen_p_detached.parquet',
+                                  'shunt_p.parquet',
+                                  'actions.parquet']:
+                    pq_file = tmp_dir_path / f"{file_name}"
                     assert pq_file.is_file()
 
+                # check one of the file content
                 gen_p_pq = pd.read_parquet(tmp_dir_path / "gen_p.parquet")
-                assert gen_p_pq.shape == (95, 3)
+                assert gen_p_pq.shape == (96, 3)
                 assert gen_p_pq.columns.tolist() == ['time', 'gen_0_0', 'gen_1_1']
