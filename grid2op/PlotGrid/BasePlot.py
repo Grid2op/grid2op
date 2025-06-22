@@ -11,7 +11,7 @@ import warnings
 
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Iterable, Callable
+from typing import Iterable, Callable, Union
 
 from grid2op.Observation import BaseObservation, ObservationSpace
 from grid2op.Exceptions import PlotError
@@ -45,7 +45,7 @@ class BasePlot(ABC):
     """
 
     def __init__(self, observation_space:ObservationSpace, width:int=800, 
-                 height:int=600, scale:float=2000.0, grid_layout:dict|None=None,
+                 height:int=600, scale:float=2000.0, grid_layout:Union[dict,None]=None,
                  parallel_spacing:float=3.0):
 
         self.observation_space = observation_space
@@ -593,7 +593,7 @@ class BasePlot(ABC):
             observation=self.observation_space, figure=None, redraw=True
         )
 
-    def plot_obs(self, observation:BaseObservation, figure:object|None=None, redraw:bool=True,
+    def plot_obs(self, observation:BaseObservation, figure:Union[object,None]=None, redraw:bool=True,
                  line_info:str="rho", load_info:str="p", gen_info:str="p", storage_info:str="p"):
         """
         Plot an observation.
@@ -728,12 +728,12 @@ class BasePlot(ABC):
                               gen_values=gen_values, gen_unit=gen_unit,
                               storage_values=storage_values, storage_unit=storage_unit)
 
-    def plot_info(self, figure:object|None=None, redraw:bool=True, 
-                  line_values:Iterable[float]|None=None, line_unit:str="", 
-                  load_values:Iterable[float]|None=None, load_unit:str="",
-                  storage_values:Iterable[float]|None=None, storage_unit:str="",
-                  gen_values:Iterable[float]|None=None, gen_unit:str="", 
-                  observation:BaseObservation=None, coloring:str|None=None):
+    def plot_info(self, figure:Union[object,None]=None, redraw:bool=True, 
+                  line_values:Union[Iterable[float],None]=None, line_unit:str="", 
+                  load_values:Union[Iterable[float],None]=None, load_unit:str="",
+                  storage_values:Union[Iterable[float],None]=None, storage_unit:str="",
+                  gen_values:Union[Iterable[float],None]=None, gen_unit:str="", 
+                  observation:BaseObservation=None, coloring:Union[str,None]=None):
         """
         Plot an observation with custom values
 

@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, fields
-from typing import Tuple, Literal, Callable
+from typing import Tuple, Literal, Callable, Union
 from matplotlib.colors import Colormap, LinearSegmentedColormap, Normalize, is_color_like, BoundaryNorm
 from matplotlib.figure import Figure
 from matplotlib.path import Path
@@ -34,8 +34,8 @@ class LoadPatch(patches.RegularPolygon):
     Empty class to handle the legend
     """
 
-    def __init__(self, *args, numVertices:int=3, **kwargs):
-        patches.RegularPolygon.__init__(self, *args, numVertices=numVertices, **kwargs)
+    def __init__(self, *args, n_vertices:int=3, **kwargs):
+        patches.RegularPolygon.__init__(self, *args, numVertices=n_vertices, **kwargs)
 
 
 class StoragePatch(patches.RegularPolygon):
@@ -47,8 +47,8 @@ class StoragePatch(patches.RegularPolygon):
     Empty class to handle the legend
     """
 
-    def __init__(self, *args, numVertices:int=4, **kwargs):
-        patches.RegularPolygon.__init__(self, *args, numVertices=numVertices, **kwargs)
+    def __init__(self, *args, n_vertices:int=4, **kwargs):
+        patches.RegularPolygon.__init__(self, *args, numVertices=n_vertices, **kwargs)
 
 class GenPatch(patches.RegularPolygon):
     """
@@ -59,8 +59,8 @@ class GenPatch(patches.RegularPolygon):
     Empty class to handle the legend
     """
 
-    def __init__(self, *args, numVertices:int=5, **kwargs):
-        patches.RegularPolygon.__init__(self, *args, numVertices=numVertices, **kwargs)
+    def __init__(self, *args, n_vertices:int=5, **kwargs):
+        patches.RegularPolygon.__init__(self, *args, numVertices=n_vertices, **kwargs)
 
 # TODO Refactor this class to make possible some calls like
 #      plotmatplot.plot_info(...).plot_gentype(...) is possible
@@ -73,15 +73,15 @@ class PatchSettings:
     radius:int
     name:bool
     id:bool
-    color_attr:str|None
+    color_attr:Union[str,None]
     face_color:str
     cmap:Colormap
-    cnorm:Normalize|None
-    active_cnorm:Normalize|None
-    vertices:int|None # No. of Points on Polygon
+    cnorm:Union[Normalize,None]
+    active_cnorm:Union[Normalize,None]
+    vertices:Union[int,None] # No. of Points on Polygon
     txt_color:str
-    line_color:str|None
-    line_width:float|None
+    line_color:Union[str,None]
+    line_width:Union[float,None]
     display_value:bool
     display_name:bool
 
@@ -90,11 +90,11 @@ class LineSettings:
     busbar_radius:int
     name:str
     id:bool
-    color_attr:str|None
-    width:float|None
+    color_attr:Union[str,None]
+    width:Union[float,None]
     cmap:Colormap
-    cnorm:Normalize|None
-    active_cnorm:Normalize|None
+    cnorm:Union[Normalize,None]
+    active_cnorm:Union[Normalize,None]
     busbar_cmap:Colormap
     arrow_len:int = 10
     arrow_width:float = 10.0
@@ -169,57 +169,9 @@ class PlotMatplot(BasePlot):
         Height of the figure in pixel
     dpi: ``int``
         Dots per inch, to convert pixels dimensions into inches
-    _scale: ``float``
-        Scale of the drawing in arbitrary units
-    _sub_radius: ``int``
-        Substation circle size
-    _sub_face_color: ``str``
-        Substation circle fill color
-    _sub_edge_color: ``str``
-        Substation circle edge color
-    _sub_txt_color: ``str``
-        Substation info text color
-    _load_radius: ``int``
-        Load circle size
-    _load_name: ``bool``
-        Show load names (default True)
-    _load_face_color: ``str``
-        Load circle fill color
-    _load_edge_color: ``str``
-        Load circle edge color
-    _load_txt_color: ``str``
-        Load info text color
-    _load_line_color: ``str``
-        Color of the line from load to substation
-    _load_line_width: ``int``
-        Width of the line from load to substation
-    _gen_radius: ``int``
-        Generators circle size
-    _gen_name: ``bool``
-        Show generators names (default True)
-    _gen_face_color: ``str``
-        Generators circle fill color
-    _gen_edge_color: ``str``
-        Generators circle edge color
-    _gen_txt_color: ``str``
-        Generators info txt color
-    _gen_line_color: ``str``
-        Color of the line form generator to substation
-    _gen_line_width: ``str``
-        Width of the line from generator to substation
-    _line_color_scheme: ``list``
-        List of color strings to color powerlines based on rho values
-    _line_color_width: ``int``
-        Width of the powerlines lines
-    _line_bus_radius: ``int``
-        Size of the bus display circle
-    _line_bus_face_colors: ``list``
-        List of 3 colors strings, each corresponding to the fill color of the bus circle
-    _line_arrow_len: ``int``
-        Length of the arrow on the powerlines
-    _line_arrow_width: ``int``
-       Width of the arrow on the powerlines
-
+    settings: ``Settings``
+        Settings for the size, coloring and information displayed for loads, generators, storage, and powerlines.
+    
     Examples
     --------
     You can use it this way:
@@ -256,34 +208,34 @@ class PlotMatplot(BasePlot):
                  # >> Load <<
                  load_radius:int=8, load_name:bool=False,
                  load_id:bool=False, load_vertices:int=3, # No. edges load polygon
-                 load_color_norm:Normalize|list[float] = None,
+                 load_color_norm:Union[Normalize,list[float]] = None,
                  load_color_attr:Literal["p","v"] = "p",
-                 load_color:Colormap|str|list = "orange",
+                 load_color:Union[Colormap,str,list] = "orange",
                  
                  # >> Generator <<
                  gen_radius:int=8, gen_name:bool=False,
                  gen_id:bool=False, gen_vertices:int=5, # No. edges gen polygon
-                 gen_color_norm:Normalize|list[float] = None,
+                 gen_color_norm:Union[Normalize,list[float]] = None,
                  gen_color_attr:Literal["type", "p", "q", "v"]= "p",
-                 gen_color:Colormap|str|list = "green", 
+                 gen_color:Union[Colormap,str,list] = "green", 
                  
                  # >> Storage <<
                  storage_radius:int=8, storage_name:bool=False,
                  storage_id:bool=False, storage_vertices:int=4, # No. edges ESS polygon
-                 storage_color_norm:Normalize|list[float] = None,
+                 storage_color_norm:Union[Normalize,list[float]]  = None,
                  storage_color_attr:Literal["p", "theta", "charge"] = "p",
-                 storage_color:Colormap|str|list = "purple",
+                 storage_color:Union[Colormap,str,list] = "purple",
                  
                  # >> Line <<
                  line_name:bool=False, line_id:bool=False,
                  line_width:float=1.0,
-                 line_color_norm:Normalize|list[float] = None,
+                 line_color_norm:Union[Normalize,list[float]]  = None,
                  line_color_attr:Literal["rho", "p", "a", "v"]="rho",
-                 line_color:Colormap|str|list=["blue", "orange", "red"], # Cmap name, or list of colours
+                 line_color:Union[Colormap,str,list]=["blue", "orange", "red"], # Cmap name, or list of colours
                  
                  # >> Busbar <<
                  bus_radius:int=6,
-                 bus_color:Colormap|str|list=["black", "red", "lime"],
+                 bus_color:Union[Colormap,str,list]=["black", "red", "lime"],
         ):
         self.dpi = dpi
         super().__init__(observation_space, width, height, scale, grid_layout)
@@ -343,10 +295,10 @@ class PlotMatplot(BasePlot):
 
         # For easize manipulation
         self.legend = None
-        self.figure:Figure|None = None
+        self.figure:Union[Figure,None] = None
         self.blitting:bool = False
         
-    def _convert_colors_to_cmap(self, color_scheme:str|list|Colormap, nb_color:int=-1) -> Colormap:
+    def _convert_colors_to_cmap(self, color_scheme:Union[str,list,Colormap], nb_color:int=-1) -> Colormap:
         """
         Converts a colormap name (as str) or a list of color-like objects to a 
         'matpolitlib.colors.Colormap'. 
@@ -387,7 +339,7 @@ class PlotMatplot(BasePlot):
         else:
             return cmap
         
-    def _convert_values_to_norm(self, color_norm:list[float]|Normalize|None) -> Normalize:
+    def _convert_values_to_norm(self, color_norm:Union[list[float],Normalize,None]) -> Normalize:
         """
         Converts a list of floats to a color Normalizer in Matplotlib. If two valeus are provided
         the normalization is done linearly between them. If more are provided, a Discete boundary
@@ -407,7 +359,8 @@ class PlotMatplot(BasePlot):
                 color_norm= BoundaryNorm(np.sort(np.abs(color_norm)), ncolors=len(color_norm), extend="max")
         return color_norm
         
-    def _set_active_color_norm(self, obs:BaseObservation|ObservationSpace, norm:Normalize|None, attr:str|None, settings:PatchSettings|LineSettings):
+    def _set_active_color_norm(self, obs:Union[BaseObservation,ObservationSpace], norm:Union[Normalize,None],
+                               attr:Union[str,None], settings:Union[PatchSettings,LineSettings]):
         """
         Set the currently active color normalization, which overwrites (in-place) the settings for a specific patch.
 
@@ -419,11 +372,11 @@ class PlotMatplot(BasePlot):
         """
         attr = attr if attr is not None else settings.color_attr
         if isinstance(obs, ObservationSpace):
-            pass
+            norm = None
         elif norm is None and settings.cnorm is None and attr is not None:
             try:
                 values = getattr(obs, attr)
-            except:
+            except Exception:
                 values = getattr(obs, f"{attr}_or")
             values = np.abs(values) # Direction does not matter
             if values.size > 0:
@@ -432,7 +385,7 @@ class PlotMatplot(BasePlot):
             norm = copy.deepcopy(settings.cnorm)
         settings.active_cnorm = norm
 
-    def _set_active_color_norms(self, obs:BaseObservation|ObservationSpace, **kwargs):
+    def _set_active_color_norms(self, obs:Union[BaseObservation,ObservationSpace], **kwargs):
         """
         Set the active color normalization for all patches (load, gen, storage, and lines). Behaviour depends
         on whether kwargs overwrites any of the normalizations for this specific observation.
@@ -442,46 +395,46 @@ class PlotMatplot(BasePlot):
                                         kwargs.get(f"{field.name}_color_attr", None), getattr(self.settings, field.name))
     
     def _gen_patch_default(self, xy:Tuple[float, float], radius:float,
-                           edgecolor:object|None, facecolor:object|None):
+                           edgecolor:Union[object,None], facecolor:Union[object,None]):
         """Default patch used to draw generators"""
         return GenPatch(
             xy, radius=radius,
             edgecolor=edgecolor, facecolor=facecolor,
-            numVertices=self.settings.gen.vertices,
+            n_vertices=self.settings.gen.vertices,
             linewidth=self.settings.gen.line_width,
         )
 
     def _load_patch_default(self, xy:Tuple[float, float], radius:float,
-                            edgecolor:object|None, 
-                            facecolor:object|None) -> Patch:
+                            edgecolor:Union[object,None], 
+                            facecolor:Union[object,None]) -> Patch:
         """Default patch used to draw loads"""
         return LoadPatch(
             xy, radius=radius,
             edgecolor=edgecolor,
             facecolor=facecolor,
             linewidth=self.settings.load.line_width,
-            numVertices=self.settings.load.vertices,
+            n_vertices=self.settings.load.vertices,
         )
     
     def _storage_patch_default(self, xy:Tuple[float, float], radius:float,
-                               edgecolor:object|None,
-                               facecolor:object|None) -> Patch:
+                               edgecolor:Union[object,None],
+                               facecolor:Union[object,None]) -> Patch:
         """Default patch used to draw Storage systems"""
         return StoragePatch(
             xy, radius=radius,
             edgecolor=edgecolor,
             facecolor=facecolor,
             linewidth=self.settings.storage.line_width,
-            numVertices=self.settings.storage.vertices,
+            n_vertices=self.settings.storage.vertices,
         )
 
-    def _v_textpos_from_dir(self, dirx:float, diry:float) -> str:
+    def _v_textpos_from_dir(self, diry:float) -> str:
         if diry > 0:
             return "bottom"
         else:
             return "top"
 
-    def _h_textpos_from_dir(self, dirx:float, diry:float) -> str:
+    def _h_textpos_from_dir(self, dirx:float) -> str:
         if dirx == 0:
             return "center"
         elif dirx > 0:
@@ -529,7 +482,7 @@ class PlotMatplot(BasePlot):
         )
 
     def _draw_substation_circle(self, pos_x:float, pos_y:float, 
-                                sub_edgecolor:object|None):
+                                sub_edgecolor:Union[object,None]):
         patch = patches.Circle(
             (pos_x, pos_y),
             radius=self.settings.sub.radius,
@@ -557,8 +510,8 @@ class PlotMatplot(BasePlot):
         off_x, off_y = pltu.norm_from_points(sub_x, sub_y, pos_x, pos_y)
         txt_x = pos_x + off_x * self.settings.gen.radius
         txt_y = pos_y + off_y * self.settings.gen.radius
-        ha = self._h_textpos_from_dir(dir_x, dir_y)
-        va = self._v_textpos_from_dir(dir_x, dir_y)
+        ha = self._h_textpos_from_dir(dir_x)
+        va = self._v_textpos_from_dir(dir_y)
         self.ax.text(
             txt_x, txt_y, text,
             color=self.settings.load.txt_color,
@@ -575,7 +528,7 @@ class PlotMatplot(BasePlot):
         )
 
     def _draw_load_circle(self, pos_x:float, pos_y:float,
-                          load_edgecolor:object|None):
+                          load_edgecolor:Union[object,None]):
         patch = self._load_patch(
             (pos_x, pos_y),
             radius=self.settings.load.radius,
@@ -640,12 +593,6 @@ class PlotMatplot(BasePlot):
         load_dir_x, load_dir_y = pltu.norm_from_points(sub_x, sub_y, pos_x, pos_y)
         self._draw_load_bus(sub_x, sub_y, load_dir_x, load_dir_y, load_bus)
 
-    def update_load(self, figure:Figure, observation:BaseObservation,
-                    load_id:int, load_name:str, load_bus:int,
-                    load_value:float, load_unit:str,
-                    pos_x:int, pos_y:int, sub_x:int, sub_y:int):
-        pass
-
     def _draw_gen_txt(self, pos_x:float, pos_y:float,
                       sub_x:float, sub_y:float, text:str):
         dir_x, dir_y = pltu.vec_from_points(sub_x, sub_y, pos_x, pos_y)
@@ -662,7 +609,7 @@ class PlotMatplot(BasePlot):
         )
 
     def _draw_gen_circle(self, pos_x:float, pos_y:float,
-                         gen_edgecolor:object|None):
+                         gen_edgecolor:Union[object,None]):
         patch = self._gen_patch(
             (pos_x, pos_y),
             radius=self.settings.gen.radius,
@@ -717,7 +664,7 @@ class PlotMatplot(BasePlot):
             norm = Normalize(vmin=observation.gen_pmin[gen_id], vmax=observation.gen_pmax[gen_id])
             try:
                 color_value = norm(observation.prod_p[gen_id])
-            except: # Only static info available, don't show generator output
+            except Exception: # Only static info available, don't show generator output
                 color_value = norm(np.nan)
         elif self.settings.gen.color_attr == "gen_type":
             norm = Normalize(vmin=0.0, vmax=len(TYPE_GEN))
@@ -746,12 +693,6 @@ class PlotMatplot(BasePlot):
             self._draw_gen_name(pos_x, pos_y, str(gen_id))
         gen_dir_x, gen_dir_y = pltu.norm_from_points(sub_x, sub_y, pos_x, pos_y)
         self._draw_gen_bus(sub_x, sub_y, gen_dir_x, gen_dir_y, gen_bus)
-
-    def update_gen(self, figure:Figure, observation:BaseObservation,
-                   gen_id:int, gen_name:str, gen_bus:int,
-                   gen_value:float, gen_unit:str,
-                   pos_x:int, pos_y:int, sub_x:int, sub_y:int):
-        pass
     
     def _draw_storage_txt(self, pos_x:float, pos_y:float,
                           sub_x:float, sub_y:float, text:str):
@@ -797,7 +738,7 @@ class PlotMatplot(BasePlot):
         self._draw_storage_bus(sub_x, sub_y, storage_dir_x, storage_dir_y, storage_bus)
 
     def _draw_storage_circle(self, pos_x:float, pos_y:float,
-                             stor_edgecolor:object|None):
+                             stor_edgecolor:Union[object,None]):
         patch = self._storage_patch(
             (pos_x, pos_y),
             radius=self.settings.storage.radius,
@@ -828,12 +769,6 @@ class PlotMatplot(BasePlot):
         )
         self.ax.add_patch(patch)
 
-    def update_storage(self, figure:Figure, observation:BaseObservation,
-                       storage_id:int, storage_name:str, storage_bus:int,
-                       storage_value:float, storage_unit:str,
-                       pos_x:int, pos_y:int, sub_x:int, sub_y:int):
-        pass
-
     def _draw_powerline_txt(self, pos_or_x:float, pos_or_y:float,
                             pos_ex_x:float, pos_ex_y:float, text:str):
         pos_x, pos_y = pltu.middle_from_points(pos_or_x, pos_or_y, pos_ex_x, pos_ex_y)
@@ -853,7 +788,7 @@ class PlotMatplot(BasePlot):
 
     def _draw_powerline_line(self, pos_or_x:float, pos_or_y:float,
                              pos_ex_x:float, pos_ex_y:float,
-                             color:object|None, line_style:str):
+                             color:Union[object,None], line_style:str):
         codes = [Path.MOVETO, Path.LINETO]
         verts = [(pos_or_x, pos_or_y), (pos_ex_x, pos_ex_y)]
         path = Path(verts, codes)
@@ -877,7 +812,7 @@ class PlotMatplot(BasePlot):
 
     def _draw_powerline_arrow(self, pos_or_x:float, pos_or_y:float,
                               pos_ex_x:float, pos_ex_y:float,
-                              color:object|None, watt_value:float):
+                              color:Union[object,None], watt_value:float):
         sign = 1.0 if watt_value > 0.0 else -1.0
         off = 1.0 if watt_value > 0.0 else 2.0
         dx, dy = pltu.norm_from_points(pos_or_x, pos_or_y, pos_ex_x, pos_ex_y)
@@ -895,7 +830,7 @@ class PlotMatplot(BasePlot):
         )
         self.ax.add_patch(patch)
 
-    def assign_line_palette(self, color_scheme:Colormap|str|list="YlOrRd", nb_color:int=-1):
+    def assign_line_palette(self, color_scheme:Union[Colormap,str,list]="YlOrRd", nb_color:int=-1):
         """
         Assign a new color palette when you want to plot information on the powerline.
 
@@ -930,8 +865,8 @@ class PlotMatplot(BasePlot):
     def restore_line_settings(self):
         self.settings.line = copy.deepcopy(self.orig_settings.line)
 
-    def assign_gen_palette(self, color_scheme:Colormap|str|list="YlOrRd", nb_color:int=-1,
-                           increase_gen_size:float|None=None, gen_line_width:float|None=None):
+    def assign_gen_palette(self, color_scheme:Union[Colormap,str,list]="YlOrRd", nb_color:int=-1,
+                           increase_gen_size:Union[float,None]=None, gen_line_width:Union[float,None]=None):
         """
         Assign a new color palette when you want to plot information on the generator.
 
@@ -1024,13 +959,6 @@ class PlotMatplot(BasePlot):
                 self._draw_powerline_arrow(
                     pos_or_x, pos_or_y, pos_ex_x, pos_ex_y, color, watt_value
                 )
-    
-    def update_powerline(self, figure:Figure, observation:BaseObservation,
-                         line_id:int, line_name:str, connected:bool,
-                         line_value:float, line_unit:str, 
-                         or_bus:int, pos_or_x:int, pos_or_y:int,
-                         ex_bus:int, pos_ex_x:int, pos_ex_y:int):
-        pass
 
     def _get_gen_legend(self):
         """super complex function to display the proper shape in the legend"""
@@ -1048,7 +976,7 @@ class PlotMatplot(BasePlot):
                     facecolor=settings.face_color,
                     edgecolor=gen_legend_col,
                     transform=handlebox.get_transform(),
-                    numVertices=settings.vertices,
+                    n_vertices=settings.vertices,
                 )
                 handlebox.add_artist(pp_)
                 return pp_
@@ -1077,7 +1005,7 @@ class PlotMatplot(BasePlot):
                     facecolor=settings.face_color,
                     edgecolor=load_legend_col,
                     transform=handlebox.get_transform(),
-                    numVertices=settings.vertices,
+                    n_vertices=settings.vertices,
                 )
                 handlebox.add_artist(pp_)
                 return pp_
@@ -1106,7 +1034,7 @@ class PlotMatplot(BasePlot):
                     facecolor=settings.face_color,
                     edgecolor=storage_legend_col,
                     transform=handlebox.get_transform(),
-                    numVertices=settings.vertices,
+                    n_vertices=settings.vertices,
                 )
                 handlebox.add_artist(pp_)
                 return pp_
@@ -1235,7 +1163,7 @@ class PlotMatplot(BasePlot):
         self.settings.load.display_name = False
         self.assign_gen_palette(
             nb_color=5,
-            palette_name=palette_name,
+            color_scheme=palette_name,
             increase_gen_size=increase_gen_size,
             gen_line_width=gen_line_width,
         )
