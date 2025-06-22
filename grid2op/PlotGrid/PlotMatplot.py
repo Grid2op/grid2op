@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, fields
-from typing import Tuple, Literal, Callable, Union
+from typing import Tuple, Literal, Callable, Union, List
 from matplotlib.colors import Colormap, LinearSegmentedColormap, Normalize, is_color_like, BoundaryNorm
 from matplotlib.figure import Figure
 from matplotlib.path import Path
@@ -208,28 +208,28 @@ class PlotMatplot(BasePlot):
                  # >> Load <<
                  load_radius:int=8, load_name:bool=False,
                  load_id:bool=False, load_vertices:int=3, # No. edges load polygon
-                 load_color_norm:Union[Normalize,list[float]] = None,
+                 load_color_norm:Union[Normalize,List[float]] = None,
                  load_color_attr:Literal["p","v"] = "p",
                  load_color:Union[Colormap,str,list] = "orange",
                  
                  # >> Generator <<
                  gen_radius:int=8, gen_name:bool=False,
                  gen_id:bool=False, gen_vertices:int=5, # No. edges gen polygon
-                 gen_color_norm:Union[Normalize,list[float]] = None,
+                 gen_color_norm:Union[Normalize,List[float]] = None,
                  gen_color_attr:Literal["type", "p", "q", "v"]= "p",
                  gen_color:Union[Colormap,str,list] = "green", 
                  
                  # >> Storage <<
                  storage_radius:int=8, storage_name:bool=False,
                  storage_id:bool=False, storage_vertices:int=4, # No. edges ESS polygon
-                 storage_color_norm:Union[Normalize,list[float]]  = None,
+                 storage_color_norm:Union[Normalize,List[float]]  = None,
                  storage_color_attr:Literal["p", "theta", "charge"] = "p",
                  storage_color:Union[Colormap,str,list] = "purple",
                  
                  # >> Line <<
                  line_name:bool=False, line_id:bool=False,
                  line_width:float=1.0,
-                 line_color_norm:Union[Normalize,list[float]]  = None,
+                 line_color_norm:Union[Normalize,List[float]]  = None,
                  line_color_attr:Literal["rho", "p", "a", "v"]="rho",
                  line_color:Union[Colormap,str,list]=["blue", "orange", "red"], # Cmap name, or list of colours
                  
@@ -339,14 +339,14 @@ class PlotMatplot(BasePlot):
         else:
             return cmap
         
-    def _convert_values_to_norm(self, color_norm:Union[list[float],Normalize,None]) -> Normalize:
+    def _convert_values_to_norm(self, color_norm:Union[List[float],Normalize,None]) -> Normalize:
         """
         Converts a list of floats to a color Normalizer in Matplotlib. If two valeus are provided
         the normalization is done linearly between them. If more are provided, a Discete boundary
         norm is used instead. If the normalization is defined manually, it is used as is.
 
         Args:
-            color_norm (list[float]|Normalize|None): Specific color normalization.
+            color_norm (List[float]|Normalize|None): Specific color normalization.
 
         Returns:
             Normalize: A Matplotlib Normalizer which when called converts a float to its normalized value.
@@ -755,8 +755,8 @@ class PlotMatplot(BasePlot):
         )
         txt_x = pos_x + off_x * (self.settings.load.radius / 2)
         txt_y = pos_y + off_y * (self.settings.load.radius / 2)
-        ha = self._h_textpos_from_dir(off_x, off_y)
-        va = self._v_textpos_from_dir(off_x, off_y)
+        ha = self._h_textpos_from_dir(off_x)
+        va = self._v_textpos_from_dir(off_y)
         self.ax.text(
             txt_x, txt_y, text,
             color=self.settings.gen.txt_color,
