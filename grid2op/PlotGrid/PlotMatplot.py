@@ -549,17 +549,6 @@ class PlotMatplot(BasePlot):
         )
         self.ax.add_patch(patch)
 
-    def _draw_load_bus(self, pos_x:float, pos_y:float,
-                       norm_dir_x:float, norm_dir_y:float, bus_id:int):
-        center_x = pos_x + norm_dir_x * self.settings.sub.radius
-        center_y = pos_y + norm_dir_y * self.settings.sub.radius
-        norm = Normalize(vmin=0, vmax=self.observation_space.n_busbar_per_sub)
-        face_color = self.settings.line.busbar_cmap(norm(bus_id))
-        patch = patches.Circle(
-            (center_x, center_y), radius=self.settings.line.busbar_radius, facecolor=face_color
-        )
-        self.ax.add_patch(patch)
-
     def draw_load(self, figure:Figure, observation:BaseObservation,
                   load_id:int, load_name:str, load_bus:int,
                   load_value:float, load_unit:str,
@@ -591,7 +580,7 @@ class PlotMatplot(BasePlot):
         if self.settings.load.display_name:
             self._draw_load_name(pos_x, pos_y, str(load_id))
         load_dir_x, load_dir_y = pltu.norm_from_points(sub_x, sub_y, pos_x, pos_y)
-        self._draw_load_bus(sub_x, sub_y, load_dir_x, load_dir_y, load_bus)
+        self._draw_busbar(sub_x, sub_y, load_dir_x, load_dir_y, load_bus)
 
     def _draw_gen_txt(self, pos_x:float, pos_y:float,
                       sub_x:float, sub_y:float, text:str):
@@ -599,8 +588,8 @@ class PlotMatplot(BasePlot):
         off_x, off_y = pltu.norm_from_points(sub_x, sub_y, pos_x, pos_y)
         txt_x = pos_x + off_x * self.settings.gen.radius
         txt_y = pos_y + off_y * self.settings.gen.radius
-        ha = self._h_textpos_from_dir(dir_x, dir_y)
-        va = self._v_textpos_from_dir(dir_x, dir_y)
+        ha = self._h_textpos_from_dir(dir_x)
+        va = self._v_textpos_from_dir(dir_y)
         self.ax.text(
             txt_x, txt_y, text,
             color=self.settings.gen.txt_color,
@@ -637,17 +626,6 @@ class PlotMatplot(BasePlot):
             va="center", ha="center",
             fontsize="x-small",
         )
-
-    def _draw_gen_bus(self, pos_x:float, pos_y:float,
-                      norm_dir_x:float, norm_dir_y:float, bus_id:int):
-        center_x = pos_x + norm_dir_x * self.settings.sub.radius
-        center_y = pos_y + norm_dir_y * self.settings.sub.radius
-        norm = Normalize(vmin=0, vmax=self.observation_space.n_busbar_per_sub)
-        face_color = self.settings.line.busbar_cmap(norm(bus_id))
-        patch = patches.Circle(
-            (center_x, center_y), radius=self.settings.line.busbar_radius, facecolor=face_color
-        )
-        self.ax.add_patch(patch)
 
     def draw_gen(self, figure:Figure, observation:BaseObservation,
                  gen_id:int, gen_name:str, gen_bus:int,
@@ -692,7 +670,7 @@ class PlotMatplot(BasePlot):
         if self.settings.gen.display_name:
             self._draw_gen_name(pos_x, pos_y, str(gen_id))
         gen_dir_x, gen_dir_y = pltu.norm_from_points(sub_x, sub_y, pos_x, pos_y)
-        self._draw_gen_bus(sub_x, sub_y, gen_dir_x, gen_dir_y, gen_bus)
+        self._draw_busbar(sub_x, sub_y, gen_dir_x, gen_dir_y, gen_bus)
     
     def _draw_storage_txt(self, pos_x:float, pos_y:float,
                           sub_x:float, sub_y:float, text:str):
@@ -735,7 +713,7 @@ class PlotMatplot(BasePlot):
         if self.settings.storage.display_name:
             self._draw_storage_name(pos_x, pos_y, str(storage_id))
         storage_dir_x, storage_dir_y = pltu.norm_from_points(sub_x, sub_y, pos_x, pos_y)
-        self._draw_storage_bus(sub_x, sub_y, storage_dir_x, storage_dir_y, storage_bus)
+        self._draw_busbar(sub_x, sub_y, storage_dir_x, storage_dir_y, storage_bus)
 
     def _draw_storage_circle(self, pos_x:float, pos_y:float,
                              stor_edgecolor:Union[object,None]):
@@ -757,7 +735,7 @@ class PlotMatplot(BasePlot):
         )
         self.ax.add_patch(patch)
 
-    def _draw_storage_bus(self, pos_x:float, pos_y:float, 
+    def _draw_busbar(self, pos_x:float, pos_y:float, 
                           norm_dir_x:float, norm_dir_y:float, bus_id:int):
         center_x = pos_x + norm_dir_x * self.settings.sub.radius
         center_y = pos_y + norm_dir_y * self.settings.sub.radius
@@ -795,18 +773,6 @@ class PlotMatplot(BasePlot):
         patch = patches.PathPatch(
             path, color=color, ls=line_style,
             lw=self.settings.line.width,
-        )
-        self.ax.add_patch(patch)
-
-    def _draw_powerline_bus(self, pos_x:float, pos_y:float,
-                            norm_dir_x:float, norm_dir_y:float, bus_id:int):
-        center_x = pos_x + norm_dir_x * self.settings.sub.radius
-        center_y = pos_y + norm_dir_y * self.settings.sub.radius
-        norm = Normalize(vmin=0, vmax=self.observation_space.n_busbar_per_sub)
-        face_color = self.settings.line.busbar_cmap(norm(bus_id))
-        patch = patches.Circle(
-            (center_x, center_y), facecolor=face_color,
-            radius=self.settings.line.busbar_radius
         )
         self.ax.add_patch(patch)
 
@@ -949,11 +915,11 @@ class PlotMatplot(BasePlot):
             or_dir_x, or_dir_y = pltu.norm_from_points(
                 pos_or_x, pos_or_y, pos_ex_x, pos_ex_y
             )
-            self._draw_powerline_bus(pos_or_x, pos_or_y, or_dir_x, or_dir_y, or_bus)
+            self._draw_busbar(pos_or_x, pos_or_y, or_dir_x, or_dir_y, or_bus)
             ex_dir_x, ex_dir_y = pltu.norm_from_points(
                 pos_ex_x, pos_ex_y, pos_or_x, pos_or_y
             )
-            self._draw_powerline_bus(pos_ex_x, pos_ex_y, ex_dir_x, ex_dir_y, ex_bus)
+            self._draw_busbar(pos_ex_x, pos_ex_y, ex_dir_x, ex_dir_y, ex_bus)
             watt_value = observation.p_or[line_id]
             if color_value > 0.0 and np.abs(watt_value) >= 1e-7:
                 self._draw_powerline_arrow(
