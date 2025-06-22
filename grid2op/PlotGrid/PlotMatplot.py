@@ -639,7 +639,9 @@ class PlotMatplot(BasePlot):
         color_attr = "" if self.settings.gen.color_attr is None else self.settings.gen.color_attr
 
         if self.settings.gen.color_attr == "prod_p":
-            norm = Normalize(vmin=observation.gen_pmin[gen_id], vmax=observation.gen_pmax[gen_id])
+            vmin = observation.gen_pmin[gen_id] if observation.gen_pmin is not None else None
+            vmax = observation.gen_pmax[gen_id] if observation.gen_pmax is not None else None
+            norm = Normalize(vmin=vmin, vmax=vmax)
             try:
                 color_value = norm(observation.prod_p[gen_id])
             except Exception: # Only static info available, don't show generator output
