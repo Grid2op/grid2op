@@ -41,7 +41,9 @@ DICT_ACT_TYPING = Dict[Literal["set_line_status",
                                "hazards",
                                "maintenance",
                                "shunt",
-                               "detach_load"],
+                               "detach_load",
+                               "detach_gen",
+                               "detach_storage"],
                        Any]
 # TODO improve that (especially the Any part)
 

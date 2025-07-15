@@ -5029,8 +5029,16 @@ class BaseObservation(GridObjects):
                              load_q=load_q,
                              prod_p=prod_p,
                              prod_v=prod_v,
-                             maintenance=maintenance)
+                             maintenance=maintenance,
+                             )
         ch.max_iter = ch.real_data.max_iter
+        
+
+        delta_t_step = datetime.timedelta(minutes=float(self.delta_time))
+        init_dt = self.get_time_stamp() - delta_t_step
+        ch._real_data.start_datetime = init_dt
+        ch._real_data.current_datetime = init_dt
+        ch._real_data.time_interval = delta_t_step
         
         backend = self._obs_env.backend.copy_public()
         backend._is_loaded = True
