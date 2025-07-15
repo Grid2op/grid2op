@@ -5,6 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+import datetime
 import os
 import copy
 import warnings
@@ -413,6 +414,14 @@ class Environment(BaseEnv):
             names_chronics_to_backend = self.backend.names_target_to_source
             
         self.chronics_handler = chronics_handler
+        if self._init_obs is not None:
+            # env init from an observation, I must update date and time
+            # from the chronics handler
+            delta_t_step = datetime.timedelta(minutes=float(self._init_obs.delta_time))
+            init_dt = self._init_obs.get_time_stamp() - delta_t_step
+            self.chronics_handler._real_data.start_datetime = init_dt
+            self.chronics_handler._real_data.current_datetime = init_dt
+            self.chronics_handler._real_data.time_interval = delta_t_step
         self.chronics_handler.initialize(
             self.name_load,
             self.name_gen,
@@ -420,6 +429,7 @@ class Environment(BaseEnv):
             self.name_sub,
             names_chronics_to_backend=names_chronics_to_backend,
         )
+            
         # new in grdi2op 1.10.2: used
         self.chronics_handler.action_space = self._helper_action_env
         self._names_chronics_to_backend = names_chronics_to_backend
@@ -1381,7 +1391,6 @@ class Environment(BaseEnv):
         else:
             # reset previous max iter to value set with `env.set_max_iter(...)` (or -1 by default)
             self.chronics_handler._set_max_iter(self._max_iter)
-            
         self.chronics_handler.next_chronics()
         self.chronics_handler.initialize(
             self.backend.name_load,

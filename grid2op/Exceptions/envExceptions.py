@@ -134,6 +134,7 @@ class SomeGeneratorBelowPmin(EnvError):
     """
     pass
 
+
 class SomeGeneratorAboveRampmax(EnvError):
     """This is a more precise exception saying that, at the end of the simulation, some generator would
     have their production vary too much, which is not possible in practice.
@@ -157,6 +158,16 @@ class SomeGeneratorBelowRampmin(EnvError):
     """
     pass
 
+
+class ImpossibleRedispatching(EnvError):
+    """This is a more precise exception saying that,  the simulation of a step cannot be made because some 
+    generators would break their physical constraints.
+    
+    .. versionadded:: 1.11.1
+    """
+    pass
+    
+    
 # Unknown environment at creation
 class UnknownEnv(Grid2OpException):
     """

@@ -15,7 +15,7 @@ import numpy as np
 STEP_INFO_TYPING = Dict[Literal["disc_lines",
                                 "is_illegal",
                                 "is_ambiguous",
-                                "is_dispatching_illegal",
+                                "failed_redispatching",
                                 "is_illegal_reco",
                                 "reason_alarm_illegal",
                                 "reason_alert_illegal",
@@ -41,7 +41,9 @@ DICT_ACT_TYPING = Dict[Literal["set_line_status",
                                "hazards",
                                "maintenance",
                                "shunt",
-                               "detach_load"],
+                               "detach_load",
+                               "detach_gen",
+                               "detach_storage"],
                        Any]
 # TODO improve that (especially the Any part)
 
