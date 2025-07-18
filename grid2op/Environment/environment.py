@@ -56,19 +56,19 @@ class Environment(BaseEnv):
         The name of the environment
 
     action_space: :class:`grid2op.Action.ActionSpace`
-        Another name for :attr:`Environment.helper_action_player` for gym compatibility.
+        Another name for :attr:`Environment.helper_action_player` for gymnasium compatibility.
 
     observation_space:  :class:`grid2op.Observation.ObservationSpace`
-        Another name for :attr:`Environment.helper_observation` for gym compatibility.
+        Another name for :attr:`Environment.helper_observation` for gymnasium compatibility.
 
     reward_range: ``(float, float)``
         The range of the reward function
 
     metadata: ``dict``
-        For gym compatibility, do not use
+        For gymnasium compatibility, do not use
 
     spec: ``None``
-        For Gym compatibility, do not use
+        For gymansium compatibility, do not use
 
     _viewer: ``object``
         Used to display the powergrid. Currently properly supported.
