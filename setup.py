@@ -42,7 +42,6 @@ pkgs = {
         "optional": [
             "nbformat>=5.0.4",
             "jupyter-client>=6.1.0",
-            "jyquickhelper>=0.3.128",
             "numba>=0.48.0",
             "matplotlib>=3.2.1",
             "plotly>=4.5.4",
