@@ -3,7 +3,7 @@ version: 2.1
 executors:
     grid2op-executor:
         docker:
-            - image: python:3.10
+            - image: python:3.12
         working_directory: /Grid2Op
 
     python37:
@@ -24,6 +24,9 @@ executors:
     python312:
         docker:
             - image: cimg/python:3.12
+    python313:
+        docker:
+            - image: cimg/python:3.13
 
 jobs:
     test:
@@ -253,7 +256,7 @@ jobs:
                    python -m unittest grid2op/tests/test_basic_env_ls.py
 
     test_chronix2grid:               
-        executor: python310  # needs to be 38: whl of lightsim were not released for 3.10 at the time
+        executor: python310
         resource_class: small
         steps:
             - checkout
@@ -266,11 +269,11 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   python -m pip install -U pip setuptools wheel "numpy==1.26.4"
+                   python -m pip install -U pip setuptools wheel
             - run:
                command: |
                    source venv_test/bin/activate
-                   python -m pip install -e .[chronix2grid] "linopy==0.3.8" "scs==3.2.4.post1" "ecos==2.0.13" "pillow==10.3.0" "numpy==1.26.4" "xarray==2024.3.0"
+                   python -m pip install -e .[chronix2grid]
                    pip freeze
             - run:
                 command: |
@@ -414,7 +417,7 @@ jobs:
                    cd /tmp
                    grid2op.testinstall
     install313:
-        executor: python312
+        executor: python313
         resource_class: small
         steps:
             - checkout
