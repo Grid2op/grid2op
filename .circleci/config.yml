@@ -252,8 +252,8 @@ jobs:
         resource_class: small
         steps:
             - checkout
-            - run: apt update
-            - run: apt install -y coinor-cbc
+            - run: sudo apt update
+            - run: sudo apt install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:

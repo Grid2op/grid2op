@@ -191,7 +191,18 @@ class SerializableSpace(GridObjects, RandomObject):
         if actionClass_li[-1] in globals():
             subtype = globals()[actionClass_li[-1]]
         else:
-            base_module = importlib.import_module(".".join(actionClass_li[:-1]))
+            try:
+                base_module = importlib.import_module(".".join(actionClass_li[:-1]))
+            except ModuleNotFoundError:
+                # prior to grid2op 1.6.5 the Observation module was grid2op.Observation.completeObservation.CompleteObservation
+                # after its grid2op.Observation.completeObservation.CompleteObservation
+                # so I try here to make the python file lower case in order to import
+                # the class correctly
+                attempt_cls_li = copy.deepcopy(actionClass_li)
+                attempt_cls_li[2] = (
+                   attempt_cls_li[2][0].lower() + attempt_cls_li[2][1:] 
+                )
+                base_module = importlib.import_module(".".join(attempt_cls_li[:-1]))
             subtype = getattr(base_module, actionClass_li[-1])
             # try:
             #     exec(
