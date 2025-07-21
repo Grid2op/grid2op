@@ -6,7 +6,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import sys
 import setuptools
 from setuptools import setup
 import unittest
@@ -76,7 +75,7 @@ pkgs = {
         ],
         "plot": ["imageio"],
         "test": ["lightsim2grid",
-                 "numba",
+                 "numba; python_version<='3.12'",  # numba not available on python 3.13 yet
                  "gymnasium",
                  "nbconvert",
                  "jinja2"
@@ -90,20 +89,6 @@ pkgs["extras"]["test"] += pkgs["extras"]["optional"]
 pkgs["extras"]["test"] += pkgs["extras"]["plot"]
 pkgs["extras"]["test"] += pkgs["extras"]["gymnasium"]
 
-if sys.version_info.minor <= 7:
-    # typing "Literal" not available on python 3.7
-    pkgs["required"].append("typing_extensions")
-    pkgs["required"][3] = "pandapower>=2.2.2,<2.12"
-    # importlib provided importlib.metadata as of python 3.8
-    pkgs["required"].append("importlib_metadata")
-    
-if sys.version_info.minor == 12:
-    # numba is not available for python 3.12 at the moment
-    pkgs["extras"]["test"] = [el for el in  pkgs["extras"]["test"] if (not ("numba" in el) and 
-                                                                       not ("gym" in el) and 
-                                                                       not ('stable-baselines3' in el)
-                                                                       )
-                              ]
 
 setup(description='An gymnasium compatible environment to model sequential decision making for powersystems',
       long_description=long_description,

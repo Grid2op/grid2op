@@ -106,6 +106,8 @@ Native multi agents support:
   does not have the unclear `is_redispatching_illegal` key. This key has been
   replaced (without any change to its signification) with `failed_redispatching`
 - [FIXED] issue 713
+- [FIXED] pandapower 3 compatibility
+- [ADDED] compatibility with numpy 2, scipy >= 1.14 and python 3.13
 - [IMPROVED] clarity of the `failed_redispatching` key of the `info` returned value
   of the `env.step` function (previously called `is_redispatching_illegal` which 
   was not clear)
