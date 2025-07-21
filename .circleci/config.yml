@@ -14,13 +14,13 @@ executors:
             - image: python:3.8
     python39:
         docker:
-            - image: python:3.9
+            - image: cimg/python:3.9
     python310:
         docker:
-            - image: python:3.10
+            - image: cimg/python:3.10
     python311:
         docker:
-            - image: python:3.11
+            - image: cimg/python:3.11
     python312:
         docker:
             - image: cimg/python:3.12
