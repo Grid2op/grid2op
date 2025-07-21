@@ -111,7 +111,7 @@ Native multi agents support:
 - [IMPROVED] clarity of the `failed_redispatching` key of the `info` returned value
   of the `env.step` function (previously called `is_redispatching_illegal` which 
   was not clear)
-
+- [IMPROVED] way to load back class stored in json format
 
 [1.11.0] - 2025-04-14
 -----------------------
