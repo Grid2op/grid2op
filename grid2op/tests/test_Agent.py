@@ -8,13 +8,14 @@
 
 import time
 import warnings
+import numpy as np
 import pandapower as pp
 import unittest
 
-from grid2op.tests.helper_path_test import *
+from grid2op.tests.helper_path_test import HelperTests
 
 import grid2op
-from grid2op.Exceptions import *
+from grid2op.Exceptions import AgentError
 from grid2op.Agent import (
     PowerLineSwitch,
     TopologyGreedy,
@@ -26,7 +27,7 @@ from grid2op.Parameters import Parameters
 from grid2op.dtypes import dt_float
 from grid2op.Agent import RandomAgent
 
-import pdb
+import pdb  # noqa: F401
 
 DEBUG = False
 
@@ -127,6 +128,8 @@ class TestAgent(HelperTests, unittest.TestCase):
         # switch to using df_float in the reward, change then the results
         expected_reward = dt_float(35147.55859375)  
         expected_reward = dt_float(35147.7685546 / 12.)
+        if self.this_numpy_version >= self.numpy2_version:
+            expected_reward = dt_float(2928.98095703125)  # numpy 2
         assert (
             np.abs(cum_reward - expected_reward) <= self.tol_one
         ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"
@@ -141,6 +144,8 @@ class TestAgent(HelperTests, unittest.TestCase):
         ), "The powerflow diverged before step 6 for powerline switch agent"
         # switch to using df_float in the reward, change then the results
         expected_reward = dt_float(541.0180053710938)
+        if self.this_numpy_version >= self.numpy2_version:
+            expected_reward = dt_float(541.01806640625)  # numpy 2
         assert (
             np.abs(cum_reward - expected_reward) <= self.tol_one
         ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"
@@ -156,6 +161,8 @@ class TestAgent(HelperTests, unittest.TestCase):
         expected_reward = dt_float(12075.389)
         expected_reward = dt_float(12277.632)
         expected_reward = dt_float(12076.35644531 / 12.)
+        if self.this_numpy_version >= self.numpy2_version:
+            expected_reward = dt_float(1006.3493041992188)  # numpy 2
         # 1006.363037109375
         #: Breaking change in 1.10.0: topology are not in the same order
         expected_reward = dt_float(1006.34924)  
@@ -361,10 +368,10 @@ class TestFromList(HelperTests, unittest.TestCase):
             with grid2op.make("rte_case5_example", test=True, param=param, _add_to_name=type(self).__name__) as env:
                 with self.assertRaises(AgentError):
                     # action_list should be an iterable
-                    agent = FromActionsListAgent(env.action_space, action_list=1)
+                    _ = FromActionsListAgent(env.action_space, action_list=1)
                 with self.assertRaises(AgentError):
                     # action_list should contain only actions
-                    agent = FromActionsListAgent(env.action_space, action_list=[1])
+                    _ = FromActionsListAgent(env.action_space, action_list=[1])
 
                 with grid2op.make(
                     "l2rpn_case14_sandbox", test=True, param=param,
@@ -372,7 +379,7 @@ class TestFromList(HelperTests, unittest.TestCase):
                 ) as env2:
                     with self.assertRaises(AgentError):
                         # action_list should contain only actions from a compatible environment
-                        agent = FromActionsListAgent(
+                        _ = FromActionsListAgent(
                             env.action_space,
                             action_list=[
                                 env2.action_space({"set_line_status": [(0, +1)]})
@@ -383,7 +390,7 @@ class TestFromList(HelperTests, unittest.TestCase):
                     "rte_case5_example", test=True, param=param, _add_to_name="toto"
                 ) as env3:
                     # this should work because it's the same underlying grid
-                    agent = FromActionsListAgent(
+                    _ = FromActionsListAgent(
                         env.action_space,
                         action_list=[env3.action_space({"set_line_status": [(0, +1)]})],
                     )

@@ -11,10 +11,11 @@
 # Grid2Op subdirectory
 # Grid2Op/tests subdirectory
 
-import sys
 import os
 import numpy as np
 from pathlib import Path
+from packaging import version
+from importlib.metadata import version as version_metadata
 from abc import ABC, abstractmethod
 import inspect
 from grid2op.dtypes import dt_float
@@ -48,6 +49,8 @@ class HelperTests:
     def setUp(self):
         self.tolvect = dt_float(1e-2)
         self.tol_one = dt_float(1e-5)
+        self.this_numpy_version = version.parse(version_metadata("numpy"))
+        self.numpy2_version = version.parse("2.0.0")
         if hasattr(type(super()), "setUp"):
             # needed for backward compatibility
             super().setUp()
