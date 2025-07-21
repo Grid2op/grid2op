@@ -1496,6 +1496,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
         
         # previous state (complete)
+        n_shunt = bk_type.n_shunt if bk_type.shunts_data_available else 0
         self._previous_conn_state = _EnvPreviousState(bk_type,
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
@@ -1503,9 +1504,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                       np.zeros(bk_type.n_gen, dtype=dt_float),
                                                       np.zeros(bk_type.dim_topo, dtype=dt_int),
                                                       np.zeros(bk_type.n_storage, dtype=dt_float),
-                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
-                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
-                                                      np.zeros(bk_type.n_shunt, dtype=dt_int),
+                                                      np.zeros(n_shunt, dtype=dt_float),
+                                                      np.zeros(n_shunt, dtype=dt_float),
+                                                      np.zeros(n_shunt, dtype=dt_int),
                                                       )
         
         if self._init_obs is None:

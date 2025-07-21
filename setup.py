@@ -23,10 +23,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 pkgs = {
     "required": [
-        "numpy",
         "scipy>=1.4.1",
         "pandas>=1.0.3",
-        "pandapower>=2.2.2,<3",
+        "pandapower>=3.1.1; python_version>='3.9'",
+        "numpy>=2; python_version>='3.9'",
+        "scipy>=1.13; python_version>='3.9'",
         "tqdm>=4.45.0",
         "networkx>=2.4",
         "requests>=2.23.0",
@@ -34,6 +35,9 @@ pkgs = {
         "typing_extensions",
         "orderly_set<5.4.0; python_version<='3.8'",
         "importlib_resources; python_version<='3.8'",
+        "pandapower<3; python_version<='3.8'",
+        "numpy<2; python_version<='3.8'",
+        "scipy<1.14; python_version<='3.8'",
     ],
     "extras": {
         "optional": [
@@ -73,9 +77,7 @@ pkgs = {
         "plot": ["imageio"],
         "test": ["lightsim2grid",
                  "numba",
-                #  "gym>=0.26",
                  "gymnasium",
-                #  "stable-baselines3>=2.0",
                  "nbconvert",
                  "jinja2"
                  ],
