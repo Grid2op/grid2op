@@ -1496,6 +1496,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
         
         # previous state (complete)
+        n_shunt = bk_type.n_shunt if bk_type.shunts_data_available else 0
         self._previous_conn_state = _EnvPreviousState(bk_type,
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
@@ -1503,9 +1504,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                       np.zeros(bk_type.n_gen, dtype=dt_float),
                                                       np.zeros(bk_type.dim_topo, dtype=dt_int),
                                                       np.zeros(bk_type.n_storage, dtype=dt_float),
-                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
-                                                      np.zeros(bk_type.n_shunt, dtype=dt_float),
-                                                      np.zeros(bk_type.n_shunt, dtype=dt_int),
+                                                      np.zeros(n_shunt, dtype=dt_float),
+                                                      np.zeros(n_shunt, dtype=dt_float),
+                                                      np.zeros(n_shunt, dtype=dt_int),
                                                       )
         
         if self._init_obs is None:
@@ -2157,6 +2158,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     def _compute_dispatch_vect(self, already_modified_gen, new_p):        
         except_ = None
         cls = type(self)
+        this_dt_float = float  # to be compliant with scipy 1.16 (removes np.float32)
         # handle the case where there are storage or redispatching
         # action or curtailment action on the "init state"
         # of the grid
@@ -2240,7 +2242,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         already_modified_gen_me = already_modified_gen[gen_participating]
         target_vals_me = target_vals[already_modified_gen_me]
         nb_dispatchable = gen_participating.sum()
-        tmp_zeros = np.zeros((1, nb_dispatchable), dtype=dt_float)
+        tmp_zeros = np.zeros((1, nb_dispatchable), dtype=this_dt_float)
         coeffs = 1.0 / (
             self.gen_max_ramp_up + self.gen_max_ramp_down + self._epsilon_poly
         )
@@ -2256,24 +2258,24 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # to scale the input also:
         # see https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
         scale_x = max(np.max(np.abs(self._actual_dispatch)), 1.0)
-        scale_x = dt_float(scale_x)
+        scale_x = this_dt_float(scale_x)
         target_vals_me_optim = 1.0 * (target_vals_me / scale_x)
-        target_vals_me_optim = target_vals_me_optim.astype(dt_float)
+        target_vals_me_optim = target_vals_me_optim.astype(this_dt_float)
 
         # see https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
         # where they advised to scale the function
         scale_objective = max(0.5 * np.abs(target_vals_me_optim).sum() ** 2, 1.0)
         scale_objective = np.round(scale_objective, decimals=4)
-        scale_objective = dt_float(scale_objective)
+        scale_objective = this_dt_float(scale_objective)
 
         # add the "sum to 0"
-        mat_sum_0_no_turn_on = np.ones((1, nb_dispatchable), dtype=dt_float)
+        mat_sum_0_no_turn_on = np.ones((1, nb_dispatchable), dtype=this_dt_float)
         # this is where the storage is taken into account
         # storages are "load convention" this means that i need to sum the amount of production to sum of storage
         # hence the "+ self._amount_storage" below
         # self._sum_curtailment_mw is "generator convention" hence the "-" there
         const_sum_0_no_turn_on = (
-            np.zeros(1, dtype=dt_float)
+            np.zeros(1, dtype=this_dt_float)
             + self._amount_storage
             - self._sum_curtailment_mw
             + self._detached_elements_mw
@@ -2292,7 +2294,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         )
         ## take max of the 2
         min_disp = np.maximum(p_min_const, ramp_down_const)
-        min_disp = min_disp.astype(dt_float)
+        min_disp = min_disp.astype(this_dt_float)
 
         # maximum value available for disp
         ## first limit delta because of pmin
@@ -2304,7 +2306,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         )
         ## take min of the 2
         max_disp = np.minimum(p_max_const, ramp_up_const)
-        max_disp = max_disp.astype(dt_float)
+        max_disp = max_disp.astype(this_dt_float)
 
         # add everything into a linear constraint object
         # equality
@@ -2324,7 +2326,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # choose a good initial point (close to the solution)
         # the idea here is to chose a initial point that would be close to the
         # desired solution (split the (sum of the) dispatch to the available generators)
-        x0 = np.zeros(gen_participating.sum())
+        x0 = np.zeros(gen_participating.sum(), dtype=this_dt_float)
         if (np.abs(self._target_dispatch) >= 1e-7).any() or already_modified_gen.any():
             gen_for_x0 = np.abs(self._target_dispatch[gen_participating]) >= 1e-7
             gen_for_x0 |= already_modified_gen[gen_participating]
@@ -2368,7 +2370,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 * (actual_dispatchable[already_modified_gen_me] - target_vals_me_optim)
             )
             res_jac /= scale_objective  # scaling the function
-            return res_jac
+            return res_jac.reshape(-1)
 
         # objective function
         def f(init):
@@ -2378,8 +2380,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 method="SLSQP",
                 constraints=[equality_const, ineq_const],
                 options={
-                    "eps": max(self._epsilon_poly / scale_x, 1e-6),
-                    "ftol": max(self._epsilon_poly / scale_x, 1e-6),
+                    "eps": max(this_dt_float(self._epsilon_poly / scale_x), 1e-6),
+                    "ftol": max(this_dt_float(self._epsilon_poly / scale_x), 1e-6),
                     "disp": False,
                 },
                 jac=jac

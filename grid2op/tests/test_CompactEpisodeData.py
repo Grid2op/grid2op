@@ -6,19 +6,23 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from importlib.metadata import version as version_metadata
+from packaging import version
+import os
 import tempfile
 import warnings
 import pdb
 import unittest
+import numpy as np
 
 import grid2op
-from grid2op.Agent import DoNothingAgent, OneChangeThenNothing
-from grid2op.tests.helper_path_test import *
+from grid2op.Agent import OneChangeThenNothing
+from grid2op.tests.helper_path_test import PATH_CHRONICS, PATH_DATA_TEST_PP
 from grid2op.Chronics import Multifolder
 from grid2op.Reward import L2RPNReward
 from grid2op.Backend import PandaPowerBackend
 from grid2op.Runner import Runner
-from grid2op.Episode import CompactEpisodeData, EpisodeData
+from grid2op.Episode import CompactEpisodeData
 from grid2op.dtypes import dt_float
 from grid2op.Agent import BaseAgent
 from grid2op.Action import TopologyAction
@@ -42,7 +46,12 @@ class TestCompactEpisodeData(unittest.TestCase):
         self.tolvect = dt_float(1e-2)
         self.tol_one = dt_float(1e-5)
         self.max_iter = 10
+        self.this_numpy_version = version.parse(version_metadata("numpy"))
+        self.numpy2_version = version.parse("2.0.0")
         self.real_reward = dt_float(179.99818)
+        if self.this_numpy_version >= self.numpy2_version:
+            self.real_reward = dt_float(179.998193740)  # numpy 2
+        
 
         self.init_grid_path = os.path.join(PATH_DATA_TEST_PP, "test_case14.json")
         self.path_chron = PATH_ADN_CHRONICS_FOLDER
@@ -208,7 +217,7 @@ class TestCompactEpisodeData(unittest.TestCase):
         for i, episode_name, cum_reward, timestep, total_ts in res:
             episode_data = CompactEpisodeData.from_disk(path=f, ep_id=episode_name)
             assert int(episode_data.meta["chronics_max_timestep"]) == self.max_iter
-            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one
+            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one, f"{episode_data.meta["cumulative_reward"]} vs {self.real_reward}"
 
     def test_3_episode_3process_with_saving(self):
         f = tempfile.mkdtemp()
@@ -220,7 +229,7 @@ class TestCompactEpisodeData(unittest.TestCase):
         for i, episode_name, cum_reward, timestep, total_ts in res:
             episode_data = CompactEpisodeData.from_disk(path=f, ep_id=episode_name)
             assert int(episode_data.meta["chronics_max_timestep"]) == self.max_iter
-            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one
+            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one, f"{episode_data.meta["cumulative_reward"]} vs {self.real_reward}"
 
     def test_with_opponent(self):
         init_budget = 1000

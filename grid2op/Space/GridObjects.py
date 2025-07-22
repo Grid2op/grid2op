@@ -23,7 +23,6 @@ import os
 import numpy as np
 import sys
 
-import importlib.metadata
 from packaging import version
 from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
     
@@ -2943,6 +2942,10 @@ class GridObjects:
         if cls_res._CLS_DICT is None:
             tmp = {}
             cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
+
+        cls_res._compute_pos_big_topo_cls()
+        cls_res.process_shunt_static_data()
+        cls_res.process_detachment()
         return cls_res
     
     @classmethod

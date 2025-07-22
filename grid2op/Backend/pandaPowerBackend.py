@@ -32,7 +32,7 @@ PP_CREATE_BUS_BUG = version.parse("3.0.0")
 
 
 try:
-    import numba
+    import numba  # type: ignore # noqa: F401
     NUMBA_ = True
 except (ImportError, ModuleNotFoundError):
     NUMBA_ = False
@@ -357,7 +357,7 @@ class PandaPowerBackend(Backend):
             warnings.filterwarnings("ignore", category=FutureWarning)
             self._grid = pp.from_json(full_path)
         self._check_for_non_modeled_elements()
-
+            
         # add the slack bus that is often not modeled as a generator, but i need it for this backend to work
         bus_gen_added = None
         i_ref = None
@@ -367,7 +367,7 @@ class PandaPowerBackend(Backend):
         self._aux_run_pf_init()  # run an intiail powerflow, just in case
         
         new_pp_version = False
-        if not "slack_weight" in self._grid.gen:
+        if "slack_weight" not in self._grid.gen:
             self._grid.gen["slack_weight"] = 1.0
         else:
             new_pp_version = True
@@ -1072,7 +1072,7 @@ class PandaPowerBackend(Backend):
                 raise pp.powerflow.LoadflowNotConverged(f"Surprising behaviour of pandapower when a bus is not connected to "
                                                         f"anything but present on the bus (with check_connectivity=False). "
                                                         f"Error was {exc_}"
-                                                        )
+                                                        ) from exc_
                     
             # stores the computation time
             if "_ppc" in self._grid:

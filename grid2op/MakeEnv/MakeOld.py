@@ -8,14 +8,11 @@
 
 import os
 import warnings
-import pkg_resources
-
 from grid2op.Environment import Environment
 from grid2op.Backend import Backend, PandaPowerBackend
 from grid2op.Parameters import Parameters
 from grid2op.Chronics import ChronicsHandler, Multifolder, ChangeNothing
 from grid2op.Chronics import (
-    GridStateFromFile,
     GridStateFromFileWithForecasts,
     GridValue,
 )
@@ -59,9 +56,8 @@ from grid2op.Chronics.Settings_case14_realistic import (
     case14_real_TH_LIM,
 )
 from grid2op.MakeEnv.get_default_aux import _get_default_aux
+from grid2op.MakeEnv._aux_var import DEV_DATA_FOLDER as data_folder
 
-
-data_folder = pkg_resources.resource_filename("grid2op", "data")
 CASE_14_FILE = os.path.abspath(
     os.path.join(data_folder, "rte_case14_redisp", "grid.json")
 )
