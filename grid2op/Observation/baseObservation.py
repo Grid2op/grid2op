@@ -1223,7 +1223,6 @@ class BaseObservation(GridObjects):
                     except ValueError:
                         pass
             cls.attr_list_set = set(cls.attr_list_vect)
-        else:
             cls.attr_vect_cpy += ["_shunt_bus", "_shunt_v", "_shunt_q", "_shunt_p"]
         return super().process_shunt_static_data()
     
