@@ -813,7 +813,10 @@ class BaseObservation(GridObjects):
             setattr(other, attr_nm, copy.deepcopy(getattr(self, attr_nm)))
 
         for attr_nm in cls.attr_vect_cpy:
-            getattr(other, attr_nm)[:] = getattr(self, attr_nm)
+            if hasattr(self, attr_nm):
+                # for old code (eg lightsim2grid legacy)
+                # some attribute did not exist
+                getattr(other, attr_nm)[:] = getattr(self, attr_nm)
 
     def change_reward(self, reward_func: "grid2op.Reward.BaseReward"):
         """Allow to change the reward used when calling :func:`BaseObservation.simulate`
@@ -1211,19 +1214,27 @@ class BaseObservation(GridObjects):
     
     @classmethod
     def process_shunt_static_data(cls) -> None:
+        shunts_attr = ["_shunt_p", "_shunt_q", "_shunt_v", "_shunt_bus"]
         if not cls.shunts_data_available:
+            # shunts are not available
             # this is really important, otherwise things from grid2op base types will be affected
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
             cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
             # remove the shunts from the list to vector
-            for el in ["_shunt_p", "_shunt_q", "_shunt_v", "_shunt_bus"]:
+            for el in shunts_attr:
                 if el in cls.attr_list_vect:
                     try:
                         cls.attr_list_vect.remove(el)
                     except ValueError:
                         pass
             cls.attr_list_set = set(cls.attr_list_vect)
-            cls.attr_vect_cpy += ["_shunt_bus", "_shunt_v", "_shunt_q", "_shunt_p"]
+        else:
+            # shunts are available
+            cls.attr_vect_cpy = copy.deepcopy(cls.attr_vect_cpy)
+            for el in shunts_attr:
+                if el not in cls.attr_vect_cpy:
+                    cls.attr_vect_cpy.append(el)
+                    
         return super().process_shunt_static_data()
     
     @classmethod
