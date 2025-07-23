@@ -115,7 +115,7 @@ Its main features are:
 * can adopt any powergrid modeling, especially Alternating Current (AC) and Direct Current (DC) approximation to
   when performing the compitations
 * supports changes of powerflow solvers, actions, observations to better suit any need in performing power system operations modeling
-* has an RL-focused interface, compatible with [OpenAI-gym](https://gym.openai.com/): same interface for the
+* has an RL-focused interface, compatible with [gymnasium](https://gymnasium.farama.org/index.html): same interface for the
   Environment class.
 * parameters, game rules or type of actions are perfectly parametrizable
 * can adapt to any kind of input data, in various format (might require the rewriting of a class)
@@ -306,11 +306,12 @@ The unit tests includes testing, on linux machines the correct integration of gr
 * python 3.10
 * python 3.11
 * python 3.12
+* python 3.13
 
-On all of these cases, we tested grid2op on all available numpy versions >= 1.20 (**nb** available numpy versions depend
+On all of these cases, we tested grid2op on all available numpy versions >= 2.0 (**nb** available numpy versions depend
 on python version).
 
-The complete test suit is run on linux with the latest numpy version on python 3.10.
+The complete test suit is run on linux with the latest numpy version on python 3.12.
 
 ### Known issues
 
