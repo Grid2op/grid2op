@@ -206,10 +206,10 @@ jobs:
             name: darwin,
             os: macos-latest,
           }
-          # - {
-          #   name: windows,
-          #   os: windows-2022,
-          # }
+          - {
+            name: windows,
+            os: windows-2022,
+          }
           - { 
             name: ubuntu,
             os: ubuntu-latest,

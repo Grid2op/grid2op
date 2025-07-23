@@ -15,7 +15,6 @@ import importlib
 import numpy as np
 from gymnasium.vector import AsyncVectorEnv
 
-
 import grid2op
 from grid2op._glop_platform_info import _IS_WINDOWS
 from grid2op.Runner import Runner
@@ -615,6 +614,7 @@ class GymEnvAutoClassTester(unittest.TestCase):
         
     def test_asynch_spawn(self):
         # test I can reset everything on the same process
+        # python -m unittest grid2op.tests.automatic_classes.GymEnvAutoClassTester.test_asynch_spawn
         env1 = GymEnv(self.env)
         env2 = GymEnv(self.env)
         obs1, info1 = env1.reset()

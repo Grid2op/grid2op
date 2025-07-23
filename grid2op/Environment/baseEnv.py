@@ -20,8 +20,9 @@ import sys
 import warnings
 import numpy as np
 from scipy.optimize import (minimize, LinearConstraint)
-
 from abc import ABC, abstractmethod
+
+from grid2op._glop_platform_info import _IS_WINDOWS
 from grid2op.Environment._env_prev_state import _EnvPreviousState
 from grid2op.Observation import (BaseObservation,
                                  ObservationSpace,
@@ -4117,14 +4118,25 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._aux_close_local_dir_cls()
         
     def _aux_close_local_dir_cls(self):
-        if self._local_dir_cls is not None:
-            # I am the "keeper" of the temporary directory
-            # deleting this env should also delete the temporary directory
-            if not (hasattr(self._local_dir_cls, "_RUNNER_DO_NOT_ERASE") and not self._local_dir_cls._RUNNER_DO_NOT_ERASE):
-                # BUT if a runner uses it, then I should not delete it !
-                self._local_dir_cls.cleanup()
-                self._local_dir_cls = None
-                # In this case it's likely that the OS will clean it for grid2op with a warning...
+        if self._local_dir_cls is None:
+            return
+        # I am the "keeper" of the temporary directory
+        # deleting this env should also delete the temporary directory
+        if not (hasattr(self._local_dir_cls, "_RUNNER_DO_NOT_ERASE") and not self._local_dir_cls._RUNNER_DO_NOT_ERASE):
+            # BUT if a runner uses it, then I should not delete it !
+            self._local_dir_cls.cleanup()
+            self._local_dir_cls = None
+            # In this case it's likely that the OS will clean it for grid2op with a warning...
+        
+        # clear all imported modules (required for windows)
+        # otherwise it tries to import the classes when processes are spawned
+        # even the classes that have been "cleaned"
+        if _IS_WINDOWS and type(self)._PATH_GRID_CLASSES is not None:
+            # TODO find a better way here
+            module_name = os.path.split(type(self)._PATH_GRID_CLASSES)[-1]
+            for el in sys.modules.copy():
+                if module_name in el:
+                    del sys.modules[el]
                 
     def attach_layout(self, grid_layout):
         """
