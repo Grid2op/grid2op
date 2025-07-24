@@ -39,14 +39,15 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   pip install -U pip setuptools wheel
+                   pip install -U pip setuptools wheel coverage
             - run:
                 command: |
                   source venv_test/bin/activate
                   pip install -e .[test]
                   export _GRID2OP_FORCE_TEST=1
                   cd grid2op/tests/
-                  python3 helper_list_test.py | circleci tests split > /tmp/tests_run
+                  python3 helper_list_test.py > li_test
+                  cat li_test | circleci tests split > /tmp/tests_run
             - run:
                 command: |
                   source venv_test/bin/activate
@@ -57,8 +58,42 @@ jobs:
                   source venv_test/bin/activate
                   cd grid2op/tests/
                   export _GRID2OP_FORCE_TEST=1
-                  python3 -m unittest -v $(cat /tmp/tests_run)
-                  
+                  coverage run -m unittest -v $(cat /tmp/tests_run)
+                #   ls -lah | grep .coverage
+            # - run:
+            #     command: |
+            #       ls -lah /Grid2Op/grid2op/tests/.coverage.*
+
+            # - store_artifacts:
+            #     path: "/Grid2Op/grid2op/tests/test_Action.py"
+            #     destination: coverage_artifacts/
+
+    gen_coverage:
+        executor: grid2op-executor
+        resource_class: small
+        steps:
+            - checkout
+            - run: python -m pip install virtualenv
+            - run: python -m virtualenv venv_test
+            - run:
+               command: |
+                   source venv_test/bin/activate
+                   pip install -U pip setuptools wheel coverage
+            - run:
+               command: |
+                   source venv_test/bin/activate
+                   cd grid2op/tests/
+                   coverage combine ../../coverage_artifacts/ --keep
+                   coverage report -m -i
+                   coverage html -i
+                   coverage xml -i
+            - store_artifacts:
+                path: grid2op/tests/htmlcov
+                destination: htmlcov
+            - store_artifacts:
+                path: grid2op/tests/coverage.xml
+                destination: coverage.xml
+            
     install36:
         executor: python36
         resource_class: small
@@ -403,3 +438,19 @@ workflows:
           - install310
           - install311
           - install312
+
+    # gather_test_report:
+    #     requires:
+    #         - test
+    #     jobs:
+    #         - gen_coverage
+
+    # send_tests_report:
+    #     requires:
+    #         - gather_test_report
+    #     orbs:
+    #         coverage-reporter: codacy/coverage-reporter@14.1.0
+    #     jobs:
+    #         coverage-reporter/send_report:
+    #             coverage-reports: coverage.xml
+    #             project-token: $CODACY_PROJECT_TOKEN

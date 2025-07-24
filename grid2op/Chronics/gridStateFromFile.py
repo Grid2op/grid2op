@@ -272,17 +272,15 @@ class GridStateFromFile(GridValue):
     def _init_date_time(self):
         if os.path.exists(os.path.join(self.path, "start_datetime.info")):
             with open(os.path.join(self.path, "start_datetime.info"), "r") as f:
-                a = f.read().rstrip().lstrip()
+                str_ = f.read().rstrip().lstrip()
             try:
-                tmp = datetime.strptime(a, "%Y-%m-%d %H:%M")
-            except ValueError:
-                tmp = datetime.strptime(a, "%Y-%m-%d")
-            except Exception:
+                tmp = self._datetime_from_str(str_)
+            except Exception as exc_:
                 raise ChronicsNotFoundError(
                     'Impossible to understand the content of "start_datetime.info". Make sure '
                     'it\'s composed of only one line with a datetime in the "%Y-%m-%d %H:%M"'
                     "format."
-                )
+                ) from exc_
             self.start_datetime = tmp
             self.current_datetime = tmp
 
@@ -880,7 +878,7 @@ class GridStateFromFile(GridValue):
             hazard_duration = 1 * self.hazard_duration[self.current_index, :]
         else:
             hazard_duration = np.full(self.n_line, fill_value=-1, dtype=dt_int)
-
+            
         self.current_datetime += self.time_interval
         self.curr_iter += 1
         return (

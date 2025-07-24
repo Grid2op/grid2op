@@ -10,6 +10,7 @@ import os
 import time
 import copy
 import importlib.util
+from typing import Dict, Tuple, Type, Union, Optional
 import numpy as np
 import json
 import warnings
@@ -24,7 +25,9 @@ from grid2op.Chronics import (ChronicsHandler,
                               FromNPY,
                               FromChronix2grid,
                               GridStateFromFile,
+                              FromHandlers,
                               GridValue)
+from grid2op.Space import GRID2OP_CLASSES_ENV_FOLDER
 from grid2op.Action import BaseAction, DontAct
 from grid2op.Exceptions import EnvError
 from grid2op.Observation import CompleteObservation, BaseObservation
@@ -33,6 +36,8 @@ from grid2op.Rules import BaseRules, DefaultRules
 from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.Opponent import BaseOpponent, BaseActionBudget, NeverAttackBudget
 from grid2op.operator_attention import LinearAttentionBudget
+from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.typing_variables import DICT_CONFIG_TYPING
 
 from grid2op.MakeEnv.get_default_aux import _get_default_aux
 from grid2op.MakeEnv.PathUtils import _aux_fix_backend_internal_classes
@@ -126,7 +131,9 @@ def make_from_dataset_path(
     dataset_path="/",
     logger=None,
     experimental_read_from_local_dir=False,
-    n_busbar=2,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
+    _add_cls_nm_bk=True,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -139,6 +146,11 @@ def make_from_dataset_path(
 
         Prefer using the :func:`grid2op.make` function.
 
+
+    .. danger::
+        The :func:`grid2op.make` function can execute arbitrary code. Do not attempt
+        to "make" an environment for which you don't trust (or even know) the authors.
+        
 
     This function is a shortcut to rapidly create environments within the grid2op Framework. We don't
     recommend using directly this function. Prefer using the :func:`make` function.
@@ -165,6 +177,9 @@ def make_from_dataset_path(
 
     n_busbar: ``int``
         Number of independant busbars allowed per substations. By default it's 2.
+
+    allow_detachment; ``bool``
+        Whether to allow loads/generators to be detached without a game over. By default False.
         
     action_class: ``type``, optional
         Type of BaseAction the BaseAgent will be able to perform.
@@ -282,13 +297,13 @@ def make_from_dataset_path(
     """    
     # Compute and find root folder
     _check_path(dataset_path, "Dataset root directory")
-    dataset_path_abs = os.path.abspath(dataset_path)
+    dataset_path_abs : str = os.path.abspath(dataset_path)
 
     # Compute env name from directory name
-    name_env = os.path.split(dataset_path_abs)[1]
+    name_env : str = os.path.split(dataset_path_abs)[1]
  
     # Compute and find chronics folder
-    chronics_path = _get_default_aux(
+    chronics_path : str = _get_default_aux(
         "chronics_path",
         kwargs,
         defaultClassApp=str,
@@ -310,7 +325,7 @@ def make_from_dataset_path(
         exc_chronics = exc_
 
     # Compute and find grid layout file
-    grid_layout_path_abs = os.path.abspath(
+    grid_layout_path_abs : str = os.path.abspath(
         os.path.join(dataset_path_abs, NAME_GRID_LAYOUT_FILE)
     )
     try:
@@ -333,18 +348,18 @@ def make_from_dataset_path(
         spec = importlib.util.spec_from_file_location("config.config", config_path_abs)
         config_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(config_module)
-        config_data = config_module.config
+        config_data : DICT_CONFIG_TYPING = config_module.config
     except Exception as exc_:
         print(exc_)
         raise EnvError(
             "Invalid dataset config file: {}".format(config_path_abs)
-        ) from None
+        ) from exc_
 
     # Get graph layout
     graph_layout = None
     try:
         with open(grid_layout_path_abs) as layout_fp:
-            graph_layout = json.load(layout_fp)
+            graph_layout : Dict[str, Tuple[float, float]]= json.load(layout_fp)
     except Exception as exc_:
         warnings.warn(
             "Dataset {} doesn't have a valid graph layout. Expect some failures when attempting "
@@ -354,7 +369,7 @@ def make_from_dataset_path(
     # Get thermal limits
     thermal_limits = None
     if "thermal_limits" in config_data:
-        thermal_limits = config_data["thermal_limits"]
+        thermal_limits : Union[np.ndarray, Dict[str, float]]= config_data["thermal_limits"]
 
     # Get chronics_to_backend
     name_converter = None
@@ -378,9 +393,9 @@ def make_from_dataset_path(
     # Get default backend class
     backend_class_cfg = PandaPowerBackend
     if "backend_class" in config_data and config_data["backend_class"] is not None:
-        backend_class_cfg = config_data["backend_class"]
+        backend_class_cfg : Type[Backend] = config_data["backend_class"]
     ## Create the backend, to compute the powerflow
-    backend = _get_default_aux(
+    backend : Backend = _get_default_aux(
         "backend",
         kwargs,
         defaultClass=backend_class_cfg,
@@ -389,7 +404,7 @@ def make_from_dataset_path(
     )
 
     # Compute and find backend/grid file
-    grid_path = _get_default_aux(
+    grid_path : str = _get_default_aux(
         "grid_path",
         kwargs,
         defaultClassApp=str,
@@ -419,9 +434,9 @@ def make_from_dataset_path(
         "observation_class" in config_data
         and config_data["observation_class"] is not None
     ):
-        observation_class_cfg = config_data["observation_class"]
+        observation_class_cfg : Type[BaseObservation] = config_data["observation_class"]
     ## Setup the type of observation the agent will receive
-    observation_class = _get_default_aux(
+    observation_class : Type[BaseObservation] = _get_default_aux(
         "observation_class",
         kwargs,
         defaultClass=observation_class_cfg,
@@ -433,7 +448,7 @@ def make_from_dataset_path(
     ## Create the parameters of the game, thermal limits threshold,
     # simulate cascading failure, powerflow mode etc. (the gamification of the game)
     if "param" in kwargs:
-        param = _get_default_aux(
+        param : Parameters = _get_default_aux(
             "param",
             kwargs,
             defaultClass=Parameters,
@@ -493,12 +508,12 @@ def make_from_dataset_path(
     if "rules_class" in config_data and config_data["rules_class"] is not None:
         warnings.warn("You used the deprecated rules_class in your config. Please change its "
                       "name to 'gamerules_class' to mimic the grid2op.make kwargs.")
-        rules_class_cfg = config_data["rules_class"]
+        rules_class_cfg : Type[BaseRules] = config_data["rules_class"]
     if "gamerules_class" in config_data and config_data["gamerules_class"] is not None:
-        rules_class_cfg = config_data["gamerules_class"]
+        rules_class_cfg : Type[BaseRules] = config_data["gamerules_class"]
         
     ## Create the rules of the game (mimic the operationnal constraints)
-    gamerules_class = _get_default_aux(
+    gamerules_class : Type[BaseRules] = _get_default_aux(
         "gamerules_class",
         kwargs,
         defaultClass=rules_class_cfg,
@@ -510,10 +525,10 @@ def make_from_dataset_path(
     # Get default reward class
     reward_class_cfg = L2RPNReward
     if "reward_class" in config_data and config_data["reward_class"] is not None:
-        reward_class_cfg = config_data["reward_class"]
+        reward_class_cfg : Type[BaseReward] = config_data["reward_class"]
 
     ## Setup the reward the agent will receive
-    reward_class = _get_default_aux(
+    reward_class : Type[BaseReward] = _get_default_aux(
         "reward_class",
         kwargs,
         defaultClass=reward_class_cfg,
@@ -554,7 +569,6 @@ def make_from_dataset_path(
     chronics_class_cfg = ChangeNothing
     if "chronics_class" in config_data and config_data["chronics_class"] is not None:
         chronics_class_cfg = config_data["chronics_class"]
-        
     # Get default Grid class
     grid_value_class_cfg = GridStateFromFile
     if (
@@ -601,7 +615,9 @@ def make_from_dataset_path(
     if (
         ((chronics_class_used != ChangeNothing) and 
          (chronics_class_used != FromNPY) and 
-         (chronics_class_used != FromChronix2grid))
+         (chronics_class_used != FromChronix2grid) and
+         (chronics_class_used != FromHandlers)
+         )
     ) and exc_chronics is not None:
         raise EnvError(
             f"Impossible to find the chronics for your environment. Please make sure to provide "
@@ -886,130 +902,36 @@ def make_from_dataset_path(
         classes_in_file_kwargs = bool(kwargs["class_in_file"])
         use_class_in_files = classes_in_file_kwargs
         
-    if use_class_in_files:
-        # new behaviour
-        sys_path = os.path.join(os.path.split(grid_path_abs)[0], "_grid2op_classes")
-        if not os.path.exists(sys_path):
-            try:
-                os.mkdir(sys_path)
-            except FileExistsError:
-                # if another process created it, no problem
-                pass
-        init_nm = os.path.join(sys_path, "__init__.py")
-        if not os.path.exists(init_nm):
-            try:
-                with open(init_nm, "w", encoding="utf-8") as f:
-                    f.write("This file has been created by grid2op in a `env.make(...)` call. Do not modify it or remove it")
-            except FileExistsError:
-                pass
-            
-        import tempfile
-        this_local_dir = tempfile.TemporaryDirectory(dir=sys_path)
+    # new in 1.11.0:
+    if _add_cls_nm_bk:
+        _add_to_name = backend.get_class_added_name() + _add_to_name
+    do_not_erase_cls : Optional[bool] = None
+    
+    # new in 1.11.0
+    if _overload_name_multimix is not None:
+        # this is a multimix
+        # AND this is the first mix of a multi mix
+        # I change the env name to add the "add_to_name"
         
-        if experimental_read_from_local_dir:
-            warnings.warn("With the automatic class generation, we removed the possibility to "
-                          "set `experimental_read_from_local_dir` to True.")
-            experimental_read_from_local_dir = False
-        # TODO: check the hash thingy is working in baseEnv._aux_gen_classes (currently a pdb)
-        
-        # TODO check that it works if the backend changes, if shunt / no_shunt if name of env changes etc.
-        
-        # TODO: what if it cannot write on disk => fallback to previous behaviour
-        data_feeding_fake = copy.deepcopy(data_feeding)
-        data_feeding_fake.cleanup_action_space()
-        
-        # Set graph layout if not None and not an empty dict
-        if graph_layout is not None and graph_layout:
-            type(backend).attach_layout(graph_layout)
-            
-        if not os.path.exists(this_local_dir.name):
-            raise EnvError(f"Path {this_local_dir.name} has not been created by the tempfile package")
-        init_env = Environment(init_env_path=os.path.abspath(dataset_path),
-                                init_grid_path=grid_path_abs,
-                                chronics_handler=data_feeding_fake,
-                                backend=backend,
-                                parameters=param,
-                                name=name_env + _add_to_name,
-                                names_chronics_to_backend=names_chronics_to_backend,
-                                actionClass=action_class,
-                                observationClass=observation_class,
-                                rewardClass=reward_class,
-                                legalActClass=gamerules_class,
-                                voltagecontrolerClass=volagecontroler_class,
-                                other_rewards=other_rewards,
-                                opponent_space_type=opponent_space_type,
-                                opponent_action_class=opponent_action_class,
-                                opponent_class=opponent_class,
-                                opponent_init_budget=opponent_init_budget,
-                                opponent_attack_duration=opponent_attack_duration,
-                                opponent_attack_cooldown=opponent_attack_cooldown,
-                                opponent_budget_per_ts=opponent_budget_per_ts,
-                                opponent_budget_class=opponent_budget_class,
-                                kwargs_opponent=kwargs_opponent,
-                                has_attention_budget=has_attention_budget,
-                                attention_budget_cls=attention_budget_class,
-                                kwargs_attention_budget=kwargs_attention_budget,
-                                logger=logger,
-                                n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
-                                _compat_glop_version=_compat_glop_version,
-                                _read_from_local_dir=None,  # first environment to generate the classes and save them
-                                _local_dir_cls=None,
-                                _overload_name_multimix=_overload_name_multimix,
-                                kwargs_observation=kwargs_observation,
-                                observation_bk_class=observation_backend_class,
-                                observation_bk_kwargs=observation_backend_kwargs
-                                )   
-        if not os.path.exists(this_local_dir.name):
-            raise EnvError(f"Path {this_local_dir.name} has not been created by the tempfile package")
-        init_env.generate_classes(local_dir_id=this_local_dir.name)
-        # fix `my_bk_act_class` and `_complete_action_class`
-        _aux_fix_backend_internal_classes(type(backend), this_local_dir)
-        init_env.backend = None  # to avoid to close the backend when init_env is deleted
-        init_env._local_dir_cls = None
-        classes_path = this_local_dir.name
-        allow_loaded_backend = True
-    else:
-        # legacy behaviour (<= 1.10.1 behaviour)
-        classes_path = None if not experimental_read_from_local_dir else experimental_read_from_local_dir
-        if experimental_read_from_local_dir:
-            if _overload_name_multimix is not None:
-                # I am in a multimix
-                if _overload_name_multimix[0] is None:
-                    # first mix: path is correct
-                    sys_path = os.path.join(os.path.split(grid_path_abs)[0], "_grid2op_classes")
-                else:
-                    # other mixes I need to retrieve the properties of the first mix
-                    sys_path = _overload_name_multimix[0]
-            else:
-                # I am not in a multimix
-                sys_path = os.path.join(os.path.split(grid_path_abs)[0], "_grid2op_classes")
-            if not os.path.exists(sys_path):
-                raise RuntimeError(
-                    "Attempting to load the grid classes from the env path. Yet the directory "
-                    "where they should be placed does not exists. Did you call `env.generate_classes()` "
-                    "BEFORE creating an environment with `experimental_read_from_local_dir=True` ?"
-                )
-            if not os.path.isdir(sys_path) or not os.path.exists(
-                os.path.join(sys_path, "__init__.py")
-            ):
-                raise RuntimeError(
-                    f"Impossible to load the classes from the env path. There is something that is "
-                    f"not a directory and that is called `_grid2op_classes`. "
-                    f'Please remove "{sys_path}" and call `env.generate_classes()` where env is an '
-                    f"environment created with `experimental_read_from_local_dir=False` (default)"
-                )
-            import sys
-            sys.path.append(os.path.split(os.path.abspath(sys_path))[0])
-            classes_path = sys_path
-    # Finally instantiate env from config & overrides
-    # including (if activated the new grid2op behaviour)    
-    env = Environment(
+        if  _overload_name_multimix.mix_id == 0:  
+            # this is the first mix I need to assign proper names
+            _overload_name_multimix.name_env = _overload_name_multimix.name_env + _add_to_name
+            _overload_name_multimix.add_to_name = ""
+        else:
+            # this is not the first mix
+            # for the other mix I need to read the data from files and NOT
+            # create the classes
+            use_class_in_files = False
+            _add_to_name = ''  # already defined in the first mix
+            name_env = _overload_name_multimix.name_env
+    
+    name_env = name_env + _add_to_name
+    default_kwargs = dict(
         init_env_path=os.path.abspath(dataset_path),
         init_grid_path=grid_path_abs,
-        chronics_handler=data_feeding,
         backend=backend,
         parameters=param,
-        name=name_env + _add_to_name,
+        name=name_env,
         names_chronics_to_backend=names_chronics_to_backend,
         actionClass=action_class,
         observationClass=observation_class,
@@ -1032,14 +954,124 @@ def make_from_dataset_path(
         logger=logger,
         n_busbar=n_busbar,  # TODO n_busbar_per_sub different num per substations: read from a config file maybe (if not provided by the user)
         _compat_glop_version=_compat_glop_version,
-        _read_from_local_dir=classes_path,
-        _allow_loaded_backend=allow_loaded_backend,
-        _local_dir_cls=this_local_dir,
         _overload_name_multimix=_overload_name_multimix,
         kwargs_observation=kwargs_observation,
         observation_bk_class=observation_backend_class,
-        observation_bk_kwargs=observation_backend_kwargs
+        observation_bk_kwargs=observation_backend_kwargs,
+        allow_detachment=allow_detachment,
+    )
+    if use_class_in_files:
+        # new behaviour
+        if _overload_name_multimix is None:
+            sys_path_cls = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
+        else:
+            sys_path_cls = os.path.join(_overload_name_multimix[1], GRID2OP_CLASSES_ENV_FOLDER)
+        if not os.path.exists(sys_path_cls):
+            try:
+                os.mkdir(sys_path_cls)
+            except FileExistsError:
+                # if another process created it, no problem
+                pass
+            
+        init_nm = os.path.join(sys_path_cls, "__init__.py")
+        if not os.path.exists(init_nm):
+            try:
+                with open(init_nm, "w", encoding="utf-8") as f:
+                    f.write("This file has been created by grid2op in a `env.make(...)` call. Do not modify it or remove it")
+            except FileExistsError:
+                pass
+            
+        import tempfile
+        if _overload_name_multimix is None or _overload_name_multimix[0] is None:
+            this_local_dir = tempfile.TemporaryDirectory(dir=sys_path_cls)
+            this_local_dir_name = this_local_dir.name
+        else:
+            this_local_dir_name = _overload_name_multimix[0]
+            this_local_dir = None
+            do_not_erase_cls = True
+            
+        if experimental_read_from_local_dir:
+            warnings.warn("With the automatic class generation, we removed the possibility to "
+                          "set `experimental_read_from_local_dir` to True.")
+            experimental_read_from_local_dir = False
+        # TODO: check the hash thingy is working in baseEnv._aux_gen_classes (currently a pdb)
+        
+        # TODO check that it works if the backend changes, if shunt / no_shunt if name of env changes etc.
+        
+        # TODO: what if it cannot write on disk => fallback to previous behaviour
+        data_feeding_fake = copy.deepcopy(data_feeding)
+        data_feeding_fake.cleanup_action_space()
+        
+        # Set graph layout if not None and not an empty dict
+        if graph_layout is not None and graph_layout:
+            type(backend).attach_layout(graph_layout)
+            
+        if not os.path.exists(this_local_dir_name):
+            raise EnvError(f"Path {this_local_dir_name} has not been created by the tempfile package")
+        init_env = Environment(**default_kwargs,
+                               chronics_handler=data_feeding_fake,
+                               _read_from_local_dir=None,  # first environment to generate the classes and save them
+                               _local_dir_cls=None,
+                               )   
+        if not os.path.exists(this_local_dir.name):
+            raise EnvError(f"Path {this_local_dir.name} has not been created by the tempfile package")
+        init_env.generate_classes(local_dir_id=this_local_dir.name)
+        # fix `my_bk_act_class` and `_complete_action_class`
+        _aux_fix_backend_internal_classes(type(backend), this_local_dir)
+        init_env.backend = None  # to avoid to close the backend when init_env is deleted
+        init_env._local_dir_cls = None
+        classes_path = this_local_dir_name
+        allow_loaded_backend = True
+    else:
+        # legacy behaviour (<= 1.10.1 behaviour)
+        classes_path = None if not experimental_read_from_local_dir else experimental_read_from_local_dir
+        if experimental_read_from_local_dir:
+            if _overload_name_multimix is not None:
+                # I am in a multimix
+                sys_path = os.path.join(_overload_name_multimix.path_env, GRID2OP_CLASSES_ENV_FOLDER)
+            else:
+                # I am not in a multimix
+                sys_path = os.path.join(os.path.split(grid_path_abs)[0], GRID2OP_CLASSES_ENV_FOLDER)
+            if not os.path.exists(sys_path):
+                raise RuntimeError(
+                    "Attempting to load the grid classes from the env path. Yet the directory "
+                    "where they should be placed does not exists. Did you call `env.generate_classes()` "
+                    "BEFORE creating an environment with `experimental_read_from_local_dir=True` ?"
+                )
+            if not os.path.isdir(sys_path) or not os.path.exists(
+                os.path.join(sys_path, "__init__.py")
+            ):
+                raise RuntimeError(
+                    f"Impossible to load the classes from the env path. There is something that is "
+                    f"not a directory and that is called `_grid2op_classes`. "
+                    f'Please remove "{sys_path}" and call `env.generate_classes()` where env is an '
+                    f"environment created with `experimental_read_from_local_dir=False` (default)"
+                )
+            import sys
+            sys.path.append(os.path.split(os.path.abspath(sys_path))[0])
+            classes_path = sys_path
+
+    # new in 1.11.0
+    if _overload_name_multimix is not None:
+        # case of multimix
+        if  _overload_name_multimix.mix_id >= 1 and _overload_name_multimix.local_dir_tmpfolder is not None:  
+            # this is not the first mix
+            # for the other mix I need to read the data from files and NOT
+            # create the classes
+            this_local_dir = _overload_name_multimix.local_dir_tmpfolder
+            classes_path = this_local_dir.name
+        
+    # Finally instantiate env from config & overrides
+    # including (if activated the new grid2op behaviour)
+    env = Environment(
+        **default_kwargs,
+         chronics_handler=data_feeding,
+        _read_from_local_dir=classes_path,
+        _allow_loaded_backend=allow_loaded_backend,
+        _local_dir_cls=this_local_dir,
     )   
+    if do_not_erase_cls is not None:
+        env._do_not_erase_local_dir_cls = do_not_erase_cls
     # Update the thermal limit if any
     if thermal_limits is not None:
         env.set_thermal_limit(thermal_limits)

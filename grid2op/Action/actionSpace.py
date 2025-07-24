@@ -21,7 +21,7 @@ class ActionSpace(SerializableActionSpace):
     :class:`ActionSpace` should be created by an :class:`grid2op.Environment.Environment`
     with its parameters coming from a properly
     set up :class:`grid2op.Backend.Backend` (ie a Backend instance with a loaded powergrid.
-    See :func:`grid2op.Backend.Backend.load_grid` for
+    See :func:`grid2op.Backend.Backend.load_grid_public` for
     more information).
 
     It will allow, thanks to its :func:`ActionSpace.__call__` method to create valid :class:`BaseAction`. It is the
@@ -70,8 +70,6 @@ class ActionSpace(SerializableActionSpace):
             Class specifying the rules of the game used to check the legality of the actions.
 
         """
-        actionClass._add_shunt_data()
-        actionClass._update_value_set()
         SerializableActionSpace.__init__(self, gridobj, actionClass=actionClass, _local_dir_cls=_local_dir_cls)
         self.legal_action = legal_action
 

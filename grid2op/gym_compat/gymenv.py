@@ -255,6 +255,7 @@ class __AuxGymEnv(Generic[ObsType, ActType]):
         self.close()
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym import Env as LegacyGymEnv
     from grid2op.gym_compat.gym_obs_space import LegacyGymObservationSpace
     from grid2op.gym_compat.gym_act_space import LegacyGymActionSpace

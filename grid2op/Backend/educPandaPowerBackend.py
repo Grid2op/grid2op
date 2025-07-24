@@ -218,22 +218,19 @@ class EducPandaPowerBackend(Backend):
         # type(self).set_no_storage()
 
     ###### modify the grid
-    def apply_action(self, backendAction: Union["grid2op.Action._backendAction._BackendAction", None]) -> None:
+    def apply_action(self, backend_action: "grid2op.Action._backendAction._BackendAction") -> None:
         """
         Here the implementation of the "modify the grid" function.
 
         From the documentation, it's pretty straightforward, even though the implementation takes ~70 lines of code.
         Most of them being direct copy paste from the examples in the documentation.
         """
-        if backendAction is None:
-            return
-
         (
             active_bus,
             (prod_p, prod_v, load_p, load_q, storage),
             _,
             shunts__,
-        ) = backendAction()
+        ) = backend_action()
 
         for gen_id, new_p in prod_p:
             self._grid.gen["p_mw"].iloc[gen_id] = new_p
@@ -249,7 +246,7 @@ class EducPandaPowerBackend(Backend):
             self._grid.load["q_mvar"].iloc[load_id] = new_q
 
         # now i deal with the topology
-        loads_bus = backendAction.get_loads_bus()
+        loads_bus = backend_action.get_loads_bus()
         for load_id, new_bus in loads_bus:
             if new_bus == -1:
                 self._grid.load["in_service"][load_id] = False
@@ -262,7 +259,7 @@ class EducPandaPowerBackend(Backend):
                     self.load_to_subid[load_id] + (new_bus - 1) * self.n_sub
                 )
 
-        gens_bus = backendAction.get_gens_bus()
+        gens_bus = backend_action.get_gens_bus()
         for gen_id, new_bus in gens_bus:
             if new_bus == -1:
                 self._grid.gen["in_service"][gen_id] = False
@@ -272,7 +269,7 @@ class EducPandaPowerBackend(Backend):
                     self.gen_to_subid[gen_id] + (new_bus - 1) * self.n_sub
                 )
 
-        lines_or_bus = backendAction.get_lines_or_bus()
+        lines_or_bus = backend_action.get_lines_or_bus()
         for line_id, new_bus in lines_or_bus:
             if line_id < self._nb_real_line_pandapower:
                 dt = self._grid.line
@@ -291,7 +288,7 @@ class EducPandaPowerBackend(Backend):
                     self.line_or_to_subid[line_id] + (new_bus - 1) * self.n_sub
                 )
 
-        lines_ex_bus = backendAction.get_lines_ex_bus()
+        lines_ex_bus = backend_action.get_lines_ex_bus()
         for line_id, new_bus in lines_ex_bus:
             if line_id < self._nb_real_line_pandapower:
                 dt = self._grid.line
@@ -351,7 +348,7 @@ class EducPandaPowerBackend(Backend):
 
         Function is verbose (~40 lines of code), but pretty straightforward.
         """
-        res = np.full(self.dim_topo, fill_value=np.NaN, dtype=dt_int)
+        res = np.full(self.dim_topo, fill_value=np.nan, dtype=dt_int)
 
         line_status = self.get_line_status()
 

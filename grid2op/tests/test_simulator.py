@@ -53,10 +53,10 @@ class TestSimulator(unittest.TestCase):
         simulator = Simulator(backend=self.env.backend)
         with self.assertRaises(SimulatorError):
             # not initialized
-            simulator.change_backend(self.env.backend.copy())
+            simulator.change_backend(self.env.backend.copy_public())
 
         simulator.set_state(self.obs)
-        simulator.change_backend(self.env.backend.copy())
+        simulator.change_backend(self.env.backend.copy_public())
 
         with self.assertRaises(SimulatorError):
             # env is not a BaseEnv
@@ -67,7 +67,7 @@ class TestSimulator(unittest.TestCase):
         with self.assertRaises(SimulatorError):
             # not initialized
             simulator.change_backend_type(
-                self.env.backend.copy(), grid_path=self.env._init_grid_path
+                self.env.backend.copy_public(), grid_path=self.env._init_grid_path
             )
 
         simulator.set_state(self.obs)

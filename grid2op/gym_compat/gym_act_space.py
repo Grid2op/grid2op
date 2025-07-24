@@ -111,6 +111,9 @@ class __AuxGymActionSpace:
         "shunt_p": "_shunt_p",
         "shunt_q": "_shunt_q",
         "shunt_bus": "_shunt_bus",
+        "_detach_load": "detach_load",  # new in 1.11.0
+        "_detach_gen": "detach_gen",  # new in 1.11.0
+        "_detach_storage": "detach_storage",  # new in 1.11.0
     }
     keys_human_2_grid2op = {v: k for k, v in keys_grid2op_2_human.items()}
 
@@ -213,7 +216,7 @@ class __AuxGymActionSpace:
             raise RuntimeError(
                 "Impossible to reencode a space that is a converter space."
             )
-
+            
         my_dict = self.get_dict_encoding()
         if fun is not None and not isinstance(fun, type(self)._BaseGymAttrConverterType):
             raise RuntimeError(
@@ -381,6 +384,7 @@ class __AuxGymActionSpace:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import (Discrete as LegGymDiscrete,
                             Box as LegGymBox,
                             Dict as LegGymDict,

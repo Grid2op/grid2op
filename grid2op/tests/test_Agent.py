@@ -131,6 +131,20 @@ class TestAgent(HelperTests, unittest.TestCase):
             np.abs(cum_reward - expected_reward) <= self.tol_one
         ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"
 
+    def test_1_powerlineswitch2(self):
+        agent = PowerLineSwitch(self.env.action_space, simulated_time_step=0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
+            i, cum_reward, all_acts = self._aux_test_agent(agent, i_max=5)
+        assert (
+            i == 6
+        ), "The powerflow diverged before step 6 for powerline switch agent"
+        # switch to using df_float in the reward, change then the results
+        expected_reward = dt_float(541.0180053710938)
+        assert (
+            np.abs(cum_reward - expected_reward) <= self.tol_one
+        ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"
+
     def test_2_busswitch(self):
         agent = TopologyGreedy(self.env.action_space)
         with warnings.catch_warnings():
@@ -145,6 +159,17 @@ class TestAgent(HelperTests, unittest.TestCase):
         # 1006.363037109375
         #: Breaking change in 1.10.0: topology are not in the same order
         expected_reward = dt_float(1006.34924)  
+        assert (
+            np.abs(cum_reward - expected_reward) <= self.tol_one
+        ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"
+        
+    def test_2_busswitch2(self):
+        agent = TopologyGreedy(self.env.action_space, simulated_time_step=0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
+            i, cum_reward, all_acts = self._aux_test_agent(agent, i_max=5)
+        assert i == 6, "The powerflow diverged before step 6 for greedy agent"
+        expected_reward = dt_float(541.0657348632812)  
         assert (
             np.abs(cum_reward - expected_reward) <= self.tol_one
         ), f"The reward has not been properly computed {cum_reward} instead of {expected_reward}"

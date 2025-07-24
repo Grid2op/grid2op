@@ -140,6 +140,7 @@ class __AuxContinuousToDiscreteConverter:
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import Box as LegGymBox, MultiDiscrete as LegGymMultiDiscrete
     from grid2op.gym_compat.base_gym_attr_converter import BaseLegacyGymAttrConverter
     ContinuousToDiscreteConverterLegacyGym = type("ContinuousToDiscreteConverterLegacyGym",
