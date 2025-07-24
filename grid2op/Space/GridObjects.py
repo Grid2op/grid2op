@@ -33,11 +33,14 @@ from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import *
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
 from grid2op.Space.detailed_topo_description import DetailedTopoDescription
+<<<<<<< HEAD
 from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
                                        DEFAULT_N_BUSBAR_PER_SUB,
                                        GRID2OP_CLASSES_ENV_FOLDER,
                                        GRID2OP_CURRENT_VERSION_STR,
                                        )
+=======
+>>>>>>> 61454061eedc342d65a22a99fc501bfe6402eb08
 
 # TODO tests of these methods and this class in general
 
@@ -639,7 +642,7 @@ class GridObjects:
     alertable_line_ids = []
     
     detailed_topo_desc : ClassVar[Optional[DetailedTopoDescription]] = None
-    
+
     # test
     _IS_INIT : ClassVar[Optional[bool]] = False
     
@@ -655,7 +658,7 @@ class GridObjects:
     @classmethod
     def set_detachment_is_allowed(cls, detachment_is_allowed: bool) -> None:
         cls.detachment_is_allowed = detachment_is_allowed
-        
+
     @classmethod
     def tell_dim_alarm(cls, dim_alarms: int) -> None:
         if cls.dim_alarms != 0:
@@ -698,7 +701,7 @@ class GridObjects:
 
         This clear the class as if it was defined in grid2op directly.
         """        
-        
+
         #: this has to be here and not in _clear_grid_dependant_class_attributes
         # otherwise it breaks some lightsim2grid versions
         cls.shunts_data_available = False
@@ -740,7 +743,7 @@ class GridObjects:
         cls.LOR_COL = 3
         cls.LEX_COL = 4
         cls.STORAGE_COL = 5
-        
+
         cls._clear_grid_dependant_class_attributes()
         
     @classmethod
@@ -1150,7 +1153,7 @@ class GridObjects:
         If this function is overloaded, then the _get_array_from_attr_name must be too.
 
         Used for `from_vect`, please see `_set_array_from_attr_name` for `from_json`
-        
+
         Parameters
         ----------
         attr_nm
@@ -1386,7 +1389,7 @@ class GridObjects:
                 setattr(cls, attr_nm, attr)
                 if cls.detailed_topo_desc is not None and isinstance(cls.detailed_topo_desc, dict):
                     cls.detailed_topo_desc = DetailedTopoDescription.from_dict(cls.detailed_topo_desc)
-        
+
         # make sure to catch data intiialized even outside of this function
         if not _topo_vect_only:
             cls._reset_cls_dict()
@@ -2067,14 +2070,14 @@ class GridObjects:
             raise EnvError("Grid2op cannot handle a different number "
                            "of busbar per substations with provided input "
                            "(make sure `n_busbar_per_sub` is an int)")
-        
+
         if isinstance(cls.detachment_is_allowed, (bool, dt_bool)):
             cls.detachment_is_allowed = dt_bool(cls.detachment_is_allowed)
         else:
             raise EnvError("Grid2op cannot handle disconnection of loads / generators "
                            "at the moment (make sure `detachment_is_allowed` "
                            "is a bool)")
-        
+
         if (cls.n_busbar_per_sub < 1).any():
             raise EnvError(f"`n_busbar_per_sub` should be >= 1 found {cls.n_busbar_per_sub}")
             
@@ -2364,7 +2367,7 @@ class GridObjects:
 
         # alert data
         cls._check_validity_alert_data()
-        
+
         # detailed topo
         cls._check_validity_detailed_topo()
 
@@ -2446,7 +2449,7 @@ class GridObjects:
     def _check_validity_detailed_topo(cls):
         if cls.detailed_topo_desc is not None:
             cls.detailed_topo_desc.check_validity(cls)
-            
+
     @classmethod
     def _check_validity_alert_data(cls):
         # TODO remove assert and raise Grid2opExcpetion instead
@@ -2985,7 +2988,7 @@ class GridObjects:
             it does not initialize it. Setting "force=True" will bypass this check and update it accordingly.
 
         """
-        # nothing to do now that the value are class member            
+        # nothing to do now that the value are class member
         name_res = "{}_{}".format(cls.__name__, gridobj.env_name)
         if gridobj.glop_version != GRID2OP_CURRENT_VERSION_STR:
             name_res += f"_{gridobj.glop_version}"
@@ -3009,10 +3012,10 @@ class GridObjects:
             # to be able to load same environment with
             # different `n_busbar_per_sub`
             name_res += f"_{gridobj.n_busbar_per_sub}"
-            
+
         if gridobj.detachment_is_allowed != DEFAULT_ALLOW_DETACHMENT:
             name_res += "_allowDetach"
-                
+
         if _local_dir_cls is not None and gridobj._PATH_GRID_CLASSES is not None:
             # new in grid2op 1.10.3:
             # if I end up here it's because (done in base_env.generate_classes()):
@@ -3049,7 +3052,7 @@ class GridObjects:
         res_cls = type(name_res, (cls,), cls_attr_as_dict)
         if "detailed_topo_desc" in cls_attr_as_dict:
             res_cls.detailed_topo_desc = DetailedTopoDescription.from_dict(res_cls.detailed_topo_desc)
-        
+
         if hasattr(cls, "_INIT_GRID_CLS") and cls._INIT_GRID_CLS is not None:
             # original class is already from an initialized environment, i keep track of it
             res_cls._INIT_GRID_CLS = cls._INIT_GRID_CLS
@@ -3097,7 +3100,7 @@ class GridObjects:
         if the detailed_topo_desc is not empty (*ie* if there switches on your grid)
         """
         pass
-    
+
     @classmethod
     def _get_grid2op_version_as_version_obj(cls):
         if cls.glop_version == cls.BEFORE_COMPAT_VERSION:
@@ -3151,11 +3154,11 @@ class GridObjects:
             # no effect
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
             res = True
-            
+
         if glop_ver < version.parse("1.10.2.dev3"):
             cls.detailed_topo_desc = None
             res = True
-            
+
         if res:
             cls._reset_cls_dict()  # forget the previous class (stored as dict)
         return res
@@ -3806,7 +3809,7 @@ class GridObjects:
                 else:
                     res[k] = v
             return
-       
+
         save_to_dict(res, cls, "detachment_is_allowed", str, copy_)
 
         if not _topo_vect_only:
@@ -4130,7 +4133,6 @@ class GridObjects:
             save_to_dict(
                 res, cls, "alertable_line_ids", (lambda li: [int(el) for el in li])  if as_list else None, copy_
             )
-            
         
             if cls.detailed_topo_desc is not None:
                 res["detailed_topo_desc"] = {}
@@ -4190,9 +4192,9 @@ class GridObjects:
             
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
-        
+
         res["detachment_is_allowed"] = cls.detachment_is_allowed
-        
+
         # avoid further computation and save it
         if not as_list and not _topo_vect_only:
             cls._CLS_DICT_EXTENDED = res.copy()
@@ -4265,11 +4267,11 @@ class GridObjects:
                 cls._PATH_GRID_CLASSES = None
         else:
             cls._PATH_GRID_CLASSES = None
-            
+
         # Detachment of Loads / Generators
         if 'detachment_is_allowed' in dict_:
             if dict_["detachment_is_allowed"] == "True":
-                cls.detachment_is_allowed = True 
+                cls.detachment_is_allowed = True
             elif dict_["detachment_is_allowed"] == "False":
                 cls.detachment_is_allowed = False
             else:
@@ -4277,7 +4279,7 @@ class GridObjects:
                                   "could not be converted to Boolean ")
         else: # Compatibility for older versions
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
-        
+
         if 'n_busbar_per_sub' in dict_:
             cls.n_busbar_per_sub = int(dict_["n_busbar_per_sub"])
         else:
@@ -4458,9 +4460,9 @@ class GridObjects:
             # cls.set_env_name(f"{cls.env_name}_{cls.glop_version}")
             # and now post process the class attributes for that
             cls.process_grid2op_compat()
-        
+
         cls.process_detachment()
-        
+
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]
         else:
@@ -4491,7 +4493,7 @@ class GridObjects:
         
         if "detailed_topo_desc" in dict_:
             cls.detailed_topo_desc = DetailedTopoDescription.from_dict(dict_["detailed_topo_desc"])
-            
+
         # save the representation of this class as dict
         tmp = {}
         cls._make_cls_dict_extended(cls, tmp, as_list=False, copy_=True)  
@@ -4506,14 +4508,14 @@ class GridObjects:
     def process_shunt_static_data(cls):
         """remove possible shunts data from the classes, if shunts are deactivated"""
         pass
-    
+
     @classmethod
     def process_detachment(cls):
         """process the status of detachment, that can be turned on or off, is overloaded for :class:`grid2op.Action.BaseAction`
         or :class:`grid2op.Observation.BaseObservation`
         """
         pass
-    
+
     @classmethod
     def set_no_storage(cls):
         """
@@ -5009,7 +5011,7 @@ class GridObjects:
         tmp_tmp_ = ",".join([f"{el}" for el in cls.alertable_line_ids])
         tmp_ = f"[{tmp_tmp_}]"
         alertable_line_ids_str = '[]' if cls.dim_alerts == 0 else tmp_
-        
+
         detailed_topo_desc_str = "None" # TODO detailed topo
         if cls.detailed_topo_desc is not None:
             import json
@@ -5017,7 +5019,7 @@ class GridObjects:
             cls.detailed_topo_desc.save_to_dict(tmp_dtds)
             tmp_dtds_str = json.dumps(tmp_dtds, separators=(',', ':'))
             detailed_topo_desc_str = f"DetailedTopoDescription.from_dict({tmp_dtds_str})"
-        
+
         res = f"""# Copyright (c) 2019-2023, RTE (https://www.rte-france.com)
 # See AUTHORS.txt
 # This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
@@ -5352,8 +5354,8 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
                                                  obj_name=storage_name)
         sub_id = cls.storage_to_subid[storage_id]
         return storage_id, storage_name, sub_id
-    
-    
+
+
     @classmethod
     def _aux_kcl_eltype(cls,
                         n_el : int, # cst eg. cls.n_gen
@@ -5407,7 +5409,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
             if el_bus[i] == -1:
                 # el is disconnected
                 continue
-            
+
             # for substations
             if load_conv:
                 p_subs[psubid] += el_p[i]
@@ -5440,8 +5442,8 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     @classmethod
     def _aux_check_kirchhoff(cls,
                              lineor_info : ElTypeInfo,
-                             lineex_info: ElTypeInfo, 
-                             load_info: ElTypeInfo, 
+                             lineex_info: ElTypeInfo,
+                             load_info: ElTypeInfo,
                              gen_info: ElTypeInfo,
                              storage_info: Optional[ElTypeInfo] = None,
                              shunt_info : Optional[ElTypeInfo] = None,
@@ -5450,7 +5452,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
         Analogous to "backend.check_kirchhoff" but can be used for both the observation and the backend
 
         .. versionadded:: 1.11.0
-        
+
         Returns
         -------
         p_subs ``numpy.ndarray``
@@ -5470,7 +5472,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
             - first dimension represents the the substation (between 1 and self.n_sub)
             - second element represents the busbar in the substation (0 or 1 usually)
 
-        """        
+        """
         # fist check the "substation law" : nothing is created at any substation
         p_subs = np.zeros(cls.n_sub, dtype=dt_float)
         q_subs = np.zeros(cls.n_sub, dtype=dt_float)
