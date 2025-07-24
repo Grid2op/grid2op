@@ -532,11 +532,12 @@ class ForEnvAutoClassTester(AutoClassInFileTester):
             # we create the reference environment and prevent grid2op to 
             # to delete it (because it stores the files to the class)
             self.ref_env = super()._aux_make_env()
+            self.ref_env.reset(seed=0, options={"time serie id": 0})
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
                 obs = self.ref_env.get_obs()
                 res = obs.get_forecast_env()
-            self.max_iter = res._max_iter  # otherwise it fails in the runner
+            self.max_iter = min(res._max_iter, self.max_iter)  # otherwise it fails in the runner
         else:
             res = env
         return res
