@@ -7,10 +7,9 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 from abc import ABC, abstractmethod
 import numpy as np
-import copy
 
 from grid2op.dtypes import dt_int
-from grid2op.Action import VoltageOnlyAction, ActionSpace
+from grid2op.Action import VoltageOnlyAction
 from grid2op.Rules import AlwaysLegal
 from grid2op.Space import RandomObject
 
