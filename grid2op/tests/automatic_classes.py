@@ -15,6 +15,8 @@ import importlib
 import numpy as np
 from grid2op.Space import GridObjects
 from gymnasium.vector import AsyncVectorEnv # type: ignore
+from packaging import version
+from importlib.metadata import version as version_metadata
 
 import grid2op
 from grid2op._glop_platform_info import _IS_WINDOWS
@@ -124,6 +126,9 @@ class AutoClassInFileTester(unittest.TestCase):
                                    test=True,
                                    class_in_file=True)
         assert env.classes_are_in_files()
+        
+        self.this_numpy_version = version.parse(version_metadata("numpy"))
+        self.numpy2_version = version.parse("2.0.0")
         return env
     
     def _aux_get_obs_cls(self):
@@ -397,8 +402,12 @@ class AutoClassInFileTester(unittest.TestCase):
         elif issubclass(MultiMixEnvAutoClassTester, type(self)):
             if _mix_id == 0:
                 ref = [119.103179, 112.700851]
+                if self.this_numpy_version >= self.numpy2_version:
+                    ref = [119.10317993164062, 112.70085144042969]  # numpy 2
             elif _mix_id == 1:
                 ref = [119.113189, 112.687309]
+                if self.this_numpy_version >= self.numpy2_version:
+                    ref = [119.1132049, 112.6873168]  # numpy 2
             else:
                 raise RuntimeError("Unknown mix id")
         elif issubclass(ForEnvAutoClassTester, type(self)):
