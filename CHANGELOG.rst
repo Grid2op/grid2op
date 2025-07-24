@@ -100,7 +100,7 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
-[1.11.1] - 2025-xx-yy
+[1.12.0] - 2025-07-24
 --------------------------
 - [BREAKING] the `info` returned argument of `env.step(...)` function
   does not have the unclear `is_redispatching_illegal` key. This key has been
