@@ -100,6 +100,22 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.0] - 2025-07-24
+--------------------------
+- [BREAKING] the `info` returned argument of `env.step(...)` function
+  does not have the unclear `is_redispatching_illegal` key. This key has been
+  replaced (without any change to its signification) with `failed_redispatching`
+- [FIXED] issue 713
+- [FIXED] pandapower 3 compatibility
+- [ADDED] compatibility with numpy 2, scipy >= 1.14 and python 3.13
+- [ADDED] some examples showing how grid2op can be use to solve some specific 
+  kind of problem (related to N-1 safety and phase shift transformer).
+- [IMPROVED] clarity of the `failed_redispatching` key of the `info` returned value
+  of the `env.step` function (previously called `is_redispatching_illegal` which 
+  was not clear)
+- [IMPROVED] way to load back class stored in json format
+- [IMPROVED] the way the Observation class can be overriden
+
 [1.11.0] - 2025-04-14
 -----------------------
 - [BREAKING] Change for `FromMultiEpisodeData` that disables the caching by default

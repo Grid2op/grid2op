@@ -22,8 +22,8 @@ copyright = 'Grid2Op a Series of LF Projects, LLC,\nFor website terms of use, tr
 author = 'Benjamin Donnot'
 
 # The full version, including alpha/beta/rc tags
-release = '1.11.0'
-version = '1.11'
+release = '1.12.0'
+version = '1.12'
 
 
 # -- General configuration ---------------------------------------------------

@@ -15,14 +15,29 @@ from typing import Tuple, Dict, Literal, Any, List, Optional
 try:
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self # type: ignore
     
 from packaging import version
 
 import grid2op
 from grid2op.typing_variables import DICT_ACT_TYPING
 from grid2op.dtypes import dt_int, dt_bool, dt_float
-from grid2op.Exceptions import *
+from grid2op.Exceptions import (Grid2OpException,
+                                AmbiguousAction,
+                                InvalidNumberOfLines,
+                                IllegalAction,
+                                AmbiguousActionRaiseAlert,
+                                InvalidLineStatus,
+                                InvalidNumberOfLoads,
+                                InvalidNumberOfGenerators,
+                                InvalidNumberOfObjectEnds,
+                                UnitCommitorRedispachingNotAvailable,
+                                InvalidRedispatching,
+                                InvalidBusStatus,
+                                IncorrectNumberOfElements,
+                                InvalidStorage,
+                                InvalidCurtailment,
+                                )
 from grid2op.Space import GridObjects, GRID2OP_CURRENT_VERSION_STR
 
 # TODO time delay somewhere (eg action is implemented after xxx timestep, and not at the time where it's proposed)
@@ -3210,8 +3225,8 @@ class BaseAction(GridObjects):
         else:
             if self._raise_alarm.any():
                 raise AmbiguousAction(
-                    f"Unrecognize alarm action: an action acts on the alarm, yet it's not tagged "
-                    f"as doing so. Expect wrong behaviour."
+                    "Unrecognize alarm action: an action acts on the alarm, yet it's not tagged "
+                    "as doing so. Expect wrong behaviour."
                 )
 
         if self._modif_alert:
@@ -6158,15 +6173,15 @@ class BaseAction(GridObjects):
             for el in values:
                 if len(el) != 2:
                     raise IllegalAction(
-                        f"If input is a list, it should be a  list of pair (el_id, new_val) "
-                        f"eg. [(0, 1.0), (2, 2.7)]"
+                        "If input is a list, it should be a  list of pair (el_id, new_val) "
+                        "eg. [(0, 1.0), (2, 2.7)]"
                     )
                 el_id, new_val = el
                 if isinstance(el_id, str):
                     if self._names_chronics_to_backend is not None and _nm_ch_bk_key in self._names_chronics_to_backend:
                         # initial action to set the state, might use the name in the time series...
                         nms_conv = self._names_chronics_to_backend[_nm_ch_bk_key]
-                        el_id_or_name = nms_conv[el_id_or_name]
+                        _nm_ch_bk_key = nms_conv[_nm_ch_bk_key]
                     tmp = (name_els == el_id).nonzero()[0]
                     if len(tmp) == 0:
                         raise IllegalAction(f"No known {name_el} with name {el_id}")
@@ -6794,7 +6809,7 @@ class BaseAction(GridObjects):
         self.curtail = self.curtailment_mw_to_ratio(values_mw)
 
     def limit_curtail_storage(self,
-                              obs: "BaseObservation",
+                              obs: "BaseObservation",  # noqa: F821
                               margin: float=10.,
                               do_copy: bool=False,
                               _tol_equal : float=0.01) -> Tuple["BaseAction", np.ndarray, np.ndarray]:

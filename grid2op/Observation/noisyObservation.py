@@ -6,9 +6,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import numpy as np
-
-from grid2op.dtypes import dt_int, dt_float
 from grid2op.Observation.baseObservation import BaseObservation
 from grid2op.Observation.completeObservation import CompleteObservation
 
@@ -84,7 +81,15 @@ class NoisyObservation(BaseObservation):
             obs_env=obs_env,
             action_helper=action_helper,
             random_prng=random_prng,
-            kwargs_env=kwargs_env
+            kwargs_env=kwargs_env,
+            sigma_load_p=sigma_load_p,
+            sigma_load_q=sigma_load_q,
+            sigma_gen_p=sigma_gen_p,
+            sigma_gen_q=sigma_gen_q,
+            sigma_a=sigma_a,
+            sigma_p=sigma_p,
+            sigma_q=sigma_q,
+            sigma_storage=sigma_storage,
         )
         self._dictionnarized = None
         self._sigma_load_p = sigma_load_p  # multiplicative (log normal)

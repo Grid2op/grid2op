@@ -43,11 +43,11 @@ jobs:
             abi: cp312,
             version: '3.12',
           }
-          # - {
-          #   name: cp313,   # issue with pandapower atm
-          #   abi: cp313,
-          #   version: '3.13',
-          # }
+          - {
+            name: cp313,   # issue with pandapower atm
+            abi: cp313,
+            version: '3.13',
+          }
 
     steps:
 
@@ -118,7 +118,7 @@ jobs:
           }
           - {
             name: windows,
-            os: windows-2019,
+            os: windows-2022,
           }
         python:
           - {
@@ -141,10 +141,10 @@ jobs:
             name: cp312,
             version: '3.12',
           }
-          # - {  # issue with pandapower atm
-          #   name: cp313,
-          #   version: '3.13',
-          # }
+          - {  # issue with pandapower atm
+            name: cp313,
+            version: '3.13',
+          }
 
     steps:
 
@@ -197,7 +197,7 @@ jobs:
           path: dist/*.tar.gz
 
   auto_class_in_file:
-    name: Test ${{ matrix.config.name }} OS can handle automatic class generation
+    name: Test ${{ matrix.config.name }} OS can handle automatic class generation for python ${{matrix.python.version}}
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
@@ -208,7 +208,7 @@ jobs:
           }
           # - {
           #   name: windows,
-          #   os: windows-2019,
+          #   os: windows-2022,
           # }
           - { 
             name: ubuntu,
@@ -220,8 +220,8 @@ jobs:
             version: '3.9',
           }  
           - {
-            name: cp312,
-            version: '3.12',
+            name: cp313,
+            version: '3.13',
           }  
 
     steps:
@@ -238,10 +238,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade wheel
-          python -m pip install --upgrade setuptools
-          python -m pip install --upgrade gymnasium "numpy<2"
+          python -m pip install --upgrade pip wheel setuptools gymnasium
 
       - name: Build wheel
         run: python setup.py bdist_wheel
@@ -254,7 +251,7 @@ jobs:
 
       - name: Test the automatic generation of classes in the env folder
         run: |
-          python -m unittest grid2op/tests/automatic_classes.py -f
+          python -m unittest grid2op/tests/automatic_classes.py -v -f
   
   package:
     name: Test install

@@ -68,7 +68,7 @@ class __AuxBaseGymSpaceConverter:
 
     @classmethod
     def _boolean_type(cls, sh):
-        return cls._MultiBinaryType(n=sh)
+        return cls._MultiBinaryType(n=int(sh))
 
     @staticmethod
     def _simplifykeys_for_timestamps(key):
