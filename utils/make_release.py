@@ -207,6 +207,8 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         print("Add the proper test in \"grid2op/tests/test_Runner.py\"")
+        print("Modify the grid2op.info files in the Runer generated data ")
+        print("\t /data_test/runner_data/res_agent_x.y.z/{0,1}/grid2op.info \n")
         print("Then commit your change with :")
         print(f"git commit -s -S -m \"ready for version {version}\"")
         print("Then open a PR on Grid2Op/grid2op.git")
