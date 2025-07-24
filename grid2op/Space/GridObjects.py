@@ -23,7 +23,6 @@ import os
 import numpy as np
 import sys
 
-import importlib.metadata
 from packaging import version
 from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
     
@@ -33,14 +32,11 @@ from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import *
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
 from grid2op.Space.detailed_topo_description import DetailedTopoDescription
-<<<<<<< HEAD
 from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
                                        DEFAULT_N_BUSBAR_PER_SUB,
                                        GRID2OP_CLASSES_ENV_FOLDER,
                                        GRID2OP_CURRENT_VERSION_STR,
                                        )
-=======
->>>>>>> 61454061eedc342d65a22a99fc501bfe6402eb08
 
 # TODO tests of these methods and this class in general
 

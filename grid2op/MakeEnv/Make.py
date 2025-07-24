@@ -10,7 +10,6 @@ import time
 import requests
 import os
 import warnings
-import pkg_resources
 from typing import Union, Optional
 import logging
 
@@ -21,38 +20,9 @@ import grid2op.MakeEnv.PathUtils
 from grid2op.MakeEnv.PathUtils import _create_path_folder
 from grid2op.Download.DownloadDataset import _aux_download
 from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
 
 _VAR_FORCE_TEST = "_GRID2OP_FORCE_TEST"
-
-DEV_DATA_FOLDER = pkg_resources.resource_filename("grid2op", "data")
-DEV_DATASET = os.path.join(DEV_DATA_FOLDER, "{}")
-TEST_DEV_ENVS = {
-    "blank": DEV_DATASET.format("blank"),
-    "rte_case14_realistic": DEV_DATASET.format("rte_case14_realistic"),
-    "rte_case14_redisp": DEV_DATASET.format("rte_case14_redisp"),
-    "rte_case14_test": DEV_DATASET.format("rte_case14_test"),
-    "rte_case5_example": DEV_DATASET.format("rte_case5_example"),
-    "rte_case118_example": DEV_DATASET.format("rte_case118_example"),
-    "rte_case14_opponent": DEV_DATASET.format("rte_case14_opponent"),
-    "l2rpn_wcci_2020": DEV_DATASET.format("l2rpn_wcci_2020"),
-    "l2rpn_neurips_2020_track2": DEV_DATASET.format("l2rpn_neurips_2020_track2"),
-    "l2rpn_neurips_2020_track1": DEV_DATASET.format("l2rpn_neurips_2020_track1"),
-    "l2rpn_case14_sandbox": DEV_DATASET.format("l2rpn_case14_sandbox"),
-    "l2rpn_case14_sandbox_diff_grid": DEV_DATASET.format("l2rpn_case14_sandbox_diff_grid"),
-    "l2rpn_icaps_2021": DEV_DATASET.format("l2rpn_icaps_2021"),
-    "l2rpn_wcci_2022_dev": DEV_DATASET.format("l2rpn_wcci_2022_dev"),
-    "l2rpn_wcci_2022": DEV_DATASET.format("l2rpn_wcci_2022_dev"),
-    "l2rpn_idf_2023": DEV_DATASET.format("l2rpn_idf_2023"),
-    # educational files
-    "educ_case14_redisp": DEV_DATASET.format("educ_case14_redisp"),
-    "educ_case14_storage": DEV_DATASET.format("educ_case14_storage"),
-    # keep the old names for now
-    "case14_realistic": DEV_DATASET.format("rte_case14_realistic"),
-    "case14_redisp": DEV_DATASET.format("rte_case14_redisp"),
-    "case14_test": DEV_DATASET.format("rte_case14_test"),
-    "case5_example": DEV_DATASET.format("rte_case5_example"),
-    "case14_fromfile": DEV_DATASET.format("rte_case14_test"),
-}
 
 _REQUEST_FAIL_EXHAUSTED_ERR = (
     'Impossible to retrieve data at "{}".\n'
