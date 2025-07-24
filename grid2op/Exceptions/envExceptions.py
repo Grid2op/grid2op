@@ -163,7 +163,7 @@ class ImpossibleRedispatching(EnvError):
     """This is a more precise exception saying that,  the simulation of a step cannot be made because some 
     generators would break their physical constraints.
     
-    .. versionadded:: 1.11.1
+    .. versionadded:: 1.12.0
     """
     pass
     
