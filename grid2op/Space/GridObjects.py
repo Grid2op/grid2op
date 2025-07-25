@@ -3036,7 +3036,6 @@ class GridObjects:
             # If I end up it's because the environment is created with already initialized
             # classes.
             return cls._aux_init_grid_from_cls(gridobj, name_res)
-        
         # legacy behaviour: build the class "on the fly"
         # of new (>= 1.10.3 for the intial creation of the environment)
         if name_res in globals():
@@ -3052,7 +3051,7 @@ class GridObjects:
         res_cls = type(name_res, (cls,), cls_attr_as_dict)
         if "detailed_topo_desc" in cls_attr_as_dict:
             res_cls.detailed_topo_desc = DetailedTopoDescription.from_dict(res_cls.detailed_topo_desc)
-
+            
         if hasattr(cls, "_INIT_GRID_CLS") and cls._INIT_GRID_CLS is not None:
             # original class is already from an initialized environment, i keep track of it
             res_cls._INIT_GRID_CLS = cls._INIT_GRID_CLS
@@ -3066,6 +3065,7 @@ class GridObjects:
         compat_mode = res_cls.process_grid2op_compat()
         
         res_cls.process_detachment()
+            
         # this needs to be done after process_grid2op_compat
         # because process_grid2op_compat can remove the description of the topology
         # which is not supported in earlier grid2op versions
@@ -3088,7 +3088,6 @@ class GridObjects:
             # as the class has been modified with a "compatibility version" mode
             tmp = {}
             res_cls._make_cls_dict_extended(res_cls, tmp, as_list=False)
-            
         # store the type created here in the "globals" to prevent the initialization of the same class over and over
         globals()[name_res] = res_cls
         del res_cls
@@ -4501,7 +4500,6 @@ class GridObjects:
         
         if "detailed_topo_desc" in dict_:
             cls.detailed_topo_desc = DetailedTopoDescription.from_dict(dict_["detailed_topo_desc"])
-
         # save the representation of this class as dict
         tmp = {}
         cls._make_cls_dict_extended(cls, tmp, as_list=False, copy_=True)  

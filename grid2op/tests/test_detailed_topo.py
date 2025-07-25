@@ -121,6 +121,9 @@ class DetailedTopoTester(unittest.TestCase):
                         action_class=CompleteAction,
                         _add_to_name=f"{type(self).__name__}_{n_bb_per_sub}",
                     )
+        assert type(self.env).detailed_topo_desc is not None
+        act = self.env.action_space()
+        assert type(act).detailed_topo_desc is not None
         if isinstance(self, DetailedTopoTester):
             # weird hack I am doing: I reuse the same method
             # from another class

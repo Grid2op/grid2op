@@ -348,7 +348,6 @@ class Environment(BaseEnv):
         self._game_rules = RulesChecker(legalActClass=legalActClass)
         self._game_rules.initialize(self)
         self._legalActClass = legalActClass
-
         # action helper
         if not isinstance(actionClass, type):
             raise Grid2OpException(
@@ -386,7 +385,6 @@ class Environment(BaseEnv):
         self._observationClass = observationClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
 
         self._complete_action_cls = CompleteAction.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
-
         self._helper_action_class = ActionSpace.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
         self._action_space = self._helper_action_class(
             gridobj=bk_type,

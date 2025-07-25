@@ -1046,7 +1046,7 @@ class BaseAction(GridObjects):
             # to disconnect the element, this is why it's not removed
             cls._aux_process_n_busbar_per_sub()
             
-        if glop_ver < version.parse("1.12.1.dev0"):
+        if glop_ver < version.parse("1.12.0"):
             # this feature did not exist before
             cls.detailed_topo_desc = None
             cls._aux_remove_switches()

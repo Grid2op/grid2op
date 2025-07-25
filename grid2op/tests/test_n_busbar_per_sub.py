@@ -8,6 +8,7 @@
 
 import warnings
 import unittest
+from grid2op.Exceptions.illegalActionExceptions import IllegalAction
 from grid2op.tests.helper_path_test import *
 
 import grid2op
@@ -623,7 +624,7 @@ class TestAction_3busbars(unittest.TestCase):
             self._aux_test_action_shunt(act, el_id, bus_val + 1)
             
         act = self.env.action_space()
-        with self.assertRaises(AmbiguousAction):
+        with self.assertRaises(IllegalAction):
             act = self.env.action_space({"shunt": {"set_bus": [(el_id, type(self.env).n_busbar_per_sub + 1)]}})
 
 
