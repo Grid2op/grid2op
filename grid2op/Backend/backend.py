@@ -8,7 +8,6 @@
 
 import copy
 import os
-import sys
 import warnings
 import json
 
@@ -21,7 +20,7 @@ try:
     from typing import Self
 except ImportError:
     # python version is probably bellow 3.11
-    from typing_extensions import Self
+    from typing_extensions import Self # type: ignore
     
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -32,7 +31,6 @@ from grid2op.Exceptions import (
     IncorrectNumberOfGenerators,
     BackendError,
     IncorrectNumberOfLines,
-    DivergingPowerflow,
     Grid2OpException,
 )
 import grid2op.Environment  # for type hints
@@ -1067,7 +1065,7 @@ class Backend(GridObjects, ABC):
                 self.thermal_limit_a = 1.0 * limits.astype(dt_float)
         elif isinstance(limits, dict):
             for el in limits.keys():
-                if not el in self.name_line:
+                if el not in self.name_line:
                     raise BackendError(
                         'You asked to modify the thermal limit of powerline named "{}" that is not '
                         "on the grid. Names of powerlines are {}".format(

@@ -8,13 +8,11 @@
 
 import os
 import warnings
-
 from grid2op.Environment import Environment
 from grid2op.Backend import Backend, PandaPowerBackend
 from grid2op.Parameters import Parameters
 from grid2op.Chronics import ChronicsHandler, Multifolder, ChangeNothing
 from grid2op.Chronics import (
-    GridStateFromFile,
     GridStateFromFileWithForecasts,
     GridValue,
 )

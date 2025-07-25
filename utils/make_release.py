@@ -70,7 +70,7 @@ if __name__ == "__main__":
     except Exception as exc_:
         raise RuntimeError(
             "script \"update_version\": version should be formated as XX.YY.ZZ (eg 0.3.1). "
-            "Please modify \"--version\" argument")
+            "Please modify \"--version\" argument") from exc_
 
     regex_version = "[0-9]+\.[0-9]+\.[0-9]+(.post[0-9]+){0,1}(.rc[0-9]+){0,1}(.pre[0-9]+){0,1}(.dev[0-9]+){0,1}"
     # TODO use the official regex !
@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 version))
 
     # TODO re.search(reg_, "0.0.4-rc1").group("prerelease") -> rc1 (if regex_version is the official one)
-    if re.search(f".*(\\.|-)(rc|pre|dev)[0-9]+$", version) is not None:
+    if re.search(".*(\\.|-)(rc|pre|dev)[0-9]+$", version) is not None:
         is_prerelease = True
         print("This is a pre release, docker will NOT be pushed, github tag will NOT be made")
         time.sleep(2)
@@ -207,6 +207,8 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         print("Add the proper test in \"grid2op/tests/test_Runner.py\"")
+        print("Modify the grid2op.info files in the Runer generated data ")
+        print("\t /data_test/runner_data/res_agent_x.y.z/{0,1}/grid2op.info \n")
         print("Then commit your change with :")
         print(f"git commit -s -S -m \"ready for version {version}\"")
         print("Then open a PR on Grid2Op/grid2op.git")

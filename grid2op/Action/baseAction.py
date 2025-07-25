@@ -17,31 +17,29 @@ import grid2op.Observation
 try:
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self # type: ignore
     
 from packaging import version
 
 import grid2op
 from grid2op.typing_variables import DICT_ACT_TYPING
 from grid2op.dtypes import dt_int, dt_bool, dt_float
-from grid2op.Exceptions import (
-    IllegalAction,
-    Grid2OpException,
-    AmbiguousAction,
-    InvalidNumberOfLines,
-    AmbiguousActionRaiseAlert,
-    InvalidLineStatus,
-    InvalidNumberOfLoads,
-    InvalidNumberOfGenerators,
-    InvalidNumberOfObjectEnds,
-    InvalidBusStatus,
-    InvalidRedispatching,
-    UnitCommitorRedispachingNotAvailable,
-    IncorrectNumberOfElements,
-    InvalidStorage,
-    InvalidCurtailment,
-    
-)
+from grid2op.Exceptions import (Grid2OpException,
+                                AmbiguousAction,
+                                InvalidNumberOfLines,
+                                IllegalAction,
+                                AmbiguousActionRaiseAlert,
+                                InvalidLineStatus,
+                                InvalidNumberOfLoads,
+                                InvalidNumberOfGenerators,
+                                InvalidNumberOfObjectEnds,
+                                UnitCommitorRedispachingNotAvailable,
+                                InvalidRedispatching,
+                                InvalidBusStatus,
+                                IncorrectNumberOfElements,
+                                InvalidStorage,
+                                InvalidCurtailment,
+                                )
 from grid2op.Space import GridObjects, GRID2OP_CURRENT_VERSION_STR
 
 # TODO time delay somewhere (eg action is implemented after xxx timestep, and not at the time where it's proposed)
@@ -6654,7 +6652,7 @@ class BaseAction(GridObjects):
             # expected list of tuple, each tuple is a pair with load_id, new_vals: example: [(0, -1.0), (2,2.7)]
             for el in values:
                 if len(el) != 2:
-                    raise AmbiguousAction(
+                    raise IllegalAction(
                         "If input is a list, it should be a  list of pair (el_id, new_val) "
                         "eg. [(0, 1.0), (2, 2.7)]"
                     )
@@ -7291,7 +7289,7 @@ class BaseAction(GridObjects):
         self.curtail = self.curtailment_mw_to_ratio(values_mw)
 
     def limit_curtail_storage(self,
-                              obs: "grid2op.Observation.BaseObservation",
+                              obs: "BaseObservation",  # noqa: F821
                               margin: float=10.,
                               do_copy: bool=False,
                               _tol_equal : float=0.01) -> Tuple["BaseAction", np.ndarray, np.ndarray]:

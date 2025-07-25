@@ -7,17 +7,18 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import time
-import requests
 import os
 import warnings
 from typing import Union, Optional
 import logging
-
+import sys
+    
 from grid2op.Environment import Environment
 from grid2op.MakeEnv.MakeFromPath import make_from_dataset_path, ERR_MSG_KWARGS
 from grid2op.Exceptions import Grid2OpException, UnknownEnv
 import grid2op.MakeEnv.PathUtils
 from grid2op.MakeEnv.PathUtils import _create_path_folder
+from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
 from grid2op.Download.DownloadDataset import _aux_download
 from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
 from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
@@ -116,6 +117,7 @@ def _send_request_retry(url, nb_retry=10, gh_session=None):
         raise Grid2OpException(_REQUEST_FAIL_EXHAUSTED_ERR.format(url))
 
     if gh_session is None:
+        import requests
         gh_session = requests.Session()
 
     try:

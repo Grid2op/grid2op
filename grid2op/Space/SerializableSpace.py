@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import importlib
 import os
 import re
 import json
@@ -191,80 +192,18 @@ class SerializableSpace(GridObjects, RandomObject):
             subtype = globals()[actionClass_li[-1]]
         else:
             try:
-                exec(
-                    "from {} import {}".format(
-                        ".".join(actionClass_li[:-1]), actionClass_li[-1]
-                    )
-                )
-            except ModuleNotFoundError as exc_:
+                base_module = importlib.import_module(".".join(actionClass_li[:-1]))
+            except ModuleNotFoundError:
                 # prior to grid2op 1.6.5 the Observation module was grid2op.Observation.completeObservation.CompleteObservation
                 # after its grid2op.Observation.completeObservation.CompleteObservation
                 # so I try here to make the python file lower case in order to import
                 # the class correctly
-                if len(actionClass_li) > 2:
-                    test_str = actionClass_li[2]
-                    actionClass_li[2] = test_str[0].lower() + test_str[1:]
-                    exec(
-                        "from {} import {}".format(
-                            ".".join(actionClass_li[:-1]), actionClass_li[-1]
-                        )
-                    )
-                else:
-                    raise exc_
-
-            # TODO make something better and recursive here
-            try:
-                subtype = eval(actionClass_li[-1])
-            except NameError:
-                if len(actionClass_li) > 1:
-                    try:
-                        subtype = eval(".".join(actionClass_li[1:]))
-                    except Exception as exc_:
-                        msg_err_ = (
-                            'Impossible to find the module "{}" to load back the space (ERROR 1). '
-                            'Try "from {} import {}"'
-                        )
-                        raise Grid2OpException(
-                            msg_err_.format(
-                                actionClass_str,
-                                ".".join(actionClass_li[:-1]),
-                                actionClass_li[-1],
-                            )
-                        )
-                else:
-                    msg_err_ = (
-                        'Impossible to find the module "{}" to load back the space (ERROR 2). '
-                        'Try "from {} import {}"'
-                    )
-                    raise Grid2OpException(
-                        msg_err_.format(
-                            actionClass_str,
-                            ".".join(actionClass_li[:-1]),
-                            actionClass_li[-1],
-                        )
-                    )
-            except AttributeError:
-                try:
-                    subtype = eval(actionClass_li[-1])
-                except Exception as exc_:
-                    if len(actionClass_li) > 1:
-                        msg_err_ = (
-                            'Impossible to find the class named "{}" to load back the space (ERROR 3)'
-                            "(module is found but not the class in it) Please import it via "
-                            '"from {} import {}".'
-                        )
-                        msg_err_ = msg_err_.format(
-                            actionClass_str,
-                            ".".join(actionClass_li[:-1]),
-                            actionClass_li[-1],
-                        )
-                    else:
-                        msg_err_ = (
-                            'Impossible to import the class named "{}" to load back the space (ERROR 4) '
-                            "(the module is found but not the class in it)"
-                        )
-                        msg_err_ = msg_err_.format(actionClass_str)
-                    raise Grid2OpException(msg_err_)
+                attempt_cls_li = copy.deepcopy(actionClass_li)
+                attempt_cls_li[2] = (
+                   attempt_cls_li[2][0].lower() + attempt_cls_li[2][1:] 
+                )
+                base_module = importlib.import_module(".".join(attempt_cls_li[:-1]))
+            subtype = getattr(base_module, actionClass_li[-1])
         # create the proper SerializableSpace class for this environment
         CLS = SerializableSpace.init_grid(gridobj, _local_dir_cls=_local_dir_cls)
         res = CLS(gridobj=gridobj, subtype=subtype, _init_grid=True, _local_dir_cls=_local_dir_cls)

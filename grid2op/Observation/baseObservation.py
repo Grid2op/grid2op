@@ -13,14 +13,13 @@ import networkx
 from abc import abstractmethod
 import numpy as np
 from scipy.sparse import csr_matrix
-from typing import Optional
 from packaging import version
 
-from typing import Dict, Union, Tuple, List, Optional, Any, Literal
+from typing import Dict, Union, Tuple, List, Optional, Literal
 try:
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self # type: ignore
 
 import grid2op  # for type hints
 import grid2op.Environment  # for type hints
@@ -578,16 +577,102 @@ class BaseObservation(GridObjects):
     attr_list_vect = None
     # value to assess if two observations are equal
     _tol_equal = 1e-3
+    
+    
+    attr_simple_cpy = [
+        "max_step",
+        "current_step",
+        "support_theta",
+        "day_of_week",
+        "minute_of_hour",
+        "hour_of_day",
+        "day",
+        "month",
+        "year",
+        "delta_time",
+        "_is_done",
+        "_prev_conn"
+    ]
+
+    attr_vect_cpy = [
+        "storage_theta",
+        "gen_theta",
+        "load_theta",
+        "theta_ex",
+        "theta_or",
+        "curtailment_limit",
+        "curtailment",
+        "gen_p_before_curtail",
+        "_thermal_limit",
+        "is_alarm_illegal",
+        "time_since_last_alarm",
+        "last_alarm",
+        "attention_budget",
+        "was_alarm_used_after_game_over",
+        # alert (new in 1.9.1)
+        "active_alert",
+        "attack_under_alert",
+        "time_since_last_alert",
+        "alert_duration",
+        "total_number_of_alert",
+        "time_since_last_attack",
+        "was_alert_used_after_attack",
+        # other
+        "storage_power",
+        "storage_power_target",
+        "storage_charge",
+        "actual_dispatch",
+        "target_dispatch",
+        "duration_next_maintenance",
+        "time_next_maintenance",
+        "time_before_cooldown_sub",
+        "time_before_cooldown_line",
+        "rho",
+        "a_ex",
+        "v_ex",
+        "q_ex",
+        "p_ex",
+        "a_or",
+        "v_or",
+        "q_or",
+        "p_or",
+        "load_p",
+        "load_q",
+        "load_v",
+        "gen_p",
+        "gen_q",
+        "gen_v",
+        "topo_vect",
+        "line_status",
+        "timestep_overflow",
+        "gen_margin_up",
+        "gen_margin_down",
+        "curtailment_limit_effective",
+        # slack (>= 1.11.0)
+        "gen_p_delta",
+        # detachment (>= 1.11.0)
+        "load_detached",
+        "gen_detached",
+        "storage_detached",
+        "load_p_detached",
+        "load_q_detached",
+        "gen_p_detached",
+        "storage_p_detached",
+        # soft_overflow_threshold
+        "timestep_protection_engaged"
+    ]
 
     def __init__(self,
                  obs_env=None,
                  action_helper=None,
                  random_prng=None,
-                 kwargs_env=None):
+                 kwargs_env=None,
+                 **kwargs):
         GridObjects.__init__(self)
         self._is_done = True
         self.random_prng = random_prng
-
+        self.__kwargs = kwargs
+        
         self.action_helper = action_helper
         # handles the forecasts here
         self._forecasted_grid_act = {}
@@ -723,97 +808,15 @@ class BaseObservation(GridObjects):
         self._prev_conn = None
         
     def _aux_copy(self, other : Self) -> None:
-        attr_simple = [
-            "max_step",
-            "current_step",
-            "support_theta",
-            "day_of_week",
-            "minute_of_hour",
-            "hour_of_day",
-            "day",
-            "month",
-            "year",
-            "delta_time",
-            "_is_done",
-            "_prev_conn"
-        ]
-
-        attr_vect = [
-            "storage_theta",
-            "gen_theta",
-            "load_theta",
-            "theta_ex",
-            "theta_or",
-            "curtailment_limit",
-            "curtailment",
-            "gen_p_before_curtail",
-            "_thermal_limit",
-            "is_alarm_illegal",
-            "time_since_last_alarm",
-            "last_alarm",
-            "attention_budget",
-            "was_alarm_used_after_game_over",
-            # alert (new in 1.9.1)
-            "active_alert",
-            "attack_under_alert",
-            "time_since_last_alert",
-            "alert_duration",
-            "total_number_of_alert",
-            "time_since_last_attack",
-            "was_alert_used_after_attack",
-            # other
-            "storage_power",
-            "storage_power_target",
-            "storage_charge",
-            "actual_dispatch",
-            "target_dispatch",
-            "duration_next_maintenance",
-            "time_next_maintenance",
-            "time_before_cooldown_sub",
-            "time_before_cooldown_line",
-            "rho",
-            "a_ex",
-            "v_ex",
-            "q_ex",
-            "p_ex",
-            "a_or",
-            "v_or",
-            "q_or",
-            "p_or",
-            "load_p",
-            "load_q",
-            "load_v",
-            "gen_p",
-            "gen_q",
-            "gen_v",
-            "topo_vect",
-            "line_status",
-            "timestep_overflow",
-            "gen_margin_up",
-            "gen_margin_down",
-            "curtailment_limit_effective",
-            # slack (>= 1.11.0)
-            "gen_p_delta",
-            # detachment (>= 1.11.0)
-            "load_detached",
-            "gen_detached",
-            "storage_detached",
-            "load_p_detached",
-            "load_q_detached",
-            "gen_p_detached",
-            "storage_p_detached",
-            # soft_overflow_threshold
-            "timestep_protection_engaged"
-        ]
-
-        if type(self).shunts_data_available:
-            attr_vect += ["_shunt_bus", "_shunt_v", "_shunt_q", "_shunt_p"]
-
-        for attr_nm in attr_simple:
+        cls = type(self)
+        for attr_nm in cls.attr_simple_cpy:
             setattr(other, attr_nm, copy.deepcopy(getattr(self, attr_nm)))
 
-        for attr_nm in attr_vect:
-            getattr(other, attr_nm)[:] = getattr(self, attr_nm)
+        for attr_nm in cls.attr_vect_cpy:
+            if hasattr(self, attr_nm):
+                # for old code (eg lightsim2grid legacy)
+                # some attribute did not exist
+                getattr(other, attr_nm)[:] = getattr(self, attr_nm)
 
     def change_reward(self, reward_func: "grid2op.Reward.BaseReward"):
         """Allow to change the reward used when calling :func:`BaseObservation.simulate`
@@ -866,8 +869,12 @@ class BaseObservation(GridObjects):
     def __deepcopy__(self, memodict={}) -> Self:
         res = type(self)(obs_env=self._obs_env,
                          action_helper=self.action_helper,
-                         kwargs_env=self._ptr_kwargs_env)
+                         kwargs_env=self._ptr_kwargs_env,
+                         **self.__kwargs)
 
+        # copy the kwargs (reference)
+        res.__kwargs = self.__kwargs
+        
         # copy regular attributes
         self._aux_copy(other=res)
 
@@ -1207,18 +1214,27 @@ class BaseObservation(GridObjects):
     
     @classmethod
     def process_shunt_static_data(cls) -> None:
+        shunts_attr = ["_shunt_p", "_shunt_q", "_shunt_v", "_shunt_bus"]
         if not cls.shunts_data_available:
+            # shunts are not available
             # this is really important, otherwise things from grid2op base types will be affected
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
             cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
             # remove the shunts from the list to vector
-            for el in ["_shunt_p", "_shunt_q", "_shunt_v", "_shunt_bus"]:
+            for el in shunts_attr:
                 if el in cls.attr_list_vect:
                     try:
                         cls.attr_list_vect.remove(el)
                     except ValueError:
                         pass
             cls.attr_list_set = set(cls.attr_list_vect)
+        else:
+            # shunts are available
+            cls.attr_vect_cpy = copy.deepcopy(cls.attr_vect_cpy)
+            for el in shunts_attr:
+                if el not in cls.attr_vect_cpy:
+                    cls.attr_vect_cpy.append(el)
+                    
         return super().process_shunt_static_data()
     
     @classmethod
@@ -5029,8 +5045,16 @@ class BaseObservation(GridObjects):
                              load_q=load_q,
                              prod_p=prod_p,
                              prod_v=prod_v,
-                             maintenance=maintenance)
+                             maintenance=maintenance,
+                             )
         ch.max_iter = ch.real_data.max_iter
+        
+
+        delta_t_step = datetime.timedelta(minutes=float(self.delta_time))
+        init_dt = self.get_time_stamp() - delta_t_step
+        ch._real_data.start_datetime = init_dt
+        ch._real_data.current_datetime = init_dt
+        ch._real_data.time_interval = delta_t_step
         
         backend = self._obs_env.backend.copy_public()
         backend._is_loaded = True

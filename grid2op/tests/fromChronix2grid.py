@@ -10,10 +10,10 @@ import warnings
 import os
 import grid2op
 import numpy as np
-from grid2op.Chronics import FromChronix2grid
 import unittest
-from grid2op.MakeEnv._aux_var import DEV_DATA_FOLDER
 from lightsim2grid import LightSimBackend
+from grid2op.Chronics import FromChronix2grid
+from grid2op.MakeEnv._aux_var import DEV_DATA_FOLDER
 
 
 class TestFromChronix2Grid(unittest.TestCase):
