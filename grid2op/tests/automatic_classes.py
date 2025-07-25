@@ -48,6 +48,8 @@ from grid2op.gym_compat import GymEnv # TODO GYMENV
 # TODO test backend converters
 # TODO test all type of backend in the observation space, including the deactivate forecast, reactivate forecast, the different backend etc.
 
+# TODO detailed topo
+
 class _ThisAgentTest(BaseAgent):
     def __init__(self,
                  action_space: ActionSpace,

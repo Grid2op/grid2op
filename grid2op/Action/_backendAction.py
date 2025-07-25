@@ -889,7 +889,7 @@ class _BackendAction(GridObjects):
         # I detachment (before all else)
         if cls.detachment_is_allowed and other.has_element_detached():
             modif_set_bus, modif_inj = self._aux_iadd_detach(other, set_topo_vect, modif_inj)
-            
+
         # I deal with injections
         # Ia set the injection
         if modif_inj:
@@ -966,7 +966,7 @@ class _BackendAction(GridObjects):
             self.current_topo.change_val(switcth_topo_vect)
             self._detailed_topo = None
             
-        if other._modif_set_bus or modif_switch:
+        if modif_set_bus or modif_switch:
             self.current_topo.set_val(set_topo_vect)
             self._detailed_topo = None
 
@@ -977,7 +977,7 @@ class _BackendAction(GridObjects):
         )
 
         # At least one disconnected extremity
-        if other._modif_change_bus or other._modif_set_bus or modif_switch:
+        if other._modif_change_bus or modif_set_bus or modif_switch:
             self._aux_iadd_reconcile_disco_reco()
         return self
 

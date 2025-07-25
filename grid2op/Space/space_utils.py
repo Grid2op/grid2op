@@ -68,7 +68,7 @@ def save_to_dict(res_dict, me, key, converter, copy_=True):
         raise Grid2OpException(
             'Impossible to convert "{}" into class {} with exception '
             '\n"{}"'.format(key, converter, exc_)
-        )
+        ) from exc_
 
     if key in res_dict:
         msg_err_ = (

@@ -13,7 +13,7 @@ import time
 import copy
 import os
 import json
-from typing import List, Optional, Tuple, Union, Dict, Any, Literal
+from typing import List, Optional, Tuple, Union, Literal
 import importlib
 import sys
 
@@ -22,6 +22,7 @@ import numpy as np
 from scipy.optimize import (minimize, LinearConstraint)
 from abc import ABC, abstractmethod
 
+from grid2op.Space.detailed_topo_description import DetailedTopoDescription
 from grid2op._glop_platform_info import _IS_WINDOWS
 from grid2op.Environment._env_prev_state import _EnvPreviousState
 from grid2op.Observation import (BaseObservation,
@@ -1498,6 +1499,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # previous state (complete)
         n_shunt = bk_type.n_shunt if bk_type.shunts_data_available else 0
+        dtd: Optional[DetailedTopoDescription] = bk_type.detailed_topo_desc
         self._previous_conn_state = _EnvPreviousState(bk_type,
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
@@ -1508,17 +1510,20 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                       np.zeros(n_shunt, dtype=dt_float),
                                                       np.zeros(n_shunt, dtype=dt_float),
                                                       np.zeros(n_shunt, dtype=dt_int),
+                                                      np.zeros(dtd.switches.shape[0]) if dtd is not None else None
                                                       )
         
         if self._init_obs is None:
             # regular environment, initialized from scratch
             try:
                 self.backend.runpf(is_dc=self._parameters.ENV_DC)
-                self._previous_conn_state.update_from_backend(self.backend)
+                self._previous_conn_state.update_from_backend(self.backend)  # TODO detailed topo: handle cases: a) backend has switch information b) backend does not know switches
             except Exception as exc_:
                 # nothing to do in this case
                 self.logger.warning(f"Impossible to retrieve the initial state of the grid before running the initial powerflow: {exc_}")
                 self._previous_conn_state._topo_vect[:] = 1  # I force assign everything to busbar 1 by default...
+                # TODO detailed topo: in this case make the algorithm to find a possible configuration to all 1 for
+                # the switches
             self._cst_prev_state_at_init = copy.deepcopy(self._previous_conn_state)
             self._backend_action = self._backend_action_class()
         else:
@@ -3654,7 +3659,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # explicitly store in cache the topological impact (not to recompute it again and again)
             # and this regardless of the 
             _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
-            
             if not self._called_from_reset:
                 # avoid checking this at first environment "step" which is a "reset"
                 is_legal, reason = self._game_rules(action=action, env=self)

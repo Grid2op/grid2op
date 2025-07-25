@@ -2186,7 +2186,7 @@ class BaseTestShuntAction(MakeBackend):
                 backend=backend,
                 _add_to_name=type(self).__name__ + "_1"
             ) as env_case2:
-                with self.assertRaises(IllegalAction):
+                with self.assertRaises(AmbiguousAction):
                     act = env_case2.action_space({"shunt": {"set_bus": [(0, 2)]}})
 
     def test_shunt_effect(self):

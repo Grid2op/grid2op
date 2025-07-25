@@ -14,7 +14,6 @@ import tempfile
 
 import grid2op
 from grid2op.dtypes import dt_float
-from grid2op.Action.baseAction import BaseAction
 from grid2op.Exceptions import AmbiguousAction
 from grid2op.Action import CompleteAction
 from grid2op.Backend import PandaPowerBackend
@@ -363,10 +362,10 @@ class TestSheddingEnv(unittest.TestCase):
         
     def test_shedding_load_step(self):
         # NB warning this test does not pass if STOP_EP_IF_GEN_BREAK_CONSTRAINTS (slack breaks its rampdown !)
+        print("here here here")
         obs, reward, done, info = self.env.step(self.env.action_space({"detach_load": 0}))
         # env converged
         assert not done, info["exception"]
-        
         # load properly disconnected
         assert obs.topo_vect[obs.load_pos_topo_vect[0]] == -1
         # 0 in the observation for this load

@@ -2416,52 +2416,6 @@ class BaseAction(GridObjects):
                         "Invalid way to modify {} for shunts. It should be a numpy array or a "
                         "list, found {}.".format(key_n, type(tmp))
                     )
-                    warn += " Recognized keys are {}".format(sorted(key_shunt_reco))
-                    warnings.warn(warn)
-            for key_n, vect_self in zip(
-                ["shunt_bus", "shunt_p", "shunt_q", "set_bus"],
-                [self.shunt_bus, self.shunt_p, self.shunt_q, self.shunt_bus],
-            ):
-                if key_n in ddict_:
-                    tmp = ddict_[key_n]
-                    if isinstance(tmp, np.ndarray):
-                        # complete shunt vector is provided
-                        vect_self[:] = tmp
-                    elif isinstance(tmp, list):
-                        # expected a list: (id shunt, new bus)
-                        cls = type(self)
-                        for (sh_id, new_bus) in tmp:
-                            if sh_id < 0:
-                                raise AmbiguousAction(
-                                    "Invalid shunt id {}. Shunt id should be positive".format(
-                                        sh_id
-                                    )
-                                )
-                            if sh_id >= cls.n_shunt:
-                                raise AmbiguousAction(
-                                    "Invalid shunt id {}. Shunt id should be less than the number "
-                                    "of shunt {}".format(sh_id, cls.n_shunt)
-                                )
-                            if key_n == "shunt_bus" or key_n == "set_bus":
-                                if new_bus <= -2:
-                                    raise AmbiguousAction(
-                                        f"Cannot ask for a shunt bus <= -2, found {new_bus} for shunt id {sh_id}"
-                                    )
-                                elif new_bus > cls.n_busbar_per_sub:
-                                    raise AmbiguousAction(
-                                        f"Cannot ask for a shunt bus > {cls.n_busbar_per_sub} "
-                                        f"the maximum number of busbar per substations"
-                                        f", found {new_bus} for shunt id {sh_id}"
-                                    )
-                                
-                            vect_self[sh_id] = new_bus
-                    elif tmp is None:
-                        pass
-                    else:
-                        raise AmbiguousAction(
-                            "Invalid way to modify {} for shunts. It should be a numpy array or a "
-                            "dictionary.".format(key_n)
-                        )
 
     def _digest_injection(self, dict_):
         # I update the action

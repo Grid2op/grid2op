@@ -3782,7 +3782,11 @@ class GridObjects:
         raise Grid2OpException(f"Unknown element at position {topo_vect_id}")
 
     @staticmethod
-    def _make_cls_dict(cls, res, as_list=True, copy_=True, _topo_vect_only=False):
+    def _make_cls_dict(cls: Type["GridObjects"],
+                       res,
+                       as_list=True,
+                       copy_=True,
+                       _topo_vect_only=False):
         """ 
         INTERNAL
 
@@ -4144,7 +4148,11 @@ class GridObjects:
         return res
 
     @staticmethod
-    def _make_cls_dict_extended(cls, res: CLS_AS_DICT_TYPING, as_list=True, copy_=True, _topo_vect_only=False):
+    def _make_cls_dict_extended(cls: Type["GridObjects"],
+                                res: CLS_AS_DICT_TYPING,
+                                as_list=True,
+                                copy_=True,
+                                _topo_vect_only=False):
         """add the n_gen and all in the class created
         
         Notes

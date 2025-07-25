@@ -7,10 +7,11 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
-from typing import Optional, Type, Any
+from typing import Optional, Type
 import numpy as np
 from grid2op.Space import GridObjects
 import grid2op.Backend
+from grid2op.dtypes import dt_int
 from grid2op.typing_variables import CLS_AS_DICT_TYPING
 from grid2op.Exceptions import Grid2OpException
 
@@ -26,7 +27,8 @@ class _EnvPreviousState(object):
                  init_storage_p : np.ndarray,
                  init_shunt_p : np.ndarray,
                  init_shunt_q : np.ndarray,
-                 init_shunt_bus : np.ndarray):
+                 init_shunt_bus : np.ndarray,
+                 init_switch_state: Optional[np.ndarray]):
         self._can_modif = True
         self._grid_obj_cls : CLS_AS_DICT_TYPING = grid_obj_cls.cls_to_dict()
         self._n_storage = len(self._grid_obj_cls["name_storage"])  # to avoid typing that over and over again
@@ -40,6 +42,8 @@ class _EnvPreviousState(object):
         self._shunt_p : np.ndarray = 1. * init_shunt_p
         self._shunt_q : np.ndarray = 1. * init_shunt_q
         self._shunt_bus : np.ndarray = 1. * init_shunt_bus
+        if grid_obj_cls.detailed_topo_desc is not None:
+            self._switch_state = 1 * init_switch_state
         
     def update(self,
                load_p : np.ndarray,
@@ -84,7 +88,7 @@ class _EnvPreviousState(object):
     def update_from_backend(self,
                             backend: "grid2op.Backend.Backend"):
         if not self._can_modif:
-            raise Grid2OpException(f"Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
         topo_vect = backend.get_topo_vect()
         load_p, load_q, *_ = backend.loads_info()
         gen_p, gen_q, gen_v = backend.generators_info()
@@ -96,6 +100,10 @@ class _EnvPreviousState(object):
             shunt_p, shunt_q, shunt_v, shunt_bus = backend.shunt_info()
         else:
             shunt_p, shunt_q, shunt_v, shunt_bus = None, None, None, None
+            
+        if type(backend).detailed_topo_desc is not None:
+            # TODO detailed topo !
+            switches = np.ones_like(type(backend).detailed_topo_desc.switches, dtype=dt_int)
         self.update(load_p, load_q,
                     gen_p, gen_v,
                     topo_vect,
@@ -105,7 +113,7 @@ class _EnvPreviousState(object):
     def update_from_other(self, 
                           other : "_EnvPreviousState"):
         if not self._can_modif:
-            raise Grid2OpException(f"Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
         for attr_nm in ["_load_p",
                         "_load_q",
                         "_gen_p",
@@ -121,6 +129,9 @@ class _EnvPreviousState(object):
                 tmp[:] = copy.deepcopy(getattr(other, attr_nm))
             else:
                 setattr(self, attr_nm, getattr(other, attr_nm))
+        # if detailed topo
+        if hasattr(self, "_switch_state"):
+            self._switch_state[:] = other._switch_state
         
     def prevent_modification(self):
         self._aux_modif()
@@ -149,6 +160,9 @@ class _EnvPreviousState(object):
             if tmp.size > 1:
                 # can't set flags on array of size 1 apparently
                 tmp.flags.writeable = writeable_flag
+        # if detailed topo
+        if hasattr(self, "_switch_state"):
+            self._switch_state.flags.writeable = writeable_flag
         
     def _aux_update(self,
                     el_topo_vect : np.ndarray,
