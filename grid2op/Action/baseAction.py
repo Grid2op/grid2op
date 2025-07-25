@@ -1731,7 +1731,7 @@ class BaseAction(GridObjects):
             effective_change[cls.line_or_pos_topo_vect[disco_set_ex]] = False
             effective_change[cls.line_ex_pos_topo_vect[disco_set_ex]] = False
         
-        self._subs_impacted[self._topo_vect_to_sub[effective_change]] = True
+        _subs_impacted[self._topo_vect_to_sub[effective_change]] = True
         
         if cls.detachment_is_allowed:
             # added for detachment: it can also affect substations
@@ -1742,8 +1742,8 @@ class BaseAction(GridObjects):
         
         dtd = type(self).detailed_topo_desc
         if dtd is not None:
-            self._subs_impacted[dtd.switches[self._set_switch_status != 0, type(dtd).SUB_COL]] = True
-            self._subs_impacted[dtd.switches[self._change_switch_status, type(dtd).SUB_COL]] = True
+            _subs_impacted[dtd.switches[self._set_switch_status != 0, type(dtd).SUB_COL]] = True
+            _subs_impacted[dtd.switches[self._change_switch_status, type(dtd).SUB_COL]] = True
             # TODO detailed topo
             
         if _store_in_cache:
