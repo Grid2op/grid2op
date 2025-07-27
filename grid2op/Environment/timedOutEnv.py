@@ -80,6 +80,8 @@ class TimedOutEnvironment(Environment):  # TODO heritage ou alors on met un truc
                 # first take the "ownership" of the tmp directory
                 kwargs["_local_dir_cls"] = grid2op_env._local_dir_cls
                 grid2op_env._local_dir_cls = None
+                kwargs["_read_from_local_dir"] = grid2op_env._read_from_local_dir
+                grid2op_env._read_from_local_dir = None
                 
                 # then generate the proper classes
                 sys_path = os.path.abspath(kwargs["_local_dir_cls"].name)
