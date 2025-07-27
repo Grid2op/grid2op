@@ -2981,6 +2981,9 @@ class GridObjects:
             # the configuration equires to initialize the classes from the local environment path
             # this might be usefull when using pickle module or multiprocessing on Windows for example
             my_class = GridObjects._build_cls_from_import(name_res, gridobj._PATH_GRID_CLASSES)
+            from grid2op.Observation import CompleteObservation
+            if issubclass(CompleteObservation, cls):
+                print(f"DEBUG WINDOWS CI: init_grid {cls} gridobj._PATH_GRID_CLASSES is not None: {my_class}")
             if my_class is not None:
                 return my_class
         
@@ -3019,6 +3022,9 @@ class GridObjects:
         elif gridobj._PATH_GRID_CLASSES is not None:
             # If I end up it's because the environment is created with already initialized
             # classes.
+            from grid2op.Observation import CompleteObservation
+            if issubclass(CompleteObservation, cls):
+                print(f"DEBUG WINDOWS CI: init_grid {cls} gridobj._PATH_GRID_CLASSES is not None 2:  {my_class}")
             return cls._aux_init_grid_from_cls(gridobj, name_res)
         
         # legacy behaviour: build the class "on the fly"
@@ -3043,10 +3049,13 @@ class GridObjects:
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
-        res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
         res_cls.process_detachment()
+        res_cls.process_shunt_static_data()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
+        from grid2op.Observation import CompleteObservation
+        if issubclass(CompleteObservation, cls):
+            print(f"DEBUG WINDOWS CI: init_grid {cls} gridobj._PATH_GRID_CLASSES is not None 2:  {res_cls}")
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
             # best would be to have a look at https://docs.python.org/3/library/types.html
