@@ -180,7 +180,7 @@ class AutoClassInFileTester(unittest.TestCase):
                       None, # VoltageOnlyAction not in env
                       None, # ForecastEnv_ not in env
                       ]
-        print(f"DEBUG WINDOWS CI: {names_cls}")
+        print(f"DEBUG WINDOWS CI:test_all_classes_from_file \n{names_cls}")
         # NB: these imports needs to be consistent with what is done in
         # base_env.generate_classes() and gridobj.init_grid(...)
         supermodule_nm, module_nm = os.path.split(env._read_from_local_dir)
