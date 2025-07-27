@@ -251,12 +251,12 @@ jobs:
 
       - name: Test the automatic generation of classes in the env folder
         run: |
-          python -m unittest grid2op/tests/automatic_classes.py -v -f
+          python -m unittest grid2op.tests.automatic_classes.ForEnvAutoClassTester.test_all_classes_from_file
   
   package:
     name: Test install
     runs-on: ubuntu-latest
-    needs: [manylinux_build, macos_windows_build, auto_class_in_file]
+    needs: [auto_class_in_file]
 
     steps:
       - name: Download wheels

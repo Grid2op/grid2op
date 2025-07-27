@@ -1234,7 +1234,8 @@ class BaseObservation(GridObjects):
             for el in shunts_attr:
                 if el not in cls.attr_vect_cpy:
                     cls.attr_vect_cpy.append(el)
-                    
+        
+        print(f"DEBUG WINDOWS CI: process_shunt_static_data = {cls}: {cls.attr_vect_cpy}")        
         return super().process_shunt_static_data()
     
     @classmethod
