@@ -180,8 +180,7 @@ class AutoClassInFileTester(unittest.TestCase):
                       None, # VoltageOnlyAction not in env
                       None, # ForecastEnv_ not in env
                       ]
-        # print(f"DEBUG WINDOWS CI:test_all_classes_from_file \n{names_cls}")
-        # assert  '_shunt_p' in type(env.get_obs()).attr_vect_cpy
+        assert  '_shunt_p' in type(env.get_obs()).attr_vect_cpy
         
         # NB: these imports needs to be consistent with what is done in
         # base_env.generate_classes() and gridobj.init_grid(...)

@@ -1234,8 +1234,7 @@ class BaseObservation(GridObjects):
             for el in shunts_attr:
                 if el not in cls.attr_vect_cpy:
                     cls.attr_vect_cpy.append(el)
-        
-        print(f"DEBUG WINDOWS CI: baseobs.process_shunt_static_data = {cls}: \n{cls.attr_vect_cpy}")        
+        # print(f"DEBUG WINDOWS CI: baseobs.process_shunt_static_data = {cls}: \n{cls.attr_vect_cpy}")        
         return super().process_shunt_static_data()
     
     @classmethod
@@ -5070,7 +5069,7 @@ class BaseObservation(GridObjects):
                           )
         # it does one simulation when it inits it (calling env.step) so I remove 1 here
         res.highres_sim_counter._HighResSimCounter__nb_highres_called = nb_highres_called
-        print(f"DEBUG WINDOWS CI: obs.make_env_from_arrays = \n{type(res)}")
+        # print(f"DEBUG WINDOWS CI: obs.make_env_from_arrays = \n{type(res)}")
         return res
 
     def change_forecast_parameters(self, params: Parameters) -> None:
