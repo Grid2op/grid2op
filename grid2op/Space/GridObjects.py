@@ -2903,7 +2903,7 @@ class GridObjects:
         """
         cls.env_name = name
 
-    @classmethod()
+    @classmethod
     def _aux_finish_init_grid_from_file(cls):
         # used in the _aux_init_grid_from_cls
         # do not forget to create the cls_dict once and for all
