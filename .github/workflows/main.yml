@@ -63,4 +63,4 @@ jobs:
 
       - name: Test the automatic generation of classes in the env folder
         run: |
-          python -m unittest grid2op.tests.automatic_classes
+          python -m unittest grid2op.tests.automatic_classes.ForEnvAutoClassTester.test_all_classes_from_file

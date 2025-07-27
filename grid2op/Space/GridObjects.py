@@ -2903,6 +2903,18 @@ class GridObjects:
         """
         cls.env_name = name
 
+    @classmethod()
+    def _aux_finish_init_grid_from_file(cls):
+        # used in the _aux_init_grid_from_cls
+        # do not forget to create the cls_dict once and for all
+        if cls._CLS_DICT is None:
+            tmp = {}
+            cls._make_cls_dict_extended(cls, tmp, as_list=False)
+
+        cls._compute_pos_big_topo_cls()
+        cls.process_shunt_static_data()
+        cls.process_detachment()
+        
     @classmethod
     def _aux_init_grid_from_cls(cls, gridobj, name_res):
         import importlib
@@ -2921,11 +2933,9 @@ class GridObjects:
             super_module_nm = super_supermodule
         
         if f"{module_nm}.{name_res}_file" in sys.modules:
-            cls_res = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
+            cls_res : Type[GridObjects]  = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
             # do not forget to create the cls_dict once and for all
-            if cls_res._CLS_DICT is None:
-                tmp = {}
-                cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
+            cls_res._aux_finish_init_grid_from_file()
             return cls_res
         
         super_module = importlib.import_module(module_nm, super_module_nm)  # env/path/_grid2op_classes/
@@ -2937,15 +2947,8 @@ class GridObjects:
             importlib.invalidate_caches()
             importlib.reload(super_module)
             module = importlib.import_module(f".{name_res}_file", package=module_nm)
-        cls_res = getattr(module, name_res)
-        # do not forget to create the cls_dict once and for all
-        if cls_res._CLS_DICT is None:
-            tmp = {}
-            cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
-
-        cls_res._compute_pos_big_topo_cls()
-        cls_res.process_shunt_static_data()
-        cls_res.process_detachment()
+        cls_res : Type[GridObjects] = getattr(module, name_res)
+        cls_res._aux_finish_init_grid_from_file()
         return cls_res
     
     @classmethod
