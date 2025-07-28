@@ -44,7 +44,7 @@ jobs:
             version: '3.12',
           }
           - {
-            name: cp313,   # issue with pandapower atm
+            name: cp313,
             abi: cp313,
             version: '3.13',
           }
@@ -103,7 +103,7 @@ jobs:
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with:
-          name: grid2op-wheel-${{ matrix.config.name }}-${{ matrix.python.name }}
+          name: grid2op-wheel-${{ matrix.python.name }}
           path: dist/*.whl
 
   macos_windows_build:
@@ -141,7 +141,7 @@ jobs:
             name: cp312,
             version: '3.12',
           }
-          - {  # issue with pandapower atm
+          - {
             name: cp313,
             version: '3.13',
           }
@@ -206,10 +206,10 @@ jobs:
             name: darwin,
             os: macos-latest,
           }
-          # - {
-          #   name: windows,
-          #   os: windows-2022,
-          # }
+          - {
+            name: windows,
+            os: windows-2022,
+          }
           - { 
             name: ubuntu,
             os: ubuntu-latest,

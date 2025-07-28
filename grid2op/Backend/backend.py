@@ -2275,6 +2275,8 @@ class Backend(GridObjects, ABC):
         }
 
         if cls.shunts_data_available and type(obs).shunts_data_available:
+            # print(f"DEBUG WINDOWS CI: backend.update_from_obs type(obs) = {type(obs)}")
+            # print(f"DEBUG WINDOWS CI: backend.update_from_obs type(obs).attr_vect_cpy = \n{type(obs).attr_vect_cpy}")
             if cls.n_shunt > 0 and "_shunt_bus" not in (type(obs).attr_list_set | set(type(obs).attr_list_json)):
                 raise BackendError(
                     "Impossible to set the backend to the state given by the observation: shunts data "
