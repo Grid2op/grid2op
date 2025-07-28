@@ -100,6 +100,10 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.1] - 2025-xx-yy
+----------------------
+- [IMPROVED] cleaner installation, relying only on "pyproject.toml"
+
 [1.12.0] - 2025-07-24
 --------------------------
 - [BREAKING] the `info` returned argument of `env.step(...)` function
