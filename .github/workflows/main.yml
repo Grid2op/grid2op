@@ -18,11 +18,11 @@ jobs:
     strategy:
       matrix:
         python:
-          - {
-            name: cp38,
-            abi: cp38,
-            version: '3.8',
-          }
+          # - {
+          #   name: cp38,
+          #   abi: cp38,
+          #   version: '3.8',
+          # }
           - {
             name: cp39,
             abi: cp39,
@@ -119,10 +119,10 @@ jobs:
             os: windows-2022,
           }
         python:
-          - {
-            name: cp38,
-            version: '3.8',
-          }
+          # - {
+          #   name: cp38,
+          #   version: '3.8',
+          # }
           - {
             name: cp39,
             version: '3.9',
