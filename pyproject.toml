@@ -108,7 +108,11 @@ test = [
     "numba; python_version<='3.12'",  # numba not available on python 3.13 yet
     "gymnasium",
     "nbconvert",
-    "jinja2"
+    "jinja2",
+    "imageio",
+    "plotly",
+    "matplotlib",
+    "seaborn"
 ]
 chronix2grid = [
     "ChroniX2Grid>=1.2.0.post1",
