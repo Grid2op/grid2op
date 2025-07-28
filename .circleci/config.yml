@@ -176,7 +176,7 @@ jobs:
                    python -m pip install -U pip setuptools wheel
                    python -m pip install -U numba
             - run:
-              command: |
+               command: |
                    rm pyproject.toml
                    cp pyproject_38.toml pyproject.toml
             - run:
@@ -218,7 +218,7 @@ jobs:
                    python -m pip install -U pip setuptools wheel
                    python -m pip install -U lightsim2grid==0.5.3 gymnasium "numpy<1.22"
             - run:
-              command: |
+               command: |
                    rm pyproject.toml
                    cp pyproject_38.toml pyproject.toml
             - run:
@@ -245,7 +245,7 @@ jobs:
                    python -m pip install -U pip setuptools wheel
                    python -m pip install -U lightsim2grid==0.6.0 gymnasium "numpy<1.22"
             - run:
-              command: |
+               command: |
                    rm pyproject.toml
                    cp pyproject_38.toml pyproject.toml
             - run:
