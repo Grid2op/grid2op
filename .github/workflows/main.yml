@@ -18,11 +18,11 @@ jobs:
     strategy:
       matrix:
         python:
-          # - {
-          #   name: cp38,
-          #   abi: cp38,
-          #   version: '3.8',
-          # }
+          - {
+            name: cp38,
+            abi: cp38,
+            version: '3.8',
+          }
           - {
             name: cp39,
             abi: cp39,
@@ -62,7 +62,13 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip wheel setuptools build
-          
+      
+      - name: Rename pyproject_38.toml file (python 3.8)
+        if: matrix.python.name == 'cp38'
+        run: |
+          rm pyproject.toml
+          cp pyproject_38.toml pyproject.toml
+
       - name: Build wheel
         run: |
           python -m build --wheel .
@@ -119,10 +125,10 @@ jobs:
             os: windows-2022,
           }
         python:
-          # - {
-          #   name: cp38,
-          #   version: '3.8',
-          # }
+          - {
+            name: cp38,
+            version: '3.8',
+          }
           - {
             name: cp39,
             version: '3.9',
@@ -159,6 +165,18 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip wheel setuptools build
+
+      - name: Rename pyproject_38.toml file (python 3.8 - macos)
+        if: ((matrix.python.name == 'cp38') && (matrix.config.name == 'darwin'))
+        run: |
+          rm pyproject.toml
+          cp pyproject_38.toml pyproject.toml
+
+      - name: Rename pyproject_38.toml file (python 3.8 - windows)
+        if: ((matrix.python.name == 'cp38') && (matrix.config.name == 'windows'))
+        run: |
+          del pyproject.toml
+          cp pyproject_38.toml pyproject.toml
 
       - name: Build wheel
         run: python -m build --wheel .
