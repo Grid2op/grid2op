@@ -1,8 +1,132 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel",
-    "numpy",
-    "pip>=22"
-]
+requires = ["setuptools>=61", "pip>=22", "wheel", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "grid2op"
+dynamic = ["version"]
+dependencies = [
+  "scipy>=1.4.1",
+  "pandas>=1.0.3",
+  "pandapower>=3.1.1; python_version>='3.9'",
+  "numpy",
+  "scipy",
+  "tqdm>=4.45.0",
+  "networkx>=2.4",
+  "requests>=2.23.0",
+  "packaging",  # because gym changes the way it uses numpy prng in version 0.26 and i need both gym before and after...
+  "typing_extensions",
+  "orderly_set<5.4.0; python_version<='3.8'",
+  "importlib_resources; python_version<='3.8'",
+  "pandapower<3; python_version<='3.8'",
+  "numpy<2; python_version<='3.8'",
+  "scipy<1.14; python_version<='3.8'",
+]
+requires-python = ">=3.8"
+authors = [
+  { name = "DONNOT Benjamin", email = "benjamin.donnot@rte-france.com" },
+]
+maintainers = [
+  { name = "DONNOT Benjamin", email = "benjamin.donnot@rte-france.com" },
+]
+description = "An gymnasium compatible environment to model sequential decision making for powersystems"
+readme = "README.md"
+license-files = ["LICENSE.md"]
+keywords = ["ML", "powergrid", "optmization", "RL", "power-systems"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+
+  "Intended Audience :: Developers",
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Topic :: Scientific/Engineering",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "grid2op.__version__" }
+
+[tool.setuptools.packages.find]
+# All the following settings are optional:
+where = ["."]                    # by default
+include = ["grid2op*"]           # ["*"] by default
+exclude = ["grid2op/tests*"]                     # empty by default
+namespaces = false      
+
+[project.urls]
+Homepage = "https://github.com/Grid2op"
+Documentation = "https://grid2op.readthedocs.io/"
+Repository = "https://github.com/Grid2op/grid2op"
+"Bug Tracker" = "https://github.com/Grid2op/grid2op/issues"
+Changelog = "https://github.com/Grid2op/grid2op/blob/master/CHANGELOG.rst"
+
+[project.optional-dependencies]
+optional = [
+    "nbformat>=5.0.4",
+    "jupyter-client>=6.1.0",
+    "numba>=0.48.0",
+    "matplotlib>=3.2.1",
+    "plotly>=4.5.4",
+    "seaborn>=0.10.0",
+    "imageio>=2.8.0",
+    "pygifsicle>=1.0.1",
+    "psutil>=5.7.0",
+    "gymnasium",
+    "lightsim2grid"
+]
+gymnasium = [
+    "gymnasium"
+]
+docs = [
+    "numpydoc>=0.9.2",
+    "sphinx<7.0.0,>=2.4.4",
+    "sphinx-rtd-theme>=0.4.3",
+    "sphinxcontrib-trio>=1.1.0",
+    "autodocsumm>=0.1.13",
+    "gym>=0.17.2",
+    "gymnasium"
+]
+plot = ["imageio"]
+test = [
+    "lightsim2grid",
+    "numba; python_version<='3.12'",  # numba not available on python 3.13 yet
+    "gymnasium",
+    "nbconvert",
+    "jinja2"
+]
+chronix2grid = [
+    "ChroniX2Grid>=1.2.0.post1",
+    "pypsa<0.25"  # otherwise does not work (need fix in chronix2grid)
+    ]
+
+[project.scripts]
+"grid2op.main" = "grid2op.command_line:main"
+"grid2op.download" = "grid2op.command_line:download"
+"grid2op.replay" = "grid2op.command_line:replay"
+"grid2op.testinstall" = "grid2op.command_line:testinstall"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.package-data]
+grid2op = [
+    "data/**/*",
+]
+
+[tool.setuptools.exclude-package-data]
+grid2op = [
+    "*/__pycache__/*",
+    "**/*.pyc",
+    "*_grid2op_classes*",
+]
