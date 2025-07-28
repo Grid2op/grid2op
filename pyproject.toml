@@ -127,6 +127,7 @@ include-package-data = false
 [tool.setuptools.package-data]
 grid2op = [
     "data/**/*",
+    "data/**/.multimix",
 ]
 
 [tool.setuptools.exclude-package-data]
