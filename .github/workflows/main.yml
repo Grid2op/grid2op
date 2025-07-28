@@ -67,7 +67,7 @@ jobs:
           
       - name: Build wheel
         run: |
-          python setup.py bdist_wheel
+          python -m build --wheel .
 
       - name: Install wheel
         run: |
@@ -165,7 +165,7 @@ jobs:
           python -m pip install --upgrade setuptools
 
       - name: Build wheel
-        run: python setup.py bdist_wheel
+        run: python -m build --wheel .
 
       - name: Install wheel
         shell: bash
@@ -181,7 +181,7 @@ jobs:
 
       - name: Build source archive
         if: matrix.config.name == 'darwin' && matrix.python.name == 'cp310'
-        run: python setup.py sdist
+        run: python -m build --sdist .
 
       - name: Upload wheel
         uses: actions/upload-artifact@v4
@@ -241,7 +241,7 @@ jobs:
           python -m pip install --upgrade pip wheel setuptools gymnasium
 
       - name: Build wheel
-        run: python setup.py bdist_wheel
+        run: python -m build --wheel .
 
       - name: Install wheel
         shell: bash
