@@ -3654,9 +3654,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 try:
                     action.backend_dependant_callback(self.backend._grid)
                 except Exception as exc_:
-                    except_ .append(InvalidBackendCallback(f"Invalid backend_dependant_callbacks: error was: \n{exc_}\n"
-                                                         "You can consult `env._callbacks_error` (list of error)"
-                                                         "to have more information")
+                    except_.append(exc_)
+                    except_.append(InvalidBackendCallback("Invalid action.backend_dependant_callbacks provided."
+                                                          "You can consult `info['exceptions']` "
+                                                          "to have more information")
                     )
                     action = self._action_space({})
                     init_disp = 1.0 * action._redispatch  # dispatching action

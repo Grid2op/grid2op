@@ -105,6 +105,9 @@ Native multi agents support:
 - [ADDED] the possibility to act on the backend directly from the action
   with the "act."
 - [IMPROVED] cleaner installation, relying only on "pyproject.toml"
+- [IMPROVED] documentation of "how to create a new grid2op observation"
+  having different attributes.
+- [IMPROVED] documentation of the "action" class 
 
 [1.12.0] - 2025-07-24
 --------------------------

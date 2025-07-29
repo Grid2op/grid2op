@@ -1484,7 +1484,7 @@ class BaseAction(GridObjects):
             then the argument `powerline_status` might be ignored in future calls where `_read_from_cache` is
             ``True``
             
-            .. newinversion:: 1.11.0
+            .. versionadded:: 1.11.0
             
             .. warning:: 
                 Use with extra care, it's private API.
@@ -1501,7 +1501,7 @@ class BaseAction(GridObjects):
             By default it's ``True``, but by default no cache is not set up. This means that by default
             the argument `powerline_status` is in fact used. 
             
-            .. newinversion:: 1.11.0
+            .. versionadded:: 1.11.0
             
         Returns
         -------

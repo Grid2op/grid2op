@@ -558,6 +558,10 @@ vector.
 You can also use it to "hack" the environment and allow the agent to observe things that are not
 normally observable.
 
+Finally, this feature is applied BEFORE any changes made by "real" grid2op entities (environment, agent, etc.).
+This means that you can modify things using this feature, but these modifications might be silently (because
+grid2op does not check anything) overriden by other grid2op instructions.
+
 Recommended Usage
 ++++++++++++++++++
 
@@ -612,6 +616,16 @@ You can use it like this for example:
     act.backend_dependant_callback = change_whatever
     obs, reward, done, info = env.step(act)
   
+The code in the :func:`grid2op.Environment.BaseEnv.step` function for this feature is
+equivalent to:
+
+.. code-block:: python
+
+  action.backend_dependant_callback(self.backend._grid)
+
+You then need to make sure that the function you pass to `action.backend_dependant_callback` takes only
+one argument (which is of type `env.backend._grid`) and returns nothing.
+
 
 Equivalent implementation
 ++++++++++++++++++++++++++
@@ -623,7 +637,47 @@ This modifies the grid before the rest of the action of the agent,
 before the change of the environment (new load or generator) and
 before the opponent (if any) acts.
 
-To
+If there is an error during the call to `action.backend_dependant_callback(self.backend._grid)`,
+then the action is declared `ambiguous`, an :class:`grid2op.Exceptions.InvalidBackendCallback` is added
+to the `info["exceptions"]` returned value.
+
+In this case, the whole action is replaced by a "do nothing" action and nothing is done
+to the backend.
+
+.. danger::
+  About this last statement, grid2op does not control anything regarding this callback. 
+
+  This means that, if env.backend._grid is "half modified" before an exception is raised 
+  in the application of `action.backend_dependant_callback` then "half of the modifications"
+  will be performed and not removed, and half of them will be ignored.
+
+  In this last case, all other "part" of the actions will be ignored as well.
+
+  For example, if your call back is like this:
+
+  .. code-block:: python
+    
+    def my_callback(grid):
+        grid.something_ok
+        grid.some_other_thing_ok
+        grid.A_CRITICAL_FAILURE
+        # -> suppose an exception is raised here
+        grid.a_last_thing_ok
+  
+  Then in this case, `something_ok` and `some_other_thing_ok` will be implemented
+  on the grid. The critical failure will not and neither will `a_last_thing_ok`.
+
+  And because you apply a "callback", grid2op has no way to know, in general, how to undo your changes
+  so even if your action is ambiguous, it will not be strictly equivalent to 
+  the "do nothing" action: the grid will be modified.
+
+  This breaks the "ACID" (https://en.wikipedia.org/wiki/ACID) "implementation" of the action. In particular
+  the action will not be "atomic" anymore (some part might be implemented and not other) nor will it
+  be "consistent" (the fact that there is a critical failure in the example might lead the grid to be
+  in an inconsistent state from which the grid2op environment might never, even after a `env.reset()`
+  recover).
+
+  "With a great power, come great responsibility" ...
 
 
 Diving even more into the customization
