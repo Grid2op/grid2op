@@ -1234,7 +1234,6 @@ class BaseObservation(GridObjects):
             for el in shunts_attr:
                 if el not in cls.attr_vect_cpy:
                     cls.attr_vect_cpy.append(el)
-                    
         return super().process_shunt_static_data()
     
     @classmethod
@@ -5059,6 +5058,7 @@ class BaseObservation(GridObjects):
         backend = self._obs_env.backend.copy_public()
         backend._is_loaded = True
         nb_highres_called = self._obs_env.highres_sim_counter.nb_highres_called
+        
         res = ForecastEnv(**self._ptr_kwargs_env,
                           backend=backend,
                           chronics_handler=ch,

@@ -6,12 +6,15 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from collections.abc import Callable
 import copy
 import numpy as np
 import warnings
-from typing import Tuple, Dict, Literal, Any, List, Optional
+from typing import Tuple, Dict, Literal, Any, List, Optional, TYPE_CHECKING
 
-
+if TYPE_CHECKING:
+    from grid2op.Observation import BaseObservation
+    
 try:
     from typing import Self
 except ImportError:
@@ -20,7 +23,7 @@ except ImportError:
 from packaging import version
 
 import grid2op
-from grid2op.typing_variables import DICT_ACT_TYPING
+from grid2op.typing_variables import BACKEND_TYPE, DICT_ACT_TYPING
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.Exceptions import (Grid2OpException,
                                 AmbiguousAction,
@@ -135,6 +138,30 @@ class BaseAction(GridObjects):
     specified format, and the :func:`BaseAction.__init__` method has the same signature.
 
     This format is then digested by the backend and the powergrid is modified accordingly.
+    
+    .. versionadded: 1.12.1
+    
+    From grid2op 1.12.1, it is possible for an agent to modify directly the "backend" with the
+    :attr:`BaseAction.backend_dependant_callback` attribute.
+    
+    .. danger::
+        If you want to use it, please consult the documentation of the Action module (*eg* 
+        :ref:`action-module-backend_callbacks`), this feature can have
+        dramatic side effect.
+        
+    **TL;DR** Here are some recommendation:
+    
+    - We do not recommend to use this function on "obs.simulate" at all. 
+    - Depending on the backend  implementation, the use of this function can have long-term effect, 
+      even after a "env.reset" for example.
+    - This function can have effect on the validity of the observation. For example, if you modify on which busbar
+      an element is connect with this function, this changes might not be reflected in the observation.
+    - If the "regular" action properties allow you to do something, it is prefered to use them instead
+      of using this feature.
+      
+    This feature has been added to allow people to modify the grid in certain way, even if these modifications
+    were not possible with grid2op. At time of writing, we could think about changing the "tap" of a transformer
+    or a phase-shifting transformer for example.
 
     Attributes
     ----------
@@ -403,6 +430,22 @@ class BaseAction(GridObjects):
         act = env.action_space()
         act.detach_storage = [storage1_id, storage2_id, ...]
     
+    To act on the backend directly, you can do something like this:
+    
+    .. code-block:: python
+    
+        import grid2op
+        from grid2op.Action import BaseAction
+        env_name = "educ_case14_storage"  # or any other name
+        env = grid2op.make(env_name, test=True)
+        
+        act = env.action_space()
+        
+        def change_whatever(grid):
+            ...
+            
+        act.backend_dependant_callback = change_whatever
+    
     """
 
     authorized_keys = {
@@ -548,6 +591,12 @@ class BaseAction(GridObjects):
             self._detach_load = None
             self._detach_gen = None
             self._detach_storage = None
+            
+        #: .. versionadded:: 1.12.1
+        #: allows the agent to perform an action
+        #: that depends on the backend type used.
+        #: See the doc for more information.
+        self.backend_dependant_callback : Optional[Callable[[BACKEND_TYPE], None]] = None
         
         # change the stuff
         self._modif_inj = False
@@ -654,7 +703,8 @@ class BaseAction(GridObjects):
 
         for attr_nm in attr_vect:
             getattr(other, attr_nm)[:] = getattr(self, attr_nm)
-
+        other.backend_dependant_callback = self.backend_dependant_callback
+        
     def __copy__(self) -> "BaseAction":
         res = type(self)()
 
@@ -1007,6 +1057,7 @@ class BaseAction(GridObjects):
             or self._modif_detach_load
             or self._modif_detach_gen
             or self._modif_detach_storage
+            or self.backend_dependant_callback is not None
         )
 
     def _get_array_from_attr_name(self, attr_name):
@@ -1877,7 +1928,7 @@ class BaseAction(GridObjects):
                     self._dict_inj[el][ok_ind] = val[ok_ind]
         # warning if the action cannot be added
         for el in other._dict_inj:
-            if not el in self.attr_list_set:
+            if el not in self.attr_list_set:
                 warnings.warn(
                     type(self).ERR_ACTION_CUT.format(el)
                 )
@@ -2464,8 +2515,8 @@ class BaseAction(GridObjects):
                     raise exc_
                 else:
                     # TODO be more specific on the version
-                    warnings.warn(f"Ignored error on storage units, because "
-                                  f"you are in a backward compatibility mode.")
+                    warnings.warn("Ignored error on storage units, because "
+                                  "you are in a backward compatibility mode.")
                     
     def _digest_curtailment(self, dict_):
         if "curtail" in dict_:
@@ -2478,8 +2529,8 @@ class BaseAction(GridObjects):
                     raise exc_
                 else:
                     # TODO be more specific on the version
-                    warnings.warn(f"Ignored error on curtailment, because "
-                                  f"you are in a backward compatibility mode.")
+                    warnings.warn("Ignored error on curtailment, because "
+                                  "you are in a backward compatibility mode.")
 
     def _digest_alarm(self, dict_):
         """
@@ -3600,7 +3651,7 @@ class BaseAction(GridObjects):
                     line_str = f": {i_alert[0]} (on line {li_line[0]})"
                 else:
                     line_str = "s: \n\t \t - " + "\n\t \t - ".join(
-                        [f": {i} (on line {l})" for i,l in zip(i_alert,li_line)])
+                        [f": {i} (on line {l_id})" for i, l_id in zip(i_alert,li_line)])
                 res.append(f"\t - Raise alert(s) {line_str}")
             else:
                 res.append("\t - Not raise any alert")
@@ -3813,7 +3864,7 @@ class BaseAction(GridObjects):
                     id_, with_name=True
                 )
                 sub_id = "{}".format(substation_id)
-                if not sub_id in res["change_bus_vect"]:
+                if sub_id not in res["change_bus_vect"]:
                     res["change_bus_vect"][sub_id] = {}
                 res["change_bus_vect"][sub_id][nm_] = {
                     "type": objt_type,
@@ -3834,7 +3885,7 @@ class BaseAction(GridObjects):
                     id_, with_name=True
                 )
                 sub_id = "{}".format(substation_id)
-                if not sub_id in res["set_bus_vect"]:
+                if sub_id not in res["set_bus_vect"]:
                     res["set_bus_vect"][sub_id] = {}
                 res["set_bus_vect"][sub_id][nm_] = {
                     "type": objt_type,
@@ -4034,7 +4085,7 @@ class BaseAction(GridObjects):
                 f"`load_id={load_id}`"
             )
         if load_id < 0:
-            raise Grid2OpException(f"`load_id` should be positive.")
+            raise Grid2OpException("`load_id` should be positive.")
         res = {"new_p": np.nan, "new_q": np.nan, "change_bus": False, "set_bus": 0}
         if "load_p" in self._dict_inj:
             res["new_p"] = self._dict_inj["load_p"][load_id]
@@ -4052,7 +4103,7 @@ class BaseAction(GridObjects):
                 f"`gen_id={gen_id}`"
             )
         if gen_id < 0:
-            raise Grid2OpException(f"`gen_id` should be positive.")
+            raise Grid2OpException("`gen_id` should be positive.")
         res = {"new_p": np.nan, "new_v": np.nan, "set_bus": 0, "change_bus": False}
         if "prod_p" in self._dict_inj:
             res["new_p"] = self._dict_inj["prod_p"][gen_id]
@@ -4072,7 +4123,7 @@ class BaseAction(GridObjects):
                 f"`line_id={line_id}`"
             )
         if line_id < 0:
-            raise Grid2OpException(f"`line_id` should be positive.")
+            raise Grid2OpException("`line_id` should be positive.")
         res = {}
         # origin topology
         my_id = self.line_or_pos_topo_vect[line_id]
@@ -4095,7 +4146,7 @@ class BaseAction(GridObjects):
                 f"`storage_id={storage_id}`"
             )
         if storage_id < 0:
-            raise Grid2OpException(f"`storage_id` should be positive.")
+            raise Grid2OpException("`storage_id` should be positive.")
         res = {"power": np.nan, "set_bus": 0, "change_bus": False}
         my_id = self.storage_pos_topo_vect[storage_id]
         res["change_bus"] = self._change_bus_vect[my_id]
@@ -4112,7 +4163,7 @@ class BaseAction(GridObjects):
                 f"`substation_id={substation_id}`"
             )
         if substation_id < 0:
-            raise Grid2OpException(f"`substation_id` should be positive.")
+            raise Grid2OpException("`substation_id` should be positive.")
 
         res = {}
         beg_ = int(cls.sub_info[:substation_id].sum())
@@ -6068,7 +6119,7 @@ class BaseAction(GridObjects):
             el_id, new_val = values
             if isinstance(new_val, (bool, dt_bool)):
                 raise IllegalAction(
-                    f"new_val should be a float. A boolean was provided"
+                    "new_val should be a float. A boolean was provided"
                 )
 
             try:
@@ -6181,7 +6232,7 @@ class BaseAction(GridObjects):
                     if self._names_chronics_to_backend is not None and _nm_ch_bk_key in self._names_chronics_to_backend:
                         # initial action to set the state, might use the name in the time series...
                         nms_conv = self._names_chronics_to_backend[_nm_ch_bk_key]
-                        _nm_ch_bk_key = nms_conv[_nm_ch_bk_key]
+                        el_id = nms_conv[el_id]
                     tmp = (name_els == el_id).nonzero()[0]
                     if len(tmp) == 0:
                         raise IllegalAction(f"No known {name_el} with name {el_id}")

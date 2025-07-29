@@ -1655,6 +1655,7 @@ class Environment(BaseEnv):
         res["kwargs_attention_budget"] = copy.deepcopy(self._kwargs_attention_budget)
         res["has_attention_budget"] = self._has_attention_budget
         res["_read_from_local_dir"] = self._read_from_local_dir
+        res["_local_dir_cls"] = self._local_dir_cls
         res["kwargs_observation"] = copy.deepcopy(self._kwargs_observation)
         res["logger"] = self.logger
         res["observation_bk_class"] = self._observation_bk_class

@@ -13,7 +13,7 @@ import time
 import copy
 import os
 import json
-from typing import List, Optional, Tuple, Union, Dict, Any, Literal
+from typing import List, Optional, Tuple, Union, Literal
 import importlib
 import sys
 
@@ -47,7 +47,8 @@ from grid2op.Exceptions import (Grid2OpException,
                                 SomeGeneratorBelowPmin,
                                 SomeGeneratorAboveRampmax, 
                                 SomeGeneratorBelowRampmin,
-                                BackendError)
+                                BackendError,
+                                InvalidBackendCallback)
 from grid2op.Parameters import Parameters
 from grid2op.Reward import BaseReward, RewardHelper
 from grid2op.Opponent import OpponentSpace, NeverAttackBudget, BaseOpponent
@@ -1982,7 +1983,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 ind_line = (self.name_line == key).nonzero()[0][0]
                 if np.isfinite(tmp[ind_line]):
                     raise Grid2OpException(
-                        f"Humm, there is a really strange bug, some lines are set twice."
+                        "Humm, there is a really strange bug, some lines are set twice."
                     )
                 try:
                     val_fl = float(val)
@@ -2000,7 +2001,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 tmp = np.array(thermal_limit).flatten().astype(dt_float)
             except Exception as exc_:
                 raise Grid2OpException(
-                    f"Impossible to convert the vector as input into a 1d numpy float array. "
+                    "Impossible to convert the vector as input into a 1d numpy float array. "
                 ) from exc_
             if tmp.shape[0] != self.n_line:
                 raise Grid2OpException(
@@ -3628,6 +3629,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             beg_ = time.perf_counter()
 
             ambiguous, except_tmp = action.is_ambiguous()
+                    
             if ambiguous:
                 # action is replace by do nothing
                 action = self._action_space({})
@@ -3646,6 +3648,22 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     else:
                         action.raise_alert = init_alert
                 except_.append(except_tmp)
+                
+            # new in 1.12.1: backend callbacks
+            if action.backend_dependant_callback is not None:
+                try:
+                    action.backend_dependant_callback(self.backend._grid)
+                except Exception as exc_:
+                    except_ .append(InvalidBackendCallback(f"Invalid backend_dependant_callbacks: error was: \n{exc_}\n"
+                                                         "You can consult `env._callbacks_error` (list of error)"
+                                                         "to have more information")
+                    )
+                    action = self._action_space({})
+                    init_disp = 1.0 * action._redispatch  # dispatching action
+                    action_storage_power = (
+                        1.0 * action._storage_power
+                    )  # battery information
+                    is_ambiguous = True 
                 
             # speed optimization: during all the "env.step" the "topological impact"
             # of an action is called multiple times, I cache the results

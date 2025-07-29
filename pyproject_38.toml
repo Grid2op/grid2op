@@ -36,7 +36,7 @@ maintainers = [
 ]
 description = "An gymnasium compatible environment to model sequential decision making for powersystems"
 readme = "README.md"
-license-files = ["LICENSE.md", "AUTHORS.txt"]
+license = {file = "LICENSE.md"}
 keywords = ["ML", "powergrid", "optmization", "RL", "power-systems"]
 classifiers = [
   "Development Status :: 4 - Beta",

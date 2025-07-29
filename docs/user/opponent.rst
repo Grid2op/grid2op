@@ -13,7 +13,7 @@ Objectives
 Power systems are a really important tool today, that can be as resilient as possible to avoid possibly dramatic
 consequences.
 
-In grid2op, we chose to enforce this property by implementing an "Opponent" (modeled thanks to the :class:`BaseOpponent`
+In grid2op, we chose to enforce this property by implementing an "Opponent", modeled thanks to the :class:`BaseOpponent`
 that can take malicious actions to deteriorate the state of the powergrid and make tha Agent (:class:`grid2op.Agent`)
 fail. To make the agent "game over" is really easy (for
 example it could isolate a load by forcing the disconnection of all the powerline that powers it). This would not be

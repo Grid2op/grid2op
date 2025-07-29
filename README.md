@@ -127,6 +127,12 @@ but is also compatible with other *Backend*. If you have at your disposal anothe
 the documentation of [grid2op/Backend](grid2op/Backend/Backend.py) can help you integrate it into a proper "Backend"
 and have Grid2Op using this powerflow instead of PandaPower.
 
+As of writing, the publically availavble solvers are:
+
+- lightsim2grid : https://github.com/Grid2op/lightsim2grid
+- powsybl : https://github.com/Grid2op/pypowsybl2grid
+- powermodels (julia) : https://github.com/MOSSLab-MIT/PandaModelsBackend
+
 ## Getting Started
 
 Some Jupyter notebook are provided as tutorials for the Grid2Op package. They are located in the
@@ -315,7 +321,6 @@ The complete test suit is run on linux with the latest numpy version on python 3
 
 ### Known issues
 
-
 #### Multi processing
 Due to the underlying behaviour of the "multiprocessing" package on windows based python versions,
 the "multiprocessing" of the grid2op "Runner" is not supported on windows. This might change in the future,
@@ -327,6 +332,18 @@ environment with `grid2op.make(..., experimental_read_from_local_dir=True)` (see
 Sometimes, on some configuration (python version) we do not recommend to use grid2op with pandas>=2.2
 If you encounter any trouble, please downgrade to pandas<2.2. This behaviour occured in our continuous 
 integration environment for python >=3.9 but could not be reproduced locally.
+
+#### python 3.8
+
+From grid2op 1.12.1, the python 3.8 install is a bit more complicated. 
+
+If you want to install it from source, you have to delete "pyproject.toml" file. 
+
+Then rename the "pyproject_38.toml" file to (new name) "pyproject.toml".
+
+Finally "pip install grid2op" normally. 
+
+This is due to the "cleaning" of the installation process that now uses only *pyproject.toml*. And because pyproject has changed the way it identifies "licenses" (before it uses "license" with a table, but this way is deprecated, now it uses "license-files", but it is not supported by a setuptools usable in python 3.8)
 
 #### python 3.11
 Some version of grid2op (*eg* 1.6.3) are not compatible with python 3.10 or 3.11.
