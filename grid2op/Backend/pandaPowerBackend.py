@@ -569,7 +569,7 @@ class PandaPowerBackend(Backend):
                 if "_options" in self._grid and "init_vm_pu" in self._grid["_options"]:
                     try:
                         float(self._grid["_options"]["init_vm_pu"])
-                    except ValueError as exc_:
+                    except ValueError as _:
                         # we delete it because lightsim2grid uses it
                         # to init its internal "GridModel" and did not check that
                         # this is a float until MIN_LS_VERSION_VM_PU
