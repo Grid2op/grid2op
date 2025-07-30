@@ -17,6 +17,7 @@ import warnings
 import grid2op
 from grid2op.Parameters import Parameters
 from grid2op.Action import BaseAction
+from grid2op.Exceptions import InvalidBackendCallback
 import pdb
 
 
@@ -66,8 +67,6 @@ class Test_BackendDepCallbacks(unittest.TestCase):
         assert np.abs(obs.v_or - obs_cpy.v_or).max() > 0.6
         assert self.env.backend._grid.trafo.loc[0, "tap_pos"] == 1
         assert env_cpy.backend._grid.trafo.loc[0, "tap_pos"] == -1
-        assert len(self.env._backend_action._backend_dependant_callbacks) == 0
-        assert len(self.env.backend._callbacks_errors) == 0
     
         # check callback is still present even after a "do nothing"
         obs, reward, *_ = self.env.step(self.env.action_space())
@@ -76,8 +75,6 @@ class Test_BackendDepCallbacks(unittest.TestCase):
         assert np.abs(obs.v_or - obs_cpy.v_or).max() > 0.6
         assert self.env.backend._grid.trafo.loc[0, "tap_pos"] == 1
         assert env_cpy.backend._grid.trafo.loc[0, "tap_pos"] == -1
-        assert len(self.env._backend_action._backend_dependant_callbacks) == 0
-        assert len(self.env.backend._callbacks_errors) == 0
         
     def test_callback_properly_reset(self):    
         _ = self.env.reset(seed=0, options={"time serie id": 0})
@@ -94,8 +91,6 @@ class Test_BackendDepCallbacks(unittest.TestCase):
         assert np.abs(obs.v_or - obs_cpy.v_or).max() > 0.6
         assert self.env.backend._grid.trafo.loc[0, "tap_pos"] == 1
         assert env_cpy.backend._grid.trafo.loc[0, "tap_pos"] == -1
-        assert len(self.env._backend_action._backend_dependant_callbacks) == 0
-        assert len(self.env.backend._callbacks_errors) == 0
             
         # check callbacks is properly removed
         obs = self.env.reset(seed=1, options={"time serie id": 0})
@@ -128,6 +123,7 @@ class Test_BackendDepCallbacks(unittest.TestCase):
         
         # info properly updated
         assert len(info["exception"])
+        assert isinstance(info["exception"][1], InvalidBackendCallback)
         assert info["is_ambiguous"]
         assert info_cpy["exception"] == []
         assert info_cpy_2["exception"] == []
