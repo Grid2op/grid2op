@@ -7,51 +7,23 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import time
-import requests
 import os
 import warnings
-import pkg_resources
 from typing import Union, Optional
 import logging
-
+import sys
+    
 from grid2op.Environment import Environment
 from grid2op.MakeEnv.MakeFromPath import make_from_dataset_path, ERR_MSG_KWARGS
 from grid2op.Exceptions import Grid2OpException, UnknownEnv
 import grid2op.MakeEnv.PathUtils
 from grid2op.MakeEnv.PathUtils import _create_path_folder
+from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
 from grid2op.Download.DownloadDataset import _aux_download
+from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
 
 _VAR_FORCE_TEST = "_GRID2OP_FORCE_TEST"
-
-DEV_DATA_FOLDER = pkg_resources.resource_filename("grid2op", "data")
-DEV_DATASET = os.path.join(DEV_DATA_FOLDER, "{}")
-TEST_DEV_ENVS = {
-    "blank": DEV_DATASET.format("blank"),
-    "rte_case14_realistic": DEV_DATASET.format("rte_case14_realistic"),
-    "rte_case14_redisp": DEV_DATASET.format("rte_case14_redisp"),
-    "rte_case14_test": DEV_DATASET.format("rte_case14_test"),
-    "rte_case5_example": DEV_DATASET.format("rte_case5_example"),
-    "rte_case118_example": DEV_DATASET.format("rte_case118_example"),
-    "rte_case14_opponent": DEV_DATASET.format("rte_case14_opponent"),
-    "l2rpn_wcci_2020": DEV_DATASET.format("l2rpn_wcci_2020"),
-    "l2rpn_neurips_2020_track2": DEV_DATASET.format("l2rpn_neurips_2020_track2"),
-    "l2rpn_neurips_2020_track1": DEV_DATASET.format("l2rpn_neurips_2020_track1"),
-    "l2rpn_case14_sandbox": DEV_DATASET.format("l2rpn_case14_sandbox"),
-    "l2rpn_case14_sandbox_diff_grid": DEV_DATASET.format("l2rpn_case14_sandbox_diff_grid"),
-    "l2rpn_icaps_2021": DEV_DATASET.format("l2rpn_icaps_2021"),
-    "l2rpn_wcci_2022_dev": DEV_DATASET.format("l2rpn_wcci_2022_dev"),
-    "l2rpn_wcci_2022": DEV_DATASET.format("l2rpn_wcci_2022_dev"),
-    "l2rpn_idf_2023": DEV_DATASET.format("l2rpn_idf_2023"),
-    # educational files
-    "educ_case14_redisp": DEV_DATASET.format("educ_case14_redisp"),
-    "educ_case14_storage": DEV_DATASET.format("educ_case14_storage"),
-    # keep the old names for now
-    "case14_realistic": DEV_DATASET.format("rte_case14_realistic"),
-    "case14_redisp": DEV_DATASET.format("rte_case14_redisp"),
-    "case14_test": DEV_DATASET.format("rte_case14_test"),
-    "case5_example": DEV_DATASET.format("rte_case5_example"),
-    "case14_fromfile": DEV_DATASET.format("rte_case14_test"),
-}
 
 _REQUEST_FAIL_EXHAUSTED_ERR = (
     'Impossible to retrieve data at "{}".\n'
@@ -145,6 +117,7 @@ def _send_request_retry(url, nb_retry=10, gh_session=None):
         raise Grid2OpException(_REQUEST_FAIL_EXHAUSTED_ERR.format(url))
 
     if gh_session is None:
+        import requests
         gh_session = requests.Session()
 
     try:
@@ -247,7 +220,9 @@ def _aux_make_multimix(
     dataset_path,
     test=False,
     experimental_read_from_local_dir=False,
-    n_busbar=2,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
+    _add_cls_nm_bk=True,
     _add_to_name="",
     _compat_glop_version=None,
     _overload_name_multimix=None,
@@ -262,7 +237,9 @@ def _aux_make_multimix(
         dataset_path,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         n_busbar=n_busbar,
+        allow_detachment=allow_detachment,
         _test=test,
+        _add_cls_nm_bk=_add_cls_nm_bk,
         _add_to_name=_add_to_name,
         _compat_glop_version=_compat_glop_version,
         logger=logger,
@@ -285,7 +262,9 @@ def make(
     test : bool=False,
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
-    n_busbar=2,
+    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
+    _add_cls_nm_bk=True,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
     _overload_name_multimix : Optional[str]=None,  # do not use !
@@ -304,13 +283,20 @@ def make(
     
     .. versionadded:: 1.10.0
         The `n_busbar` parameters
+
+    .. versionadded:: 1.11.0
+        The `allow_detachment` parameter
+    
+    .. danger::
+        The :func:`grid2op.make` function can execute arbitrary code. Do not attempt
+        to "make" an environment for which you don't trust (or even know) the authors.
         
     Parameters
     ----------
 
     dataset: ``str`` or path
         Name of the environment you want to create
-
+        
     test: ``bool``
         Whether you want to use a test environment (**NOT** recommended). Use at your own risk.
 
@@ -328,11 +314,22 @@ def make(
         
     n_busbar: ``int``
         Number of independant busbars allowed per substations. By default it's 2.
+
+    allow_detachment: ``bool``
+        Whether to allow loads and generators to be shed without a game over. By default it's False.
         
     kwargs:
         Other keyword argument to give more control on the environment you are creating. See
         the Parameters information of the :func:`make_from_dataset_path`.
 
+    _add_cls_nm_bk: ``bool``
+        Internal (and new in version 1.11.0). This flag (True by default, which is a breaking 
+        change from 1.11.0 compared to previous versions) will add the backend
+        name in the generated class name.
+        
+        It is deactivated if classes are automatically generated by default `use_class_in_files`
+        is ``True``
+        
     _add_to_name:
         Internal, do not use (and can only be used when setting "test=True"). If
         `experimental_read_from_local_dir` is set to True, this has no effect.
@@ -383,6 +380,7 @@ def make(
         raise Grid2OpException(f"n_busbar parameters should be convertible to integer, but we have "
                                f"int(n_busbar) = {n_busbar_int} != {n_busbar}")
         
+        
     accepted_kwargs = ERR_MSG_KWARGS.keys() | {"dataset", "test"}
     for el in kwargs:
         if el not in accepted_kwargs:
@@ -432,10 +430,12 @@ def make(
         
         return make_from_path_fn(
             dataset_path=dataset,
+            _add_cls_nm_bk=_add_cls_nm_bk,
             _add_to_name=_add_to_name_tmp,
             _compat_glop_version=_compat_glop_version_tmp,
             _overload_name_multimix=_overload_name_multimix,
             n_busbar=n_busbar,
+            allow_detachment=allow_detachment,
             **kwargs
         )
 
@@ -482,6 +482,8 @@ def make(
             dataset_path=ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            allow_detachment=allow_detachment,
+            _add_cls_nm_bk=_add_cls_nm_bk,
             _add_to_name=_add_to_name,
             _compat_glop_version=_compat_glop_version,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
@@ -497,6 +499,8 @@ def make(
             real_ds_path,
             logger=logger,
             n_busbar=n_busbar,
+            allow_detachment=allow_detachment,
+            _add_cls_nm_bk=_add_cls_nm_bk,
             experimental_read_from_local_dir=experimental_read_from_local_dir,
             _overload_name_multimix=_overload_name_multimix,
             **kwargs
@@ -517,7 +521,9 @@ def make(
         dataset_path=real_ds_path,
         logger=logger,
         n_busbar=n_busbar,
+        allow_detachment=allow_detachment,
         experimental_read_from_local_dir=experimental_read_from_local_dir,
         _overload_name_multimix=_overload_name_multimix,
+        _add_cls_nm_bk=_add_cls_nm_bk,
         **kwargs
     )

@@ -6,17 +6,15 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import pdb
 import warnings
 import os
 import grid2op
 import numpy as np
-from grid2op.Chronics import FromChronix2grid
 import unittest
-import pkg_resources
 from lightsim2grid import LightSimBackend
+from grid2op.Chronics import FromChronix2grid
+from grid2op.MakeEnv._aux_var import DEV_DATA_FOLDER
 
-DEV_DATA_FOLDER = pkg_resources.resource_filename("grid2op", "data")
 
 class TestFromChronix2Grid(unittest.TestCase):
     def _aux_reset_env(self):

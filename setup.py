@@ -6,7 +6,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import sys
 import setuptools
 from setuptools import setup
 import unittest
@@ -23,21 +22,26 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 pkgs = {
     "required": [
-        "numpy",
         "scipy>=1.4.1",
         "pandas>=1.0.3",
-        "pandapower>=2.2.2",
+        "pandapower>=3.1.1; python_version>='3.9'",
+        "numpy",
+        "scipy",
         "tqdm>=4.45.0",
         "networkx>=2.4",
         "requests>=2.23.0",
         "packaging",  # because gym changes the way it uses numpy prng in version 0.26 and i need both gym before and after...
-        "typing_extensions"
+        "typing_extensions",
+        "orderly_set<5.4.0; python_version<='3.8'",
+        "importlib_resources; python_version<='3.8'",
+        "pandapower<3; python_version<='3.8'",
+        "numpy<2; python_version<='3.8'",
+        "scipy<1.14; python_version<='3.8'",
     ],
     "extras": {
         "optional": [
             "nbformat>=5.0.4",
             "jupyter-client>=6.1.0",
-            "jyquickhelper>=0.3.128",
             "numba>=0.48.0",
             "matplotlib>=3.2.1",
             "plotly>=4.5.4",
@@ -70,15 +74,14 @@ pkgs = {
         ],
         "plot": ["imageio"],
         "test": ["lightsim2grid",
-                 "numba",
-                 "gym>=0.26",
+                 "numba; python_version<='3.12'",  # numba not available on python 3.13 yet
                  "gymnasium",
-                #  "stable-baselines3>=2.0",
                  "nbconvert",
                  "jinja2"
                  ],
         "chronix2grid": [
-            "ChroniX2Grid>=1.2.0.post1"
+            "ChroniX2Grid>=1.2.0.post1",
+            "pypsa<0.25"  # otherwise does not work (need fix in chronix2grid)
             ]
     }
 }
@@ -86,20 +89,6 @@ pkgs["extras"]["test"] += pkgs["extras"]["optional"]
 pkgs["extras"]["test"] += pkgs["extras"]["plot"]
 pkgs["extras"]["test"] += pkgs["extras"]["gymnasium"]
 
-if sys.version_info.minor <= 7:
-    # typing "Literal" not available on python 3.7
-    pkgs["required"].append("typing_extensions")
-    pkgs["required"][3] = "pandapower>=2.2.2,<2.12"
-    # importlib provided importlib.metadata as of python 3.8
-    pkgs["required"].append("importlib_metadata")
-    
-if sys.version_info.minor == 12:
-    # numba is not available for python 3.12 at the moment
-    pkgs["extras"]["test"] = [el for el in  pkgs["extras"]["test"] if (not ("numba" in el) and 
-                                                                       not ("gym" in el) and 
-                                                                       not ('stable-baselines3' in el)
-                                                                       )
-                              ]
 
 setup(description='An gymnasium compatible environment to model sequential decision making for powersystems',
       long_description=long_description,

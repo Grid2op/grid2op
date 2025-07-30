@@ -626,8 +626,10 @@ class TestLoadingOpp(unittest.TestCase):
                 13,
                 12,
                 14,
-                12,
+                12,  
             ]
+            # there are 1 less reset after the fix of the cascading failure routine, so the rest is not the same
+            expected_attack_order = [4, 12, 14, 14, 12, 13, 3, 15, 12, 14, 15, 12, 4, 15, 14, 12, 15, 4, 4, 3, 15, 13, 12, 14]
             attack_order = []
             has_disconnected_all = False
             with grid2op.make(
@@ -671,7 +673,7 @@ class TestLoadingOpp(unittest.TestCase):
                         attack_order.append(attacked_line)
 
                 assert len(set(attack_order)) == 6
-                assert attack_order == expected_attack_order
+                assert attack_order == expected_attack_order, f"{attack_order} vs {expected_attack_order}"
 
     def test_simulate(self):
         with warnings.catch_warnings():

@@ -36,14 +36,14 @@ class AuxTestBugShuntDC:
     
     def _aux_modify_shunt(self):
         self.bk_act += self.env.action_space({"shunt": {"set_bus": np.array([2], dtype=int)}})
-        self.env.backend.apply_action(self.bk_act)
+        self.env.backend.apply_action_public(self.bk_act)
         if isinstance(self.env.backend, PandaPowerBackend):
             assert self.env.backend._grid.shunt["bus"][0] == 22
             assert self.env.backend._grid.bus["in_service"][self.env.backend._grid.shunt["bus"][0]]
             
     def test_shunt_dc(self):
         conv, exc_ = self.env.backend.runpf(is_dc=True)
-        p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchoff()
+        p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchhoff()
         assert np.abs(p_subs).max() <= 1e-5
         assert np.abs(p_bus).max() <= 1e-5
         # below it does not pass due to https://github.com/e2nIEE/pandapower/issues/1996 (fixed !)
@@ -54,7 +54,7 @@ class AuxTestBugShuntDC:
         conv, exc_ = self.env.backend.runpf(is_dc=True)
         assert not conv
         # does not work now because of an isolated element
-        # p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchoff()
+        # p_subs, q_subs, p_bus, q_bus, diff_v_bus = self.env.backend.check_kirchhoff()
         # assert np.abs(p_subs).max() <= 1e-5
         # assert np.abs(p_bus).max() <= 1e-5
         # # below it does not pass due to https://github.com/e2nIEE/pandapower/issues/1996

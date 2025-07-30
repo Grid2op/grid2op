@@ -7,6 +7,9 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
+from typing import Optional
+import numpy as np
+
 from grid2op.Exceptions import Grid2OpException
 
 # i already issued the warning for the "some substations have no controllable elements"
@@ -65,7 +68,7 @@ def save_to_dict(res_dict, me, key, converter, copy_=True):
         raise Grid2OpException(
             'Impossible to convert "{}" into class {} with exception '
             '\n"{}"'.format(key, converter, exc_)
-        )
+        ) from exc_
 
     if key in res_dict:
         msg_err_ = (
@@ -74,3 +77,35 @@ def save_to_dict(res_dict, me, key, converter, copy_=True):
         )
         raise Grid2OpException(msg_err_.format(key))
     res_dict[key] = res
+
+
+class ElTypeInfo:
+    """
+    For each element type (*eg* generator, or load) this is a container for basic element
+    information, it is used in the `check_kirchhoff` functions  of observation :func:`grid2op.Observation.BaseObservation.check_kirchhoff`
+    and backend :func:`grid2op.Backend.Backend.check_kirchhoff` 
+    
+    The element it contains are:
+    
+        - el_bus : np.ndarray
+          for each element of this element type, on which busbar this element is connected (*eg* obs.gen_bus)
+        - el_p : np.ndarray
+          for each element of this element type, it gives the active power value consumed / produced by this element (*eg* obs.gen_p)
+        - el_q : np.ndarray
+          for each element of this element type, it gives the reactive power value consumed / produced by this element (*eg* obs.gen_q)
+        - el_v : np.ndarray
+          for each element of this element type, it gives the voltage magnitude of the bus to which this element (*eg* obs.gen_v)
+          is connected
+          
+    """
+    def __init__(self,
+                 el_bus : np.ndarray, 
+                 el_p : np.ndarray,
+                 el_q : np.ndarray, 
+                 el_v : Optional[np.ndarray] = None,
+                #  load_conv: bool = True
+                 ):
+        self._bus = el_bus
+        self._p = el_p
+        self._q = el_q
+        self._v = el_v

@@ -11,10 +11,10 @@ import numpy as np
 import unittest
 import os
 import tempfile
-from grid2op.tests.helper_path_test import *
+from grid2op.tests.helper_path_test import PATH_DATA_TEST
 
+import grid2op
 from grid2op.operator_attention import LinearAttentionBudget
-from grid2op import make
 from grid2op.Reward import RedispReward, _AlarmScore
 from grid2op.Exceptions import Grid2OpException
 from grid2op.Runner import Runner
@@ -31,7 +31,9 @@ class TestAlarmFeature(unittest.TestCase):
         )
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.env = make(self.env_nm, test=True)
+            self.env = grid2op.make(self.env_nm,
+                                    test=True,
+                                    _add_to_name=f"{type(self).__name__}")
         self.env.seed(0)
         self.env.reset()
         self.env.reset()
@@ -59,20 +61,24 @@ class TestAlarmFeature(unittest.TestCase):
         with self.assertRaises(Grid2OpException):
             # it raises because the default reward: AlarmReward can only be used
             # if there is an alarm budget
-            with make(self.env_nm, has_attention_budget=False, test=True) as env:
+            with grid2op.make(self.env_nm,
+                              has_attention_budget=False,
+                              test=True,
+                              _add_to_name=f"{type(self).__name__}") as env:
                 assert env._has_attention_budget is False
                 assert env._attention_budget is None
 
-        with make(
+        with grid2op.make(
             self.env_nm,
             has_attention_budget=False,
             reward_class=RedispReward,
             test=True,
+            _add_to_name=f"{type(self).__name__}_1"
         ) as env:
             assert env._has_attention_budget is False
             assert env._attention_budget is None
 
-        with make(
+        with grid2op.make(
             self.env_nm,
             test=True,
             kwargs_attention_budget={
@@ -81,6 +87,7 @@ class TestAlarmFeature(unittest.TestCase):
                 "init_budget": 0,
                 "alarm_cost": 12,
             },
+            _add_to_name=f"{type(self).__name__}",
         ) as env:
             assert env._has_attention_budget
             assert env._attention_budget is not None
@@ -106,7 +113,7 @@ class TestAlarmFeature(unittest.TestCase):
         )
 
         # check that it does not "overflow"
-        with make(
+        with grid2op.make(
             self.env_nm,
             kwargs_attention_budget={
                 "max_budget": 5,
@@ -115,6 +122,7 @@ class TestAlarmFeature(unittest.TestCase):
                 "init_budget": 0,
             },
             test=True,
+            _add_to_name=f"{type(self).__name__}",
         ) as env:
             env.step(self.env.action_space())
             assert abs(env._attention_budget._current_budget - 1) <= 1e-6
@@ -217,7 +225,7 @@ class TestAlarmFeature(unittest.TestCase):
         obs = self.env.reset()
         nb_th = 3
         assert abs(self.env._attention_budget._current_budget - nb_th) <= 1e-6
-        assert abs(obs.attention_budget - nb_th) <= 1e-6
+        assert abs(obs.attention_budget - nb_th) <= 1e-6, f"{obs.attention_budget} vs {nb_th}"
         assert obs.time_since_last_alarm == -1
         assert np.all(obs.last_alarm == [-1, -1, -1])
 
@@ -475,7 +483,10 @@ class TestAlarmFeature(unittest.TestCase):
         """issue reported during icaps 2021"""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            env = make("l2rpn_icaps_2021", test=True, reward_class=_AlarmScore)
+            env = grid2op.make("l2rpn_icaps_2021",
+                               test=True,
+                               reward_class=_AlarmScore,
+                               _add_to_name=f"{type(self).__name__}")
         env.set_thermal_limit(
             [
                 20,

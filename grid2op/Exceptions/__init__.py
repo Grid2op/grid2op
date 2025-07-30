@@ -14,6 +14,7 @@ __all__ = [
     "UnknownEnv",
     "MultiEnvException",
     "IllegalAction",
+    "IllegalRedispatching",
     "OnProduction",
     "VSetpointModified",
     "ActiveSetPointAbovePmax",
@@ -59,7 +60,12 @@ __all__ = [
     "NotEnoughAttentionBudget",
     "AgentError",
     "SimulatorError",
-    "HandlerError"
+    "HandlerError",
+    "SomeGeneratorAbovePmax",
+    "SomeGeneratorBelowPmin",
+    "SomeGeneratorAboveRampmax", 
+    "SomeGeneratorBelowRampmin",
+    "ImpossibleRedispatching",
 ]
 
 from grid2op.Exceptions.grid2OpException import Grid2OpException
@@ -76,7 +82,12 @@ from grid2op.Exceptions.envExceptions import (EnvError,
                                               IncorrectPositionOfLines,
                                               IncorrectPositionOfStorages,
                                               UnknownEnv,
-                                              MultiEnvException)
+                                              MultiEnvException,
+                                              SomeGeneratorAbovePmax,
+                                              SomeGeneratorBelowPmin,
+                                              SomeGeneratorAboveRampmax, 
+                                              SomeGeneratorBelowRampmin,
+                                              ImpossibleRedispatching)
 
 from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         OnProduction,
@@ -87,6 +98,7 @@ from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         OnLines,
                                                         InvalidReconnection,
                                                         UnitCommitorRedispachingNotAvailable,
+                                                        IllegalRedispatching,
                                                         )
 
 from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,

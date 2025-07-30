@@ -21,6 +21,8 @@ CPROF = False
 dir_out  = "test_topo_ampl"
 dir_out  = "test_topo_ampl2"
 
+# TODO detailed topo: test detachment
+# TODO detailed topo: test "env_prev_state"
 
 class TestComputeSwitchPosExt(unittest.TestCase):
     def debug_test_one_case(self):

@@ -21,116 +21,118 @@ class CompleteObservation(BaseObservation):
 
     For a :class:`CompleteObservation` the unique representation as a vector is:
 
-        1. :attr:`BaseObservation.year` the year [1 element]
-        2. :attr:`BaseObservation.month` the month [1 element]
-        3. :attr:`BaseObservation.day` the day [1 element]
-        4. :attr:`BaseObservation.hour_of_day` the hour of the day [1 element]
-        5. :attr:`BaseObservation.minute_of_hour` minute of the hour  [1 element]
-        6. :attr:`BaseObservation.day_of_week` the day of the week. Monday = 0, Sunday = 6 [1 element]
-        7. :attr:`BaseObservation.gen_p` the active value of the productions
+        #. :attr:`BaseObservation.year` the year [1 element]
+        #. :attr:`BaseObservation.month` the month [1 element]
+        #. :attr:`BaseObservation.day` the day [1 element]
+        #. :attr:`BaseObservation.hour_of_day` the hour of the day [1 element]
+        #. :attr:`BaseObservation.minute_of_hour` minute of the hour  [1 element]
+        #. :attr:`BaseObservation.day_of_week` the day of the week. Monday = 0, Sunday = 6 [1 element]
+        #. :attr:`BaseObservation.gen_p` the active value of the productions
            [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        8. :attr:`BaseObservation.gen_q` the reactive value of the productions
+        #. :attr:`BaseObservation.gen_q` the reactive value of the productions
            [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        9. :attr:`BaseObservation.gen_v` the voltage setpoint of the productions
+        #. :attr:`BaseObservation.gen_v` the voltage setpoint of the productions
            [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        10. :attr:`BaseObservation.load_p` the active value of the loads
+        #. :attr:`BaseObservation.load_p` the active value of the loads
             [:attr:`grid2op.Space.GridObjects.n_load` elements]
-        11. :attr:`BaseObservation.load_q` the reactive value of the loads
+        #. :attr:`BaseObservation.load_q` the reactive value of the loads
             [:attr:`grid2op.Space.GridObjects.n_load` elements]
-        12. :attr:`BaseObservation.load_v` the voltage setpoint of the loads
+        #. :attr:`BaseObservation.load_v` the voltage setpoint of the loads
             [:attr:`grid2op.Space.GridObjects.n_load` elements]
-        13. :attr:`BaseObservation.p_or` active flow at origin of powerlines
+        #. :attr:`BaseObservation.p_or` active flow at origin of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        14. :attr:`BaseObservation.q_or` reactive flow at origin of powerlines
+        #. :attr:`BaseObservation.q_or` reactive flow at origin of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        15. :attr:`BaseObservation.v_or` voltage at origin of powerlines
+        #. :attr:`BaseObservation.v_or` voltage at origin of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        16. :attr:`BaseObservation.a_or` current flow at origin of powerlines
+        #. :attr:`BaseObservation.a_or` current flow at origin of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        17. :attr:`BaseObservation.p_ex` active flow at extremity of powerlines
+        #. :attr:`BaseObservation.p_ex` active flow at extremity of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        18. :attr:`BaseObservation.q_ex` reactive flow at extremity of powerlines
+        #. :attr:`BaseObservation.q_ex` reactive flow at extremity of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        19. :attr:`BaseObservation.v_ex` voltage at extremity of powerlines
+        #. :attr:`BaseObservation.v_ex` voltage at extremity of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        20. :attr:`BaseObservation.a_ex` current flow at extremity of powerlines
+        #. :attr:`BaseObservation.a_ex` current flow at extremity of powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        21. :attr:`BaseObservation.rho` line capacity used (current flow / thermal limit)
+        #. :attr:`BaseObservation.rho` line capacity used (current flow / thermal limit)
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        22. :attr:`BaseObservation.line_status` line status [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        23. :attr:`BaseObservation.timestep_overflow` number of timestep since the powerline was on overflow
+        #. :attr:`BaseObservation.line_status` line status [:attr:`grid2op.Space.GridObjects.n_line` elements]
+        #. :attr:`BaseObservation.timestep_overflow` number of timestep since the powerline was on overflow
             (0 if the line is not on overflow)[:attr:`grid2op.Space.GridObjects.n_line` elements]
-        24. :attr:`BaseObservation.topo_vect` representation as a vector of the topology [for each element
+        #. :attr:`BaseObservation.timestep_protection_engaged` number of timestep since the powerline was on overflow
+            (0 if the line is not on overflow)[:attr:`grid2op.Space.GridObjects.n_line` elements]
+        #. :attr:`BaseObservation.topo_vect` representation as a vector of the topology [for each element
             it gives its bus]. See :func:`grid2op.Backend.Backend.get_topo_vect` for more information.
-        25. :attr:`BaseObservation.time_before_cooldown_line` representation of the cooldown time on the powerlines
+        #. :attr:`BaseObservation.time_before_cooldown_line` representation of the cooldown time on the powerlines
             [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        26. :attr:`BaseObservation.time_before_cooldown_sub` representation of the cooldown time on the substations
+        #. :attr:`BaseObservation.time_before_cooldown_sub` representation of the cooldown time on the substations
             [:attr:`grid2op.Space.GridObjects.n_sub` elements]
-        27. :attr:`BaseObservation.time_next_maintenance` number of timestep before the next maintenance (-1 means
+        #. :attr:`BaseObservation.time_next_maintenance` number of timestep before the next maintenance (-1 means
             no maintenance are planned, 0 a maintenance is in operation) [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        28. :attr:`BaseObservation.duration_next_maintenance` duration of the next maintenance. If a maintenance
+        #. :attr:`BaseObservation.duration_next_maintenance` duration of the next maintenance. If a maintenance
             is taking place, this is the number of timestep before it ends. [:attr:`grid2op.Space.GridObjects.n_line` elements]
-        29. :attr:`BaseObservation.target_dispatch` the target dispatch for each generator
+        #. :attr:`BaseObservation.target_dispatch` the target dispatch for each generator
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        30. :attr:`BaseObservation.actual_dispatch` the actual dispatch for each generator
+        #. :attr:`BaseObservation.actual_dispatch` the actual dispatch for each generator
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        31. :attr:`BaseObservation.storage_charge` the actual state of charge of each storage unit
+        #. :attr:`BaseObservation.storage_charge` the actual state of charge of each storage unit
             [:attr:`grid2op.Space.GridObjects.n_storage` elements]
-        32. :attr:`BaseObservation.storage_power_target` the production / consumption of setpoint of each storage unit
+        #. :attr:`BaseObservation.storage_power_target` the production / consumption of setpoint of each storage unit
             [:attr:`grid2op.Space.GridObjects.n_storage` elements]
-        33. :attr:`BaseObservation.storage_power` the realized production / consumption of each storage unit
+        #. :attr:`BaseObservation.storage_power` the realized production / consumption of each storage unit
             [:attr:`grid2op.Space.GridObjects.n_storage` elements]
-        34. :attr:`BaseObservation.gen_p_before_curtail` : the theoretical generation that would have happened
+        #. :attr:`BaseObservation.gen_p_before_curtail` : the theoretical generation that would have happened
             if no generator from renewable energy sources have been performed (in MW)
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        35. :attr:`BaseObservation.curtailment` : the current curtailment applied
+        #. :attr:`BaseObservation.curtailment` : the current curtailment applied
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        36. :attr:`BaseObservation.is_alarm_illegal` whether the last alarm has been illegal (due to budget
+        #. :attr:`BaseObservation.is_alarm_illegal` whether the last alarm has been illegal (due to budget
             constraint) [``bool``], 
             .. warning: /!\\\\ Only valid with "l2rpn_icaps_2021" environment /!\\\\ 
-        37. :attr:`BaseObservation.curtailment_limit` : the current curtailment limit (if any)
+        #. :attr:`BaseObservation.curtailment_limit` : the current curtailment limit (if any)
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        38. :attr:`BaseObservation.time_since_last_alarm` number of step since the last alarm has been raised
+        #. :attr:`BaseObservation.time_since_last_alarm` number of step since the last alarm has been raised
             successfully [``int``]
             .. warning: /!\\\\ Only valid with "l2rpn_icaps_2021" environment /!\\\\ 
-        39. :attr:`BaseObservation.last_alarm` : for each alarm zone, gives the last step at which an alarm has
+        #. :attr:`BaseObservation.last_alarm` : for each alarm zone, gives the last step at which an alarm has
             been successfully raised at this zone 
             .. warning: /!\\\\ Only valid with "l2rpn_icaps_2021" environment /!\\\\
             [:attr:`grid2op.Space.GridObjects.dim_alarms` elements]
-        40. :attr:`BaseObservation.attention_budget` : the current attention budget
+        #. :attr:`BaseObservation.attention_budget` : the current attention budget
             [``int``]
-        41. :attr:`BaseObservation.was_alarm_used_after_game_over` : was the last alarm used to compute anything related
+        #. :attr:`BaseObservation.was_alarm_used_after_game_over` : was the last alarm used to compute anything related
             to the attention budget when there was a game over (can only be set to ``True`` if the observation
             corresponds to a game over), warning: /!\\\\ Only valid with "l2rpn_icaps_2021" environment /!\\\\ 
             [``bool``]
-        42. :attr:`BaseObservation.is_alarm_illegal` whether the last alert has been illegal (due to budget
+        #. :attr:`BaseObservation.is_alarm_illegal` whether the last alert has been illegal (due to budget
             constraint) [``bool``]
-        43. :attr:`BaseObservation.curtailment_limit` : the current curtailment limit (if any)
+        #. :attr:`BaseObservation.curtailment_limit` : the current curtailment limit (if any)
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
-        44. :attr:`BaseObservation.curtailment_limit_effective` Limit (in ratio of gen_pmax) imposed on 
+        #. :attr:`BaseObservation.curtailment_limit_effective` Limit (in ratio of gen_pmax) imposed on 
             each renewable generator effectively imposed by the environment.
-        45. :attr:`BaseObservation.current_step` the number of steps since the beginning of the episode (it's
+        #. :attr:`BaseObservation.current_step` the number of steps since the beginning of the episode (it's
             0 for the observation after a call to `env.reset()`)
-        46. :attr:`BaseObservation.max_step` maximum number of steps that can be done by the environment.
+        #. :attr:`BaseObservation.max_step` maximum number of steps that can be done by the environment.
             When :attr:`BaseObservation.current_step` is  :attr:`BaseObservation.max_step` the the environment
             is done.
-        47. :attr:`BaseObservation.delta_time` Amount of time (in minutes) represented by a step. In general, there
+        #. :attr:`BaseObservation.delta_time` Amount of time (in minutes) represented by a step. In general, there
             are the equivalent of 5 minutes between two steps.
-        48. :attr:`BaseObservation.gen_margin_up` From how much can you increase each generators production between this
+        #. :attr:`BaseObservation.gen_margin_up` From how much can you increase each generators production between this
             step and the next.
-        49. :attr:`BaseObservation.gen_margin_down` From how much can you decrease each generators production between this
+        #. :attr:`BaseObservation.gen_margin_down` From how much can you decrease each generators production between this
             step and the next.   
-        50. :attr:`BaseObservation.active_alert` This attribute gives the lines "under alert" at the given observation.
-        51. :attr:`BaseObservation.time_since_last_alert`  Give the time since an alert has been raised for each powerline.
-        52. :attr:`BaseObservation.alert_duration` Give the time since an alert has started for all attackable line.
-        53. :attr:`BaseObservation.total_number_of_alert` Total number of alerts since the beginning of the episode sent by 
+        #. :attr:`BaseObservation.active_alert` This attribute gives the lines "under alert" at the given observation.
+        #. :attr:`BaseObservation.time_since_last_alert`  Give the time since an alert has been raised for each powerline.
+        #. :attr:`BaseObservation.alert_duration` Give the time since an alert has started for all attackable line.
+        #. :attr:`BaseObservation.total_number_of_alert` Total number of alerts since the beginning of the episode sent by 
             the agent
-        54. :attr:`BaseObservation.time_since_last_attack` For each attackable line `i` it counts the number of steps since the powerline has
+        #. :attr:`BaseObservation.time_since_last_attack` For each attackable line `i` it counts the number of steps since the powerline has
             been attacked
-        55. :attr:`BaseObservation.was_alert_used_after_attack` For each attackable line `i` it says if an alert has been used or not
+        #. :attr:`BaseObservation.was_alert_used_after_attack` For each attackable line `i` it says if an alert has been used or not
             for the computation of the reward: +1 means "used and the alert was correct", -1 means "used and the alert was not correct"
             and 0 means "not used" 
-        56. :attr:`BaseObservation.attack_under_alert` For each attackable line `i` it says if an alert has been sent (+1) or not (-1)
+        #. :attr:`BaseObservation.attack_under_alert` For each attackable line `i` it says if an alert has been sent (+1) or not (-1)
             for each attackable line currently under attack.
             
     """
@@ -195,6 +197,18 @@ class CompleteObservation(BaseObservation):
         "total_number_of_alert",
         "time_since_last_attack",
         "was_alert_used_after_attack",
+        # ~slack (>= 1.11.0)
+        "gen_p_delta",
+        # detachment (>= 1.11.0)
+        "load_detached",
+        "gen_detached",
+        "storage_detached",
+        "load_p_detached",
+        "load_q_detached",
+        "gen_p_detached",
+        "storage_p_detached",
+        # protections (>= 1.11.0)
+        "timestep_protection_engaged"
     ]
     attr_list_json = [
         "_thermal_limit",
@@ -211,14 +225,16 @@ class CompleteObservation(BaseObservation):
                  obs_env=None,
                  action_helper=None,
                  random_prng=None,
-                 kwargs_env=None):
+                 kwargs_env=None,
+                 **kwargs):
 
         BaseObservation.__init__(
             self,
             obs_env=obs_env,
             action_helper=action_helper,
             random_prng=random_prng,
-            kwargs_env=kwargs_env
+            kwargs_env=kwargs_env,
+            **kwargs
         )
         self._dictionnarized = None
 

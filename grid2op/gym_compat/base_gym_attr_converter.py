@@ -113,6 +113,7 @@ class __AuxBaseGymAttrConverter(object):
 
 
 if GYM_AVAILABLE:
+    # pragma: no cover
     from gym.spaces import Space as LegGymSpace
     BaseLegacyGymAttrConverter = type("BaseLegacyGymAttrConverter",
                                      (__AuxBaseGymAttrConverter, ),

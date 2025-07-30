@@ -8,7 +8,6 @@ dependencies:
   - pip
   - pip:
     - grid2op
-    - jyquickhelper
     - numpy
     - numba
     - seaborn

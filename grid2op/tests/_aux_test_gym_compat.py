@@ -153,7 +153,7 @@ class _AuxTestGymCompatModule:
                 for el in env_gym.observation_space.spaces
             ]
         )
-        size_th = 536  # as of grid2Op 1.7.1 (where all obs attributes are there)
+        size_th = 562  # as of grid2Op 1.11.0 (with obs.gen_p_delta + timestep_protection_engaged)
         assert (
             dim_obs_space == size_th
         ), f"Size should be {size_th} but is {dim_obs_space}"
@@ -1683,7 +1683,6 @@ class _AuxTestDiscreteGymActSpace:
             # check that all types
             ok_ = func_check[attr_nm](grid2op_act)
             if not ok_:
-                pdb.set_trace()
                 raise RuntimeError(
                     f"Some property of the actions are not modified for attr {attr_nm}"
                 )

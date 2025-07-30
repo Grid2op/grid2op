@@ -106,15 +106,15 @@ class CompactEpisodeData():
             max_no_of_timesteps = int(env.max_episode_duration())
             
             # Numpy Arrays
-            self.actions = np.full((max_no_of_timesteps, env.action_space.n), fill_value=np.NaN, dtype=np.float16)
-            self.env_actions = np.full((max_no_of_timesteps, env._helper_action_env.n), fill_value=np.NaN, dtype=np.float32)
+            self.actions = np.full((max_no_of_timesteps, env.action_space.n), fill_value=np.nan, dtype=np.float16)
+            self.env_actions = np.full((max_no_of_timesteps, env._helper_action_env.n), fill_value=np.nan, dtype=np.float32)
             self.attacks = np.full((max_no_of_timesteps, env._opponent_action_space.n), fill_value=0.0, dtype=np.float32)
-            self.observations = np.full((max_no_of_timesteps + 1, len(obs.to_vect())),fill_value=np.NaN,dtype=np.float32)
-            self.rewards = np.full(max_no_of_timesteps, fill_value=np.NaN, dtype=np.float32)
+            self.observations = np.full((max_no_of_timesteps + 1, len(obs.to_vect())),fill_value=np.nan,dtype=np.float32)
+            self.rewards = np.full(max_no_of_timesteps, fill_value=np.nan, dtype=np.float32)
             self.other_reward_names = list(sorted(env.other_rewards.keys()))
-            self.other_rewards = np.full((max_no_of_timesteps, len(self.other_reward_names)), fill_value=np.NaN, dtype=np.float32)
-            self.disc_lines = np.full((max_no_of_timesteps, env.backend.n_line), fill_value=np.NaN, dtype=np.bool_)
-            self.times = np.full(max_no_of_timesteps, fill_value=np.NaN, dtype=np.float32)
+            self.other_rewards = np.full((max_no_of_timesteps, len(self.other_reward_names)), fill_value=np.nan, dtype=np.float32)
+            self.disc_lines = np.full((max_no_of_timesteps, env.backend.n_line), fill_value=np.nan, dtype=np.bool_)
+            self.times = np.full(max_no_of_timesteps, fill_value=np.nan, dtype=np.float32)
             
             self.disc_lines_templ = np.full((1, env.backend.n_line), fill_value=False, dtype=np.bool_)
             # AttackTempl: Not used, kept for comptabiility with EpisodeData

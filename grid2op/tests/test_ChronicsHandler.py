@@ -394,7 +394,7 @@ class TestLoadingChronicsHandler(HelperTests, unittest.TestCase):
         backend = PandaPowerBackend()
         path_matpower = PATH_DATA_TEST_PP
         case_file = "test_case14.json"
-        backend.load_grid(path_matpower, case_file)
+        backend.load_grid_public(path_matpower, case_file)
         chron_handl.check_validity(backend)
 
     def test_chronicsloading(self):
@@ -612,7 +612,7 @@ class TestLoadingChronicsHandlerWithForecast(HelperTests, unittest.TestCase):
         backend = PandaPowerBackend()
         path_matpower = PATH_DATA_TEST_PP
         case_file = "test_case14.json"
-        backend.load_grid(path_matpower, case_file)
+        backend.load_grid_public(path_matpower, case_file)
         chron_handl.check_validity(backend)
 
 
@@ -749,7 +749,7 @@ class TestLoadingChronicsHandlerPP(HelperTests, unittest.TestCase):
         backend = PandaPowerBackend()
         path_matpower = PATH_DATA_TEST_PP
         case_file = "test_case14.json"
-        backend.load_grid(path_matpower, case_file)
+        backend.load_grid_public(path_matpower, case_file)
         chron_handl.check_validity(backend)
 
     def test_check_validity_withdiffname(self):
@@ -765,7 +765,7 @@ class TestLoadingChronicsHandlerPP(HelperTests, unittest.TestCase):
         backend = PandaPowerBackend()
         path_matpower = PATH_DATA_TEST_PP
         case_file = "test_case14.json"
-        backend.load_grid(path_matpower, case_file)
+        backend.load_grid_public(path_matpower, case_file)
         chron_handl.check_validity(backend)
 
     def test_chronicsloading(self):

@@ -43,15 +43,9 @@ class TestObservationHazard(unittest.TestCase):
         The case file is a representation of the case14 as found in the ieee14 powergrid.
         :return:
         """
-        # from ADNBackend import ADNBackend
-        # self.backend = ADNBackend()
-        # self.path_matpower = "/home/donnotben/Documents/RL4Grid/RL4Grid/data"
-        # self.case_file = "ieee14_ADN.xml"
-        # self.backend.load_grid(self.path_matpower, self.case_file)
         self.tolvect = 1e-2
         self.tol_one = 1e-5
         self.game_rules = RulesChecker()
-        # pdb.set_trace()
         self.rewardClass = L2RPNReward
         self.reward_helper = self.rewardClass()
         self.obsClass = CompleteObservation

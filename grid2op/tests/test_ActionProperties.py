@@ -2928,7 +2928,7 @@ class TestSetValues(unittest.TestCase):
 
         # nan action: should be discarded
         act = self.helper_action()
-        setattr(act, prop_name, (1, np.NaN))
+        setattr(act, prop_name, (1, np.nan))
         assert np.all(getattr(act, prop_name) == [0.0 for _ in range(nb_el)])
 
         # wrong type

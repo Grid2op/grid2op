@@ -11,10 +11,11 @@
 # Grid2Op subdirectory
 # Grid2Op/tests subdirectory
 
-import sys
 import os
 import numpy as np
 from pathlib import Path
+from packaging import version
+from importlib.metadata import version as version_metadata
 from abc import ABC, abstractmethod
 import inspect
 from grid2op.dtypes import dt_float
@@ -48,6 +49,8 @@ class HelperTests:
     def setUp(self):
         self.tolvect = dt_float(1e-2)
         self.tol_one = dt_float(1e-5)
+        self.this_numpy_version = version.parse(version_metadata("numpy"))
+        self.numpy2_version = version.parse("2.0.0")
         if hasattr(type(super()), "setUp"):
             # needed for backward compatibility
             super().setUp()
@@ -67,12 +70,17 @@ class MakeBackend(ABC, HelperTests):
     def make_backend(self, detailed_infos_for_cascading_failures=False) -> Backend:
         pass
 
-    def make_backend_with_glue_code(self, detailed_infos_for_cascading_failures=False, extra_name="", n_busbar=2) -> Backend:
+    def make_backend_with_glue_code(self,
+                                    detailed_infos_for_cascading_failures=False,
+                                    extra_name="",
+                                    n_busbar=2,
+                                    allow_detachment=False) -> Backend:
         Backend._clear_class_attribute()
         bk = self.make_backend(detailed_infos_for_cascading_failures=detailed_infos_for_cascading_failures)
         type(bk)._clear_grid_dependant_class_attributes()
         type(bk).set_env_name(type(self).__name__ + extra_name)
         type(bk).set_n_busbar_per_sub(n_busbar)
+        type(bk).set_detachment_is_allowed(allow_detachment)
         return bk
     
     def get_path(self) -> str:

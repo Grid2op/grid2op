@@ -113,7 +113,7 @@ class TestNoisy(unittest.TestCase):
 
     def test_simulate(self):
         sim_o, *_ = self.obs.simulate(self.env.action_space())
-        assert type(sim_o).env_name == "educ_case14_storage"+type(self).__name__
+        assert type(sim_o).env_name == "educ_case14_storagePandaPowerBackend"+type(self).__name__
         assert isinstance(sim_o, CompleteObservation)
 
         # test that it is reproducible
@@ -209,7 +209,30 @@ class TestNoisyDiffParams(TestNoisy):
         obs = env.reset()
         with self.assertRaises(AssertionError):
             self._obs_equals(obs, self.obs)
+    
+    def test_obs_copy_params_kept(self):
+        self.env.seed(0)
+        self.env.set_id(0)
+        obs = self.env.reset()
+        assert isinstance(obs, NoisyObservation)
+        assert abs(obs._sigma_load_p - 1.) <= 1e-7, f"{obs._sigma_load_p} vs 0.1"
+        assert abs(obs._sigma_gen_p - 0.1) <= 1e-7, f"{obs._sigma_gen_p} vs 1."
 
+    def test_same_seed_same_obs(self):
+        """probably already done in base class"""
+        self.env.seed(0)
+        self.env.set_id(0)
+        obs = self.env.reset()
+        self._obs_equals(obs, self.obs)
+        
+    def test_diff_seed_same_obs(self):
+        """probably already done in base class"""
+        self.env.seed(1)
+        self.env.set_id(0)
+        obs = self.env.reset()
+        with self.assertRaises(AssertionError):
+            self._obs_equals(obs, self.obs)
+        
 
 # TODO next: have a powerflow there to compute the outcome of the state
 # after the modification

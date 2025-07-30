@@ -20,6 +20,7 @@ from grid2op.Exceptions import Grid2OpException
 from grid2op.Chronics import GridValue, ChronicsHandler
 from grid2op.Opponent import BaseOpponent
 from grid2op.Environment import Environment
+from grid2op.Observation import BaseObservation
 
 from grid2op.Episode.EpisodeData import EpisodeData
 
@@ -212,7 +213,7 @@ class EpisodeReboot:
         self._assign_state(current_obs)
         return self.env.get_obs()
 
-    def _assign_state(self, obs):
+    def _assign_state(self, obs: BaseObservation):
         """
         works only if observation store the complete state of the grid...
         """
@@ -229,6 +230,7 @@ class EpisodeReboot:
         ) + obs.actual_dispatch.astype(dt_float)
         self.env.current_obs = obs
         self.env._timestep_overflow[:] = obs.timestep_overflow.astype(dt_int)
+        self.env._protection_counter[:] = obs.timestep_protection_engaged.astype(dt_int)
         self.env._times_before_line_status_actionable[
             :
         ] = obs.time_before_cooldown_line.astype(dt_int)

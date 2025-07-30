@@ -8,6 +8,11 @@
 
 import time
 from typing import List, Optional
+try:
+    from typing import Self
+except ImportError as exc_:
+    from typing_extensions import Self
+    
 import numpy as np
 import networkx as nx
 import copy
@@ -1762,7 +1767,7 @@ class DetailedTopoDescription(object):
             res,
             self,
             "switches",
-            (lambda arr: [int(el) for el in arr]) if as_list else lambda arr: arr.flatten(),
+            (lambda arr: [int(el) for el in arr.flatten()]) if as_list else lambda arr: arr.flatten(),
             copy_,
         )
         save_to_dict(
@@ -1852,7 +1857,7 @@ class DetailedTopoDescription(object):
         # TODO detailed topo
         
     @classmethod
-    def from_dict(cls, dict_):
+    def from_dict(cls, dict_) -> Self:
         """
         INTERNAL
 
