@@ -9,6 +9,8 @@ __all__ = ["RandomObject",
            "DetailedTopoDescription",
            "AddDetailedTopoIEEE",
            "ElTypeInfo",
+           "DEFAULT_BK_CAN_MANIPULATE_SWITCH",
+           "DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER",
 ]
 
 from grid2op.Space.RandomObject import RandomObject
@@ -23,4 +25,7 @@ from grid2op.Space.default_var import (DEFAULT_N_BUSBAR_PER_SUB,
                                        GRID2OP_CLASSES_ENV_FOLDER,
                                        DEFAULT_ALLOW_DETACHMENT,
                                        GRID2OP_CURRENT_VERSION,
-                                       GRID2OP_CURRENT_VERSION_STR)
+                                       GRID2OP_CURRENT_VERSION_STR,
+                                       DEFAULT_BK_CAN_MANIPULATE_SWITCH,
+                                       DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER,
+                                       )

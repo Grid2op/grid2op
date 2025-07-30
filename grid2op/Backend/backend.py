@@ -7,6 +7,7 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
+from logging import warn, warning
 import os
 import warnings
 import json
@@ -34,7 +35,13 @@ from grid2op.Exceptions import (
     Grid2OpException,
 )
 import grid2op.Environment  # for type hints
-from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.Space import (GridObjects,
+                           ElTypeInfo,
+                           DEFAULT_N_BUSBAR_PER_SUB,
+                           DEFAULT_ALLOW_DETACHMENT,
+                           DEFAULT_BK_CAN_MANIPULATE_SWITCH,
+                           DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER,
+                           )
 import grid2op.Observation  # for type hints
 import grid2op.Action  # for type hints
 import grid2op.Action._BackendAction  # for type hints
@@ -197,9 +204,75 @@ class Backend(GridObjects, ABC):
         self._shunt_bus_target = None
         
         #: .. versionadded: 1.11.0
-        # will be used later on in future grid2op version
+        #: will be used later on in future grid2op version
         self._prevent_automatic_disconnection = True
-    
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        self._missing_switch_support_info: bool = True
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        #: tells wether or not the backend has the possibility
+        #: to directly process switches
+        #: in this case costly (in terms of comptuation time 
+        #: routines are not used grid2op side)
+        #: TODO this optimization is not done yet !
+        self.can_manipulate_switch = DEFAULT_BK_CAN_MANIPULATE_SWITCH
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        self._missing_bus_breaker_topo_support_info: bool = True
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        #: tells wether or not the backend has the possibility
+        #: to directly process bus breaker topology
+        #: in this case costly (in terms of comptuation time 
+        #: routines are not used grid2op side)
+        #: TODO this optimization is not done yet !
+        self.can_manipulate_bus_breaker_topo = DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER
+        
+    def can_handle_switch(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_switch_support_info = False
+        self.can_manipulate_switch = True
+        
+    def cannot_handle_switch(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_switch_support_info = False
+        self.can_manipulate_switch = False
+        
+    def can_handle_bus_breaker_topo(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_bus_breaker_topo_support_info = False
+        self.can_manipulate_bus_breaker_topo = True
+        
+    def cannot_handle_bus_breaker_topo(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_bus_breaker_topo_support_info = False
+        self.can_manipulate_bus_breaker_topo = False
+        
     def can_handle_more_than_2_busbar(self):
         """
         .. versionadded:: 1.10.0
@@ -2384,6 +2457,51 @@ class Backend(GridObjects, ABC):
             self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
             warnings.warn("Your backend is missing the `_missing_detachment_support_info` "
                           "attribute.")
+            
+        if hasattr(self, "_missing_switch_support_info"):
+            if self._missing_switch_support_info:
+                warnings.warn("The backend implementation you are using is probably too old to take advantage of the "
+                              "new feature added in grid2op SWITCH_VERSION: the possibility "
+                              "to modify the grid topology with swtiches directly."
+                              "To silence this warning, you can modify the `load_grid` implementation "
+                              "of your backend and either call:\n"
+                              "- self.can_handle_switch if the current implementation "
+                              "   can handle the modification of switches OR\n"
+                              "- self.cannot_handle_switch if not."
+                              "\nAnd of course, ideally, if the current implementation "
+                              "of your backend cannot handle switches, adapt it to make it work. "
+                              f"\nThis is set to {DEFAULT_BK_CAN_MANIPULATE_SWITCH}, to match legacy code."
+                              "\nThis entails that grid2op will compute the resulting topology after a switch "
+                              "has been modified by the agent, which will increase computation time.")
+                self._missing_switch_support_info = False
+                self.can_manipulate_switch = DEFAULT_BK_CAN_MANIPULATE_SWITCH
+        else:
+            self._missing_switch_support_info = False
+            self.can_manipulate_switch = DEFAULT_BK_CAN_MANIPULATE_SWITCH
+            warnings.warn("Your backend is missing the `_missing_switch_support_info` "
+                          "attribute.")
+            
+        if hasattr(self, "_missing_bus_breaker_topo_support_info"):
+            if self._missing_bus_breaker_topo_support_info:
+                warnings.warn("The backend implementation you are using is probably too old to take advantage of the "
+                              "new feature added in grid2op SWITCH_VERSION: the possibility "
+                              "to modify the grid topology with swtiches directly."
+                              "For legacy backends, this imposed that the backend is able to process"
+                              "'bus breaker' topology as it used to be required by grid2op.")
+                self._missing_bus_breaker_topo_support_info = False
+                self.can_manipulate_bus_breaker_topo = DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER
+        else:
+            self._missing_bus_breaker_topo_support_info = False
+            self.can_manipulate_bus_breaker_topo = DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER
+            warnings.warn("Your backend is missing the `_missing_bus_breaker_topo_support_info` "
+                          "attribute.")
+            
+        if (not self.can_manipulate_bus_breaker_topo) and not (self.can_manipulate_switch):
+            warnings.warn("No topological action will be able to be performed by the agent, as"
+                          "your backend does not know how to modify the topology.")
+            # TODO detailed topo: force also the emulation of protection, 
+            # the opponent,
+            # and other kind of things in this case.
         
         orig_type = type(self)
         if orig_type.my_bk_act_class is None and orig_type._INIT_GRID_CLS is None:
