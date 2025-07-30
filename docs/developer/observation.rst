@@ -3,7 +3,7 @@ How to add a new attribute to the observation
 
 Work in progress !
 
-The best things to do if you want to add attribute to the observation is to
+The best things to do if you want to add attributes to the observation is to
 create a class, derived from `CompleteObservation` and to add attributes in:
 
 - the `attr_list_vect` class attribute
