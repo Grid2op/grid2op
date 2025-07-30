@@ -201,11 +201,6 @@ class Backend(GridObjects, ABC):
         #: .. versionadded: 1.11.0
         #: will be used later on in future grid2op version
         self._prevent_automatic_disconnection: bool = True
-        
-        #: .. versionadded: 1.12.1
-        #: List of "backend_dependant_callback" errors (if any)
-        self._callbacks_errors : List[Exception] = []
-
     
     def can_handle_more_than_2_busbar(self):
         """
@@ -796,7 +791,6 @@ class Backend(GridObjects, ABC):
         # reset the other attributes
         self.comp_time = 0.0
         self.update_bus_target_after_pf(-1, -1, -1)
-        self._callbacks_errors = []
         
     def reset(self,
               path : Union[os.PathLike, str],
@@ -1463,7 +1457,6 @@ class Backend(GridObjects, ABC):
         infos = []
         disconnected_during_cf = np.full(type(self).n_line, fill_value=-1, dtype=dt_int)
         conv_ = self._runpf_with_diverging_exception(is_dc)
-        self._callbacks_errors = []
         if env._no_overflow_disconnection or conv_ is not None:
             return disconnected_during_cf, infos, conv_
 
