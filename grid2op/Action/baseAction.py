@@ -492,34 +492,34 @@ class BaseAction(GridObjects):
             self._names_chronics_to_backend = None
             
         # False(line is disconnected) / True(line is connected)
-        self._set_line_status = np.full(shape=cls.n_line, fill_value=0, dtype=dt_int)
-        self._switch_line_status = np.full(
-            shape=cls.n_line, fill_value=False, dtype=dt_bool
-        )
+        self._set_line_status = None  # np.full(shape=cls.n_line, fill_value=0, dtype=dt_int)
+        self._switch_line_status = None  #  np.full(
+        #     shape=cls.n_line, fill_value=False, dtype=dt_bool
+        # )
 
         # injection change
         self._dict_inj : Dict[Literal["prod_p", "prod_v", "load_p", "load_q"], np.ndarray] = {}
 
         # topology changed
-        self._set_topo_vect = np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int)
-        self._change_bus_vect = np.full(
-            shape=cls.dim_topo, fill_value=False, dtype=dt_bool
-        )
+        self._set_topo_vect = None  # np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int)
+        self._change_bus_vect = None  # np.full(
+        #     shape=cls.dim_topo, fill_value=False, dtype=dt_bool
+        # )
 
         # add the hazards and maintenance usefull for saving.
-        self._hazards = np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
-        self._maintenance = np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
+        self._hazards = None  # np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
+        self._maintenance = None  # np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
 
         # redispatching vector
-        self._redispatch = np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float)
+        self._redispatch = None  # np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float)
 
         # storage unit vector
-        self._storage_power = np.full(
-            shape=cls.n_storage, fill_value=0.0, dtype=dt_float
-        )
+        self._storage_power = None  # np.full(
+        #    shape=cls.n_storage, fill_value=0.0, dtype=dt_float
+        # )
 
         # curtailment of renewable energy
-        self._curtail = np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float)
+        self._curtail = None  # np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float)
 
         self._vectorized = None
         self._lines_impacted = None
@@ -527,13 +527,13 @@ class BaseAction(GridObjects):
 
         # shunts
         if cls.shunts_data_available:
-            self.shunt_p = np.full(
-                shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
-            )
-            self.shunt_q = np.full(
-                shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
-            )
-            self.shunt_bus = np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
+            self.shunt_p = None  # np.full(
+            #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
+            # )
+            self.shunt_q = None  # np.full(
+            #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
+            # )
+            self.shunt_bus = None  # np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
         else:
             self.shunt_p = None
             self.shunt_q = None
@@ -541,18 +541,18 @@ class BaseAction(GridObjects):
 
         self._single_act = True
 
-        self._raise_alarm = np.full(
-            shape=cls.dim_alarms, dtype=dt_bool, fill_value=False
-        )
+        self._raise_alarm = None #np.full(
+        #    shape=cls.dim_alarms, dtype=dt_bool, fill_value=False
+        #)
 
-        self._raise_alert = np.full(
-            shape=cls.dim_alerts, dtype=dt_bool, fill_value=False
-        )
+        self._raise_alert = None  # np.full(
+        #    shape=cls.dim_alerts, dtype=dt_bool, fill_value=False
+        #)
 
         if cls.detachment_is_allowed:
-            self._detach_load = np.full(cls.n_load, dtype=dt_bool, fill_value=False)
-            self._detach_gen = np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
-            self._detach_storage = np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
+            self._detach_load = None  # np.full(cls.n_load, dtype=dt_bool, fill_value=False)
+            self._detach_gen = None  # np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
+            self._detach_storage = None  # np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
         else:
             self._detach_load = None
             self._detach_gen = None
@@ -563,8 +563,8 @@ class BaseAction(GridObjects):
         self._change_switch_status = None
         if cls.detailed_topo_desc is not None:
             n_switch = cls.detailed_topo_desc.switches.shape[0]
-            self._set_switch_status = np.full(shape=n_switch, fill_value=0, dtype=dt_int)
-            self._change_switch_status = np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
+            self._set_switch_status = None  # np.full(shape=n_switch, fill_value=0, dtype=dt_int)
+            self._change_switch_status = None  # np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
         
         # flags whether things are changed
         self._modif_inj = False
@@ -585,6 +585,80 @@ class BaseAction(GridObjects):
         self._modif_set_switch = False
         self._modif_change_switch = False
 
+    @classmethod
+    def _build_attr(cls, attr_nm):
+        # False(line is disconnected) / True(line is connected)
+        dict_ = {
+            "_set_line_status": np.full(shape=cls.n_line, fill_value=0, dtype=dt_int),
+            "_switch_line_status": np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
+            "prod_p": np.full(shape=cls.n_gen, fill_value=np.nan, dtype=dt_float),
+            "prod_v": np.full(shape=cls.n_gen, fill_value=np.nan, dtype=dt_float),
+            "load_p": np.full(shape=cls.n_load, fill_value=np.nan, dtype=dt_float),
+            "load_q": np.full(shape=cls.n_load, fill_value=np.nan, dtype=dt_float),
+
+            # topology changed
+            "_set_topo_vect" : np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int),
+            "_change_bus_vect" : np.full(shape=cls.dim_topo, fill_value=False, dtype=dt_bool),
+
+            # add the hazards and maintenance usefull for saving.
+            "_hazards" : np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
+            "_maintenance" :np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
+
+            # redispatching vector
+            "_redispatch" : np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float),
+
+            # storage unit vector
+            "_storage_power" : np.full(
+            shape=cls.n_storage, fill_value=0.0, dtype=dt_float
+            ),
+
+            # curtailment of renewable energy
+            "_curtail" : np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float),
+        }
+        # shunts
+        if cls.shunts_data_available:
+            self.shunt_p = None  # np.full(
+            #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
+            # )
+            self.shunt_q = None  # np.full(
+            #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
+            # )
+            self.shunt_bus = None  # np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
+        else:
+            self.shunt_p = None
+            self.shunt_q = None
+            self.shunt_bus = None
+
+        self._raise_alarm = None #np.full(
+        #    shape=cls.dim_alarms, dtype=dt_bool, fill_value=False
+        #)
+
+        self._raise_alert = None  # np.full(
+        #    shape=cls.dim_alerts, dtype=dt_bool, fill_value=False
+        #)
+
+        if cls.detachment_is_allowed:
+            self._detach_load = None  # np.full(cls.n_load, dtype=dt_bool, fill_value=False)
+            self._detach_gen = None  # np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
+            self._detach_storage = None  # np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
+        else:
+            self._detach_load = None
+            self._detach_gen = None
+            self._detach_storage = None
+        
+        # TODO detailed topo
+        self._set_switch_status = None
+        self._change_switch_status = None
+        if cls.detailed_topo_desc is not None:
+            n_switch = cls.detailed_topo_desc.switches.shape[0]
+            self._set_switch_status = None  # np.full(shape=n_switch, fill_value=0, dtype=dt_int)
+            self._change_switch_status = None  # np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
+            
+        if attr_nm not in cls._dict_attr_template:
+            raise ActionException()
+        
+        return copy.deepcopy(cls._dict_attr_template[attr_nm])
+        
     @classmethod
     def process_shunt_static_data(cls):
         if not cls.shunts_data_available:
@@ -672,14 +746,17 @@ class BaseAction(GridObjects):
         if cls.detachment_is_allowed:
             attr_vect += ["_detach_load", "_detach_gen", "_detach_storage"]
             
+        if cls.detailed_topo_desc is not None:
+            attr_vect += ["_set_switch_status", "_change_switch_status"]
+            
         for attr_nm in attr_simple:
             setattr(other, attr_nm, getattr(self, attr_nm))
 
         for attr_nm in attr_vect:
-            getattr(other, attr_nm)[:] = getattr(self, attr_nm)
+            arr = getattr(self, attr_nm)
+            if arr is not None:
+                getattr(other, attr_nm)[:] = getattr(self, attr_nm)
             
-        if cls.detailed_topo_desc is not None:
-            attr_vect += ["_set_switch_status", "_change_switch_status"]
 
     def __copy__(self) -> "BaseAction":
         res = type(self)()
@@ -714,14 +791,18 @@ class BaseAction(GridObjects):
         return res
 
     def _aux_serialize_add_key_change(self, attr_nm, dict_key, res, vect_id_to_name):
-            tmp_ = [str(vect_id_to_name[id_]) for id_, val in enumerate(getattr(self, attr_nm)) if val]
-            if tmp_:
-                res[dict_key] = tmp_
+        tmp_ = [str(vect_id_to_name[id_]) 
+                for id_, val in enumerate(getattr(self, attr_nm)) 
+                if val]
+        if tmp_:
+            res[dict_key] = tmp_
 
     def _aux_serialize_add_key_set(self, attr_nm, dict_key, res, vect_id_to_name):
-            tmp_ = [(str(vect_id_to_name[id_]), int(val)) for id_, val in enumerate(getattr(self, attr_nm)) if np.abs(val) >= 1e-7]
-            if tmp_:
-                res[dict_key] = tmp_
+        tmp_ = [(str(vect_id_to_name[id_]), int(val)) 
+                for id_, val in enumerate(getattr(self, attr_nm)) 
+                if np.abs(val) >= 1e-7]
+        if tmp_:
+            res[dict_key] = tmp_
 
     def as_serializable_dict(self) -> dict:
         """
@@ -849,15 +930,15 @@ class BaseAction(GridObjects):
 
         if cls.shunts_data_available:
             res["shunt"] = {}
-            if np.isfinite(self.shunt_p).any():
+            if self.shunt_p is not None and np.isfinite(self.shunt_p).any():
                 res["shunt"]["shunt_p"] = [
                     (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self.shunt_p) if np.isfinite(val)
                 ]
-            if np.isfinite(self.shunt_q).any():
+            if self.shunt_q is not None and np.isfinite(self.shunt_q).any():
                 res["shunt"]["shunt_q"] = [
                     (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self.shunt_q) if np.isfinite(val)
                 ]
-            if (self.shunt_bus != 0).any():
+            if self.shunt_bus is not None and (self.shunt_bus != 0).any():
                 res["shunt"]["shunt_bus"] = [
                     (str(cls.name_shunt[sh_id]), int(val))
                     for sh_id, val in enumerate(self.shunt_bus)
@@ -873,6 +954,8 @@ class BaseAction(GridObjects):
                 xxx_name = getattr(cls, f"name_{el}")
                 res[attr_key] = {}
                 vect_ = getattr(self, attr_vect)
+                if vect_ is None:
+                    continue
                 if vect_.any():
                     res[attr_key] = [str(xxx_name[el]) for el in vect_.nonzero()[0]]
                 if not res[attr_key]:
@@ -927,7 +1010,10 @@ class BaseAction(GridObjects):
             The indexes of the areas where the agent has raised an alarm.
 
         """
-        return (self._raise_alarm).nonzero()[0]
+        if self._modif_alarm:
+            return (self._raise_alarm).nonzero()[0]
+        else:
+            return np.zeros(0, dtype=int)
 
     def alert_raised(self) -> np.ndarray:
         """
@@ -941,7 +1027,10 @@ class BaseAction(GridObjects):
             The indexes of the lines where the agent has raised an alert.
 
         """
-        return (self._raise_alert).nonzero[0]
+        if self._modif_alert:
+            return (self._raise_alert).nonzero[0]
+        else:
+            return np.zeros(0, dtype=int)
 
     @classmethod
     def _aux_process_old_compat(cls):
@@ -1102,7 +1191,10 @@ class BaseAction(GridObjects):
 
     def _get_array_from_attr_name(self, attr_name):
         if hasattr(self, attr_name):
-            res = super()._get_array_from_attr_name(attr_name)
+            if getattr(self, attr_name) is not None:
+                res = super()._get_array_from_attr_name(attr_name)
+            else:
+                
             return res
 
         if attr_name in self._dict_inj:
@@ -3529,7 +3621,7 @@ class BaseAction(GridObjects):
                 if (issue_xxx).any():
                     raise AmbiguousAction(f"Trying to both set a {el_nm} of busbar (set_bus) AND detach it from the grid. "
                                          f"Check {el_nm}: {name_xxx[issue_xxx]}")
-
+        
     def _are_switches_ambiguous(self):
         cls = type(self)
         dtd = cls.detailed_topo_desc
@@ -3550,23 +3642,27 @@ class BaseAction(GridObjects):
                     cls.ISSUE_WARNING_SWITCH_SET_CHANGE = "never"
 
         # TODO detailed topo : refacto that with the method get_sub_ids_switch
-        subs_aff_c_switch = np.unique(dtd.switches[self._change_switch_status, type(dtd).SUB_COL])
-        subs_aff_s_switch = np.unique(dtd.switches[self._set_switch_status !=0, type(dtd).SUB_COL])
-        subs_aff_c_bus = np.unique(cls.grid_objects_types[self._change_bus_vect,cls.SUB_COL])
-        subs_aff_s_bus = np.unique(cls.grid_objects_types[self._set_topo_vect > 0,cls.SUB_COL])
-        if np.isin(subs_aff_c_switch, subs_aff_c_bus).any():
+        subs_aff_c_switch = np.zeros(cls.n_sub, dtype=dt_bool)
+        subs_aff_c_bus = np.zeros(cls.n_sub, dtype=dt_bool)
+        subs_aff_s_switch = np.zeros(cls.n_sub, dtype=dt_bool)
+        subs_aff_s_bus = np.zeros(cls.n_sub, dtype=dt_bool)
+        subs_aff_c_switch[dtd.switches[self._change_switch_status, type(dtd).SUB_COL]] = True
+        subs_aff_c_bus[cls.grid_objects_types[self._change_bus_vect, cls.SUB_COL]] = True
+        subs_aff_s_switch[dtd.switches[self._set_switch_status != 0, type(dtd).SUB_COL]] = True
+        subs_aff_s_bus[cls.grid_objects_types[self._set_topo_vect != 0, cls.SUB_COL]] = True
+        if np.logical_xor(subs_aff_c_switch, subs_aff_c_bus).any():
             raise AmbiguousAction("You used change_switch and change_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
-        if np.isin(subs_aff_c_switch, subs_aff_s_bus).any():
+        if np.logical_xor(subs_aff_c_switch, subs_aff_s_bus).any():
             raise AmbiguousAction("You used change_switch and set_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
-        if np.isin(subs_aff_s_switch, subs_aff_c_bus).any():
+        if np.logical_xor(subs_aff_s_switch, subs_aff_c_bus).any():
             raise AmbiguousAction("You used set_switch and change_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
-        if np.isin(subs_aff_s_switch, subs_aff_s_bus).any():
+        if np.logical_xor(subs_aff_s_switch, subs_aff_s_bus).any():
             raise AmbiguousAction("You used set_switch and set_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
@@ -3594,6 +3690,7 @@ class BaseAction(GridObjects):
         if dtd is None:
             return None
         res = np.zeros(cls.n_sub, dtype=dt_bool)
+        # TODO this is also done in `_are_switches_ambiguous` (cache this ?)
         res[dtd.switches[self._change_switch_status, type(dtd).SUB_COL]] = True
         res[dtd.switches[self._set_switch_status !=0, type(dtd).SUB_COL]] = True
         return res

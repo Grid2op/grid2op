@@ -578,7 +578,13 @@ class BaseObservation(GridObjects):
     # value to assess if two observations are equal
     _tol_equal = 1e-3
     
-    
+    #: .. versionadded: todo detailed topo
+    #: attributes that will be copied with other.attr = self.attr.copy()
+    attr_copy_method = [
+        "_prev_conn"
+    ]
+    #: .. versionadded: 1.12.0
+    #: attributes that will be copied with other.attr = copy.copy(self.attr)
     attr_simple_cpy = [
         "max_step",
         "current_step",
@@ -591,9 +597,9 @@ class BaseObservation(GridObjects):
         "year",
         "delta_time",
         "_is_done",
-        "_prev_conn"
     ]
-
+    #: .. versionadded: 1.12.0
+    # attributes that will be copied with other.attr[:] = self.attr
     attr_vect_cpy = [
         "storage_theta",
         "gen_theta",
@@ -817,6 +823,11 @@ class BaseObservation(GridObjects):
                 # for old code (eg lightsim2grid legacy)
                 # some attribute did not exist
                 getattr(other, attr_nm)[:] = getattr(self, attr_nm)
+                
+        for attr_nm in cls.attr_copy_method:
+            tmp = getattr(self, attr_nm)
+            if tmp is not None:
+                setattr(other, attr_nm, tmp.copy())
 
     def change_reward(self, reward_func: "grid2op.Reward.BaseReward"):
         """Allow to change the reward used when calling :func:`BaseObservation.simulate`
@@ -4548,7 +4559,9 @@ class BaseObservation(GridObjects):
             self.storage_p_detached[:] = env._storage_p_detached
         
         # 1.11.0 
-        self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        # self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        # self._prev_conn = env._previous_conn_state
+        self._prev_conn = env._previous_conn_state.copy()
         self._prev_conn.prevent_modification()  # I do not want to modify this accidently
         
         # handles forecasts here

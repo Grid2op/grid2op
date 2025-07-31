@@ -7,7 +7,7 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
-from typing import Optional, Type
+from typing import Optional, Type, Union
 import numpy as np
 from grid2op.Space import GridObjects
 import grid2op.Backend
@@ -18,7 +18,7 @@ from grid2op.Exceptions import Grid2OpException
 
 class _EnvPreviousState(object):
     def __init__(self,
-                 grid_obj_cls: Type[GridObjects],
+                 grid_obj_cls: Union[Type[GridObjects], CLS_AS_DICT_TYPING],
                  init_load_p : np.ndarray,
                  init_load_q : np.ndarray,
                  init_gen_p : np.ndarray,
@@ -30,7 +30,10 @@ class _EnvPreviousState(object):
                  init_shunt_bus : np.ndarray,
                  init_switch_state: Optional[np.ndarray]):
         self._can_modif = True
-        self._grid_obj_cls : CLS_AS_DICT_TYPING = grid_obj_cls.cls_to_dict()
+        if isinstance(grid_obj_cls, type):
+            self._grid_obj_cls : CLS_AS_DICT_TYPING = grid_obj_cls.cls_to_dict()
+        elif isinstance(grid_obj_cls, dict):
+            self._grid_obj_cls : CLS_AS_DICT_TYPING = grid_obj_cls
         self._n_storage = len(self._grid_obj_cls["name_storage"])  # to avoid typing that over and over again
         
         self._load_p : np.ndarray = 1. * init_load_p
@@ -42,8 +45,24 @@ class _EnvPreviousState(object):
         self._shunt_p : np.ndarray = 1. * init_shunt_p
         self._shunt_q : np.ndarray = 1. * init_shunt_q
         self._shunt_bus : np.ndarray = 1. * init_shunt_bus
-        if grid_obj_cls.detailed_topo_desc is not None:
+        if "detailed_topo_desc" in self._grid_obj_cls and self._grid_obj_cls["detailed_topo_desc"] is not None:
             self._switch_state = 1 * init_switch_state
+        else:
+            self._switch_state = None
+            
+    def copy(self):
+        return _EnvPreviousState(grid_obj_cls=self._grid_obj_cls,
+                                 init_load_p=self._load_p,
+                                 init_load_q=self._load_q,
+                                 init_gen_p=self._gen_p,
+                                 init_gen_v=self._gen_v,
+                                 init_topo_vect=self._topo_vect,
+                                 init_storage_p=self._storage_p,
+                                 init_shunt_p=self._shunt_p,
+                                 init_shunt_q=self._shunt_q,
+                                 init_shunt_bus = self._shunt_bus,
+                                 init_switch_state=self._switch_state,
+                                 )
         
     def update(self,
                load_p : np.ndarray,
@@ -54,9 +73,11 @@ class _EnvPreviousState(object):
                storage_p : Optional[np.ndarray],
                shunt_p : Optional[np.ndarray],
                shunt_q : Optional[np.ndarray],
-               shunt_bus : Optional[np.ndarray]):
+               shunt_bus : Optional[np.ndarray],
+               switches : Optional[np.ndarray],
+               ):
         if not self._can_modif:
-            raise Grid2OpException(f"Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
         
         self._aux_update(topo_vect[self._grid_obj_cls["load_pos_topo_vect"]],
                          self._load_p,
@@ -79,12 +100,20 @@ class _EnvPreviousState(object):
         # handle shunts, if present
         if shunt_p is not None:
             self._aux_update(shunt_bus,
-                            self._shunt_p,
-                            shunt_p,
-                            self._shunt_q,
-                            shunt_q)
+                             self._shunt_p,
+                             shunt_p,
+                             self._shunt_q,
+                             shunt_q)
             self._shunt_bus[shunt_bus > 0] = 1 * shunt_bus[shunt_bus > 0]
-    
+            
+        if switches is not None:
+            if self._switch_state is None:
+                raise Grid2OpException("No known last switch state to update")
+            self._switch_state[:] = switches
+        else:
+            if self._switch_state is not None:
+                raise Grid2OpException("No new switch values to update previous values")
+                    
     def update_from_backend(self,
                             backend: "grid2op.Backend.Backend"):
         if not self._can_modif:
@@ -97,18 +126,22 @@ class _EnvPreviousState(object):
         else:
             storage_p = None
         if type(backend).shunts_data_available:
-            shunt_p, shunt_q, shunt_v, shunt_bus = backend.shunt_info()
+            shunt_p, shunt_q, _, shunt_bus = backend.shunt_info()
         else:
-            shunt_p, shunt_q, shunt_v, shunt_bus = None, None, None, None
+            shunt_p, shunt_q, _, shunt_bus = None, None, None, None
             
         if type(backend).detailed_topo_desc is not None:
             # TODO detailed topo !
-            switches = np.ones_like(type(backend).detailed_topo_desc.switches, dtype=dt_int)
+            switches = np.ones(type(backend).detailed_topo_desc.switches.shape[0], dtype=dt_int)
+        else:
+            switches = None
+            
         self.update(load_p, load_q,
                     gen_p, gen_v,
                     topo_vect,
                     storage_p,
-                    shunt_p, shunt_q, shunt_bus)
+                    shunt_p, shunt_q, shunt_bus,
+                    switches)
     
     def update_from_other(self, 
                           other : "_EnvPreviousState"):
@@ -130,7 +163,7 @@ class _EnvPreviousState(object):
             else:
                 setattr(self, attr_nm, getattr(other, attr_nm))
         # if detailed topo
-        if hasattr(self, "_switch_state"):
+        if hasattr(self, "_switch_state") and self._switch_state is not None:
             self._switch_state[:] = other._switch_state
         
     def prevent_modification(self):
@@ -160,8 +193,9 @@ class _EnvPreviousState(object):
             if tmp.size > 1:
                 # can't set flags on array of size 1 apparently
                 tmp.flags.writeable = writeable_flag
+                
         # if detailed topo
-        if hasattr(self, "_switch_state"):
+        if hasattr(self, "_switch_state") and self._switch_state is not None:
             self._switch_state.flags.writeable = writeable_flag
         
     def _aux_update(self,
