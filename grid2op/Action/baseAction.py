@@ -997,7 +997,8 @@ class BaseAction(GridObjects):
         cls.attr_list_vect.append("_change_switch_status")
 
         cls.attr_list_set = set(cls.attr_list_vect)
-
+        return super().process_grid2op_detailed_topo_vect()
+    
     @classmethod
     def _aux_process_n_busbar_per_sub(cls):
         cls.authorized_keys = copy.deepcopy(cls.authorized_keys)

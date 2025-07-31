@@ -538,7 +538,6 @@ class _BackendAction(GridObjects):
         self._shunts_cached = None
         
         # TODO detailed topo
-        self._detailed_topo = None  # tuple: busbar_connector_state, switches_state
         if cls.detailed_topo_desc is not None:
             self.last_switch_registered = np.zeros(cls.detailed_topo_desc.switches.shape[0], dtype=dt_bool)
             self.current_switch = np.zeros(cls.detailed_topo_desc.switches.shape[0], dtype=dt_bool)
@@ -583,8 +582,6 @@ class _BackendAction(GridObjects):
         res._lines_or_bus = copy.deepcopy(self._lines_or_bus)
         res._lines_ex_bus = copy.deepcopy(self._lines_ex_bus)
         res._storage_bus = copy.deepcopy(self._storage_bus)
-        
-        res._detailed_topo = copy.deepcopy(self._detailed_topo)
 
         if cls.detailed_topo_desc is not None:
             res.last_switch_registered = copy.deepcopy(self.last_switch_registered)
@@ -628,8 +625,7 @@ class _BackendAction(GridObjects):
             self.shunt_bus.reorder(no_shunt)
             self.current_shunt_bus.reorder(no_shunt)
 
-        # force to reset the detailed topo
-        # self._detailed_topo = None
+        # TODO detailed topo: force to reset the detailed topo
 
     def reset(self) -> None:
         """
@@ -663,10 +659,10 @@ class _BackendAction(GridObjects):
             self.shunt_bus.reset()
             self.current_shunt_bus.reset()
 
-        self._detailed_topo = None
         self.last_topo_registered.register_new_topo(self.current_topo)
 
         if cls.detailed_topo_desc is not None:
+            # TODO detailed topo: what about current switch ?
             self.last_switch_registered[:] = self.current_switch
             
     def all_changed(self) -> None:
@@ -756,14 +752,13 @@ class _BackendAction(GridObjects):
                 mask = shunt_tp_from_sw != 0
                 arr_[mask] = shunt_tp_from_sw[mask]
                 
-            self.shunt_bus.set_val(arr_)
-        self.current_shunt_bus.values[self.shunt_bus.changed] = self.shunt_bus.values[self.shunt_bus.changed]
-
-        if self.shunt_bus.changed.any():
-            # TODO detailed topo
-            shunt_bus_modif = True 
-            # self._detailed_topo = None
-        return shunt_bus_modif
+            mask_changed = (arr_ != 0) & (arr_ != self.shunt_bus.values)
+            if mask_changed.any():
+                #shunt has been modified by the action
+                self.shunt_bus.set_val(arr_)
+                self.current_shunt_bus.values[mask_changed] = self.shunt_bus.values[mask_changed]
+                return True
+        return False
     
     def _aux_shunt_bus_in_act(self, other: BaseAction):
         if type(self).shunts_data_available:
@@ -845,7 +840,6 @@ class _BackendAction(GridObjects):
                 self.line_ex_pos_topo_vect,
                 self.last_topo_registered,
             )
-            self._detailed_topo = None
 
         if other._modif_set_status:
             self.current_topo.set_status(
@@ -854,7 +848,6 @@ class _BackendAction(GridObjects):
                 self.line_ex_pos_topo_vect,
                 self.last_topo_registered,
             )
-            self._detailed_topo = None
 
         # if other._modif_change_status or other._modif_set_status:
         (
@@ -899,11 +892,11 @@ class _BackendAction(GridObjects):
         storage_power = other._storage_power
         modif_switch = False
         switch_topo_vect = None
-        shunt_tp = None
+        shunt_tp_from_sw = None
 
         modif_set_bus = other._modif_set_bus
         modif_inj = other._modif_inj
-        modify_topo_bus = modif_set_bus or other._modif_change_bus
+        modify_topo_bus = False
         cls = type(self)
 
         # I detachment (before all else)
@@ -932,20 +925,19 @@ class _BackendAction(GridObjects):
                 raise AmbiguousAction("Something modified the switches while "
                                       "no switch information is provided.")
             orig_switch =  True & self.current_switch  # TODO detailed topo debug
-            new_switch =  True & self.current_switch
             subid_switch = other.get_sub_ids_switch()
             if other._modif_change_switch:
                 # TODO detailed topo method of ValueStore !
-                new_switch[other._change_switch_status] = ~new_switch[other._change_switch_status]
+                self.current_switch[other._change_switch_status] = ~self.current_switch[other._change_switch_status]
             if other._modif_set_switch:
                 # TODO detailed topo method of ValueStore
                 mask_set = other._set_switch_status != 0
-                new_switch[mask_set] = other._set_switch_status[mask_set] == 1
+                self.current_switch[mask_set] = other._set_switch_status[mask_set] == 1
 
             # TODO detailed topo: don't do that if the action does not modifies
             # the set_bus, change_bus etc.                
             if modify_topo_bus or True:
-                switch_topo_vect, shunt_tp_from_sw = self.detailed_topo_desc.from_switches_position(new_switch, subid_switch)
+                switch_topo_vect, shunt_tp_from_sw = self.detailed_topo_desc.from_switches_position(self.current_switch, subid_switch)
             modif_switch = True
             # change the "target topology" for the elements
             # connected to the impacted substations
@@ -954,7 +946,9 @@ class _BackendAction(GridObjects):
 
         # II shunts
         if cls.shunts_data_available:
-            shunt_bus_modif = self._aux_iadd_shunt(other, shunt_tp)
+            shunt_bus_modif = self._aux_iadd_shunt(other, shunt_tp_from_sw)
+            if shunt_bus_modif:
+                modify_topo_bus = True
         else:
             shunt_bus_modif = False
             
@@ -988,10 +982,11 @@ class _BackendAction(GridObjects):
         # IV topo
         if other._modif_change_bus:
             self.current_topo.change_val(switcth_topo_vect)
-            
+            modify_topo_bus = True
         if modif_set_bus or modif_switch:
             self.current_topo.set_val(set_topo_vect)
-
+            modify_topo_bus = True
+            
         # V Force disconnected status
         # of disconnected powerlines extremities
         self._status_or[:], self._status_ex[:] = self.current_topo.get_line_status(
@@ -1010,6 +1005,7 @@ class _BackendAction(GridObjects):
             # so I get the correct one !
             lines_impacted, subs_impacted_bus = other.get_topological_impact(_read_from_cache=True)
             subs_impacted_switch = other.get_sub_ids_switch()
+            
             # it is ambiguous to modify a substation by
             # switches and set_bus / change_bus 
             subs_impacted_bus[subs_impacted_switch] = False 
@@ -1033,7 +1029,6 @@ class _BackendAction(GridObjects):
             shunt_el_disco[other.shunt_bus == -1] = True
             tmp_status, mask_status = dtd.disconnect_el_with_switch(tp_el_disco, shunt_el_disco)
             self.current_switch[mask_status] = tmp_status[mask_status]
-            
             # handle more difficult topological changes 
             # (slower and changes all the switches of the substation)
             tmp_bus, mask_bus = dtd.compute_switches_position(self.current_topo.values,
@@ -1042,6 +1037,7 @@ class _BackendAction(GridObjects):
             self.current_switch[mask_bus] = tmp_bus[mask_bus]
             # TODO detailed topo : tag the origin of the swtich state (and topological state to
             # forward it in the observation)
+            
         return self
 
     def _assign_0_to_disco_el(self) -> None:
@@ -1237,15 +1233,16 @@ class _BackendAction(GridObjects):
         if cls.detailed_topo_desc is None:
             raise Grid2OpException(ERR_MSG_SWITCH)
         detailed_topo_desc = cls.detailed_topo_desc
+        
         if cls.shunts_data_available:
             shunt_bus = self.current_shunt_bus.values
         else:
             shunt_bus = None
-        if self._detailed_topo is None:
+        if self.current_switch is None:
             # TODO detailed topo : optimization here : pass the substations modified
             # TODO detailed topo : pass the current switches position
-            self._detailed_topo = detailed_topo_desc.compute_switches_position(self.current_topo.values, shunt_bus)
-        return self._detailed_topo
+            self.current_switch, _ = detailed_topo_desc.compute_switches_position(self.current_topo.values, shunt_bus)
+        return self.current_switch
 
     def get_loads_bus_global(self) -> ValueStore:
         """

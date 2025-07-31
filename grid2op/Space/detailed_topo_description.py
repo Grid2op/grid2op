@@ -7,7 +7,9 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import time
-from typing import List, Optional
+from typing import List, Optional, Type
+
+from grid2op.Space import GridObjects
 try:
     from typing import Self
 except ImportError as exc_:
@@ -335,13 +337,13 @@ class DetailedTopoDescription(object):
         self._sw_pos_in_sub : np.ndarray = None
         
     @classmethod
-    def from_ieee_grid(cls, init_grid : "grid2op.Space.GridObjects.GridObjects"):
+    def from_ieee_grid(cls, init_grid : GridObjects):
         """For now, suppose that the grid comes from ieee grids.
         
         See doc of :class:`AddDetailedTopoIEEE` for more information.
         
         """
-        init_grid_cls = type(init_grid)
+        init_grid_cls : Type[GridObjects] = type(init_grid)
         
         n_sub = init_grid_cls.n_sub
         n_bb_per_sub = init_grid_cls.n_busbar_per_sub
@@ -702,7 +704,7 @@ class DetailedTopoDescription(object):
         """This function compute a plausible switches configuration
         from a given `topo_vect` representation.
         
-        TODO detailed topo: documentation
+        TODO detailed topo: documentation + type hints
 
         Parameters
         ----------
@@ -716,6 +718,7 @@ class DetailedTopoDescription(object):
         `switches_state` state (connected = ``True`` or disconnected = ``False``) of each switches as 
         a numpy boolean array.
         
+        `switches_changed` whether or not the switches have changed TODO detailed topo !
         """
         # TODO detailed topo: input the previous switch state
         

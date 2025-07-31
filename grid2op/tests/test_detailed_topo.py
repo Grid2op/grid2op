@@ -819,7 +819,6 @@ class TestActAndBkAct(unittest.TestCase):
         # env does that
         bk_act : _BackendAction = self.env._backend_action
         bk_act += act
-        
         # backend does that
         (
             active_bus, # TODO detailed topo does not compute that
@@ -828,7 +827,6 @@ class TestActAndBkAct(unittest.TestCase):
             shunts__,  # TODO detailed topo does not compute shunt_bus there
         ) = bk_act()
         switch_pos = bk_act.get_all_switches()
-        
         assert (switch_pos == tgt_switch).all(), f"check switches {(switch_pos != tgt_switch).nonzero()[0]}"
         
         # env does that again
@@ -839,10 +837,12 @@ class TestActAndBkAct(unittest.TestCase):
         (which has no impact on topo)"""
         # TODO detailed topo: speed it up by
         # not using the routine to/ from switch !
-        obs = self.env.reset()
+        _ = self.env.reset()
+        assert "set_switch" in self.env.action_space.subtype.authorized_keys
         
         # agent does that
         act : BaseAction = self.env.action_space({"set_switch": [(0, 1)]})
+        assert act._set_switch_status[0] == 1
         tgt_switch = np.array([True, False, False, False, False, False, False, False, False,
                                False, False, False, False, False,  True,  True, False,  True,
                                 True, False,  True,  True, False,  True,  True, False,  True,
