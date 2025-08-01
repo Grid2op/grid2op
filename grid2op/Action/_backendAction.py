@@ -691,17 +691,21 @@ class _BackendAction(GridObjects):
         if "load_p" in dict_injection:
             tmp = dict_injection["load_p"]
             self.load_p.set_val(tmp)
+            self._is_cached = False
         if "load_q" in dict_injection:
             tmp = dict_injection["load_q"]
             self.load_q.set_val(tmp)
+            self._is_cached = False
         if "prod_p" in dict_injection:
             tmp = dict_injection["prod_p"]
             self.prod_p.set_val(tmp)
+            self._is_cached = False
         if "prod_v" in dict_injection:
             tmp = dict_injection["prod_v"]
             self.prod_v.set_val(tmp)
+            self._is_cached = False
     
-    def _aux_iadd_shunt(self, other):
+    def _aux_iadd_shunt(self, other: BaseAction):
         """
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
             
@@ -709,17 +713,17 @@ class _BackendAction(GridObjects):
             
         """
         shunts = {}
-        if type(other).shunts_data_available:
-            shunts["shunt_p"] = other.shunt_p
-            shunts["shunt_q"] = other.shunt_q
-            shunts["shunt_bus"] = other.shunt_bus
-
+        if type(other).shunts_data_available and other._modif_shunt:
+            shunts["shunt_p"] = other._shunt_p
+            shunts["shunt_q"] = other._shunt_q
+            shunts["shunt_bus"] = other._shunt_bus
             arr_ = shunts["shunt_p"]
             self.shunt_p.set_val(arr_)
             arr_ = shunts["shunt_q"]
             self.shunt_q.set_val(arr_)
             arr_ = shunts["shunt_bus"]
             self.shunt_bus.set_val(arr_)
+            self._is_cached = False
         self.current_shunt_bus.values[self.shunt_bus.changed] = self.shunt_bus.values[self.shunt_bus.changed]
 
     def _aux_iadd_reconcile_disco_reco(self):
@@ -759,12 +763,15 @@ class _BackendAction(GridObjects):
         if other._modif_detach_load:
             set_topo_vect[cls.load_pos_topo_vect[other._detach_load]] = -1
             modif_set_bus = True
+            self._is_cached = False
         if other._modif_detach_gen:
             set_topo_vect[cls.gen_pos_topo_vect[other._detach_gen]] = -1
             modif_set_bus = True
+            self._is_cached = False
         if other._modif_detach_storage:
             set_topo_vect[cls.storage_pos_topo_vect[other._detach_storage]] = -1
             modif_set_bus = True
+            self._is_cached = False
         if modif_inj:
             for key, vect_ in other._dict_inj.items():
                 if key == "load_p" or key == "load_q":
@@ -783,10 +790,12 @@ class _BackendAction(GridObjects):
                 other._dict_inj["load_q"] = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
                 other._dict_inj["load_p"][other._detach_load] = 0.
                 other._dict_inj["load_q"][other._detach_load] = 0.
+                self._is_cached = False
             if other._modif_detach_gen:
                 modif_inj = True
                 other._dict_inj["prod_p"] = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
                 other._dict_inj["prod_p"][other._detach_gen] = 0.
+                self._is_cached = False
         return modif_set_bus, modif_inj
     
     def _aux_iadd_line_status(self, other: BaseAction, switch_status: np.ndarray, set_status: np.ndarray):
@@ -797,6 +806,7 @@ class _BackendAction(GridObjects):
                 self.line_ex_pos_topo_vect,
                 self.last_topo_registered,
             )
+            self._is_cached = False
         if other._modif_set_status:
             self.current_topo.set_status(
                 set_status,
@@ -804,6 +814,7 @@ class _BackendAction(GridObjects):
                 self.line_ex_pos_topo_vect,
                 self.last_topo_registered,
             )
+            self._is_cached = False
 
         # if other._modif_change_status or other._modif_set_status:
         (
@@ -837,8 +848,9 @@ class _BackendAction(GridObjects):
         -------
         The updated state of `self` after the new action `other` has been added to it.
         
-        """
-        self._is_cached = False  # TODO speed here: if no modification does not invalidate the cache
+        """        
+        # self._is_cached = False  => done in each of the things bellow
+        # speed optim: cache is not invalidated if do nothing is added
         
         set_status = 1 * other._set_line_status
         switch_status = other._switch_line_status
@@ -862,10 +874,12 @@ class _BackendAction(GridObjects):
         # Ib change the injection aka redispatching
         if other._modif_redispatch:
             self.prod_p.change_val(redispatching)
+            self._is_cached = False
 
         # Ic storage unit
         if other._modif_storage:
             self.storage_power.set_val(storage_power)
+            self._is_cached = False
 
         # II shunts
         if cls.shunts_data_available:
@@ -903,7 +917,7 @@ class _BackendAction(GridObjects):
         """
         cls = type(self)
         if not cls.detachment_is_allowed:
-            # is detachment is not allowed, this should not happen
+            # if detachment is not allowed, this should not happen
             return
         gen_changed = self.current_topo.changed[cls.gen_pos_topo_vect]
         gen_bus = self.current_topo.values[cls.gen_pos_topo_vect]
@@ -980,7 +994,7 @@ class _BackendAction(GridObjects):
         self._shunts_cached = None
         if type(self).shunts_data_available:
             self._shunts_cached = self.shunt_p, self.shunt_q, self.shunt_bus
-        self._get_active_bus()
+        # self._get_active_bus()
         self._is_cached = True
         return self.activated_bus, self._injections_cached, self._topo_cached, self._shunts_cached
     

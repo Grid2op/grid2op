@@ -201,6 +201,9 @@ class Backend(GridObjects, ABC):
         #: .. versionadded: 1.11.0
         #: will be used later on in future grid2op version
         self._prevent_automatic_disconnection: bool = True
+        
+        #: seep optimization to avoid np.full, which is rather slow
+        self._disconnected_during_cf = None
     
     def can_handle_more_than_2_busbar(self):
         """
@@ -1360,6 +1363,7 @@ class Backend(GridObjects, ABC):
                                         "`detachment_is_allowed` is False but only if the don't produce / absorb active power."))
             else:
                 sto_maybe_error = None
+                
             # additional check: if the backend detach some things incorrectly
             if cls.detachment_is_allowed:
                 # if the backend automatically disconnect things, I need to catch them
@@ -1455,13 +1459,13 @@ class Backend(GridObjects, ABC):
 
         """
         infos = []
-        disconnected_during_cf = np.full(type(self).n_line, fill_value=-1, dtype=dt_int)
+        self._disconnected_during_cf[:] = -1
         conv_ = self._runpf_with_diverging_exception(is_dc)
         if env._no_overflow_disconnection or conv_ is not None:
-            return disconnected_during_cf, infos, conv_
+            return self._disconnected_during_cf, infos, conv_
 
         # the environment disconnect some powerlines
-        protection_counter = copy.deepcopy(env._protection_counter)
+        protection_counter = 1 * env._protection_counter
         counter_increased = np.zeros_like(protection_counter, dtype=dt_bool)
         iter_num = 0
         while True:
@@ -1494,7 +1498,7 @@ class Backend(GridObjects, ABC):
                 # no powerlines have been disconnected at this time step, 
                 # i stop the computation there
                 break
-            disconnected_during_cf[to_disc] = iter_num
+            self._disconnected_during_cf[to_disc] = iter_num
             
             # perform the disconnection action
             for i, el in enumerate(to_disc):
@@ -1509,7 +1513,7 @@ class Backend(GridObjects, ABC):
             if conv_ is not None:
                 break
             iter_num += 1
-        return disconnected_during_cf, infos, conv_
+        return self._disconnected_during_cf, infos, conv_
 
     def storages_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -2384,6 +2388,9 @@ class Backend(GridObjects, ABC):
         my_cls = type(self)
         my_cls._add_internal_classes(_local_dir_cls)
         self._remove_my_attr_cls()
+        
+        # speed optim
+        self._disconnected_during_cf = np.full(my_cls.n_line, fill_value=-1, dtype=dt_int)
 
     @classmethod
     def _add_internal_classes(cls, _local_dir_cls):

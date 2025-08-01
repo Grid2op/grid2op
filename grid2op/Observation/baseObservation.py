@@ -4451,7 +4451,7 @@ class BaseObservation(GridObjects):
             "_line_status_env": env.get_current_line_status().astype(dt_int),  # false -> 0 true -> 1
             "_gen_activeprod_t": 1.0 * env._gen_activeprod_t,
             "_gen_activeprod_t_redisp": 1.0 * env._gen_activeprod_t_redisp,
-            "_already_modified_gen": copy.deepcopy(env._already_modified_gen),
+            "_already_modified_gen": env._already_modified_gen.copy(),
         }
         self._env_internal_params["_line_status_env"]  *= 2  # false -> 0 true -> 2
         self._env_internal_params["_line_status_env"] -= 1  # false -> -1; true -> 1
@@ -4546,8 +4546,10 @@ class BaseObservation(GridObjects):
             self.gen_p_detached[:] = env._gen_p_detached
             self.storage_p_detached[:] = env._storage_p_detached
         
-        # 1.11.0 
-        self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        # 1.11.0        
+        # self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        # self._prev_conn = env._previous_conn_state
+        self._prev_conn = env._previous_conn_state.copy()
         self._prev_conn.prevent_modification()  # I do not want to modify this accidently
         
         # handles forecasts here
