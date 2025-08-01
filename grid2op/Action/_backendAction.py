@@ -844,7 +844,7 @@ class _BackendAction(GridObjects):
         switch_status = other._switch_line_status
         set_topo_vect = 1 * other._set_topo_vect
         switcth_topo_vect = other._change_bus_vect
-        redispatching = other._redispatch
+        redispatching = other._private_redispatch
         storage_power = other._storage_power
         modif_set_bus = other._modif_set_bus
         modif_inj = other._modif_inj

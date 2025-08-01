@@ -23,7 +23,6 @@ from importlib.metadata import version as version_medata
 
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Action import BaseAction
 from grid2op.Exceptions import BackendError
 from grid2op.Backend.backend import Backend
 
@@ -127,6 +126,7 @@ class PandaPowerBackend(Backend):
         with_numba: bool=NUMBA_,
     ):
         from grid2op.MakeEnv.Make import _force_test_dataset
+        from grid2op.Action import BaseAction
         if _force_test_dataset():
             if with_numba:
                 warnings.warn(f"Forcing `test=True` will disable numba for {type(self)}")
