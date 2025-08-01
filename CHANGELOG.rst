@@ -108,6 +108,7 @@ Native multi agents support:
 - [IMPROVED] documentation of "how to create a new grid2op observation"
   having different attributes.
 - [IMPROVED] documentation of the "action" class 
+- [IMPROVED] computation speed, especially in cases of "do nothing"
 
 [1.12.0] - 2025-07-24
 --------------------------

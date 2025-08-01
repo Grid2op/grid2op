@@ -141,6 +141,8 @@ class PandaPowerBackend(Backend):
             max_iter=max_iter,
             with_numba=with_numba,
         )
+        self._needs_active_bus = True
+        
         self.with_numba : bool = with_numba
         self.prod_pu_to_kv : Optional[np.ndarray] = None
         self.load_pu_to_kv : Optional[np.ndarray]  = None

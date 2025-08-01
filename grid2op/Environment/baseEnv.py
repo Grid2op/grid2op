@@ -696,6 +696,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # 1.11: do not check rules if first observation
         self._called_from_reset = True
         
+        # 1.12.1
+        self._needs_active_bus = False
+        
     @property
     def highres_sim_counter(self):
         return self._highres_sim_counter
@@ -1024,6 +1027,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         
         new_obj._called_from_reset = self._called_from_reset
+        new_obj._needs_active_bus = self._needs_active_bus
         
     def get_path_env(self):
         """

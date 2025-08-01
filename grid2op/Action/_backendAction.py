@@ -531,6 +531,9 @@ class _BackendAction(GridObjects):
         self._injections_cached = None
         self._topo_cached = None
         self._shunts_cached = None
+        
+        # speed optim
+        self._needs_active_bus = True
 
     def __deepcopy__(self, memodict={}) -> Self:
         
@@ -994,7 +997,8 @@ class _BackendAction(GridObjects):
         self._shunts_cached = None
         if type(self).shunts_data_available:
             self._shunts_cached = self.shunt_p, self.shunt_q, self.shunt_bus
-        # self._get_active_bus()
+        if self._needs_active_bus:
+            self._get_active_bus()
         self._is_cached = True
         return self.activated_bus, self._injections_cached, self._topo_cached, self._shunts_cached
     
@@ -1501,7 +1505,7 @@ class _BackendAction(GridObjects):
         """
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
             
-        """
+        """        
         self.activated_bus[:, :] = False
         tmp = self.current_topo.values - 1
         is_el_conn = tmp >= 0
@@ -1510,7 +1514,7 @@ class _BackendAction(GridObjects):
             is_el_conn = self.current_shunt_bus.values >= 0
             tmp = self.current_shunt_bus.values - 1
             self.activated_bus[type(self).shunt_to_subid[is_el_conn], tmp[is_el_conn]] = True
-
+    
     def update_state(self, powerline_disconnected) -> None:
         """
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\

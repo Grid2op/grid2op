@@ -14,9 +14,8 @@ import json
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Optional, Any, Dict, Type, Union, TYPE_CHECKING
+from typing import Tuple, Optional, Any, Dict, Type, Union, TYPE_CHECKING
 
-from grid2op.Exceptions.ambiguousActionExceptions import AmbiguousAction
 
 if TYPE_CHECKING:
     # for type hints to avoid circular import
@@ -202,9 +201,12 @@ class Backend(GridObjects, ABC):
         #: will be used later on in future grid2op version
         self._prevent_automatic_disconnection: bool = True
         
-        #: seep optimization to avoid np.full, which is rather slow
+        #: speed optimization to avoid np.full, which is rather slow
         self._disconnected_during_cf = None
     
+        #: speed optimization: avoid to compute some data not used in general
+        self._needs_active_bus = False
+        
     def can_handle_more_than_2_busbar(self):
         """
         .. versionadded:: 1.10.0

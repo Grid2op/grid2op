@@ -13,7 +13,6 @@ import numpy as np
 import re
 from typing import Optional, Union, Literal
 
-import grid2op
 from grid2op.Opponent import OpponentSpace
 from grid2op.dtypes import dt_float, dt_bool, dt_int
 from grid2op.Action import (
@@ -23,10 +22,15 @@ from grid2op.Action import (
     DontAct,
     CompleteAction,
 )
-from grid2op.Exceptions import *
+from grid2op.Exceptions import (
+    Grid2OpException,
+    EnvError,
+    BackendError,
+    
+)
 from grid2op.Observation import CompleteObservation, ObservationSpace, BaseObservation
 from grid2op.Reward import FlatReward, RewardHelper, BaseReward
-from grid2op.Rules import RulesChecker, AlwaysLegal, BaseRules
+from grid2op.Rules import RulesChecker, AlwaysLegal
 from grid2op.Backend import Backend
 from grid2op.Chronics import ChronicsHandler
 from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageController
@@ -304,6 +308,7 @@ class Environment(BaseEnv):
             )  # the real powergrid of the environment
             self.backend.load_storage_data(self.get_path_env())
             self.backend._fill_names_obj()
+            self._needs_active_bus = backend._needs_active_bus
             try:
                 self.backend.load_redispacthing_data(self.get_path_env())
             except BackendError as exc_:
@@ -974,6 +979,7 @@ class Environment(BaseEnv):
         
         # the real powergrid of the environment
         self.backend.reset_public(self._init_grid_path)  
+        self._needs_active_bus = self.backend._needs_active_bus
         
         # self.backend.assert_grid_correct()
         self._previous_conn_state.update_from_other(self._cst_prev_state_at_init)
@@ -989,6 +995,7 @@ class Environment(BaseEnv):
             self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
         else:
             self._backend_action = self._backend_action_class()
+        self._backend_action._needs_active_bus = self._needs_active_bus
         
         if self._init_obs is not None:
             # NB this is called twice (once at the end of reset), this is the first call
