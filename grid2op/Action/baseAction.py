@@ -467,6 +467,10 @@ class BaseAction(GridObjects):
     #: agent tries to affect the topology with set_switch / change_switch
     #: and set_bus / change_bus in the same action
     ISSUE_WARNING_SWITCH_SET_CHANGE : Literal["always", "once", "never"] = "always"
+    
+    #: perf optimization
+    DICT_ATTR_ = None
+    
     def __init__(self, _names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None):
         """
         INTERNAL USE ONLY
@@ -586,9 +590,11 @@ class BaseAction(GridObjects):
         self._modif_change_switch = False
 
     @classmethod
-    def _build_attr(cls, attr_nm):
-        # False(line is disconnected) / True(line is connected)
-        dict_ = {
+    def _build_dict_attr_if_needed(cls):
+        if cls.DICT_ATTR_ is not None:
+            return
+        
+        cls.DICT_ATTR_ = {
             "_set_line_status": np.full(shape=cls.n_line, fill_value=0, dtype=dt_int),
             "_switch_line_status": np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
             "prod_p": np.full(shape=cls.n_gen, fill_value=np.nan, dtype=dt_float),
@@ -597,67 +603,66 @@ class BaseAction(GridObjects):
             "load_q": np.full(shape=cls.n_load, fill_value=np.nan, dtype=dt_float),
 
             # topology changed
-            "_set_topo_vect" : np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int),
-            "_change_bus_vect" : np.full(shape=cls.dim_topo, fill_value=False, dtype=dt_bool),
+            "_set_topo_vect": np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int),
+            "_change_bus_vect": np.full(shape=cls.dim_topo, fill_value=False, dtype=dt_bool),
 
             # add the hazards and maintenance usefull for saving.
-            "_hazards" : np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
-            "_maintenance" :np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
+            "_hazards": np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
+            "_maintenance": np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
 
             # redispatching vector
-            "_redispatch" : np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float),
+            "_redispatch": np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float),
 
             # storage unit vector
-            "_storage_power" : np.full(
+            "_storage_power": np.full(
             shape=cls.n_storage, fill_value=0.0, dtype=dt_float
             ),
 
             # curtailment of renewable energy
-            "_curtail" : np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float),
+            "_curtail": np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float),
+            
+            "shunt_p": None,
+            "shunt_q": None,
+            "shunt_bus": None,
+            
+            "_raise_alarm": np.full(shape=cls.dim_alarms, dtype=dt_bool, fill_value=False),
+            "_raise_alert": np.full(shape=cls.dim_alerts, dtype=dt_bool, fill_value=False),
+            
+            "_detach_load": None,
+            "_detach_gen": None,
+            "_detach_storage": None,
+            
+            "_set_switch_status": None,
+            "_change_switch_status": None,
         }
+        
         # shunts
         if cls.shunts_data_available:
-            self.shunt_p = None  # np.full(
-            #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
-            # )
-            self.shunt_q = None  # np.full(
-            #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
-            # )
-            self.shunt_bus = None  # np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
-        else:
-            self.shunt_p = None
-            self.shunt_q = None
-            self.shunt_bus = None
-
-        self._raise_alarm = None #np.full(
-        #    shape=cls.dim_alarms, dtype=dt_bool, fill_value=False
-        #)
-
-        self._raise_alert = None  # np.full(
-        #    shape=cls.dim_alerts, dtype=dt_bool, fill_value=False
-        #)
+            cls.DICT_ATTR_["shunt_p"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
+            cls.DICT_ATTR_["shunt_q"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
+            cls.DICT_ATTR_["shunt_bus"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
 
         if cls.detachment_is_allowed:
-            self._detach_load = None  # np.full(cls.n_load, dtype=dt_bool, fill_value=False)
-            self._detach_gen = None  # np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
-            self._detach_storage = None  # np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
-        else:
-            self._detach_load = None
-            self._detach_gen = None
-            self._detach_storage = None
-        
-        # TODO detailed topo
-        self._set_switch_status = None
-        self._change_switch_status = None
+            cls.DICT_ATTR_["_detach_load"] = np.full(cls.n_load, dtype=dt_bool, fill_value=False)
+            cls.DICT_ATTR_["_detach_gen"] = np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
+            cls.DICT_ATTR_["_detach_storage"] = np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
         if cls.detailed_topo_desc is not None:
             n_switch = cls.detailed_topo_desc.switches.shape[0]
-            self._set_switch_status = None  # np.full(shape=n_switch, fill_value=0, dtype=dt_int)
-            self._change_switch_status = None  # np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
-            
-        if attr_nm not in cls._dict_attr_template:
-            raise ActionException()
+            cls.DICT_ATTR_["_set_switch_status"] = np.full(shape=n_switch, fill_value=0, dtype=dt_int)
+            cls.DICT_ATTR_["_change_switch_status"] = np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
         
-        return copy.deepcopy(cls._dict_attr_template[attr_nm])
+    @classmethod
+    def _build_attr(cls, attr_nm: str):
+        # False(line is disconnected) / True(line is connected)
+        cls._build_dict_attr_if_needed()
+        if attr_nm not in cls.DICT_ATTR_:
+            # TODO raise ActionException
+            raise Grid2OpException(
+                'Impossible to find the attribute "{}" '
+                'into the BaseAction of type "{}"'.format(attr_nm, cls)
+            )
+        
+        return copy.deepcopy(cls.DICT_ATTR_[attr_nm])
         
     @classmethod
     def process_shunt_static_data(cls):
@@ -1193,25 +1198,17 @@ class BaseAction(GridObjects):
         if hasattr(self, attr_name):
             if getattr(self, attr_name) is not None:
                 res = super()._get_array_from_attr_name(attr_name)
-            else:
-                
-            return res
+                return res
 
         if attr_name in self._dict_inj:
             res = self._dict_inj[attr_name]
             return res
 
         cls = type(self)
-        if attr_name == "prod_p" or attr_name == "prod_v":
-            res = np.full(cls.n_gen, fill_value=np.nan, dtype=dt_float)
-            return res
-        if attr_name == "load_p" or attr_name == "load_q":
-            res = np.full(cls.n_load, fill_value=np.nan, dtype=dt_float)
-            return res
-        raise Grid2OpException(
-            'Impossible to find the attribute "{}" '
-            'into the BaseAction of type "{}"'.format(attr_name, cls)
-        )
+        # attributes never set, still None,
+        # i need to retrieve its default value
+        res = cls._build_attr(attr_name)
+        return res
 
     def _set_array_from_attr_name(self, allowed_keys, key: str, array_) -> None:
         """used for `from_json` please see `_assign_attr_from_name` for from_vect"""
@@ -1232,7 +1229,12 @@ class BaseAction(GridObjects):
             return
 
         if key in allowed_keys:
-            # regular stuff
+            # regular attributes, like "_set_topo_vect"
+            cls = type(self)
+            tmp = getattr(self, key)
+            if tmp is None:
+                # attribute has never been set
+                setattr(self, key, cls._build_attr(key))
             super()._set_array_from_attr_name(allowed_keys, key, array_)
             self._post_process_from_vect()  # set the correct flags
             return
@@ -1243,6 +1245,7 @@ class BaseAction(GridObjects):
         )
 
     def _post_process_from_vect(self):
+        cls = type(self)
         modif_inj = False
         if self._dict_inj != {}:
             for k, v in self._dict_inj.items():
@@ -1261,12 +1264,12 @@ class BaseAction(GridObjects):
         self._modif_alarm = self._raise_alarm.any()
         self._modif_alert = self._raise_alert.any()
         
-        if type(self).detachment_is_allowed:
+        if cls.detachment_is_allowed:
             self._modif_detach_load = (self._detach_load).any()
             self._modif_detach_gen = (self._detach_gen).any()
             self._modif_detach_storage = (self._detach_storage).any()
         
-        if type(self).detailed_topo_desc is not None:
+        if cls.detailed_topo_desc is not None:
             self._modif_set_switch = (self._set_switch_status != 0).any()
             self._modif_change_switch = (self._change_switch_status).any()
 
