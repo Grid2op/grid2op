@@ -10,9 +10,14 @@ from abc import ABC
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Union, Callable, List
+try:
+    import pyarrow as pa
+    import pyarrow.parquet
+except ImportError:
+    print("pyarrow is not installed. Please install it to use EnvRecorder.")
+    import sys
+    sys.exit(1)
 
-import pyarrow as pa
-import pyarrow.parquet
 
 from grid2op.Action import BaseAction
 from grid2op.Environment.EnvInterface import EnvInterface
@@ -119,6 +124,8 @@ class EnvRecorder(EnvInterface):
     This class serves as a wrapper for a given environment and records its
     observations into Parquet files for later analysis. It ensures that environment
     data such as observations are properly stored in a structured format.
+    All the genrated Parquet files are stored in the configured output directory.
+    This class does not save simulation (obs.simulate) or forecast (obs.get_forecast_env) data.
 
     Attributes
     ----------
@@ -139,6 +146,7 @@ class EnvRecorder(EnvInterface):
         # env general data
         env_data = {
             "grid2op_version": GRID2OP_CURRENT_VERSION_STR,
+            "env_grid2op_version": type(env).glop_version,
             "name": env.name,
             "path": self._env._init_env_path,
             "backend": self._env.backend.__class__.__name__,
@@ -149,11 +157,11 @@ class EnvRecorder(EnvInterface):
             json.dump(env_data, f, indent=4)
 
         # one table for each kind of element
-        self.write_element_table([env.name_gen, env.gen_type, env.gen_to_subid], ['name', 'type', 'gen_to_subid'], directory, 'gen')
-        self.write_element_table([env.name_load, env.load_to_subid], ['name', 'load_to_subid'], directory, 'load')
+        self.write_element_table([env.name_gen, env.gen_type, env.gen_to_subid, env.gen_pos_topo_vect], ['name', 'type', 'gen_to_subid', 'gen_pos_topo_vect'], directory, 'gen')
+        self.write_element_table([env.name_load, env.load_to_subid, env.load_pos_topo_vect], ['name', 'load_to_subid', 'load_pos_topo_vect'], directory, 'load')
         self.write_element_table([env.name_shunt, env.shunt_to_subid], ['name', 'shunt_to_subid'], directory, 'shunt')
-        self.write_element_table([env.name_storage, env.storage_to_subid], ['name', 'storage_to_subid'], directory, 'storage')
-        self.write_element_table([env.name_line, env.line_or_to_subid, env.line_ex_to_subid], ['name', 'line_or_to_subid', 'line_ex_to_subid'], directory, 'line')
+        self.write_element_table([env.name_storage, env.storage_to_subid, env.storage_pos_topo_vect], ['name', 'storage_to_subid', 'storage_pos_topo_vect'], directory, 'storage')
+        self.write_element_table([env.name_line, env.line_or_to_subid, env.line_ex_to_subid, env.line_or_pos_topo_vect, env.line_ex_pos_topo_vect], ['name', 'line_or_to_subid', 'line_ex_to_subid', 'line_or_pos_topo_vect', 'line_ex_pos_topo_vect'], directory, 'line')
 
         # one table per element attributs.
         self._tables = [
