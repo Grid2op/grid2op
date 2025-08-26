@@ -1431,7 +1431,7 @@ class BaseAction(GridObjects):
         """
         self._check_for_ambiguity()
 
-    def get_private_set_line_status_vect(self) -> np.ndarray:
+    def get_set_line_status_vect(self) -> np.ndarray:
         """
         Computes and returns a vector that can be used in the :func:`BaseAction.__call__` with the keyword
         "set_status" if building an :class:`BaseAction`.

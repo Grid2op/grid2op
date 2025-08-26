@@ -104,6 +104,8 @@ Native multi agents support:
 ----------------------
 - [ADDED] the possibility to act on the backend directly from the action
   with the "act."
+- [IMPROVED] consistency between AmbiguousAction and IllegalAction exceptions:
+  when an action cannot be built, it is ambiguous now and not illegal.
 - [IMPROVED] cleaner installation, relying only on "pyproject.toml"
 - [IMPROVED] documentation of "how to create a new grid2op observation"
   having different attributes.
