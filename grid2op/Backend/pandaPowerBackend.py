@@ -231,7 +231,16 @@ class PandaPowerBackend(Backend):
         self._max_iter : bool = max_iter
         self._in_service_line_col_id = None
         self._in_service_trafo_col_id = None
-        self._in_service_storage_cold_id = None
+        self._in_service_storage_col_id = None
+        self._in_service_load_col_id = None
+        self._in_service_gen_col_id = None
+        self._hv_bus_trafo_col_id = None
+        self._lv_bus_trafo_col_id = None
+        self._from_bus_line_col_id = None
+        self._to_bus_line_col_id = None
+        self._bus_load_col_id = None
+        self._bus_gen_col_id = None
+        self._bus_ext_grid_col_id = None
         self.div_exception = None
 
     def _check_for_non_modeled_elements(self):
@@ -560,7 +569,17 @@ class PandaPowerBackend(Backend):
         # do this at the end
         self._in_service_line_col_id = int((self._grid.line.columns == "in_service").nonzero()[0][0])
         self._in_service_trafo_col_id = int((self._grid.trafo.columns == "in_service").nonzero()[0][0])
-        self._in_service_storage_cold_id = int((self._grid.storage.columns == "in_service").nonzero()[0][0])
+        self._in_service_storage_col_id = int((self._grid.storage.columns == "in_service").nonzero()[0][0])
+        self._in_service_load_col_id = int((self._grid.load.columns == "in_service").nonzero()[0][0])
+        self._in_service_gen_col_id = int((self._grid.gen.columns == "in_service").nonzero()[0][0])
+        
+        self._hv_bus_trafo_col_id = int(((self._grid.trafo.columns == "hv_bus").nonzero()[0][0])) 
+        self._lv_bus_trafo_col_id = int(((self._grid.trafo.columns == "lv_bus").nonzero()[0][0])) 
+        self._from_bus_line_col_id = int(((self._grid.line.columns == "from_bus").nonzero()[0][0])) 
+        self._to_bus_line_col_id = int(((self._grid.line.columns == "to_bus").nonzero()[0][0])) 
+        self._bus_load_col_id = int(((self._grid.load.columns == "bus").nonzero()[0][0])) 
+        self._bus_gen_col_id = int(((self._grid.gen.columns == "bus").nonzero()[0][0])) 
+        self._bus_ext_grid_col_id = int(((self._grid.ext_grid.columns == "bus").nonzero()[0][0])) 
         self.comp_time = 0.
         
         # hack for backward compat with oldest lightsim2grid version
@@ -956,30 +975,29 @@ class PandaPowerBackend(Backend):
         new_bus_backend = type(self).local_bus_to_global_int(
             new_bus, self._init_bus_load[id_el_backend]
         )
-        if new_bus_backend >= 0:
-            self._grid.load["bus"].iat[id_el_backend] = new_bus_backend
-            self._grid.load["in_service"].iat[id_el_backend] = True
-        else:
-            self._grid.load["in_service"].iat[id_el_backend] = False
-            # self._grid.load["bus"].iat[id_el_backend] = -1  # not needed and cause bugs with certain pandas version
+        self._aux_change_bus(self._grid.load,
+                             id_el_backend,
+                             new_bus_backend,
+                             self._in_service_load_col_id,
+                             self._bus_load_col_id)
 
     def _apply_gen_bus(self, new_bus, id_el_backend, id_topo):
         new_bus_backend = type(self).local_bus_to_global_int(
             new_bus, self._init_bus_gen[id_el_backend]
         )
+        self._aux_change_bus(self._grid.gen,
+                             id_el_backend,
+                             new_bus_backend,
+                             self._in_service_gen_col_id,
+                             self._bus_gen_col_id)
+        
         if new_bus_backend >= 0:
-            self._grid.gen["bus"].iat[id_el_backend] = new_bus_backend
-            self._grid.gen["in_service"].iat[id_el_backend] = True
             # remember in this case slack bus is actually 2 generators for pandapower !
             if (
                 id_el_backend == (self._grid.gen.shape[0] - 1)
                 and self._iref_slack is not None
             ):
-                self._grid.ext_grid["bus"].iat[0] = new_bus_backend
-        else:
-            self._grid.gen["in_service"].iat[id_el_backend] = False
-            # self._grid.gen["bus"].iat[id_el_backend] = -1  # not needed and cause bugs with certain pandas version
-            # in this case the slack bus cannot be disconnected
+                self._grid.ext_grid.iloc[0, self._bus_ext_grid_col_id] = new_bus_backend
 
     def _apply_lor_bus(self, new_bus, id_el_backend, id_topo):
         new_bus_backend = type(self).local_bus_to_global_int(
@@ -988,11 +1006,11 @@ class PandaPowerBackend(Backend):
         self.change_bus_powerline_or(id_el_backend, new_bus_backend)
 
     def change_bus_powerline_or(self, id_powerline_backend, new_bus_backend):
-        if new_bus_backend >= 0:
-            self._grid.line["in_service"].iat[id_powerline_backend] = True
-            self._grid.line["from_bus"].iat[id_powerline_backend] = new_bus_backend
-        else:
-            self._grid.line["in_service"].iat[id_powerline_backend] = False
+        self._aux_change_bus(self._grid.line,
+                             id_powerline_backend,
+                             new_bus_backend,
+                             self._in_service_line_col_id,
+                             self._from_bus_line_col_id)
 
     def _apply_lex_bus(self, new_bus, id_el_backend, id_topo):
         new_bus_backend = type(self).local_bus_to_global_int(
@@ -1001,11 +1019,11 @@ class PandaPowerBackend(Backend):
         self.change_bus_powerline_ex(id_el_backend, new_bus_backend)
 
     def change_bus_powerline_ex(self, id_powerline_backend, new_bus_backend):
-        if new_bus_backend >= 0:
-            self._grid.line["in_service"].iat[id_powerline_backend] = True
-            self._grid.line["to_bus"].iat[id_powerline_backend] = new_bus_backend
-        else:
-            self._grid.line["in_service"].iat[id_powerline_backend] = False
+        self._aux_change_bus(self._grid.line,
+                             id_powerline_backend,
+                             new_bus_backend,
+                             self._in_service_line_col_id,
+                             self._to_bus_line_col_id)
 
     def _apply_trafo_hv(self, new_bus, id_el_backend, id_topo):
         new_bus_backend = type(self).local_bus_to_global_int(
@@ -1014,11 +1032,11 @@ class PandaPowerBackend(Backend):
         self.change_bus_trafo_hv(id_topo, new_bus_backend)
 
     def change_bus_trafo_hv(self, id_powerline_backend, new_bus_backend):
-        if new_bus_backend >= 0:
-            self._grid.trafo["in_service"].iat[id_powerline_backend] = True
-            self._grid.trafo["hv_bus"].iat[id_powerline_backend] = new_bus_backend
-        else:
-            self._grid.trafo["in_service"].iat[id_powerline_backend] = False
+        self._aux_change_bus(self._grid.trafo,
+                             id_powerline_backend,
+                             new_bus_backend,
+                             self._in_service_trafo_col_id,
+                             self._hv_bus_trafo_col_id)
 
     def _apply_trafo_lv(self, new_bus, id_el_backend, id_topo):
         new_bus_backend = type(self).local_bus_to_global_int(
@@ -1027,12 +1045,24 @@ class PandaPowerBackend(Backend):
         self.change_bus_trafo_lv(id_topo, new_bus_backend)
 
     def change_bus_trafo_lv(self, id_powerline_backend, new_bus_backend):
-        if new_bus_backend >= 0:
-            self._grid.trafo["in_service"].iat[id_powerline_backend] = True
-            self._grid.trafo["lv_bus"].iat[id_powerline_backend] = new_bus_backend
-        else:
-            self._grid.trafo["in_service"].iat[id_powerline_backend] = False
+        self._aux_change_bus(self._grid.trafo,
+                             id_powerline_backend,
+                             new_bus_backend,
+                             self._in_service_trafo_col_id,
+                             self._lv_bus_trafo_col_id)
 
+    def _aux_change_bus(self,
+                        df,
+                        id_powerline_backend,
+                        new_bus_backend,
+                        in_service_col_id,
+                        bus_col_id):
+        if new_bus_backend >= 0:
+            df.iloc[id_powerline_backend, in_service_col_id] = True
+            df.iloc[id_powerline_backend, bus_col_id] = new_bus_backend
+        else:
+            df.iloc[id_powerline_backend, in_service_col_id] = False
+        
     def _aux_get_line_info(self, colname1, colname2):
         res = np.concatenate(
             (

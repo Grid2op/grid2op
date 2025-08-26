@@ -104,6 +104,10 @@ Native multi agents support:
 ----------------------
 - [ADDED] the possibility to act on the backend directly from the action
   with the "act."
+- [ADDED] set `pandas<3` in the dependencies, to make sure PandapowerBackend
+  still work (ChainedAssignmentError still occur)
+- [IMPROVED] some pandas `ChainedAssignmentError` warning in pandapower backend
+  (more work is required in this direction)
 - [IMPROVED] consistency between AmbiguousAction and IllegalAction exceptions:
   when an action cannot be built, it is ambiguous now and not illegal.
 - [IMPROVED] cleaner installation, relying only on "pyproject.toml"
