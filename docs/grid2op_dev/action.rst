@@ -92,7 +92,11 @@ For example, say your attribute works like a "set" attribute, the default value 
 Add the possibility for the agent to modifies it
 *************************************************
 
-TODO see the `digest_XXX` code and the `cls.authorized_keys`
+TODO see the `digest_XXX` code and 
+the `cls.authorized_keys` and
+function `def supports_type` of SerializableActionSpace and
+`cls.mapping_vect_auth_keys` (BaseAction) 
+
 
 Add the vectorization
 ***********************
@@ -124,6 +128,12 @@ This could look like this:
                 cls.attr_list_vect.remove("_my_awesome_way_to_modif")
         # other irrelevant things for the example
         # ...
+
+Add gym compatibility in the gym_compat module
+***********************************************
+
+TODO 
+
 
 Add tests
 -----------
