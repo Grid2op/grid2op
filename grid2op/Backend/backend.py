@@ -875,6 +875,8 @@ class Backend(GridObjects, ABC):
         res._storage_bus_target = copy.deepcopy(self._storage_bus_target)
         res._shunt_bus_target = copy.deepcopy(self._shunt_bus_target)
         res._prevent_automatic_disconnection = copy.deepcopy(self._prevent_automatic_disconnection)
+        res._needs_active_bus = self._needs_active_bus
+        res._disconnected_during_cf = copy.deepcopy(self._disconnected_during_cf)
         return res
     
     def copy(self) -> Self:

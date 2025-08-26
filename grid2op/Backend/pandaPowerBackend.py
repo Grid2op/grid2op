@@ -229,6 +229,8 @@ class PandaPowerBackend(Backend):
         self._lightsim2grid : bool = lightsim2grid
         self._dist_slack : bool = dist_slack
         self._max_iter : bool = max_iter
+        
+        # to avoid chained assignment...
         self._in_service_line_col_id = None
         self._in_service_trafo_col_id = None
         self._in_service_storage_col_id = None
@@ -1376,12 +1378,23 @@ class PandaPowerBackend(Backend):
         res.gen_theta = copy.deepcopy(self.gen_theta)
         res.storage_theta = copy.deepcopy(self.storage_theta)
         
-        res._in_service_line_col_id = self._in_service_line_col_id
-        res._in_service_trafo_col_id = self._in_service_trafo_col_id
-        
         res._missing_two_busbars_support_info = self._missing_two_busbars_support_info
         res._missing_detachment_support_info = self._missing_detachment_support_info
         res.div_exception = self.div_exception
+        
+        # to avoid chained assignment
+        res._in_service_line_col_id = self._in_service_line_col_id
+        res._in_service_trafo_col_id = self._in_service_trafo_col_id
+        res._in_service_storage_col_id = self._in_service_storage_col_id
+        res._in_service_load_col_id = self._in_service_load_col_id
+        res._in_service_gen_col_id = self._in_service_gen_col_id
+        res._hv_bus_trafo_col_id = self._hv_bus_trafo_col_id
+        res._lv_bus_trafo_col_id = self._lv_bus_trafo_col_id
+        res._from_bus_line_col_id = self._from_bus_line_col_id
+        res._to_bus_line_col_id = self._to_bus_line_col_id
+        res._bus_load_col_id = self._bus_load_col_id
+        res._bus_gen_col_id = self._bus_gen_col_id
+        res._bus_ext_grid_col_id = self._bus_ext_grid_col_id
         return res
 
     def close(self) -> None:
