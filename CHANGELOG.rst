@@ -102,6 +102,9 @@ Native multi agents support:
 
 [1.12.1] - 2025-xx-yy
 ----------------------
+- [FIXED] when using the default action converter from gym_compat module,
+  it only generates actions that can be performed by the user (authorized by 
+  the rules and the action class)
 - [ADDED] the possibility to act on the backend directly from the action
   with the "act."
 - [ADDED] set `pandas<3` in the dependencies, to make sure PandapowerBackend

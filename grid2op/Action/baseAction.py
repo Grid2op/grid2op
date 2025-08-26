@@ -7,7 +7,6 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
-from math import e
 import numpy as np
 import warnings
 from typing import Callable, Tuple, Dict, Literal, Any, List, Optional, TYPE_CHECKING, Type
@@ -484,6 +483,32 @@ class BaseAction(GridObjects):
         "_detach_gen",  # new in 1.11.0
         "_detach_storage",  # new in 1.11.0
     ]
+    
+    #: new in 1.12.1: mapping between code name and agent name
+    mapping_vect_auth_keys = {
+        "prod_p": "injection",
+        "prod_v": "injection",
+        "load_p": "injection",
+        "load_q": "injection",
+        "_redispatch": "redispatch",
+        "_set_line_status": "set_line_status",
+        "_switch_line_status": "change_line_status",
+        "_set_topo_vect": "set_bus",
+        "_change_bus_vect": "change_bus",
+        "_hazards": "hazards",
+        "_maintenance": "maintenance",
+        "_storage_power": "set_storage",
+        "_curtail": "curtail",
+        "_raise_alarm": "raise_alarm",
+        "_raise_alert": "raise_alert",
+        "_shunt_p": "shunt_p",
+        "_shunt_q": "shunt_q",
+        "_shunt_bus": "shunt_bus",
+        "_detach_load": "detach_load",  # new in 1.11.0
+        "_detach_gen": "detach_gen",  # new in 1.11.0
+        "_detach_storage": "detach_storage",  # new in 1.11.0
+    }
+    
     # new in 1.11.0 (was not set to nan before in serialization)
     attr_nan_list_set = set(["prod_p",
                              "prod_v",
@@ -533,8 +558,8 @@ class BaseAction(GridObjects):
             self._names_chronics_to_backend = None
             
         # False(line is disconnected) / True(line is connected)
-        self._private_set_line_status = None  # np.full(shape=cls.n_line, fill_value=0, dtype=dt_int)
-        self._private_switch_line_status = None  #  np.full(
+        self._private_set_line_status : Optional[np.ndarray] = None  # np.full(shape=cls.n_line, fill_value=0, dtype=dt_int)
+        self._private_switch_line_status : Optional[np.ndarray] = None  #  np.full(
         #     shape=cls.n_line, fill_value=False, dtype=dt_bool
         # )
 
@@ -542,25 +567,25 @@ class BaseAction(GridObjects):
         self._dict_inj : Dict[Literal["prod_p", "prod_v", "load_p", "load_q"], np.ndarray] = {}
 
         # topology changed
-        self._private_set_topo_vect = None  # np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int)
-        self._private_change_bus_vect = None  # np.full(
+        self._private_set_topo_vect : Optional[np.ndarray] = None  # np.full(shape=cls.dim_topo, fill_value=0, dtype=dt_int)
+        self._private_change_bus_vect : Optional[np.ndarray] = None  # np.full(
         #     shape=cls.dim_topo, fill_value=False, dtype=dt_bool
         # )
 
         # add the hazards and maintenance usefull for saving.
-        self._private_hazards = None  # np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
-        self._private_maintenance = None  # np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
+        self._private_hazards : Optional[np.ndarray] = None  # np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
+        self._private_maintenance : Optional[np.ndarray] = None  # np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool)
 
         # redispatching vector
-        self._private_redispatch = None  # np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float)
+        self._private_redispatch : Optional[np.ndarray] = None  # np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float)
 
         # storage unit vector
-        self._private_storage_power = None  # np.full(
+        self._private_storage_power : Optional[np.ndarray] = None  # np.full(
         #    shape=cls.n_storage, fill_value=0.0, dtype=dt_float
         # )
 
         # curtailment of renewable energy
-        self._private_curtail = None  # np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float)
+        self._private_curtail : Optional[np.ndarray] = None  # np.full(shape=cls.n_gen, fill_value=-1.0, dtype=dt_float)
 
         self._vectorized = None
         self._lines_impacted = None
@@ -568,13 +593,13 @@ class BaseAction(GridObjects):
 
         # shunts
         if cls.shunts_data_available:
-            self._private_shunt_p = None  # np.full(
+            self._private_shunt_p : Optional[np.ndarray] = None  # np.full(
             #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
             # )
-            self._private_shunt_q = None  # np.full(
+            self._private_shunt_q : Optional[np.ndarray] = None  # np.full(
             #     shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float
             # )
-            self._private_shunt_bus = None  # np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
+            self._private_shunt_bus : Optional[np.ndarray] = None  # np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
         else:
             self._private_shunt_p = None
             self._private_shunt_q = None
@@ -582,18 +607,18 @@ class BaseAction(GridObjects):
 
         self._single_act = True
 
-        self._private_raise_alarm = None #np.full(
+        self._private_raise_alarm : Optional[np.ndarray] = None #np.full(
         #    shape=cls.dim_alarms, dtype=dt_bool, fill_value=False
         #)
 
-        self._private_raise_alert = None  # np.full(
+        self._private_raise_alert : Optional[np.ndarray] = None  # np.full(
         #    shape=cls.dim_alerts, dtype=dt_bool, fill_value=False
         #)
 
         if cls.detachment_is_allowed:
-            self._private_detach_load = None  # np.full(cls.n_load, dtype=dt_bool, fill_value=False)
-            self._private_detach_gen = None  # np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
-            self._private_detach_storage = None  # np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
+            self._private_detach_load : Optional[np.ndarray] = None  # np.full(cls.n_load, dtype=dt_bool, fill_value=False)
+            self._private_detach_gen : Optional[np.ndarray] = None  # np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
+            self._private_detach_storage : Optional[np.ndarray] = None  # np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
         else:
             self._private_detach_load = None
             self._private_detach_gen = None
@@ -1089,15 +1114,15 @@ class BaseAction(GridObjects):
         if cls.shunts_data_available:
             res["shunt"] = {}
             if self._private_shunt_p is not None and np.isfinite(self._private_shunt_p).any():
-                res["shunt"]["_private_shunt_p"] = [
+                res["shunt"]["shunt_p"] = [
                     (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self._private_shunt_p) if np.isfinite(val)
                 ]
             if self._private_shunt_q is not None and np.isfinite(self._private_shunt_q).any():
-                res["shunt"]["_private_shunt_q"] = [
+                res["shunt"]["shunt_q"] = [
                     (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self._private_shunt_q) if np.isfinite(val)
                 ]
             if self._private_shunt_bus is not None and (self._private_shunt_bus != 0).any():
-                res["shunt"]["_private_shunt_bus"] = [
+                res["shunt"]["shunt_bus"] = [
                     (str(cls.name_shunt[sh_id]), int(val))
                     for sh_id, val in enumerate(self._private_shunt_bus)
                     if val != 0
@@ -1183,15 +1208,15 @@ class BaseAction(GridObjects):
         # deactivate storage
         if "set_storage" in cls.authorized_keys:
             cls.authorized_keys.remove("set_storage")
-        if "_private_storage_power" in cls.attr_list_vect:
-            cls.attr_list_vect.remove("_private_storage_power")
+        if "_storage_power" in cls.attr_list_vect:
+            cls.attr_list_vect.remove("_storage_power")
             cls.attr_list_set = set(cls.attr_list_vect)
 
         # remove the curtailment
         if "curtail" in cls.authorized_keys:
             cls.authorized_keys.remove("curtail")
         if "_curtail" in cls.attr_list_vect:
-            cls.attr_list_vect.remove("_private_curtail")
+            cls.attr_list_vect.remove("_curtail")
 
         cls._aux_remove_switches()
 
@@ -1564,17 +1589,29 @@ class BaseAction(GridObjects):
                 return False
         return True
 
-    def _aux_eq_compare_vect(self, other, modif_flag_nm, vect_nm):
+    def _aux_vect_different(self, other, modif_flag_nm, vect_nm):
         """Implement something similar to :
 
         ((self._modif_set_status != other._modif_set_status) or
-          not np.all(self._private_set_line_status == other._private_set_line_status)
+          not np.all(self._set_line_status == other._set_line_status)
         )
         But for different flag (*eg* `_modif_set_status`) and vector (*eg* `_private_set_line_status`)
         """
-        return ((getattr(self, modif_flag_nm) != getattr(other, modif_flag_nm)) or
-                not np.array_equal(getattr(self, vect_nm), getattr(other, vect_nm))
-               )
+        if getattr(self, modif_flag_nm) != getattr(other, modif_flag_nm):
+            # they are different
+            return True
+        private_vect_nm = f"_private{vect_nm}"
+        maybe_array_me = getattr(self, private_vect_nm)
+        maybe_array_oth = getattr(other, private_vect_nm)
+        if maybe_array_me is None and maybe_array_oth is None:
+            # they are not different, so I return False !
+            return False
+        if maybe_array_oth is None:
+            maybe_array_oth = type(self)._build_attr(vect_nm)
+        if maybe_array_me is None:
+            maybe_array_me = type(self)._build_attr(vect_nm)
+            
+        return not np.array_equal(maybe_array_me, maybe_array_oth)
 
     def _aux_eq_inj(self, other: "BaseAction"):
         # mismatch in flags
@@ -1648,13 +1685,13 @@ class BaseAction(GridObjects):
             return False
 
         # same line status
-        if self._aux_eq_compare_vect(other, "_modif_set_status", "_private_set_line_status"):
+        if self._aux_vect_different(other, "_modif_set_status", "_set_line_status"):
             return False
-        if self._aux_eq_compare_vect(other, "_modif_change_status", "_private_switch_line_status"):
+        if self._aux_vect_different(other, "_modif_change_status", "_switch_line_status"):
             return False
 
         # redispatching is same
-        if self._aux_eq_compare_vect(other, "_modif_redispatch", "_private_redispatch"):
+        if self._aux_vect_different(other, "_modif_redispatch", "_redispatch"):
             return False
 
         # storage is same
@@ -1674,21 +1711,21 @@ class BaseAction(GridObjects):
             return False
 
         # curtailment
-        if self._aux_eq_compare_vect(other, "_modif_curtailment", "_private_curtail"):
+        if self._aux_vect_different(other, "_modif_curtailment", "_curtail"):
             return False
 
         # alarm
-        if self._aux_eq_compare_vect(other, "_modif_alarm", "_private_raise_alarm"):
+        if self._aux_vect_different(other, "_modif_alarm", "_raise_alarm"):
             return False
     
         # alert
-        if self._aux_eq_compare_vect(other, "_modif_alert", "_private_raise_alert"):
+        if self._aux_vect_different(other, "_modif_alert", "_raise_alert"):
             return False
 
         # same topology changes
-        if self._aux_eq_compare_vect(other, "_modif_set_bus", "_private_set_topo_vect"):
+        if self._aux_vect_different(other, "_modif_set_bus", "_set_topo_vect"):
             return False
-        if self._aux_eq_compare_vect(other, "_modif_change_bus", "_private_change_bus_vect"):
+        if self._aux_vect_different(other, "_modif_change_bus", "_change_bus_vect"):
             return False
 
         # handle detachment
@@ -2261,9 +2298,9 @@ class BaseAction(GridObjects):
         set_storage = other._private_storage_power
         ok_ind = np.isfinite(set_storage) & (np.abs(set_storage) >= 1e-7).any()
         if ok_ind.any():
-            if "_private_storage_power" not in self.attr_list_set:
+            if "_storage_power" not in self.attr_list_set:
                 warnings.warn(
-                    type(self).ERR_ACTION_CUT.format("_private_storage_power")
+                    type(self).ERR_ACTION_CUT.format("_storage_power")
                 )
             else:
                 self._storage_power[ok_ind] += set_storage[ok_ind]
@@ -2358,6 +2395,11 @@ class BaseAction(GridObjects):
             return
         me_set = self._set_topo_vect.copy()
         me_change = self._change_bus_vect.copy()
+        
+        if other_set is None:
+            other_set = type(self)._build_attr("_set_topo_vect")
+        if other_change is None:
+            other_change = type(self)._build_attr("_change_bus_vect")
 
         # i change, but so does the other, i do nothing
         canceled_change = other_change & me_change
@@ -2589,8 +2631,9 @@ class BaseAction(GridObjects):
             
             tmp = ddict_[key_n]
             if tmp is None:
-                pass
-            elif key_n == "shunt_bus" or key_n == "set_bus":
+                continue
+            
+            if key_n == "shunt_bus" or key_n == "set_bus":
                 if vect_self is None:
                     self._private_shunt_bus = cls._build_attr("_shunt_bus")
                 self._aux_affect_object_int(
@@ -2599,13 +2642,13 @@ class BaseAction(GridObjects):
                 cls.n_shunt,
                 cls.name_shunt,
                 np.arange(cls.n_shunt),
-                vect_self,
+                self._private_shunt_bus,
                 max_val=cls.n_busbar_per_sub
             )
             elif key_n == "shunt_p" or key_n == "shunt_q":
-                tmp = getattr(self, f"_private_{key_n}")
-                if tmp is None:
+                if vect_self is None:
                     setattr(self, f"_private_{key_n}", cls._build_attr(f"_{key_n}"))
+                    vect_self = getattr(self, f"_private_{key_n}")
                 self._aux_affect_object_float(
                 tmp,
                 key_n,
@@ -3755,7 +3798,7 @@ class BaseAction(GridObjects):
                         f"self._private_storage_power[{where_bug}] > self.storage_max_p_absorb[{where_bug}]."
                     )
 
-        if "_private_storage_power" not in cls.attr_list_set:
+        if "_storage_power" not in cls.attr_list_set:
             if self._private_set_topo_vect is not None:
                 # the attribute has been set
                 if (self._private_set_topo_vect[cls.storage_pos_topo_vect] > 0).any():
@@ -4040,7 +4083,7 @@ class BaseAction(GridObjects):
                     line_str = f": {i_alert[0]} (on line {li_line[0]})"
                 else:
                     line_str = "s: \n\t \t - " + "\n\t \t - ".join(
-                        [f": {i} (on line {l})" for i,l in zip(i_alert,li_line)])
+                        [f": {i} (on line {line})" for i, line in zip(i_alert,li_line)])
                 res.append(f"\t - Raise alert(s) {line_str}")
             else:
                 res.append("\t - Not raise any alert")
@@ -4290,11 +4333,11 @@ class BaseAction(GridObjects):
     def _aux_as_dict_shunt(self, res): 
         tmp = {}
         if self._private_shunt_p is not None and np.any(np.isfinite(self._private_shunt_p)):
-            tmp["_private_shunt_p"] = 1.0 * self._private_shunt_p
+            tmp["shunt_p"] = 1.0 * self._private_shunt_p
         if self._private_shunt_q is not None and np.any(np.isfinite(self._private_shunt_q)):
-            tmp["_private_shunt_q"] = 1.0 * self._private_shunt_q
+            tmp["shunt_q"] = 1.0 * self._private_shunt_q
         if self._private_shunt_bus is not None and np.any(self._private_shunt_bus != 0):
-            tmp["_private_shunt_bus"] = 1.0 * self._private_shunt_bus
+            tmp["shunt_bus"] = 1.0 * self._private_shunt_bus
         if tmp:
             res["shunt"] = tmp
         
@@ -4390,11 +4433,11 @@ class BaseAction(GridObjects):
 
         if self._private_hazards is not None and self._private_hazards.any():
             res["hazards"] = self._private_hazards.nonzero()[0]
-            res["nb_private_hazards"] = self._private_hazards.sum()
+            res["nb_hazards"] = self._private_hazards.sum()
 
         if self._private_maintenance is not None and self._private_maintenance.any():
             res["maintenance"] = self._private_maintenance.nonzero()[0]
-            res["nb_private_maintenance"] = self._private_maintenance.sum()
+            res["nb_maintenance"] = self._private_maintenance.sum()
 
         if self._private_redispatch is not None and (np.abs(self._private_redispatch) >= 1e-7).any():
             res["redispatch"] = 1.0 * self._private_redispatch
@@ -4864,11 +4907,11 @@ class BaseAction(GridObjects):
                 ) from exc_
 
             if new_bus < min_val:
-                raise IllegalAction(
+                raise AmbiguousAction(
                     f"new_bus should be between {min_val} and {max_val} found {new_bus}, check element id {el_id}"
                 )
             if new_bus > max_val:
-                raise IllegalAction(
+                raise AmbiguousAction(
                     f"new_bus should be between {min_val} and {max_val} found {new_bus}, check element id {el_id}"
                 )
 

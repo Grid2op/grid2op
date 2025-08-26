@@ -76,6 +76,64 @@ And finally, you need to create the "default" / "do nothing" value for your "new
 class method `_build_dict_attr_if_needed` of the BaseAction.
 
 For example, say your attribute works like a "set" attribute, the default value (correspoding to 
-"I don't want to modify it") will then be all 0, and your attribute modifies the loads (it has )
+"I don't want to modify it") will then be all 0, and your attribute modifies the loads (it has 
+`n_load` components) then you can add, in the `_build_dict_attr_if_needed` method, at the end:
+
+.. code-block:: python
+
+    @classmethod
+    def _build_dict_attr_if_needed(cls):
+        # lots of code you don't have to modify
+        # ...
+        # ...
+        # and after everything: 
+        cls.DICT_ATTR_["_my_awesome_way_to_modif"] = np.full(cls.n_load, dtype=dt_int, fill_value=0)
+
+Add the possibility for the agent to modifies it
+*************************************************
+
+TODO see the `digest_XXX` code and the `cls.authorized_keys`
+
+Add the vectorization
+***********************
+
+TODO add the `cls.attr_list_vect`
+
+Worry about the backward compatibility
+****************************************
+
+TODO see `cls.process_grid2op_compat`: best practice:
+
+Add a class version id, like `cls.MIN_VERSION_DETACH` 
+And then write things like it has been done for the detachment feature.
+This could look like this:
+
+.. code-block:: python
+
+    @classmethod
+    def process_grid2op_compat(cls):
+        # lots of things irrelevant here
+        # ...
+        if glop_ver < cls.MIN_VERSION_AWESOME_WAY:
+            # this feature did not exist before.
+            if "awesome_way" in cls.authorized_keys:
+                cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
+                cls.authorized_keys.remove("awesome_way")
+            if "_my_awesome_way_to_modif" in cls.attr_list_vect:
+                cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+                cls.attr_list_vect.remove("_my_awesome_way_to_modif")
+        # other irrelevant things for the example
+        # ...
+
+Add tests
+-----------
+
+TODO
+
+Add documentation
+-------------------
+
+TODO 
+
 
 .. include:: final.rst

@@ -1048,7 +1048,7 @@ class Environment(BaseEnv):
             raise Grid2OpException(f"There has been an error at the initialization, most likely due to a "
                                    f"incorrect 'init state'. You need to change either the time series used (chronics, chronics_handler, "
                                    f"gridvalue, etc.) or the 'init state' option provided in "
-                                   f"`env.reset(..., options={'init state': XXX, ...})`. Error was: {info['exception']}")
+                                   f"`env.reset(..., options={{'init state': XXX, ...}})`. Error was: {info['exception']}")
         # assign the right
         self._observation_space.set_real_env_kwargs(self)
 
@@ -1524,7 +1524,6 @@ class Environment(BaseEnv):
         
         # Return the rgb array
         try:
-            import matplotlib.colors
             tmp = fig.canvas.tostring_argb()
             argb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 4)
             rgb_array = argb_array[:,:,1:]
@@ -1862,10 +1861,10 @@ class Environment(BaseEnv):
                 )
 
         if add_for_test is None and test_scen_id is not None:
-            raise EnvError(f"add_for_test is None and test_scen_id is not None.")
+            raise EnvError("add_for_test is None and test_scen_id is not None.")
 
         if add_for_test is not None and test_scen_id is None:
-            raise EnvError(f"add_for_test is not None and test_scen_id is None.")
+            raise EnvError("add_for_test is not None and test_scen_id is None.")
 
         from grid2op.Chronics import MultifolderWithCache, Multifolder
 
@@ -2168,10 +2167,10 @@ class Environment(BaseEnv):
             )
 
         if add_for_test is None and pct_test is not None:
-            raise EnvError(f"add_for_test is None and pct_test is not None.")
+            raise EnvError("add_for_test is None and pct_test is not None.")
 
         if add_for_test is not None and pct_test is None:
-            raise EnvError(f"add_for_test is not None and pct_test is None.")
+            raise EnvError("add_for_test is not None and pct_test is None.")
 
         my_path = self.get_path_env()
         chronics_path = os.path.join(my_path, self._chronics_folder_name())
@@ -2417,12 +2416,12 @@ class Environment(BaseEnv):
             key word arguments passed to `add_data` function of `chronix2grid.grid2op_utils` module
         """
         try:
-            from chronix2grid.grid2op_utils import add_data
+            from chronix2grid.grid2op_utils import add_data # type: ignore
         except ImportError as exc_:
             raise ImportError(
-                f"Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
-                f"Please visit https://github.com/bdonnot/chronix2grid#installation "
-                f"for further install instructions."
+                "Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
+                "Please visit https://github.com/bdonnot/chronix2grid#installation "
+                "for further install instructions."
             ) from exc_
         pot_file = None
         if self.get_path_env() is not None:
@@ -2432,7 +2431,7 @@ class Environment(BaseEnv):
             with open(pot_file, "r", encoding="utf-8") as f:
                 kwargs_default = json.load(f)
             for el in kwargs_default:
-                if not el in kwargs:
+                if el not in kwargs:
                     kwargs[el] = kwargs_default[el]
         # TODO logger here for the kwargs used (including seed=seed, nb_scenario=nb_year, nb_core=nb_core)
         add_data(
