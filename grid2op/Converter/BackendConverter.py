@@ -780,13 +780,13 @@ class BackendConverter(Backend):
         topo_vect = self._topo_sr2tg
         dict_ = act._dict_inj
         if "prod_p" in dict_:
-            dict_["dict_"] = dict_["prod_p"][gen_vect]
+            dict_["injection"] = dict_["prod_p"][gen_vect]
         if "prod_v" in dict_:
-            dict_["dict_"] = dict_["prod_v"][gen_vect]
+            dict_["injection"] = dict_["prod_v"][gen_vect]
         if "load_p" in dict_:
-            dict_["dict_"] = dict_["load_p"][load_vect]
+            dict_["injection"] = dict_["load_p"][load_vect]
         if "load_q" in dict_:
-            dict_["dict_"] = dict_["load_q"][load_vect]
+            dict_["injection"] = dict_["load_q"][load_vect]
 
         act._set_topo_vect[:] = act._set_topo_vect[topo_vect]
         act._change_bus_vect[:] = act._change_bus_vect[topo_vect]
@@ -798,9 +798,9 @@ class BackendConverter(Backend):
 
         if act.shunt_added and type(act).shunts_data_available:
             shunt_vect = self._shunt_sr2tg
-            act.shunt_p[:] = act.shunt_p[shunt_vect]
-            act.shunt_q[:] = act.shunt_q[shunt_vect]
-            act.shunt_bus[:] = act.shunt_bus[shunt_vect]
+            act._shunt_p[:] = act._shunt_p[shunt_vect]
+            act._shunt_q[:] = act._shunt_q[shunt_vect]
+            act._shunt_bus[:] = act._shunt_bus[shunt_vect]
 
         return act
 

@@ -895,8 +895,10 @@ class _BackendAction(GridObjects):
         
         # IV topo
         if other._modif_change_bus:
+            self._is_cached = False
             self.current_topo.change_val(switcth_topo_vect)
         if modif_set_bus:
+            self._is_cached = False
             self.current_topo.set_val(set_topo_vect)
 
         # V Force disconnected status

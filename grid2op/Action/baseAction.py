@@ -2082,6 +2082,10 @@ class BaseAction(GridObjects):
             The part of the action `act_sub28_clean` that would 
             "*- Assign bus 2 to line (extremity) id 42 [on substation 28]*" has been removed because powerline
             42 is disconnected in the observation and under a cooldown.
+        
+        .. warning::
+            The attribute `_set_line_status`, `_set_topo_vect` and `_change_bus_vect`
+            will be assigned (even if None) after this function is called.
             
         Parameters
         ----------
@@ -2108,79 +2112,78 @@ class BaseAction(GridObjects):
             disconnected = ~obs.line_status
             
         cls = type(self)
-        
         # remove the "set" part that would cause a reconnection
         mask_reco = np.full(cls.dim_topo, fill_value=False)
         if check_cooldown:
             reco_or_ = np.full(cls.n_line, fill_value=False)
-            reco_or_[(self._private_set_topo_vect[cls.line_or_pos_topo_vect] > 0) & 
+            reco_or_[(self._set_topo_vect[cls.line_or_pos_topo_vect] > 0) & 
                     disconnected & line_under_cooldown] = True
             mask_reco[cls.line_or_pos_topo_vect] = reco_or_
             
             reco_ex_ = np.full(cls.n_line, fill_value=False)
-            reco_ex_[(self._private_set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & 
+            reco_ex_[(self._set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & 
                     disconnected & line_under_cooldown] = True
             mask_reco[cls.line_ex_pos_topo_vect] = reco_ex_
         
         # do not reconnect powerline that will be disconnected
         reco_or_and_disco_ = np.full(cls.n_line, fill_value=False)
-        reco_or_and_disco_[(self._private_set_topo_vect[cls.line_or_pos_topo_vect] > 0) & (self._private_set_topo_vect[cls.line_ex_pos_topo_vect] < 0)] = True
-        reco_or_and_disco_[(self._private_set_topo_vect[cls.line_or_pos_topo_vect] > 0) & (self._private_set_line_status < 0)] = True
+        reco_or_and_disco_[(self._set_topo_vect[cls.line_or_pos_topo_vect] > 0) & (self._set_topo_vect[cls.line_ex_pos_topo_vect] < 0)] = True
+        reco_or_and_disco_[(self._set_topo_vect[cls.line_or_pos_topo_vect] > 0) & (self._set_line_status < 0)] = True
         mask_reco[cls.line_or_pos_topo_vect] |= reco_or_and_disco_
 
         reco_ex_and_disco_ = np.full(cls.n_line, fill_value=False)
-        reco_ex_and_disco_[(self._private_set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & (self._private_set_topo_vect[cls.line_or_pos_topo_vect] < 0)] = True
-        reco_ex_and_disco_[(self._private_set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & (self._private_set_line_status < 0)] = True
+        reco_ex_and_disco_[(self._set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & (self._set_topo_vect[cls.line_or_pos_topo_vect] < 0)] = True
+        reco_ex_and_disco_[(self._set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & (self._set_line_status < 0)] = True
         mask_reco[cls.line_ex_pos_topo_vect] |= reco_ex_and_disco_
         # and now remove the change from the set_bus
-        self._private_set_topo_vect[mask_reco] = 0
+        self._set_topo_vect[mask_reco] = 0
 
         
         # remove the "set" that would cause a disconnection
         mask_disco = np.full(cls.dim_topo, fill_value=False)
         if check_cooldown:
             disco_or_ = np.full(cls.n_line, fill_value=False)
-            disco_or_[(self._private_set_topo_vect[cls.line_or_pos_topo_vect] < 0) & 
+            disco_or_[(self._set_topo_vect[cls.line_or_pos_topo_vect] < 0) & 
                     connected & line_under_cooldown] = True
             mask_disco[cls.line_or_pos_topo_vect] = disco_or_
             
             disco_ex_ = np.full(cls.n_line, fill_value=False)
-            disco_ex_[(self._private_set_topo_vect[cls.line_ex_pos_topo_vect] < 0) & 
+            disco_ex_[(self._set_topo_vect[cls.line_ex_pos_topo_vect] < 0) & 
                     connected & line_under_cooldown] = True
             mask_disco[cls.line_ex_pos_topo_vect] = disco_ex_
             
         disco_or_and_reco_ = np.full(cls.n_line, fill_value=False)
-        disco_or_and_reco_[(self._private_set_topo_vect[cls.line_or_pos_topo_vect] < 0) & (self._private_set_line_status > 0)] = True
+        disco_or_and_reco_[(self._set_topo_vect[cls.line_or_pos_topo_vect] < 0) & (self._set_line_status > 0)] = True
         mask_disco[cls.line_or_pos_topo_vect] |= disco_or_and_reco_
 
         disco_ex_and_reco_ = np.full(cls.n_line, fill_value=False)
-        disco_ex_and_reco_[(self._private_set_topo_vect[cls.line_ex_pos_topo_vect] < 0) & (self._private_set_line_status > 0)] = True
+        disco_ex_and_reco_[(self._set_topo_vect[cls.line_ex_pos_topo_vect] < 0) & (self._set_line_status > 0)] = True
         mask_disco[cls.line_ex_pos_topo_vect] |= disco_ex_and_reco_
-        self._private_set_topo_vect[mask_disco] = 0
+        self._set_topo_vect[mask_disco] = 0
         
         # remove the "change" part when powerlines is disconnected
         mask_disco = np.full(cls.dim_topo, fill_value=False)
         if check_cooldown:
             reco_or_ = np.full(cls.n_line, fill_value=False)
-            reco_or_[self._private_change_bus_vect[cls.line_or_pos_topo_vect] & 
+            reco_or_[self._change_bus_vect[cls.line_or_pos_topo_vect] & 
                     disconnected & line_under_cooldown] = True
             mask_disco[cls.line_or_pos_topo_vect] = reco_or_
             
             reco_ex_ = np.full(cls.n_line, fill_value=False)
-            reco_ex_[self._private_change_bus_vect[cls.line_ex_pos_topo_vect] & 
+            reco_ex_[self._change_bus_vect[cls.line_ex_pos_topo_vect] & 
                     disconnected & line_under_cooldown] = True
             mask_disco[cls.line_ex_pos_topo_vect] = reco_ex_
             
         # do not change bus of powerline that will be disconnected
         reco_or_and_disco_ = np.full(cls.n_line, fill_value=False)
-        reco_or_and_disco_[(self._private_change_bus_vect[cls.line_or_pos_topo_vect]) & (self._private_set_line_status < 0)] = True
+        reco_or_and_disco_[(self._change_bus_vect[cls.line_or_pos_topo_vect]) & (self._set_line_status < 0)] = True
         mask_disco[cls.line_or_pos_topo_vect] |= reco_or_and_disco_
         reco_ex_and_disco_ = np.full(cls.n_line, fill_value=False)
-        reco_ex_and_disco_[(self._private_change_bus_vect[cls.line_ex_pos_topo_vect]) & (self._private_set_line_status < 0)] = True
+        reco_ex_and_disco_[(self._change_bus_vect[cls.line_ex_pos_topo_vect]) & (self._set_line_status < 0)] = True
         mask_disco[cls.line_ex_pos_topo_vect] |= reco_ex_and_disco_
 
         # "erase" the change_bus for concerned powerlines
-        self._private_change_bus_vect[mask_disco] = False
+        self._change_bus_vect[mask_disco] = False
         
         return self
         
@@ -2331,24 +2334,33 @@ class BaseAction(GridObjects):
         
         val = other._private_shunt_p
         if val is not None:
-            ok_ind = np.isfinite(val)
-            _private_shunt_p = 1.0 * self._private_shunt_p
-            _private_shunt_p[ok_ind] = val[ok_ind]
-            self._assign_iadd_or_warn("_shunt_p", _private_shunt_p)
+            if self._private_shunt_p is None:
+                self._private_shunt_p = val.copy()
+            else:
+                ok_ind = np.isfinite(val)
+                _private_shunt_p = self._private_shunt_p.copy()
+                _private_shunt_p[ok_ind] = val[ok_ind]
+                self._assign_iadd_or_warn("_shunt_p", _private_shunt_p)
 
         val = other._private_shunt_q
         if val is not None:
-            ok_ind = np.isfinite(val)
-            _private_shunt_q = 1.0 * self._private_shunt_q
-            _private_shunt_q[ok_ind] = val[ok_ind]
-            self._assign_iadd_or_warn("_shunt_q", _private_shunt_q)
+            if self._private_shunt_q is None:
+                self._private_shunt_q = val.copy()
+            else:
+                ok_ind = np.isfinite(val)
+                _private_shunt_q = self._private_shunt_q.copy()
+                _private_shunt_q[ok_ind] = val[ok_ind]
+                self._assign_iadd_or_warn("_shunt_q", _private_shunt_q)
 
         val = other._private_shunt_bus
         if val is not None:
-            ok_ind = val != 0
-            _private_shunt_bus = 1 * self._private_shunt_bus
-            _private_shunt_bus[ok_ind] = val[ok_ind]
-            self._assign_iadd_or_warn("_shunt_bus", _private_shunt_bus)
+            if self._private_shunt_bus is None:
+                self._private_shunt_bus = val.copy()
+            else:
+                _private_shunt_bus = self._private_shunt_bus.copy()
+                ok_ind = val != 0
+                _private_shunt_bus[ok_ind] = val[ok_ind]
+                self._assign_iadd_or_warn("_shunt_bus", _private_shunt_bus)
     
     def _aux_iadd_set_change_status(self, other: "BaseAction"):
         other_set = other._private_set_line_status
@@ -2908,9 +2920,9 @@ class BaseAction(GridObjects):
 
     def _digest_detach_eltype(self, el : Literal["load", "gen", "storage"], dict_):
         attr_key = f'detach_{el}'
-        if attr_key in dict_ and dict_[attr_key] is not None:
-                setattr(self, attr_key, dict_[attr_key])
-                # eg self.detach_load = dict_["detach_load"]  # this uses the public property !
+        if attr_key in dict_ and dict_[attr_key] is not None and len(dict_[attr_key]):
+            setattr(self, attr_key, dict_[attr_key])
+            # eg self.detach_load = dict_["detach_load"]  # this uses the public property !
 
     def _digest_redispatching(self, dict_):
         if "redispatch" in dict_:
@@ -3758,14 +3770,16 @@ class BaseAction(GridObjects):
             _detach_xxx = getattr(self, f"_detach_{el_nm}")
             name_xxx = getattr(cls, f"name_{el_nm}")
             if _modif_detach_xxx:
-                issue_xxx = self._private_change_bus_vect[xxx_pos_topo_vect] & _detach_xxx
-                if (issue_xxx).any():
-                    raise AmbiguousAction(f"Trying to both change a {el_nm} of busbar (change_bus) AND detach it from the grid. "
-                                         f"Check {el_nm}: {name_xxx[issue_xxx]}")
-                issue_xxx = (self._private_set_topo_vect[xxx_pos_topo_vect] >= 1) & _detach_xxx
-                if (issue_xxx).any():
-                    raise AmbiguousAction(f"Trying to both set a {el_nm} of busbar (set_bus) AND detach it from the grid. "
-                                         f"Check {el_nm}: {name_xxx[issue_xxx]}")
+                if self._private_change_bus_vect is not None:
+                    issue_xxx = self._private_change_bus_vect[xxx_pos_topo_vect] & _detach_xxx
+                    if (issue_xxx).any():
+                        raise AmbiguousAction(f"Trying to both change a {el_nm} of busbar (change_bus) AND detach it from the grid. "
+                                            f"Check {el_nm}: {name_xxx[issue_xxx]}")
+                if self._private_set_topo_vect is not None:
+                    issue_xxx = (self._private_set_topo_vect[xxx_pos_topo_vect] >= 1) & _detach_xxx
+                    if (issue_xxx).any():
+                        raise AmbiguousAction(f"Trying to both set a {el_nm} of busbar (set_bus) AND detach it from the grid. "
+                                            f"Check {el_nm}: {name_xxx[issue_xxx]}")
                     
     def _is_storage_ambiguous(self):
         """check if storage actions are ambiguous"""
@@ -7513,7 +7527,7 @@ class BaseAction(GridObjects):
         if group_topo:
             tmp = cls()
             tmp._modif_change_bus = True
-            tmp._private_change_bus_vect = copy.deepcopy(self._private_change_bus_vect)
+            tmp._private_change_bus_vect[:] = self._private_change_bus_vect
             res["change_bus"] = [tmp]
         else:
             subs_changed = cls.grid_objects_types[self._private_change_bus_vect, cls.SUB_COL]
@@ -7523,7 +7537,7 @@ class BaseAction(GridObjects):
                 tmp = cls()
                 tmp._modif_change_bus = True
                 mask_sub = cls.grid_objects_types[:, cls.SUB_COL] == sub_id
-                tmp._private_change_bus_vect[mask_sub] = self._private_change_bus_vect[mask_sub]
+                tmp._change_bus_vect[mask_sub] = self._private_change_bus_vect[mask_sub]
                 res["change_bus"].append(tmp)
 
     def _aux_decompose_as_unary_actions_change_ls(self,
@@ -7533,7 +7547,7 @@ class BaseAction(GridObjects):
         if group_line_status:
             tmp = cls()
             tmp._modif_change_status = True
-            tmp._private_switch_line_status = copy.deepcopy(self._private_switch_line_status)
+            tmp._switch_line_status[:] = self._private_switch_line_status
             res["change_line_status"] = [tmp]
         else:
             lines_changed = (self._private_switch_line_status).nonzero()[0]
@@ -7541,7 +7555,7 @@ class BaseAction(GridObjects):
             for l_id in lines_changed:
                 tmp = cls()
                 tmp._modif_change_status = True   
-                tmp._private_switch_line_status[l_id] = True
+                tmp._switch_line_status[l_id] = True
                 res["change_line_status"].append(tmp)
 
     def _aux_decompose_as_unary_actions_set(self,
@@ -7551,7 +7565,7 @@ class BaseAction(GridObjects):
         if group_topo:
             tmp = cls()
             tmp._modif_set_bus = True
-            tmp._private_set_topo_vect = 1 * self._private_set_topo_vect
+            tmp._set_topo_vect[:] = self._private_set_topo_vect
             res["set_bus"] = [tmp]
         else:
             subs_changed = cls.grid_objects_types[self._private_set_topo_vect != 0, cls.SUB_COL]
@@ -7561,7 +7575,7 @@ class BaseAction(GridObjects):
                 tmp = cls()
                 tmp._modif_set_bus = True
                 mask_sub = cls.grid_objects_types[:, cls.SUB_COL] == sub_id    
-                tmp._private_set_topo_vect[mask_sub] = self._private_set_topo_vect[mask_sub]
+                tmp._set_topo_vect[mask_sub] = self._private_set_topo_vect[mask_sub]
                 res["set_bus"].append(tmp)
              
     def _aux_decompose_as_unary_actions_set_ls(self,
@@ -7571,7 +7585,7 @@ class BaseAction(GridObjects):
         if group_line_status:
             tmp = cls()
             tmp._modif_set_status = True
-            tmp._private_set_line_status = 1 * self._private_set_line_status
+            tmp._set_line_status[:] = self._private_set_line_status
             res["set_line_status"] = [tmp]
         else:
             lines_changed = (self._private_set_line_status != 0).nonzero()[0]
@@ -7579,7 +7593,7 @@ class BaseAction(GridObjects):
             for l_id in lines_changed:
                 tmp = cls()
                 tmp._modif_set_status = True   
-                tmp._private_set_line_status[l_id] = self._private_set_line_status[l_id]
+                tmp._set_line_status[l_id] = self._private_set_line_status[l_id]
                 res["set_line_status"].append(tmp)
     
     def _aux_decompose_as_unary_actions_redisp(self,
@@ -7589,7 +7603,7 @@ class BaseAction(GridObjects):
         if group_redispatch:
             tmp = cls()
             tmp._modif_redispatch = True
-            tmp._redispatch = 1. * self._private_redispatch
+            tmp._redispatch[:] = self._private_redispatch
             res["redispatch"] = [tmp]
         else:
             gen_changed = (np.abs(self._private_redispatch) >= 1e-7).nonzero()[0]
@@ -7607,7 +7621,7 @@ class BaseAction(GridObjects):
         if group_storage:
             tmp = cls()
             tmp._modif_storage = True
-            tmp._private_storage_power = 1. * self._private_storage_power
+            tmp._storage_power[:] = self._private_storage_power
             res["set_storage"] = [tmp]
         else:
             sto_changed = (np.abs(self._private_storage_power) >= 1e-7).nonzero()[0]
@@ -7615,7 +7629,7 @@ class BaseAction(GridObjects):
             for s_id in sto_changed:
                 tmp = cls()
                 tmp._modif_storage = True   
-                tmp._private_storage_power[s_id] = self._private_storage_power[s_id]
+                tmp._storage_power[s_id] = self._private_storage_power[s_id]
                 res["set_storage"].append(tmp)
                 
     def _aux_decompose_as_unary_actions_curtail(self,
@@ -7625,7 +7639,7 @@ class BaseAction(GridObjects):
         if group_curtailment:
             tmp = cls()
             tmp._modif_curtailment = True
-            tmp._private_curtail = 1. * self._private_curtail
+            tmp._curtail[:] = self._private_curtail
             res["curtail"] = [tmp]
         else:
             gen_changed = (np.abs(self._private_curtail + 1.) >= 1e-7).nonzero()[0]
@@ -7633,7 +7647,7 @@ class BaseAction(GridObjects):
             for g_id in gen_changed:
                 tmp = cls()
                 tmp._modif_curtailment = True   
-                tmp._private_curtail[g_id] = self._private_curtail[g_id]
+                tmp._curtail[g_id] = self._private_curtail[g_id]
                 res["curtail"].append(tmp)
             
     def decompose_as_unary_actions(self,

@@ -14,7 +14,6 @@ import tempfile
 
 import grid2op
 from grid2op.dtypes import dt_float
-from grid2op.Action.baseAction import BaseAction
 from grid2op.Exceptions import AmbiguousAction
 from grid2op.Action import CompleteAction
 from grid2op.Backend import PandaPowerBackend

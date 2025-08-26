@@ -102,6 +102,8 @@ Native multi agents support:
 
 [1.12.1] - 2025-xx-yy
 ----------------------
+- [BREAKING] (small impact) action "property" `shunt_p`, `shunt_q` and `shunt_bus`
+  are now named `_shunt_p`, `_shunt_q` and `_shunt_bus`.
 - [FIXED] when using the default action converter from gym_compat module,
   it only generates actions that can be performed by the user (authorized by 
   the rules and the action class)
