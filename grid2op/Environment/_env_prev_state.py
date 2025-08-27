@@ -17,6 +17,8 @@ from grid2op.Exceptions import Grid2OpException
 
 
 class _EnvPreviousState(object):
+    ERR_MSG_IMP_MODIF = "Impossible to modifiy this _EnvPreviousState"
+    
     def __init__(self,
                  grid_obj_cls: Union[Type[GridObjects], CLS_AS_DICT_TYPING],
                  init_load_p : np.ndarray,
@@ -77,7 +79,7 @@ class _EnvPreviousState(object):
                switches : Optional[np.ndarray],
                ):
         if not self._can_modif:
-            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException(type(self).ERR_MSG_IMP_MODIF)
         
         self._aux_update(topo_vect[self._grid_obj_cls["load_pos_topo_vect"]],
                          self._load_p,
@@ -117,7 +119,7 @@ class _EnvPreviousState(object):
     def update_from_backend(self,
                             backend: "grid2op.Backend.Backend"):
         if not self._can_modif:
-            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException(type(self).ERR_MSG_IMP_MODIF)
         topo_vect = backend.get_topo_vect()
         load_p, load_q, *_ = backend.loads_info()
         gen_p, gen_q, gen_v = backend.generators_info()
@@ -147,7 +149,8 @@ class _EnvPreviousState(object):
     def update_from_other(self, 
                           other : "_EnvPreviousState"):
         if not self._can_modif:
-            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException(type(self).ERR_MSG_IMP_MODIF)
+        
         for attr_nm in ["_load_p",
                         "_load_q",
                         "_gen_p",

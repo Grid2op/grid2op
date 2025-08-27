@@ -31,7 +31,6 @@ try:
     from lightsim2grid import LightSimBackend
     light_sim_avail = True
 except ImportError:
-    raise
     light_sim_avail = False
 
 ENV_NAME = "rte_case5_example"

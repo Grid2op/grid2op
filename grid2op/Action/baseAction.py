@@ -516,6 +516,10 @@ class BaseAction(GridObjects):
                              "load_q"])
 
     attr_list_set = set(attr_list_vect)
+    
+    #: to avoid building this over and over again when processing shunts
+    key_shunt_reco = {"set_bus", "shunt_p", "shunt_q", "shunt_bus"}
+    
     shunt_added = False
 
     _line_or_str = "line (origin)"
@@ -1376,18 +1380,23 @@ class BaseAction(GridObjects):
             'into the BaseAction of type "{}"'.format(key, type(self))
         )
 
-    def _post_process_from_vect(self):
-        cls = type(self)
+    def _post_process_from_vect_injflags(self):
         modif_inj = False
         if self._dict_inj != {}:
             for k, v in self._dict_inj.items():
                 if np.isfinite(v).any():
                     modif_inj = True
         self._modif_inj = modif_inj
+
+    def _post_process_from_vect_topo_flags(self):
         self._modif_set_bus = self._private_set_topo_vect is not None and (self._private_set_topo_vect != 0).any()
         self._modif_change_bus = self._private_change_bus_vect is not None and (self._private_change_bus_vect).any()
+        
+    def _post_process_from_vect_line_status_flags(self):
         self._modif_set_status = self._private_set_line_status is not None and (self._private_set_line_status != 0).any()
         self._modif_change_status = self._private_switch_line_status is not None and (self._private_switch_line_status).any()
+    
+    def _post_process_from_vect_continuous_flags(self):
         self._modif_redispatch = self._private_redispatch is not None and (
             np.isfinite(self._private_redispatch) & (np.abs(self._private_redispatch) >= 1e-7)
         ).any()
@@ -1396,12 +1405,21 @@ class BaseAction(GridObjects):
         self._modif_alarm = self._private_raise_alarm is not None and self._private_raise_alarm.any()
         self._modif_alert = self._private_raise_alert is not None and self._private_raise_alert.any()
         
+    def _post_process_from_vect(self):
+        cls = type(self)
+        self._post_process_from_vect_injflags()
+        self._post_process_from_vect_topo_flags()
+        self._post_process_from_vect_line_status_flags()
+        self._post_process_from_vect_continuous_flags()
+        
+        # shunts
         if cls.shunts_data_available:
             self._modif_shunt = (
                 self._private_shunt_bus is not None and (self._private_shunt_bus != 0).any()
                 or self._private_shunt_p is not None and (np.isfinite(self._private_shunt_p)).any()
                 or self._private_shunt_q is not None and (np.isfinite(self._private_shunt_q)).any()
             )
+            
         # detachment
         if cls.detachment_is_allowed:
             self._modif_detach_load = self._private_detach_load is not None and (self._private_detach_load).any()
@@ -1639,6 +1657,24 @@ class BaseAction(GridObjects):
                 return False
         return True
 
+    def _aux_eq_storage(self, other: "BaseAction"):
+        cls = type(self)
+        if self._private_storage_power is not None:
+            me_inj = self._private_storage_power
+        else:
+            me_inj = cls._build_attr("_storage_power")
+        if other._private_storage_power is not None:
+            other_inj = other._private_storage_power
+        else:
+            other_inj = cls._build_attr("_storage_power")
+        tmp_me = np.isfinite(me_inj)
+        tmp_other = np.isfinite(other_inj)
+        if not np.all(tmp_me == tmp_other) or not np.all(
+            me_inj[tmp_me] == other_inj[tmp_other]
+        ):
+            return False
+        return True
+    
     def __eq__(self, other: "BaseAction") -> bool:
         """
         Test the equality of two actions.
@@ -1683,48 +1719,18 @@ class BaseAction(GridObjects):
         if not self._aux_eq_inj(other):
             return False
 
-        # same line status
-        if self._aux_vect_different(other, "_modif_set_status", "_set_line_status"):
-            return False
-        if self._aux_vect_different(other, "_modif_change_status", "_switch_line_status"):
-            return False
-
-        # redispatching is same
-        if self._aux_vect_different(other, "_modif_redispatch", "_redispatch"):
-            return False
+        # for all the "regular" attribute (generic code)
+        for modif_flag, attr_nm in zip(
+            ["_modif_set_status", "_modif_change_status", "_modif_curtailment", 
+             "_modif_alarm", "_modif_alert", "_modif_set_bus", "_modif_change_bus", "_modif_redispatch"],
+            ["_set_line_status", "_switch_line_status", "_curtail", "_raise_alarm", "_raise_alert", 
+             "_set_topo_vect", "_change_bus_vect", "_redispatch"]
+        ):
+            if self._aux_vect_different(other, modif_flag, attr_nm):
+                return False 
 
         # storage is same
-        if self._private_storage_power is not None:
-            me_inj = self._private_storage_power
-        else:
-            me_inj = cls._build_attr("_storage_power")
-        if other._private_storage_power is not None:
-            other_inj = other._private_storage_power
-        else:
-            other_inj = cls._build_attr("_storage_power")
-        tmp_me = np.isfinite(me_inj)
-        tmp_other = np.isfinite(other_inj)
-        if not np.all(tmp_me == tmp_other) or not np.all(
-            me_inj[tmp_me] == other_inj[tmp_other]
-        ):
-            return False
-
-        # curtailment
-        if self._aux_vect_different(other, "_modif_curtailment", "_curtail"):
-            return False
-
-        # alarm
-        if self._aux_vect_different(other, "_modif_alarm", "_raise_alarm"):
-            return False
-    
-        # alert
-        if self._aux_vect_different(other, "_modif_alert", "_raise_alert"):
-            return False
-
-        # same topology changes
-        if self._aux_vect_different(other, "_modif_set_bus", "_set_topo_vect"):
-            return False
-        if self._aux_vect_different(other, "_modif_change_bus", "_change_bus_vect"):
+        if not self._aux_eq_storage(other):
             return False
 
         # handle detachment
@@ -1748,6 +1754,106 @@ class BaseAction(GridObjects):
             and (not self._modif_detach_storage)
         )
     
+    def _aux_get_topo_impact_notopo(self, _store_in_cache: bool):
+        cls = type(self)
+        _lines_impacted = np.full(
+            shape=cls.n_line, fill_value=False, dtype=dt_bool
+        )
+        _subs_impacted = np.full(
+            shape=cls.n_sub, fill_value=False, dtype=dt_bool
+        )
+        if _store_in_cache:
+            # store the result in cache is asked too
+            self._lines_impacted = _lines_impacted
+            self._subs_impacted = _subs_impacted
+        return _lines_impacted, _subs_impacted
+    
+    def _aux_get_topo_impact_get_isnotconnected_init(self, powerline_status):
+        cls = type(self)
+        if powerline_status is None:
+            isnotconnected = np.full(cls.n_line, fill_value=True, dtype=dt_bool)
+        else:
+            isnotconnected = ~powerline_status
+        return isnotconnected
+        
+    def _aux_get_topo_impact_get_lines_impacted_init(self):
+        cls = type(self)
+        if self._private_switch_line_status is not None:
+            _lines_impacted = self._private_switch_line_status.copy()
+        else:
+            _lines_impacted = cls._build_attr("_switch_line_status")
+            
+        if self._private_set_line_status is not None:
+            _lines_impacted |= (self._private_set_line_status != 0)
+            
+        return _lines_impacted
+    
+    def _aux_get_topo_impact_get_effective_change_init(self, 
+                                                       _lines_impacted,
+                                                       isnotconnected):
+        cls = type(self)
+        if self._private_change_bus_vect is not None:
+            effective_change = self._private_change_bus_vect.copy()
+        else:
+            effective_change = np.zeros(cls.dim_topo, dtype=bool)
+        if self._private_set_topo_vect is not None:
+            effective_change |= (self._private_set_topo_vect != 0)
+
+        # remove the change due to powerline only
+        effective_change[
+            cls.line_or_pos_topo_vect[_lines_impacted & isnotconnected]
+        ] = False
+        effective_change[
+            cls.line_ex_pos_topo_vect[_lines_impacted & isnotconnected]
+        ] = False
+        return effective_change
+    
+    def _aux_get_topo_impact_update_with_powerline_status(self,
+                                                          powerline_status,
+                                                          isnotconnected, 
+                                                          _lines_impacted,
+                                                          effective_change):
+        cls = type(self)
+            
+        if self._private_set_topo_vect is not None:
+            connect_set_or = (self._private_set_topo_vect[cls.line_or_pos_topo_vect] > 0) & isnotconnected
+        else:
+            connect_set_or = np.zeros(cls.n_line, dtype=dt_bool)
+        
+        
+        _lines_impacted |= connect_set_or
+        effective_change[cls.line_or_pos_topo_vect[connect_set_or]] = False
+        effective_change[cls.line_ex_pos_topo_vect[connect_set_or]] = False
+        
+        if self._private_set_topo_vect is not None:
+            connect_set_ex = (self._private_set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & isnotconnected
+        else:
+            connect_set_ex = np.zeros(cls.n_line, dtype=dt_bool)
+        
+        _lines_impacted |= connect_set_ex
+        effective_change[cls.line_or_pos_topo_vect[connect_set_ex]] = False
+        effective_change[cls.line_ex_pos_topo_vect[connect_set_ex]] = False
+        
+        # second sub case i disconnected the powerline by setting origin or extremity to negative stuff
+        disco_set_or = powerline_status.copy()
+        if self._private_set_topo_vect is not None:
+            disco_set_or = (self._private_set_topo_vect[cls.line_or_pos_topo_vect] < 0) & powerline_status
+        else:
+            disco_set_or = np.zeros(cls.n_line, dtype=dt_bool)
+        
+        _lines_impacted |= disco_set_or
+        effective_change[cls.line_or_pos_topo_vect[disco_set_or]] = False
+        effective_change[cls.line_ex_pos_topo_vect[disco_set_or]] = False
+        
+        if self._private_set_topo_vect is not None:
+            disco_set_ex = (self._private_set_topo_vect[cls.line_ex_pos_topo_vect] < 0)  & powerline_status
+        else:
+            disco_set_ex = np.zeros(cls.n_line, dtype=dt_bool)
+            
+        _lines_impacted |= disco_set_ex
+        effective_change[cls.line_or_pos_topo_vect[disco_set_ex]] = False
+        effective_change[cls.line_ex_pos_topo_vect[disco_set_ex]] = False
+        
     def get_topological_impact(self,
                                powerline_status : Optional[np.ndarray]=None,
                                _store_in_cache : bool =False,
@@ -1852,54 +1958,22 @@ class BaseAction(GridObjects):
             self._subs_impacted is not None):
             # cache is set and I ask to read it
             # no need to recompute this
-            return True & self._lines_impacted, True & self._subs_impacted
+            return self._lines_impacted.copy(), self._subs_impacted.copy()
+        
         cls = type(self)
         if self._dont_affect_topology():
             # action is not impacting the topology
             # so it does not modified anything concerning the topology
-            _lines_impacted = np.full(
-                shape=cls.n_line, fill_value=False, dtype=dt_bool
-            )
-            _subs_impacted = np.full(
-                shape=cls.n_sub, fill_value=False, dtype=dt_bool
-            )
-            if _store_in_cache:
-                # store the result in cache is asked too
-                self._lines_impacted = _lines_impacted
-                self._subs_impacted = _subs_impacted
-            return _lines_impacted, _subs_impacted
-
-        if powerline_status is None:
-            isnotconnected = np.full(cls.n_line, fill_value=True, dtype=dt_bool)
-        else:
-            isnotconnected = ~powerline_status
-
-        if self._private_switch_line_status is not None:
-            _lines_impacted = self._private_switch_line_status.copy()
-        else:
-            _lines_impacted = cls._build_attr("_switch_line_status")
-        if self._private_set_line_status is not None:
-            _lines_impacted |= (self._private_set_line_status != 0)
-            
+            return self._aux_get_topo_impact_notopo(_store_in_cache)
+        
+        isnotconnected = self._aux_get_topo_impact_get_isnotconnected_init(powerline_status)
+        _lines_impacted = self._aux_get_topo_impact_get_lines_impacted_init()
         _subs_impacted = np.full(
             shape=cls.n_sub, fill_value=False, dtype=dt_bool
         )
 
         # compute the changes of the topo vector
-        if self._private_change_bus_vect is not None:
-            effective_change = self._private_change_bus_vect.copy()
-        else:
-            effective_change = np.zeros(cls.dim_topo, dtype=bool)
-        if self._private_set_topo_vect is not None:
-            effective_change |= (self._private_set_topo_vect != 0)
-
-        # remove the change due to powerline only
-        effective_change[
-            cls.line_or_pos_topo_vect[_lines_impacted & isnotconnected]
-        ] = False
-        effective_change[
-            cls.line_ex_pos_topo_vect[_lines_impacted & isnotconnected]
-        ] = False
+        effective_change = self._aux_get_topo_impact_get_effective_change_init(_lines_impacted, isnotconnected)
         
         # i can change also the status of a powerline by acting on its extremity
         # first sub case i connected the powerline by setting origin OR extremity to positive stuff
@@ -1907,43 +1981,11 @@ class BaseAction(GridObjects):
             # if we don't know the state of the grid, we don't consider
             # these "improvments": we consider a powerline is never
             # affected if its bus is modified at any of its ends.
-            if self._private_set_topo_vect is not None:
-                connect_set_or = (self._private_set_topo_vect[cls.line_or_pos_topo_vect] > 0) & isnotconnected
-            else:
-                connect_set_or = np.zeros(cls.n_line, dtype=dt_bool)
-                
-            _lines_impacted |= connect_set_or
-            effective_change[cls.line_or_pos_topo_vect[connect_set_or]] = False
-            effective_change[cls.line_ex_pos_topo_vect[connect_set_or]] = False
-            
-            if self._private_set_topo_vect is not None:
-                connect_set_ex = (self._private_set_topo_vect[cls.line_ex_pos_topo_vect] > 0) & isnotconnected
-            else:
-                connect_set_ex = np.zeros(cls.n_line, dtype=dt_bool)
-            
-            _lines_impacted |= connect_set_ex
-            effective_change[cls.line_or_pos_topo_vect[connect_set_ex]] = False
-            effective_change[cls.line_ex_pos_topo_vect[connect_set_ex]] = False
-            
-            # second sub case i disconnected the powerline by setting origin or extremity to negative stuff
-            disco_set_or = powerline_status.copy()
-            if self._private_set_topo_vect is not None:
-                disco_set_or = (self._private_set_topo_vect[cls.line_or_pos_topo_vect] < 0) & powerline_status
-            else:
-                disco_set_or = np.zeros(cls.n_line, dtype=dt_bool)
-            
-            _lines_impacted |= disco_set_or
-            effective_change[cls.line_or_pos_topo_vect[disco_set_or]] = False
-            effective_change[cls.line_ex_pos_topo_vect[disco_set_or]] = False
-            
-            if self._private_set_topo_vect is not None:
-                disco_set_ex = (self._private_set_topo_vect[cls.line_ex_pos_topo_vect] < 0)  & powerline_status
-            else:
-                disco_set_ex = np.zeros(cls.n_line, dtype=dt_bool)
-                
-            _lines_impacted |= disco_set_ex
-            effective_change[cls.line_or_pos_topo_vect[disco_set_ex]] = False
-            effective_change[cls.line_ex_pos_topo_vect[disco_set_ex]] = False
+            self._aux_get_topo_impact_update_with_powerline_status(powerline_status,  # cst
+                                                                   isnotconnected,  # cst
+                                                                   _lines_impacted,  # updated
+                                                                   effective_change,  # updated
+                                                                   )
         
         _subs_impacted[cls._topo_vect_to_sub[effective_change]] = True
         
@@ -2614,24 +2656,58 @@ class BaseAction(GridObjects):
             shunts,
         )
 
-    def _digest_shunt(self, dict_):
+    def _aux_digest_shunt_issue_warning_if_needed(self, ddict_):
         cls = type(self)
+        for k in ddict_:
+            if k not in cls.key_shunt_reco:
+                warn = "The key {} is not recognized by BaseAction when trying to modify the shunt.".format(
+                    k
+                )
+                warn += " Recognized keys are {}".format(sorted(cls.key_shunt_reco))
+                warnings.warn(warn)
+        
+    def _aux_do_digest_shunt(self, key_n, vect_self, tmp):
+        cls = type(self)
+        if key_n == "shunt_bus" or key_n == "set_bus":
+            if vect_self is None:
+                self._private_shunt_bus = cls._build_attr("_shunt_bus")
+            self._aux_affect_object_int(
+            tmp,
+            key_n,
+            cls.n_shunt,
+            cls.name_shunt,
+            np.arange(cls.n_shunt),
+            self._private_shunt_bus,
+            max_val=cls.n_busbar_per_sub
+        )
+        elif key_n == "shunt_p" or key_n == "shunt_q":
+            if vect_self is None:
+                setattr(self, f"_private_{key_n}", cls._build_attr(f"_{key_n}"))
+                vect_self = getattr(self, f"_private_{key_n}")
+            self._aux_affect_object_float(
+            tmp,
+            key_n,
+            cls.n_shunt,
+            cls.name_shunt,
+            np.arange(cls.n_shunt),
+            vect_self
+        )
+        else:
+            raise AmbiguousAction(
+                "Invalid way to modify {} for shunts. It should be a numpy array or a "
+                "list, found {}.".format(key_n, type(tmp))
+            )
+        
+    def _digest_shunt(self, dict_):
         if "shunt" not in dict_:
             return
+        
         if dict_["shunt"] is None:
             return
         
         self._modif_shunt = True
         ddict_ = dict_["shunt"]
-
-        key_shunt_reco = {"set_bus", "shunt_p", "shunt_q", "shunt_bus"}
-        for k in ddict_:
-            if k not in key_shunt_reco:
-                warn = "The key {} is not recognized by BaseAction when trying to modify the shunt.".format(
-                    k
-                )
-                warn += " Recognized keys are {}".format(sorted(key_shunt_reco))
-                warnings.warn(warn)
+        self._aux_digest_shunt_issue_warning_if_needed(ddict_)
 
         for key_n, vect_self in zip(
             ["shunt_bus", "shunt_p", "shunt_q", "set_bus"],
@@ -2643,36 +2719,7 @@ class BaseAction(GridObjects):
             tmp = ddict_[key_n]
             if tmp is None:
                 continue
-            
-            if key_n == "shunt_bus" or key_n == "set_bus":
-                if vect_self is None:
-                    self._private_shunt_bus = cls._build_attr("_shunt_bus")
-                self._aux_affect_object_int(
-                tmp,
-                key_n,
-                cls.n_shunt,
-                cls.name_shunt,
-                np.arange(cls.n_shunt),
-                self._private_shunt_bus,
-                max_val=cls.n_busbar_per_sub
-            )
-            elif key_n == "shunt_p" or key_n == "shunt_q":
-                if vect_self is None:
-                    setattr(self, f"_private_{key_n}", cls._build_attr(f"_{key_n}"))
-                    vect_self = getattr(self, f"_private_{key_n}")
-                self._aux_affect_object_float(
-                tmp,
-                key_n,
-                cls.n_shunt,
-                cls.name_shunt,
-                np.arange(cls.n_shunt),
-                vect_self
-            )
-            else:
-                raise AmbiguousAction(
-                    "Invalid way to modify {} for shunts. It should be a numpy array or a "
-                    "list, found {}.".format(key_n, type(tmp))
-                )
+            self._aux_do_digest_shunt(key_n, vect_self, tmp)
 
     def _digest_injection(self, dict_):
         # I update the action
@@ -4353,6 +4400,34 @@ class BaseAction(GridObjects):
             tmp["shunt_bus"] = 1.0 * self._private_shunt_bus
         if tmp:
             res["shunt"] = tmp
+    
+    def _aux_as_dict_line_status(self, res):
+        # handles actions on force line status
+        if self._private_set_line_status is not None and (self._private_set_line_status != 0).any():
+            self._aux_as_dict_set_line(res)
+
+        # handles action on swtich line status
+        if self._private_switch_line_status is not None and self._private_switch_line_status.sum():
+            self._aux_as_dict_change_line(res)
+
+    def _aux_as_dict_topo(self, res):
+        # handles topology change
+        if self._private_change_bus_vect is not None and (self._private_change_bus_vect).any():
+            self._aux_as_dict_change_bus(res)
+
+        # handles topology set
+        if self._private_set_topo_vect is not None and (self._private_set_topo_vect!= 0).any():
+            self._aux_as_dict_set_bus(res)
+    
+    def _aux_as_dict_hazards_maintenance(self, res):
+        if self._private_hazards is not None and self._private_hazards.any():
+            res["hazards"] = self._private_hazards.nonzero()[0]
+            res["nb_hazards"] = self._private_hazards.sum()
+
+        if self._private_maintenance is not None and self._private_maintenance.any():
+            res["maintenance"] = self._private_maintenance.nonzero()[0]
+            res["nb_maintenance"] = self._private_maintenance.sum()
+        
         
     def as_dict(self) -> Dict[Literal["load_p", "load_q", "prod_p", "prod_v",
                                       "change_line_status", "set_line_status",
@@ -4428,29 +4503,9 @@ class BaseAction(GridObjects):
             if k in self._dict_inj:
                 res[k] = 1.0 * self._dict_inj[k]
 
-        # handles actions on force line status
-        if self._private_set_line_status is not None and (self._private_set_line_status != 0).any():
-            self._aux_as_dict_set_line(res)
-
-        # handles action on swtich line status
-        if self._private_switch_line_status is not None and self._private_switch_line_status.sum():
-            self._aux_as_dict_change_line(res)
-
-        # handles topology change
-        if self._private_change_bus_vect is not None and (self._private_change_bus_vect).any():
-            self._aux_as_dict_change_bus(res)
-
-        # handles topology set
-        if self._private_set_topo_vect is not None and (self._private_set_topo_vect!= 0).any():
-            self._aux_as_dict_set_bus(res)
-
-        if self._private_hazards is not None and self._private_hazards.any():
-            res["hazards"] = self._private_hazards.nonzero()[0]
-            res["nb_hazards"] = self._private_hazards.sum()
-
-        if self._private_maintenance is not None and self._private_maintenance.any():
-            res["maintenance"] = self._private_maintenance.nonzero()[0]
-            res["nb_maintenance"] = self._private_maintenance.sum()
+        self._aux_as_dict_line_status(res)
+        self._aux_as_dict_topo(res)
+        self._aux_as_dict_hazards_maintenance(res)
 
         if self._private_redispatch is not None and (np.abs(self._private_redispatch) >= 1e-7).any():
             res["redispatch"] = 1.0 * self._private_redispatch
