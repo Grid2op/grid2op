@@ -6,10 +6,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import sys
 import copy
-import logging
 import os
+
+import numpy as np
 from grid2op.Exceptions.envExceptions import EnvError
 
 from grid2op.Observation.serializableObservationSpace import (
@@ -17,7 +17,7 @@ from grid2op.Observation.serializableObservationSpace import (
 )
 from grid2op.Reward import RewardHelper
 from grid2op.Observation.completeObservation import CompleteObservation
-
+from grid2op.dtypes import dt_int
 
 class ObservationSpace(SerializableObservationSpace):
     """
@@ -206,6 +206,8 @@ class ObservationSpace(SerializableObservationSpace):
         )
         for k, v in self.obs_env.other_rewards.items():
             v.initialize(self.obs_env)
+            
+        self.obs_env.backend._disconnected_during_cf = np.full(type(self.obs_env).n_line, fill_value=-1, dtype=dt_int)
     
     def _aux_create_backend(self, env, observation_bk_class, observation_bk_kwargs, path_grid_for, _local_dir_cls):
         if observation_bk_kwargs is None:

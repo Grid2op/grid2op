@@ -14,9 +14,8 @@ import json
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Optional, Any, Dict, Type, Union, TYPE_CHECKING
+from typing import Tuple, Optional, Any, Dict, Type, Union, TYPE_CHECKING
 
-from grid2op.Exceptions.ambiguousActionExceptions import AmbiguousAction
 
 if TYPE_CHECKING:
     # for type hints to avoid circular import
@@ -202,11 +201,12 @@ class Backend(GridObjects, ABC):
         #: will be used later on in future grid2op version
         self._prevent_automatic_disconnection: bool = True
         
-        #: .. versionadded: 1.12.1
-        #: List of "backend_dependant_callback" errors (if any)
-        self._callbacks_errors : List[Exception] = []
-
+        #: speed optimization to avoid np.full, which is rather slow
+        self._disconnected_during_cf = None
     
+        #: speed optimization: avoid to compute some data not used in general
+        self._needs_active_bus = False
+        
     def can_handle_more_than_2_busbar(self):
         """
         .. versionadded:: 1.10.0
@@ -796,7 +796,6 @@ class Backend(GridObjects, ABC):
         # reset the other attributes
         self.comp_time = 0.0
         self.update_bus_target_after_pf(-1, -1, -1)
-        self._callbacks_errors = []
         
     def reset(self,
               path : Union[os.PathLike, str],
@@ -876,6 +875,8 @@ class Backend(GridObjects, ABC):
         res._storage_bus_target = copy.deepcopy(self._storage_bus_target)
         res._shunt_bus_target = copy.deepcopy(self._shunt_bus_target)
         res._prevent_automatic_disconnection = copy.deepcopy(self._prevent_automatic_disconnection)
+        res._needs_active_bus = self._needs_active_bus
+        res._disconnected_during_cf = copy.deepcopy(self._disconnected_during_cf)
         return res
     
     def copy(self) -> Self:
@@ -1366,6 +1367,7 @@ class Backend(GridObjects, ABC):
                                         "`detachment_is_allowed` is False but only if the don't produce / absorb active power."))
             else:
                 sto_maybe_error = None
+                
             # additional check: if the backend detach some things incorrectly
             if cls.detachment_is_allowed:
                 # if the backend automatically disconnect things, I need to catch them
@@ -1461,14 +1463,13 @@ class Backend(GridObjects, ABC):
 
         """
         infos = []
-        disconnected_during_cf = np.full(type(self).n_line, fill_value=-1, dtype=dt_int)
+        self._disconnected_during_cf[:] = -1
         conv_ = self._runpf_with_diverging_exception(is_dc)
-        self._callbacks_errors = []
         if env._no_overflow_disconnection or conv_ is not None:
-            return disconnected_during_cf, infos, conv_
+            return self._disconnected_during_cf, infos, conv_
 
         # the environment disconnect some powerlines
-        protection_counter = copy.deepcopy(env._protection_counter)
+        protection_counter = 1 * env._protection_counter
         counter_increased = np.zeros_like(protection_counter, dtype=dt_bool)
         iter_num = 0
         while True:
@@ -1501,7 +1502,7 @@ class Backend(GridObjects, ABC):
                 # no powerlines have been disconnected at this time step, 
                 # i stop the computation there
                 break
-            disconnected_during_cf[to_disc] = iter_num
+            self._disconnected_during_cf[to_disc] = iter_num
             
             # perform the disconnection action
             for i, el in enumerate(to_disc):
@@ -1516,7 +1517,7 @@ class Backend(GridObjects, ABC):
             if conv_ is not None:
                 break
             iter_num += 1
-        return disconnected_during_cf, infos, conv_
+        return self._disconnected_during_cf, infos, conv_
 
     def storages_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -2391,6 +2392,9 @@ class Backend(GridObjects, ABC):
         my_cls = type(self)
         my_cls._add_internal_classes(_local_dir_cls)
         self._remove_my_attr_cls()
+        
+        # speed optim
+        self._disconnected_during_cf = np.full(my_cls.n_line, fill_value=-1, dtype=dt_int)
 
     @classmethod
     def _add_internal_classes(cls, _local_dir_cls):

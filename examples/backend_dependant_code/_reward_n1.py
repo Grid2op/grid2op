@@ -14,6 +14,59 @@ from grid2op.Backend import Backend
 
 
 class N1Reward(BaseReward):
+    """This implements a "new" reward in grid2op.
+    
+    This reward will be based on the agregation of some data resulting of 
+    the simulation of some contingencies.
+    
+    The kwargs `n1_li` is a list of contingencies to simulate. 
+    If None (default), it will consist of all the lines of the grid.
+    
+    The kwargs `compute_algo` allows to specify if the way
+    the contingencies are computed. It can be either "ac" or "dc".
+    
+    The kwargs `reduce_n1` and `reduce_reward` allows to specify how the information
+    about the contingencies are agregated into a single number (reward).
+    
+    More specifically, say you are simulating contingency on line `i`, 
+    then `reduce_n1` will be used to aggregate the flows on all the lines after
+    this contingencies. It can be:
+    - "max" (default) : the maximum flow on all the lines (after contingency `i`)
+    - "count" : the number of lines that are overloaded (after contingency `i`)
+    - "sum" : the sum of the flows on all the lines (after contingency `i`)
+    
+    Then `reduce_reward` will be used to aggregate to agregate information
+    about all the contingencies. It can be:
+    - "max" (default) : the maximum value of all the result of the previous
+      computation for each contingency
+    - "count" : the number of contingencies that have a result >= 1
+    - "sum" : the sum of the result of the previous computation
+    
+    Examples:
+    
+    If `reduce_n1="max"` and `reduce_reward="max"` then the reward will be the maximum
+    flow obtained on any line after a contingency. There are len(n1_li) such
+    results. Then, these len(n1_li) results are aggregated and only the maximum is kept
+    (`reduce_reward="max"`). => gives the maximum flows on any line after any contingency
+    
+    If `reduce_n1="count"` and `reduce_reward="sum"` then the reward will be the number
+    of line on overflow for any contingency (`reduce_n1="count"`). These len(n1_li) 
+    numbers will then be summed up to give the final reward (`reduce_reward="sum"`). => gives
+    the total number of lines on overflow after any contingency
+    
+    Extra information: 
+    
+    **NB** This could be customized by counting only the overflows on a given set of lines (similar
+    to `n1_li` but for "monitored lines" and not "disconnected lines").
+    
+    **NB** We did not assume anything on any previous comptuation here. But on some settings,
+    the results of each contingency might be available in the observation (for example if using
+    `ObsWithN1` observation class, with the same `n1_li` and the same `reduce_n1` and the 
+    same `compute_algo`). In that
+    case, instead of computing again the same contingencies, the reward can be computed by looking
+    at the `obs.n1_vals` attribute. This optimization is not implemented here.
+    
+    """
     def __init__(self,
                  logger=None,
                  n1_li=None,

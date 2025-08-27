@@ -102,9 +102,24 @@ Native multi agents support:
 
 [1.12.1] - 2025-xx-yy
 ----------------------
+- [BREAKING] (small impact) action "property" `shunt_p`, `shunt_q` and `shunt_bus`
+  are now named `_shunt_p`, `_shunt_q` and `_shunt_bus`.
+- [FIXED] when using the default action converter from gym_compat module,
+  it only generates actions that can be performed by the user (authorized by 
+  the rules and the action class)
 - [ADDED] the possibility to act on the backend directly from the action
   with the "act."
+- [ADDED] set `pandas<3` in the dependencies, to make sure PandapowerBackend
+  still work (ChainedAssignmentError still occur)
+- [IMPROVED] some pandas `ChainedAssignmentError` warning in pandapower backend
+  (more work is required in this direction)
+- [IMPROVED] consistency between AmbiguousAction and IllegalAction exceptions:
+  when an action cannot be built, it is ambiguous now and not illegal.
 - [IMPROVED] cleaner installation, relying only on "pyproject.toml"
+- [IMPROVED] documentation of "how to create a new grid2op observation"
+  having different attributes.
+- [IMPROVED] documentation of the "action" class 
+- [IMPROVED] computation speed, especially in cases of "do nothing"
 
 [1.12.0] - 2025-07-24
 --------------------------

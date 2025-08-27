@@ -696,6 +696,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # 1.11: do not check rules if first observation
         self._called_from_reset = True
         
+        # 1.12.1
+        self._needs_active_bus = False
+        
     @property
     def highres_sim_counter(self):
         return self._highres_sim_counter
@@ -1024,6 +1027,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         
         new_obj._called_from_reset = self._called_from_reset
+        new_obj._needs_active_bus = self._needs_active_bus
         
     def get_path_env(self):
         """
@@ -3654,9 +3658,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 try:
                     action.backend_dependant_callback(self.backend._grid)
                 except Exception as exc_:
-                    except_ .append(InvalidBackendCallback(f"Invalid backend_dependant_callbacks: error was: \n{exc_}\n"
-                                                         "You can consult `env._callbacks_error` (list of error)"
-                                                         "to have more information")
+                    except_.append(exc_)
+                    except_.append(InvalidBackendCallback("Invalid action.backend_dependant_callbacks provided."
+                                                          "You can consult `info['exceptions']` "
+                                                          "to have more information")
                     )
                     action = self._action_space({})
                     init_disp = 1.0 * action._redispatch  # dispatching action

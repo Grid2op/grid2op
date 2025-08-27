@@ -533,7 +533,6 @@ class __AuxMultiDiscreteActSpace:
         -------
 
         """
-        # TODO code that !
         vect = 1 * gym_act_this
         if type_ == type(self).ATTR_NEEDBUILD:
             funct(res, attr_nm, vect)

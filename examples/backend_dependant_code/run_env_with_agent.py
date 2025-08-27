@@ -12,8 +12,8 @@ from _obs_with_n1 import ObsWithN1
 from _reward_n1 import N1Reward
 from _agent_with_pst_action import AgentRandomPST
 
-
-li_lines = np.arange(5)
+# simulate contingency on the first 5 lines (why not ?)
+li_lines = np.arange(5) 
 # env where PST will be modified
 env = grid2op.make("l2rpn_idf_2023",
                    test=True, 
@@ -34,13 +34,13 @@ for grid in [env.backend._grid,
 # regular env without PST modification (as a reference)
 env_without_pst = env.copy()
 
-pst_agent = AgentRandomPST(action_space=env.action_space,
-                           env=env)
+pst_agent = AgentRandomPST(action_space=env.action_space)
 pst_agent.seed(0)
 
 # initial state
 obs = env.reset(seed=0, options={"time serie id": 0})
-pst_agent._backend = env.backend  # do not forget to synch the agent with the env
+# legacy: following line used to be required for grid2op 1.12.1 but is not anymore
+# pst_agent._backend = env.backend  # do not forget to synch the agent with the env
 
 obs_without_pst = env_without_pst.reset(seed=0, options={"time serie id": 0})
 # check there is no difference
@@ -77,5 +77,3 @@ print("Maximum difference (in relative flows) with / without the action: "
       f"{(next_obs.rho - next_obs_without_pst.rho).max() * 100.:.2f} % of thermal limit")
 print("Difference (in reward flows) with / without the action: "
       f"{reward - reward_without_pst}")
-
-

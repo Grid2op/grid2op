@@ -19,7 +19,7 @@ class TestIssue667(unittest.TestCase):
     def setUp(self) -> None:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.env = grid2op.make("educ_case14_storage",
+            self.env = grid2op.make("l2rpn_wcci_2022",  # we need t least 2 shunts and 2 storage units
                                     test=True,
                                     action_class=BaseAction,
                                     _add_to_name=type(self).__name__)
@@ -142,13 +142,16 @@ class TestIssue667(unittest.TestCase):
                     assert act == act2
                 
     def test_shunt(self):
-        for el_type in ["set_bus", "shunt_p", "shunt_q", "shunt_bus"]:
-            all_but_one_lines_on = self.env.action_space({"shunt": {el_type: {name: 1 for name in self.env.name_shunt[0:-1]}}})
-            all_lines_on = self.env.action_space({"shunt": {el_type: {name: 2 for name in self.env.name_shunt[:]}}})
+        for el_type, prop_nm in zip(["set_bus", "shunt_p", "shunt_q", "shunt_bus"],
+                                    ["_shunt_bus", "_shunt_p", "_shunt_q", "_shunt_bus"]):
+            all_but_one_shunt = self.env.action_space({"shunt": {el_type: {name: 1 for name in self.env.name_shunt[0:-1]}}})
+            assert all_but_one_shunt._modif_shunt
+            all_shunts_bus2 = self.env.action_space({"shunt": {el_type: {name: 2 for name in self.env.name_shunt[:]}}})
+            assert all_shunts_bus2._modif_shunt
 
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tmp_path = Path(tmpdirname) 
-                for act in [all_but_one_lines_on, all_lines_on]:
+                for act in [all_but_one_shunt, all_shunts_bus2]:
                     with open(tmp_path/ "act.json", "w") as f:
                         json.dump(act.as_serializable_dict(), f)
                     with open(tmp_path / "act.json", "r") as f:

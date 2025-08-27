@@ -108,9 +108,9 @@ class __AuxGymActionSpace:
         "_curtail": "curtail",
         "_raise_alarm": "raise_alarm",
         "_raise_alert": "raise_alert",
-        "shunt_p": "_shunt_p",
-        "shunt_q": "_shunt_q",
-        "shunt_bus": "_shunt_bus",
+        "_shunt_p": "shunt_p",
+        "_shunt_q": "shunt_q",
+        "_shunt_bus": "shunt_bus",
         "_detach_load": "detach_load",  # new in 1.11.0
         "_detach_gen": "detach_gen",  # new in 1.11.0
         "_detach_storage": "detach_storage",  # new in 1.11.0
@@ -242,8 +242,9 @@ class __AuxGymActionSpace:
 
     def _fill_dict_act_space(self, dict_, dict_variables):
         # TODO what about dict_variables !!!
+        act_cls = type(self._template_act)
         for attr_nm, sh, dt in zip(
-            type(self._template_act).attr_list_vect,
+            act_cls.attr_list_vect,
             self._template_act.shapes(),
             self._template_act.dtypes()
         ):
@@ -264,7 +265,7 @@ class __AuxGymActionSpace:
                     my_type = type(self)._BoxType(low=-1, high=1, shape=shape, dtype=dt)
                 elif attr_nm == "_set_topo_vect":
                     my_type = type(self)._BoxType(low=-1,
-                                                  high=type(self._template_act).n_busbar_per_sub,
+                                                  high=act_cls.n_busbar_per_sub,
                                                   shape=shape, dtype=dt)
             elif dt == dt_bool:
                 # boolean observation space
@@ -278,35 +279,37 @@ class __AuxGymActionSpace:
                 SpaceType = type(self)._BoxType
 
                 if attr_nm == "prod_p":
-                    low = type(self._template_act).gen_pmin
-                    high = type(self._template_act).gen_pmax
+                    low = act_cls.gen_pmin
+                    high = act_cls.gen_pmax
                     shape = None
                 elif attr_nm == "prod_v":
                     # voltages can't be negative
                     low = 0.0
                 elif attr_nm == "_redispatch":
                     # redispatch
-                    low = -1.0 * type(self._template_act).gen_max_ramp_down
-                    high = 1.0 * type(self._template_act).gen_max_ramp_up
-                    low[~type(self._template_act).gen_redispatchable] = 0.0
-                    high[~type(self._template_act).gen_redispatchable] = 0.0
+                    low = -1.0 * act_cls.gen_max_ramp_down
+                    high = 1.0 * act_cls.gen_max_ramp_up
+                    low[~act_cls.gen_redispatchable] = 0.0
+                    high[~act_cls.gen_redispatchable] = 0.0
                 elif attr_nm == "_curtail":
                     # curtailment
-                    low = np.zeros(type(self._template_act).n_gen, dtype=dt_float)
-                    high = np.ones(type(self._template_act).n_gen, dtype=dt_float)
-                    low[~type(self._template_act).gen_renewable] = -1.0
-                    high[~type(self._template_act).gen_renewable] = -1.0
+                    low = np.zeros(act_cls.n_gen, dtype=dt_float)
+                    high = np.ones(act_cls.n_gen, dtype=dt_float)
+                    low[~act_cls.gen_renewable] = -1.0
+                    high[~act_cls.gen_renewable] = -1.0
                 elif attr_nm == "_storage_power":
                     # storage power
-                    low = -1.0 * type(self._template_act).storage_max_p_prod
-                    high = 1.0 * type(self._template_act).storage_max_p_absorb
+                    low = -1.0 * act_cls.storage_max_p_prod
+                    high = 1.0 * act_cls.storage_max_p_absorb
                 my_type = SpaceType(low=low, high=high, shape=shape, dtype=dt)
 
             if my_type is None:
                 # if nothing has been found in the specific cases above
                 my_type = self._generic_gym_space(dt, sh)
 
-            dict_[attr_nm] = my_type
+            # new in grid2op 1.12.1: only add if action is legal
+            if act_cls.mapping_vect_auth_keys[attr_nm] in act_cls.authorized_keys:
+                dict_[attr_nm] = my_type
 
     def _fix_dict_keys(self, dict_: dict) -> dict:
         res = {}
