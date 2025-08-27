@@ -35,6 +35,7 @@ except ImportError:
 
 ENV_NAME = "rte_case5_example"
 ENV_NAME = "rte_case14_realistic"
+ENV_NAME = "l2rpn_case14_sandbox"
 MAX_TS = 1000
 
 
@@ -55,8 +56,9 @@ def main(max_ts, name, use_lightsim=False, test_env=True):
 
     cp = cProfile.Profile()
     cp.enable()
-    nb_ts_klu, time_klu, aor_klu, gen_p_klu, gen_q_klu = run_env(env_klu, max_ts, agent)
+    nb_ts_klu, time_klu, aor_klu, gen_p_klu, gen_q_klu, time_step = run_env(env_klu, max_ts, agent)
     cp.disable()
+    print(f'Time for {nb_ts_klu} steps: {time_step} => {time_step / nb_ts_klu} s/step or {nb_ts_klu / time_step:.3e} step / s')
     nm_f, ext = os.path.splitext(__file__)
     nm_out = "{}_{}_{}.prof".format(nm_f, "lightsim" if use_ls else "pp", name)
     cp.dump_stats(nm_out)

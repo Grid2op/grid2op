@@ -104,9 +104,19 @@ Native multi agents support:
 ----------------------
 - [BREAKING] (small impact) action "property" `shunt_p`, `shunt_q` and `shunt_bus`
   are now named `_shunt_p`, `_shunt_q` and `_shunt_bus`.
+- [BREAKING] (small impact): new convention for `env._gen_uptime` and 
+  `env._gen_downtime`: if a generator `gen_id` is disconnected, then 
+  `env._gen_uptime[gen_id] = -1` and if it is connected, then 
+  `env._gen_downtime[gen_id] = -1`
+- [BREAKING] (small impact): new convention for `env._gen_uptime` and 
+  `env._gen_downtime`: they are 0 (and not 1) at the initial observation
+  (`env._gen_uptime` is 0 after the env.reset for connected generator and
+  still -1 - see point above- for disconnected ones)
 - [FIXED] when using the default action converter from gym_compat module,
   it only generates actions that can be performed by the user (authorized by 
   the rules and the action class)
+- [FIXED] `env._gen_uptime` and `env._gen_downtime` are now properly updated
+  after a generator has been detached from the grid.
 - [ADDED] the possibility to act on the backend directly from the action
   with the "act."
 - [ADDED] set `pandas<3` in the dependencies, to make sure PandapowerBackend

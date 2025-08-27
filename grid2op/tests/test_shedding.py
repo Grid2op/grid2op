@@ -213,6 +213,7 @@ class TestSheddingActions(unittest.TestCase):
         # flag not set
         act7 = self.env.action_space()
         getattr(act7, _detach_xxx)[0] = True
+        act7._cached_is_not_ambiguous = False
         is_amb, exc_ = act7.is_ambiguous()
         assert is_amb, f"error for {el_type}"
         assert isinstance(exc_, AmbiguousAction), f"error for {el_type}"

@@ -1430,6 +1430,10 @@ class BaseAction(GridObjects):
             self._modif_detach_load = self._private_detach_load is not None and (self._private_detach_load).any()
             self._modif_detach_gen = self._private_detach_gen is not None and (self._private_detach_gen).any()
             self._modif_detach_storage = self._private_detach_storage is not None and (self._private_detach_storage).any()
+            
+        if self.can_affect_something():
+            # reset the ambiguous cache
+            self._cached_is_not_ambiguous = False
 
     def _assign_attr_from_name(self, attr_nm, vect):
         """used for from_vect, for from_json please see `_set_array_from_attr_name`"""
