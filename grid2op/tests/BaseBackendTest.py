@@ -24,7 +24,7 @@ from grid2op.Action import ActionSpace, CompleteAction
 from grid2op.Parameters import Parameters
 from grid2op.Chronics import ChronicsHandler
 from grid2op.Environment import Environment
-from grid2op.Exceptions import *
+from grid2op.Exceptions import AmbiguousAction
 from grid2op.Rules import RulesChecker
 from grid2op.Rules import AlwaysLegal
 from grid2op.Action._backendAction import _BackendAction
@@ -2181,7 +2181,7 @@ class BaseTestShuntAction(MakeBackend):
                 backend=backend,
                 _add_to_name=type(self).__name__ + "_1"
             ) as env_case2:
-                with self.assertRaises(IllegalAction):
+                with self.assertRaises(AmbiguousAction):
                     act = env_case2.action_space({"shunt": {"set_bus": [(0, 2)]}})
 
     def test_shunt_effect(self):

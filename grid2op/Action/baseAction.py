@@ -1571,11 +1571,10 @@ class BaseAction(GridObjects):
     def _aux_eq_shunts(self, other: "BaseAction") -> bool:
         cls = type(self)
         if cls.shunts_data_available:
-            if self.n_shunt != other.n_shunt:
+            if cls.n_shunt != type(other).n_shunt:
                 return False
             if self._modif_shunt != other._modif_shunt:
                 return False
-            
             res = self._aux_eq_shunt_aux(other, "_private_shunt_p")
             if not res:
                 return False
@@ -2920,7 +2919,7 @@ class BaseAction(GridObjects):
 
     def _digest_detach_eltype(self, el : Literal["load", "gen", "storage"], dict_):
         attr_key = f'detach_{el}'
-        if attr_key in dict_ and dict_[attr_key] is not None and len(dict_[attr_key]):
+        if attr_key in dict_ and dict_[attr_key] is not None and dict_[attr_key] != {}:
             setattr(self, attr_key, dict_[attr_key])
             # eg self.detach_load = dict_["detach_load"]  # this uses the public property !
 
@@ -4514,14 +4513,14 @@ class BaseAction(GridObjects):
         injection = "load_p" in self._dict_inj or "prod_p" in self._dict_inj
         voltage = "prod_v" in self._dict_inj
         if type(self).shunts_data_available:
-            voltage = voltage or np.isfinite(self._private_shunt_p).any()
-            voltage = voltage or np.isfinite(self._private_shunt_q).any()
-            voltage = voltage or (self._private_shunt_bus != 0).any()
+            voltage = voltage or (self._private_shunt_p is not None and np.isfinite(self._private_shunt_p).any())
+            voltage = voltage or (self._private_shunt_q is not None and np.isfinite(self._private_shunt_q).any())
+            voltage = voltage or (self._private_shunt_bus is not None and (self._private_shunt_bus != 0).any())
 
         lines_impacted, subs_impacted = self.get_topological_impact()
         topology = subs_impacted.any()
         line = lines_impacted.any()
-        redispatching = (np.abs(self._private_redispatch) >= 1e-7).any()
+        redispatching = self._private_redispatch is not None and (np.abs(self._private_redispatch) >= 1e-7).any()
         storage = self._modif_storage
         curtailment = self._modif_curtailment
         return injection, voltage, topology, line, redispatching, storage, curtailment
@@ -7527,7 +7526,7 @@ class BaseAction(GridObjects):
         if group_topo:
             tmp = cls()
             tmp._modif_change_bus = True
-            tmp._private_change_bus_vect[:] = self._private_change_bus_vect
+            tmp._change_bus_vect[:] = self._private_change_bus_vect
             res["change_bus"] = [tmp]
         else:
             subs_changed = cls.grid_objects_types[self._private_change_bus_vect, cls.SUB_COL]

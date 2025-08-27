@@ -45,7 +45,7 @@ This is a class method that defines the class attribute `DICT_ATTR_` which is si
 the key being the property name (*eg* `"_set_topo_vect"`) and the value being the default value of 
 this property.
 
-How to add a new way to modify the grid
+Agent public API
 -----------------------------------------
 
 First, you need to come up with a name for it, say "_my_awesome_way_to_modif".
@@ -133,6 +133,12 @@ Add gym compatibility in the gym_compat module
 ***********************************************
 
 TODO 
+
+Backend "private" API
+-----------------------
+
+Then you need to modify the `__iadd__` method of the `BackendAction` class to handle the modification
+you performed and pass it to the backend.
 
 
 Add tests
