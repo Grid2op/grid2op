@@ -129,6 +129,27 @@ This could look like this:
         # other irrelevant things for the example
         # ...
 
+
+Implement the actual API
+*******************************
+
+This is located in the `digest_XXX` function (*eg* `_digest_set_status`) which are in turned used in the `self.update` action.
+
+You might also want to update the `_modif_XXX` flags and the `self.can_affect_something()`, `self._dont_affect_topology()` etc.
+
+.. danger::
+    When Implementing the function `digest_XXX` either you rely on setting the properties and the `_aux_affect_object_bool`,
+    `_aux_affect_object_float` or `_aux_affect_object_int` and you're good.
+
+    Or you want a specific API and in this case do not forget to set the flag `self._cached_is_not_ambiguous` to False
+    if your action modifies something.
+
+Other action usage
+--------------------
+
+Implement the "other" action API, for example `as_dict`, `as_serializable_dict`, `__eq__`, `get_topological_impact`, 
+`self.decompose_as_unary_action()` etc.
+
 Add gym compatibility in the gym_compat module
 ***********************************************
 

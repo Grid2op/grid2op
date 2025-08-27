@@ -11,7 +11,7 @@ import copy
 import warnings
 import numpy as np
 import re
-from typing import Optional, Union, Literal
+from typing import Optional, Type, Union, Literal
 
 from grid2op.Opponent import OpponentSpace
 from grid2op.dtypes import dt_float, dt_bool, dt_int
@@ -385,7 +385,7 @@ class Environment(BaseEnv):
         # be careful here: you need to initialize from the class, and not from the object
         bk_type = type(self.backend) 
         self._rewardClass = rewardClass
-        self._actionClass = actionClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
+        self._actionClass : Type[BaseAction] = actionClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
         self._actionClass._add_shunt_data()
         self._actionClass._update_value_set()
         self._observationClass = observationClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)

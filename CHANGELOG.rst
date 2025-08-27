@@ -120,6 +120,9 @@ Native multi agents support:
   having different attributes.
 - [IMPROVED] documentation of the "action" class 
 - [IMPROVED] computation speed, especially in cases of "do nothing"
+- [IMPROVED] if the same action is used multiple times, the "is_ambiguous()"
+  method will be computed only once (results will be cached).
+- [IMPROVED] computation times at various places (*eg* by avoiding unnecessary copies)
 
 [1.12.0] - 2025-07-24
 --------------------------

@@ -650,6 +650,10 @@ class BaseAction(GridObjects):
         self._modif_detach_load = False
         self._modif_detach_gen = False
         self._modif_detach_storage = False
+        
+        #: .. versionadded:: 1.12.1
+        #: cache not to recompute the `is_ambiguous` for the same action
+        self._cached_is_not_ambiguous = True
 
     # init the private argument when needed
     
@@ -906,6 +910,7 @@ class BaseAction(GridObjects):
             "_modif_detach_gen",
             "_modif_detach_storage",
             "_single_act",
+            "_cached_is_not_ambiguous",
         ]
 
         attr_vect = [
@@ -2752,8 +2757,10 @@ class BaseAction(GridObjects):
                             raise AmbiguousAction(f"More than one element named {el_nm} for key {k} when trying to modify the injection")
                         vals[el_ids[0]] = dt_float(el_val)
                     self._dict_inj[k] = vals
+                    self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
                 else:
                     self._dict_inj[k] = np.array(tmp_d[k]).astype(dt_float)
+                    self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
                 # TODO check the size based on the input data !
             else:
                 warn = (
@@ -2901,6 +2908,7 @@ class BaseAction(GridObjects):
         if self._private_hazards is None:
             self._private_hazards = cls._build_attr("_hazards")
         self._private_hazards[tmp] = True
+        self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
         
         # force ignore of any topological actions
         self._ignore_topo_action_if_disconnection(tmp)
@@ -2942,6 +2950,7 @@ class BaseAction(GridObjects):
             self._private_maintenance = cls._build_attr("_maintenance")
         self._private_set_line_status[tmp] = -1
         self._private_maintenance[tmp] = True
+        self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
         self._ignore_topo_action_if_disconnection(tmp)
 
     def _digest_change_status(self, dict_):
@@ -3308,6 +3317,9 @@ class BaseAction(GridObjects):
         info: ``dict`` or not
             More information about the error. If the action is not ambiguous, it values to ``None``
         """
+        if self._cached_is_not_ambiguous:
+            return False, None
+        
         try:
             self._check_for_ambiguity()
             res = False
@@ -3315,6 +3327,7 @@ class BaseAction(GridObjects):
         except AmbiguousAction as exc_:
             info = exc_
             res = True
+        self._cached_is_not_ambiguous = True  # do not recompute it if action is not changed
         return res, info
 
     def _check_for_correct_modif_flags(self):
@@ -5015,6 +5028,7 @@ class BaseAction(GridObjects):
                     f"{nb_els} on the grid (and in python id starts at 0)"
                 )
             outer_vect[inner_vect[el_id]] = new_bus
+            self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
             return
         elif isinstance(values, np.ndarray):
             if (
@@ -5045,6 +5059,7 @@ class BaseAction(GridObjects):
                     f"new_bus should be between {min_val} and {max_val}, found a value  > {max_val}"
                 )
             outer_vect[inner_vect] = values
+            self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
             return
         elif isinstance(values, list):
             # 2 cases: list of tuple, or list (convertible to numpy array)
@@ -5757,6 +5772,7 @@ class BaseAction(GridObjects):
                     f"{nb_els} on the grid (and in python id starts at 0)"
                 )
             outer_vect[inner_vect[el_id]] = not outer_vect[inner_vect[el_id]]
+            self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
             return
         elif isinstance(values, tuple):
             # to make it explicit, tuple modifications are deactivated
@@ -5781,6 +5797,7 @@ class BaseAction(GridObjects):
                         f"on the grid."
                     )
                 outer_vect[inner_vect[values]] = ~outer_vect[inner_vect[values]]
+                self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
                 return
 
             # this is the case where i give the integers i want to change
@@ -5801,6 +5818,7 @@ class BaseAction(GridObjects):
                     f"id > {nb_els} (in python id starts at 0)"
                 )
             outer_vect[inner_vect[values]] = ~outer_vect[inner_vect[values]]
+            self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
             return
         elif isinstance(values, list):
             # 1 case only: list of int
@@ -5820,14 +5838,14 @@ class BaseAction(GridObjects):
                 elif isinstance(el_id_or_name, (bool, dt_bool)):
                     # somehow python considers bool are int...
                     raise AmbiguousAction(
-                        f"If a list is provided, it is only valid with integer found "
+                        f"If a list is provided, it is only valid with integer / string found "
                         f"{type(el_id_or_name)}."
                     )
                 elif isinstance(el_id_or_name, (int, dt_int, np.int64)):
                     el_id = el_id_or_name
                 else:
                     raise AmbiguousAction(
-                        f"If a list is provided, it is only valid with integer found "
+                        f"If a list is provided, it is only valid with integer / string found "
                         f"{type(el_id_or_name)}."
                     )
                 el_id = int(el_id)
@@ -6644,8 +6662,8 @@ class BaseAction(GridObjects):
             # i provide a tuple: load_id, new_vals
             if len(values) != 2:
                 raise AmbiguousAction(
-                    f"when set with tuple, this tuple should have size 2 and be: {name_el}_id, new_bus "
-                    f"eg. (3, 0.0)"
+                    f"when set with tuple, this tuple should have size 2 and be: {name_el}_id, new_val "
+                    f"eg. (3, 0.)"
                 )
             el_id, new_val = values
             if isinstance(new_val, (bool, dt_bool)):
@@ -6654,7 +6672,7 @@ class BaseAction(GridObjects):
                 )
 
             try:
-                new_val = float(new_val)
+                new_val = dt_float(new_val)
             except Exception as exc_:
                 raise AmbiguousAction(
                     f'new_val should be convertible to a float. Error was : "{exc_}"'
@@ -6693,6 +6711,7 @@ class BaseAction(GridObjects):
                 )
             if np.isfinite(new_val):
                 outer_vect[inner_vect[el_id]] = new_val
+                self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
             return
         elif isinstance(values, np.ndarray):
             if (
@@ -6715,6 +6734,7 @@ class BaseAction(GridObjects):
                 ) from exc_
             indx_ok = np.isfinite(values)
             outer_vect[inner_vect[indx_ok]] = values[indx_ok]
+            self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
             return
         elif isinstance(values, list):
             # 2 cases: list of tuple, or list (convertible to numpy array)

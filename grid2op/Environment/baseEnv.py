@@ -581,7 +581,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._voltage_controler = None
 
         # backend action
-        self._backend_action_class : type = None
+        self._backend_action_class : type[_BackendAction] = None
         self._backend_action : _BackendAction = None
 
         # specific to Basic Env, do not change
@@ -1537,6 +1537,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._cst_prev_state_at_init.prevent_modification()
         # update backend_action with the "last known" state
         self._backend_action.last_topo_registered.values[:] = self._previous_conn_state._topo_vect
+        self._backend_action._needs_active_bus = self.backend._needs_active_bus
         
     def _update_parameters(self):
         """update value for the new parameters"""
@@ -2070,17 +2071,17 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         return new_p
 
     def _get_already_modified_gen(self, action):
-
-        redisp_act_orig = 1.0 * action._redispatch
+        redisp_act_orig = action._redispatch
+        is_redisped = np.abs(redisp_act_orig) > 1e-7
         self._target_dispatch[self._already_modified_gen] += redisp_act_orig[self._already_modified_gen]
-        first_modified = (~self._already_modified_gen) & (redisp_act_orig != 0)
+        first_modified = (~self._already_modified_gen) & is_redisped
         self._target_dispatch[first_modified] = (
             self._actual_dispatch[first_modified] + redisp_act_orig[first_modified]
         )
-        self._already_modified_gen[redisp_act_orig != 0] = True
+        self._already_modified_gen[is_redisped] = True
         return self._already_modified_gen
 
-    def _prepare_redisp(self, action, new_p, already_modified_gen):
+    def _prepare_redisp(self, action: BaseAction, new_p, already_modified_gen):
         cls = type(self)
         # trying with an optimization method
         except_ = None
@@ -2088,14 +2089,21 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         valid = True
 
         # get the redispatching action (if any)
-        redisp_act_orig = 1.0 * action._redispatch
-
+        if action._modif_redispatch:
+            redisp_act_orig = action._redispatch.copy()
+        else:
+            redisp_act_orig = None
+            
         if (
-            np.all(np.abs(redisp_act_orig) <= 1e-7)
-            and np.all(np.abs(self._target_dispatch) <= 1e-7)
-            and np.all(np.abs(self._actual_dispatch) <= 1e-7)
+            (redisp_act_orig is not None and (np.abs(redisp_act_orig) <= 1e-7).all())
+            and (np.abs(self._target_dispatch) <= 1e-7).all()
+            and (np.abs(self._actual_dispatch) <= 1e-7).all()
         ):
             return valid, except_, info_
+        
+        if redisp_act_orig is None:
+            redisp_act_orig = type(action)._build_attr("_redispatch")
+            
         # check that everything is consistent with pmin, pmax:
         if (self._target_dispatch > cls.gen_pmax - cls.gen_pmin).any():
             # action is invalid, the target redispatching would be above pmax for at least a generator
@@ -2132,7 +2140,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             return valid, except_, info_
 
         if self._forbid_dispatch_off:
-            redisp_act_orig_cut = 1.0 * redisp_act_orig
+            redisp_act_orig_cut = redisp_act_orig.copy()
             redisp_act_orig_cut[np.abs(new_p) <= 1e-7] = 0.0
             if (redisp_act_orig_cut != redisp_act_orig).any():
                 info_.append(
@@ -2584,9 +2592,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         # get the generators that are not connected after the action
         except_ = None
-
+        cls = type(self)
         # computes which generator will be turned on after the action
-        gen_up_after = 1.0 * self._gen_activeprod_t
+        gen_up_after = self._gen_activeprod_t.copy()
         if "prod_p" in self._env_modification._dict_inj:
             tmp = self._env_modification._dict_inj["prod_p"]
             indx_ok = np.isfinite(tmp)
@@ -2600,16 +2608,16 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         gen_still_connected = gen_up_before & gen_up_after
         gen_still_disconnected = (~gen_up_before) & (~gen_up_after)
 
-        if ((
+        if (not self._ignore_min_up_down_times and
+            (
                 self._gen_downtime[gen_connected_this_timestep]
-                < self.gen_min_downtime[gen_connected_this_timestep]
+                < cls.gen_min_downtime[gen_connected_this_timestep]
             ).any()
-            and not self._ignore_min_up_down_times
         ):
             # i reconnected a generator before the minimum time allowed
             id_gen = (
                 self._gen_downtime[gen_connected_this_timestep]
-                < self.gen_min_downtime[gen_connected_this_timestep]
+                < cls.gen_min_downtime[gen_connected_this_timestep]
             )
             id_gen = (id_gen).nonzero()[0]
             id_gen = (gen_connected_this_timestep[id_gen]).nonzero()[0]
@@ -2619,19 +2627,18 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             return except_
         else:
             self._gen_downtime[gen_connected_this_timestep] = -1
-            self._gen_uptime[gen_connected_this_timestep] = 1
+            self._gen_uptime[gen_connected_this_timestep] = 0
 
-        if (
+        if (not self._ignore_min_up_down_times and 
             (
                 self._gen_uptime[gen_disconnected_this]
-                < self.gen_min_uptime[gen_disconnected_this]
+                < cls.gen_min_uptime[gen_disconnected_this]
             ).any()
-            and not self._ignore_min_up_down_times
         ):
             # i disconnected a generator before the minimum time allowed
             id_gen = (
                 self._gen_uptime[gen_disconnected_this]
-                < self.gen_min_uptime[gen_disconnected_this]
+                < cls.gen_min_uptime[gen_disconnected_this]
             )
             id_gen = (id_gen).nonzero()[0]
             id_gen = (gen_connected_this_timestep[id_gen]).nonzero()[0]
@@ -2640,8 +2647,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             )
             return except_
         else:
-            self._gen_downtime[gen_connected_this_timestep] = 0
-            self._gen_uptime[gen_connected_this_timestep] = 1
+            self._gen_downtime[gen_disconnected_this] = 0
+            self._gen_uptime[gen_disconnected_this] = -1
 
         self._gen_uptime[gen_still_connected] += 1
         self._gen_downtime[gen_still_disconnected] += 1
