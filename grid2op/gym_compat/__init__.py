@@ -28,10 +28,10 @@ if GYM_AVAILABLE is False and GYMNASIUM_AVAILABLE is False:
 # base for all gymnasium / gym converter
 from grid2op.gym_compat.base_gym_attr_converter import BaseGymAttrConverter
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.base_gym_attr_converter import BaseGymnasiumAttrConverter
+    from grid2op.gym_compat.base_gym_attr_converter import BaseGymnasiumAttrConverter  # noqa: F401
     __all__.append("BaseGymnasiumAttrConverter")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.base_gym_attr_converter import BaseLegacyGymAttrConverter
+    from grid2op.gym_compat.base_gym_attr_converter import BaseLegacyGymAttrConverter  # noqa: F401
     __all__.append("BaseLegacyGymAttrConverter")
 
 # the environment (by default with dict encoding)
@@ -55,81 +55,81 @@ else:
 # action space (as Dict)
 from grid2op.gym_compat.gym_act_space import GymActionSpace
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.gym_act_space import GymnasiumActionSpace
+    from grid2op.gym_compat.gym_act_space import GymnasiumActionSpace  # noqa: F401
     __all__.append("GymnasiumActionSpace")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.gym_act_space import LegacyGymActionSpace
+    from grid2op.gym_compat.gym_act_space import LegacyGymActionSpace  # noqa: F401
     __all__.append("LegacyGymActionSpace")
     
 # observation space (as Dict)
 from grid2op.gym_compat.gym_obs_space import GymObservationSpace
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.gym_obs_space import GymnasiumObservationSpace
+    from grid2op.gym_compat.gym_obs_space import GymnasiumObservationSpace  # noqa: F401
     __all__.append("GymnasiumObservationSpace")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.gym_obs_space import LegacyGymObservationSpace
+    from grid2op.gym_compat.gym_obs_space import LegacyGymObservationSpace  # noqa: F401
     __all__.append("LegacyGymObservationSpace")
     
 from grid2op.gym_compat.scaler_attr_converter import ScalerAttrConverter
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.scaler_attr_converter import ScalerAttrConverterGymnasium
+    from grid2op.gym_compat.scaler_attr_converter import ScalerAttrConverterGymnasium  # noqa: F401
     __all__.append("ScalerAttrConverterGymnasium")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.scaler_attr_converter import ScalerAttrConverterLegacyGym
+    from grid2op.gym_compat.scaler_attr_converter import ScalerAttrConverterLegacyGym  # noqa: F401
     __all__.append("ScalerAttrConverterLegacyGym")
 
 
 from grid2op.gym_compat.multi_to_tuple_converter import MultiToTupleConverter
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.multi_to_tuple_converter import MultiToTupleConverterGymnasium
+    from grid2op.gym_compat.multi_to_tuple_converter import MultiToTupleConverterGymnasium  # noqa: F401
     __all__.append("MultiToTupleConverterGymnasium")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.multi_to_tuple_converter import MultiToTupleConverterLegacyGym
+    from grid2op.gym_compat.multi_to_tuple_converter import MultiToTupleConverterLegacyGym  # noqa: F401
     __all__.append("MultiToTupleConverterLegacyGym")
     
 
 from grid2op.gym_compat.continuous_to_discrete import ContinuousToDiscreteConverter
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.continuous_to_discrete import ContinuousToDiscreteConverterGymnasium
+    from grid2op.gym_compat.continuous_to_discrete import ContinuousToDiscreteConverterGymnasium  # noqa: F401
     __all__.append("ContinuousToDiscreteConverterGymnasium")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.continuous_to_discrete import ContinuousToDiscreteConverterLegacyGym
+    from grid2op.gym_compat.continuous_to_discrete import ContinuousToDiscreteConverterLegacyGym  # noqa: F401
     __all__.append("ContinuousToDiscreteConverterLegacyGym")
    
 # observation space (as Box)
 from grid2op.gym_compat.box_gym_obsspace import BoxGymObsSpace
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.box_gym_obsspace import BoxGymnasiumObsSpace
+    from grid2op.gym_compat.box_gym_obsspace import BoxGymnasiumObsSpace  # noqa: F401
     __all__.append("BoxGymnasiumObsSpace")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.box_gym_obsspace import BoxLegacyGymObsSpace
+    from grid2op.gym_compat.box_gym_obsspace import BoxLegacyGymObsSpace  # noqa: F401
     __all__.append("BoxLegacyGymObsSpace")
 
 
 from grid2op.gym_compat.box_gym_actspace import BoxGymActSpace
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.box_gym_actspace import BoxGymnasiumActSpace
+    from grid2op.gym_compat.box_gym_actspace import BoxGymnasiumActSpace  # noqa: F401
     __all__.append("BoxGymnasiumActSpace")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.box_gym_actspace import BoxLegacyGymActSpace
+    from grid2op.gym_compat.box_gym_actspace import BoxLegacyGymActSpace  # noqa: F401
     __all__.append("BoxLegacyGymActSpace")
 
 
 from grid2op.gym_compat.multidiscrete_gym_actspace import MultiDiscreteActSpace
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.multidiscrete_gym_actspace import MultiDiscreteActSpaceGymnasium
+    from grid2op.gym_compat.multidiscrete_gym_actspace import MultiDiscreteActSpaceGymnasium  # noqa: F401
     __all__.append("MultiDiscreteActSpaceGymnasium")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.multidiscrete_gym_actspace import MultiDiscreteActSpaceLegacyGym
+    from grid2op.gym_compat.multidiscrete_gym_actspace import MultiDiscreteActSpaceLegacyGym  # noqa: F401
     __all__.append("MultiDiscreteActSpaceLegacyGym")
     
 
 from grid2op.gym_compat.discrete_gym_actspace import DiscreteActSpace
 if GYMNASIUM_AVAILABLE:
-    from grid2op.gym_compat.discrete_gym_actspace import DiscreteActSpaceGymnasium
+    from grid2op.gym_compat.discrete_gym_actspace import DiscreteActSpaceGymnasium  # noqa: F401
     __all__.append("DiscreteActSpaceGymnasium")
 if GYM_AVAILABLE:
-    from grid2op.gym_compat.discrete_gym_actspace import DiscreteActSpaceLegacyGym
+    from grid2op.gym_compat.discrete_gym_actspace import DiscreteActSpaceLegacyGym  # noqa: F401
     __all__.append("DiscreteActSpaceLegacyGym")
 
 

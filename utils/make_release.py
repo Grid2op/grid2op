@@ -101,15 +101,25 @@ if __name__ == "__main__":
             old_init = f.read()
             
         if not os.path.exists(setup_path):
-            raise RuntimeError(
-                "script \"update_version\" cannot find the root path of Grid2op. "
-                "Please provide a valid \"--path\" argument.")
-        with open(setup_path, "r") as f:
-            new_setup = f.read()
-        try:
-            old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
-        except Exception as e:
-            raise RuntimeError("Impossible to find the old version number. Stopping here")
+            # no setup.py in new grid2op
+            does_setup_exists = False
+            with open(grid2op_init, "r") as f:
+                new_setup = f.read()
+            try:
+                old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
+            except Exception as e:
+                raise RuntimeError("Impossible to find the old version number. Stopping here") from e
+            # raise RuntimeError(
+            #     "script \"update_version\" cannot find the root path of Grid2op. "
+            #     "Please provide a valid \"--path\" argument.")
+        else:
+            does_setup_exists = True
+            with open(setup_path, "r") as f:
+                new_setup = f.read()
+            try:
+                old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
+            except Exception as e:
+                raise RuntimeError("Impossible to find the old version number. Stopping here") from e
         
         old_version = re.sub("__version__ = ", "", old_version)
         old_version = re.sub("'", "", old_version)
@@ -126,11 +136,13 @@ if __name__ == "__main__":
                            "version='{}'".format(version),
                            new_setup)
         
-        with open(setup_path, "w") as f:
-            f.write(new_setup)
+        if does_setup_exists:
+            # setup.py exists
+            with open(setup_path, "w") as f:
+                f.write(new_setup)
 
-        # Stage in git
-        start_subprocess_print(["git", "add", setup_path])
+            # Stage in git
+            start_subprocess_print(["git", "add", setup_path])
 
         # grid2op/__init__.py
         with open(grid2op_init, "r") as f:

@@ -19,9 +19,38 @@ from grid2op.Environment import BaseEnv
 
 # NB: as PST are not handled (yet, any contribution welcomed) in grid2op
 # this agent is for now limited to environment using pandapower backend.
+from pandapower import pandapowerNet
 
 
 class AgentRandomPST(BaseAgent):
+    """
+    This agent will perform random action on PST (Phase Shifting Transformer).
+    
+    You can use it with grid2op >= 1.12.1
+    """
+    def __init__(self,
+                 action_space: ActionSpace):
+        super().__init__(action_space)
+    
+    def act(self, observation, reward, done = False):
+        act = super().act(observation, reward, done)
+        
+        def callback(grid: pandapowerNet):
+            which_trafo = self.space_prng.randint(grid.trafo["tap_phase_shifter"].sum())
+            trafo_pst_ids = grid.trafo["tap_phase_shifter"].values.nonzero()[0]
+            trafo_id = trafo_pst_ids[which_trafo]
+            which_tap = self.space_prng.choice([-2, -1, 0, 1, 2], size=1)[0]
+            grid.trafo.loc[trafo_id, "tap_pos"] = which_tap
+        
+        act.backend_dependant_callback = callback
+        return act
+    
+    
+# DEPRECATED
+class AgentRandomPST_DEPRECATED(BaseAgent):
+    """This is a way to do it if you don't have grid2op 1.12.1 or later.
+    We recommend you to upgrade grid2op if that is the case
+    """
     def __init__(self,
                  action_space: ActionSpace,
                  env: BaseEnv):
@@ -37,6 +66,5 @@ class AgentRandomPST(BaseAgent):
         
         which_tap = self.space_prng.choice([-2, -1, 0, 1, 2], size=1)[0]
         self._backend._grid.trafo.loc[trafo_id, "tap_pos"] = which_tap
-        print(f"{trafo_id=}, {which_tap=}")
         # return the base grid2op action (do nothing in this case)
         return super().act(observation, reward, done)

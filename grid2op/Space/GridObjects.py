@@ -29,7 +29,24 @@ from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tu
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
-from grid2op.Exceptions import *
+from grid2op.Exceptions import (
+    Grid2OpException,
+    AmbiguousAction,
+    IncorrectNumberOfElements,
+    EnvError,
+    NonFiniteElement,
+    IncorrectNumberOfLoads,
+    IncorrectNumberOfGenerators,
+    IncorrectNumberOfLines,
+    IncorrectNumberOfStorages,
+    BackendError,
+    IncorrectNumberOfSubstation,
+    IncorrectPositionOfLoads,
+    IncorrectPositionOfGenerators,
+    IncorrectPositionOfLines,
+    IncorrectPositionOfStorages,
+    InvalidRedispatching,
+)
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
 from grid2op.Space.detailed_topo_description import DetailedTopoDescription
 from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
@@ -1508,7 +1525,7 @@ class GridObjects:
             except Exception as e:
                 raise EnvError(
                     "self.storage_to_subid should be convertible to a numpy array"
-                )
+                ) from e
 
         # now check the sizes
         if len(cls.load_to_subid) != cls.n_load:
@@ -1671,7 +1688,7 @@ class GridObjects:
                 cls.name_line = cls.name_line.astype(str)
             except Exception as exc_:
                 raise EnvError(
-                    f"self.name_line should be convertible to a numpy array of type str"
+                    "self.name_line should be convertible to a numpy array of type str"
                 ) from exc_
         if not isinstance(cls.name_load, np.ndarray):
             try:
@@ -2642,7 +2659,7 @@ class GridObjects:
             except Exception as exc:
                 raise EnvError(
                     'name_shunt should be convertible to a numpy array with dtype "str".'
-                )
+                ) from exc
 
         if not isinstance(cls.shunt_to_subid, np.ndarray):
             try:
@@ -2651,7 +2668,7 @@ class GridObjects:
             except Exception as e:
                 raise EnvError(
                     'shunt_to_subid should be convertible to a numpy array with dtype "int".'
-                )
+                ) from e
 
         if cls.name_shunt.shape[0] != cls.n_shunt:
             raise IncorrectNumberOfElements(
@@ -2809,7 +2826,7 @@ class GridObjects:
             )
 
         for el in cls.gen_type:
-            if not el in ["solar", "wind", "hydro", "thermal", "nuclear"]:
+            if el not in ["solar", "wind", "hydro", "thermal", "nuclear"]:
                 raise InvalidRedispatching("Unknown generator type : {}".format(el))
 
         if (cls.gen_pmin < 0.0).any():
@@ -2920,6 +2937,18 @@ class GridObjects:
         cls.env_name = name
 
     @classmethod
+    def _aux_finish_init_grid_from_file(cls):
+        # used in the _aux_init_grid_from_cls
+        # do not forget to create the cls_dict once and for all
+        if cls._CLS_DICT is None:
+            tmp = {}
+            cls._make_cls_dict_extended(cls, tmp, as_list=False)
+
+        cls._compute_pos_big_topo_cls()
+        cls.process_shunt_static_data()
+        cls.process_detachment()
+        
+    @classmethod
     def _aux_init_grid_from_cls(cls, gridobj, name_res):
         import importlib
         # NB: these imports needs to be consistent with what is done in
@@ -2937,11 +2966,9 @@ class GridObjects:
             super_module_nm = super_supermodule
         
         if f"{module_nm}.{name_res}_file" in sys.modules:
-            cls_res = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
+            cls_res : Type[GridObjects]  = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
             # do not forget to create the cls_dict once and for all
-            if cls_res._CLS_DICT is None:
-                tmp = {}
-                cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
+            cls_res._aux_finish_init_grid_from_file()
             return cls_res
         
         super_module = importlib.import_module(module_nm, super_module_nm)  # env/path/_grid2op_classes/
@@ -2953,15 +2980,8 @@ class GridObjects:
             importlib.invalidate_caches()
             importlib.reload(super_module)
             module = importlib.import_module(f".{name_res}_file", package=module_nm)
-        cls_res = getattr(module, name_res)
-        # do not forget to create the cls_dict once and for all
-        if cls_res._CLS_DICT is None:
-            tmp = {}
-            cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
-
-        cls_res._compute_pos_big_topo_cls()
-        cls_res.process_shunt_static_data()
-        cls_res.process_detachment()
+        cls_res : Type[GridObjects] = getattr(module, name_res)
+        cls_res._aux_finish_init_grid_from_file()
         return cls_res
     
     @classmethod
@@ -3061,8 +3081,8 @@ class GridObjects:
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
-        res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
+        res_cls.process_shunt_static_data()
         
         res_cls.process_detachment()
             

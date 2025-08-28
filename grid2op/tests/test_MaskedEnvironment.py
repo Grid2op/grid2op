@@ -65,7 +65,7 @@ class TestMaskedEnvironment(unittest.TestCase):
         assert not self.env_out._lines_of_interest[self.line_id], "line_id should not be in env_out"
     
     def test_ok(self):
-        act = self.env_in.action_space()
+        act = self.env_in.action_space()  # pylint: disable=not-callable
         for i in range(10):
             obs_in, reward, done, info = self.env_in.step(act)
             obs_out, reward, done, info = self.env_out.step(act)

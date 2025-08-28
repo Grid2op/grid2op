@@ -1187,7 +1187,7 @@ class TestMissingData(HelperTests, unittest.TestCase):
                 obs = env.reset()
 
                 # check that simulate is working
-                simul_obs, *_ = obs.simulate(env.action_space())
+                simul_obs, *_ = obs.simulate(env.action_space())  # pylint: disable=not-callable
                 # check that load_p is indeed modified
                 assert np.all(
                     simul_obs.load_p

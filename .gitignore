@@ -427,6 +427,26 @@ grid2op/tests/test_topo_ampl2/
 venv_312
 venv_*
 grid2op/tests/internal_*.pickle
+grid2op_test_issue_discord.ipynb
+grid2op_test_issue_discord_orig.ipynb
+grid_bug_pp3.json
+grid_bug_pp3_3.json
+grid_bug_pp3_3_orig.json
+issue_new_pp.py
+log.txt
+venv_*/**
+TestLM.ipynb
+bug_pp3.py
+bug_pp3_repro.py
+change_file_mode.py
+file_changed.txt
+test_ljn_theta.py
+test_multiproc_shared_act.py
+saved_MANIFEST.in
+saved_setup.cfg
+saved_setup.py
+requirements_pp2.txt
+requirements_pp3.txt
 
 # profiling files
 **.prof

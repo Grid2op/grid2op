@@ -66,6 +66,7 @@ __all__ = [
     "SomeGeneratorAboveRampmax", 
     "SomeGeneratorBelowRampmin",
     "ImpossibleRedispatching",
+    "InvalidBackendCallback",
 ]
 
 from grid2op.Exceptions.grid2OpException import Grid2OpException
@@ -116,7 +117,8 @@ from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
                                                           InvalidStorage,
                                                           AmbiguousAction,
                                                           NonFiniteElement,
-                                                          AmbiguousActionRaiseAlert)
+                                                          AmbiguousActionRaiseAlert,
+                                                          InvalidBackendCallback)
 
 from grid2op.Exceptions.observationExceptions import (BaseObservationError,
                                                       NoForecastAvailable,

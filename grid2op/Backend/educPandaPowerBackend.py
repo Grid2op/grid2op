@@ -97,6 +97,8 @@ class EducPandaPowerBackend(Backend):
         # NB: this instance of backend is here for academic purpose only. For clarity, it does not handle
         # neither shunt nor storage unit.
         self.shunts_data_available = False
+        
+        self._needs_active_bus = True
 
     ####### load the grid
     def load_grid(self,

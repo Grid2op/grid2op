@@ -7,16 +7,20 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
-from typing import Optional, Type, Union
+from typing import Optional, Type, Union, TYPE_CHECKING
 import numpy as np
 from grid2op.Space import GridObjects
-import grid2op.Backend
 from grid2op.dtypes import dt_int
 from grid2op.typing_variables import CLS_AS_DICT_TYPING
 from grid2op.Exceptions import Grid2OpException
 
+if TYPE_CHECKING:
+    from grid2op.Backend import Backend
+
 
 class _EnvPreviousState(object):
+    ERR_MSG_IMP_MODIF = "Impossible to modifiy this _EnvPreviousState"
+    
     def __init__(self,
                  grid_obj_cls: Union[Type[GridObjects], CLS_AS_DICT_TYPING],
                  init_load_p : np.ndarray,
@@ -28,7 +32,7 @@ class _EnvPreviousState(object):
                  init_shunt_p : np.ndarray,
                  init_shunt_q : np.ndarray,
                  init_shunt_bus : np.ndarray,
-                 init_switch_state: Optional[np.ndarray]):
+                 init_switch_state: Optional[np.ndarray]=None):
         self._can_modif = True
         if isinstance(grid_obj_cls, type):
             self._grid_obj_cls : CLS_AS_DICT_TYPING = grid_obj_cls.cls_to_dict()
@@ -77,7 +81,7 @@ class _EnvPreviousState(object):
                switches : Optional[np.ndarray],
                ):
         if not self._can_modif:
-            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException(type(self).ERR_MSG_IMP_MODIF)
         
         self._aux_update(topo_vect[self._grid_obj_cls["load_pos_topo_vect"]],
                          self._load_p,
@@ -115,9 +119,9 @@ class _EnvPreviousState(object):
                 raise Grid2OpException("No new switch values to update previous values")
                     
     def update_from_backend(self,
-                            backend: "grid2op.Backend.Backend"):
+                            backend: "Backend"):
         if not self._can_modif:
-            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException(type(self).ERR_MSG_IMP_MODIF)
         topo_vect = backend.get_topo_vect()
         load_p, load_q, *_ = backend.loads_info()
         gen_p, gen_q, gen_v = backend.generators_info()
@@ -146,7 +150,8 @@ class _EnvPreviousState(object):
     def update_from_other(self, 
                           other : "_EnvPreviousState"):
         if not self._can_modif:
-            raise Grid2OpException("Impossible to modifiy this _EnvPreviousState")
+            raise Grid2OpException(type(self).ERR_MSG_IMP_MODIF)
+        
         for attr_nm in ["_load_p",
                         "_load_q",
                         "_gen_p",
@@ -208,4 +213,3 @@ class _EnvPreviousState(object):
         arr1[el_co] = 1. * arr1_new[el_co]
         if arr2 is not None:
             arr2[el_co] = 1. * arr2_new[el_co]
-        

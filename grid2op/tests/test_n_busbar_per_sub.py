@@ -8,7 +8,7 @@
 
 import warnings
 import unittest
-from grid2op.Exceptions.illegalActionExceptions import IllegalAction
+import numpy as np
 from grid2op.tests.helper_path_test import *
 
 import grid2op
@@ -72,14 +72,17 @@ class TestRightNumberNbBus(unittest.TestCase):
         
     def test_fail_if_not_int(self):
         with self.assertRaises(Grid2OpException):
-            env = grid2op.make("l2rpn_case14_sandbox", backend=_AuxFakeBackendSupport(), test=True, n_busbar="froiy", _add_to_name=type(self).__name__+"_wrong_str")
+            _ = grid2op.make("l2rpn_case14_sandbox", backend=_AuxFakeBackendSupport(), test=True, n_busbar="froiy", _add_to_name=type(self).__name__+"_wrong_str")
         with self.assertRaises(Grid2OpException):
-            env = grid2op.make("l2rpn_case14_sandbox", backend=_AuxFakeBackendSupport(), test=True, n_busbar=3.5, _add_to_name=type(self).__name__+"_wrong_float")
+            _ = grid2op.make("l2rpn_case14_sandbox", backend=_AuxFakeBackendSupport(), test=True, n_busbar=3.5, _add_to_name=type(self).__name__+"_wrong_float")
             
     def test_regular_env(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            env = grid2op.make("l2rpn_case14_sandbox", backend=_AuxFakeBackendSupport(), test=True, _add_to_name=type(self).__name__+"_2")
+            env = grid2op.make("l2rpn_case14_sandbox",
+                               backend=_AuxFakeBackendSupport(),
+                               test=True,
+                               _add_to_name=type(self).__name__+"_2")
         self._aux_fun_test(env, DEFAULT_N_BUSBAR_PER_SUB)
         
         with warnings.catch_warnings():
@@ -504,6 +507,7 @@ class TestAction_3busbars(unittest.TestCase):
         else:
             # el not in topo vect (eg shunt)
             assert "shunt" in act_as_dict
+            assert "shunt_bus" in act_as_dict["shunt"]
             tmp = act_as_dict["shunt"]["shunt_bus"]
             assert tmp[el_id] == bus_val
 
@@ -517,6 +521,7 @@ class TestAction_3busbars(unittest.TestCase):
         else:
             # shunts of other things not in the topo vect
             assert "shunt" in act_as_dict
+            assert "shunt_bus" in act_as_dict["shunt"]
             tmp = act_as_dict["shunt"]["shunt_bus"]
             assert tmp == [(nm_els[el_id], bus_val)]
     
@@ -624,7 +629,7 @@ class TestAction_3busbars(unittest.TestCase):
             self._aux_test_action_shunt(act, el_id, bus_val + 1)
             
         act = self.env.action_space()
-        with self.assertRaises(IllegalAction):
+        with self.assertRaises(AmbiguousAction):
             act = self.env.action_space({"shunt": {"set_bus": [(el_id, type(self.env).n_busbar_per_sub + 1)]}})
 
 

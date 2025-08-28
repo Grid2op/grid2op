@@ -107,7 +107,7 @@ class TestAlertNoBlackout(unittest.TestCase):
             attackable_line_id=0
             step = 0
             for i in range(env.max_episode_duration()):
-                act = env.action_space()
+                act = env.action_space()  # pylint: disable=not-callable
                 if step == 1 :
                     act = env.action_space({"raise_alert": [attackable_line_id]})
                 obs, reward, done, info = env.step(act)
@@ -640,12 +640,10 @@ class TestAlertNoBlackout(unittest.TestCase):
             try : 
                 act = env.action_space({"raise_alert": [attackable_line_id]})
             except Grid2OpException as exc_ : 
-                assert exc_.args[0] == ('Impossible to modify the alert with your input. '
-                                        'Please consult the documentation. The error '
-                                        'was:\n"Grid2OpException AmbiguousAction '
-                                        '"Impossible to change a raise alert id 10 '
-                                        'because there are only 10 on the grid (and in '
-                                        'python id starts at 0)""')
+                assert exc_.args[0] == ('Impossible to modify the alert with your input. Please consult the '
+                                        'documentation. The error was:\n"Grid2OpException AmbiguousAction '
+                                        '"Impossible to change a raise alert id 10 because there are only '
+                                        '10 on the grid (and in python id starts at 0)""')
 
 
 class TestAlertBlackout(unittest.TestCase):
@@ -902,7 +900,7 @@ class TestAlertBlackout(unittest.TestCase):
                     act = self.get_blackout(env)
                 elif i == 2:
                     # attack at step 3, so when i = 2 (which is the right time to send an alert)
-                    act = env.action_space({"raise_alert": [0,1]})
+                    act = env.action_space({"raise_alert": [0,1]})  # pylint: disable=not-callable
                 obs, reward, done, info = env.step(act)
                 step += 1
                 

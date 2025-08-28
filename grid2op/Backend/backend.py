@@ -7,7 +7,6 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
-from logging import warn, warning
 import os
 import warnings
 import json
@@ -15,15 +14,14 @@ import json
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional, Any, Dict, Type, Union
-
+from typing import Tuple, Optional, Any, Dict, Type, Union, TYPE_CHECKING
+    
 try:
     from typing import Self
 except ImportError:
     # python version is probably bellow 3.11
     from typing_extensions import Self # type: ignore
     
-import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import (
     EnvError,
@@ -34,7 +32,6 @@ from grid2op.Exceptions import (
     IncorrectNumberOfLines,
     Grid2OpException,
 )
-import grid2op.Environment  # for type hints
 from grid2op.Space import (GridObjects,
                            ElTypeInfo,
                            DEFAULT_N_BUSBAR_PER_SUB,
@@ -42,10 +39,14 @@ from grid2op.Space import (GridObjects,
                            DEFAULT_BK_CAN_MANIPULATE_SWITCH,
                            DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER,
                            )
-import grid2op.Observation  # for type hints
-import grid2op.Action  # for type hints
-import grid2op.Action._BackendAction  # for type hints
 
+if TYPE_CHECKING:
+    # for type hints to avoid circular import
+    from grid2op.Action._backendAction import _BackendAction
+    from grid2op.Environment import BaseEnv  
+    from grid2op.Action import CompleteAction
+    from grid2op.Observation import CompleteObservation
+    
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
 class Backend(GridObjects, ABC):
@@ -125,8 +126,8 @@ class Backend(GridObjects, ABC):
     IS_BK_CONVERTER : bool = False
     
     # action to set me
-    my_bk_act_class : "Optional[Type[grid2op.Action._BackendAction._BackendAction]]" = None
-    _complete_action_class : "Optional[Type[grid2op.Action.CompleteAction]]" = None
+    my_bk_act_class : "Optional[Type[_BackendAction]]" = None
+    _complete_action_class : "Optional[Type[CompleteAction]]" = None
 
     ERR_INIT_POWERFLOW : str = "Power cannot be computed on the first time step, please check your data."
     ERR_DETACHMENT : str = ("One or more {} were isolated from the grid "
@@ -198,14 +199,20 @@ class Backend(GridObjects, ABC):
         self.detachment_is_allowed : bool = DEFAULT_ALLOW_DETACHMENT
         
         #: .. versionadded: 1.11.0
-        self._load_bus_target = None
-        self._gen_bus_target = None
-        self._storage_bus_target = None
-        self._shunt_bus_target = None
+        self._load_bus_target : Optional[np.ndarray]= None
+        self._gen_bus_target : Optional[np.ndarray] = None
+        self._storage_bus_target : Optional[np.ndarray] = None
+        self._shunt_bus_target : Optional[np.ndarray] = None
         
         #: .. versionadded: 1.11.0
         #: will be used later on in future grid2op version
-        self._prevent_automatic_disconnection = True
+        self._prevent_automatic_disconnection : bool = True
+        
+        #: speed optimization to avoid np.full, which is rather slow
+        self._disconnected_during_cf = None
+    
+        #: speed optimization: avoid to compute some data not used in general
+        self._needs_active_bus = False
         
         #: ..versionadded: SWITCH_VERSION
         #: TODO detailed topo
@@ -333,7 +340,7 @@ class Backend(GridObjects, ABC):
                           "'fix' this issue, you need to change the implementation of your backend or "
                           "upgrade it to a newer version.")
         self.n_busbar_per_sub = DEFAULT_N_BUSBAR_PER_SUB
-
+        
     def can_handle_detachment(self):
         """
         .. versionadded:: 1.11.0
@@ -511,7 +518,7 @@ class Backend(GridObjects, ABC):
         """
         pass
 
-    def apply_action_public(self, backend_action: Union["grid2op.Action._backendAction._BackendAction", None]) -> None:
+    def apply_action_public(self, backend_action: Union["_BackendAction", None]) -> None:
         """
         INTERNAL
 
@@ -535,7 +542,7 @@ class Backend(GridObjects, ABC):
             topo__,
             shunts__,
         ) = backend_action()
-        
+                
         # store the states
         loads_bus = backend_action.get_loads_bus()
         self._load_bus_target.flags.writeable = True
@@ -557,7 +564,7 @@ class Backend(GridObjects, ABC):
             self._shunt_bus_target.flags.writeable = True
             self._shunt_bus_target[shunts_bus.changed] = shunts_bus.values[shunts_bus.changed]
             self._shunt_bus_target.flags.writeable = False
-            
+        
         return self.apply_action(backend_action)
         
     def update_bus_target_after_pf(self, loads_bus, gens_bus, stos_bus, shunt_bus=None):
@@ -596,7 +603,7 @@ class Backend(GridObjects, ABC):
             
         
     @abstractmethod
-    def apply_action(self, backend_action: "grid2op.Action._backendAction._BackendAction") -> None:
+    def apply_action(self, backend_action: "_BackendAction") -> None:
         """
         INTERNAL
 
@@ -619,7 +626,7 @@ class Backend(GridObjects, ABC):
         Or it can also affect production and loads, if the action is made by the environment.
 
         :param backendAction: the action to be implemented on the powergrid.
-        :type action: :class:`grid2op.Action._BackendAction._BackendAction`
+        :type action: :class:`grid2op.Action._backendAction._BackendAction`
 
         :return: ``None``
         """
@@ -971,6 +978,8 @@ class Backend(GridObjects, ABC):
         res._storage_bus_target = copy.deepcopy(self._storage_bus_target)
         res._shunt_bus_target = copy.deepcopy(self._shunt_bus_target)
         res._prevent_automatic_disconnection = copy.deepcopy(self._prevent_automatic_disconnection)
+        res._needs_active_bus = self._needs_active_bus
+        res._disconnected_during_cf = copy.deepcopy(self._disconnected_during_cf)
         return res
     
     def copy(self) -> Self:
@@ -1182,7 +1191,7 @@ class Backend(GridObjects, ABC):
         thermal_limit_a = np.array(thermal_limit_a).astype(dt_float)
         self.thermal_limit_a[:] = thermal_limit_a
     
-    def update_thermal_limit(self, env : "grid2op.Environment.BaseEnv") -> None:
+    def update_thermal_limit(self, env : "BaseEnv") -> None:
         """
         INTERNAL
 
@@ -1400,9 +1409,9 @@ class Backend(GridObjects, ABC):
 
         """
         my_cls = type(self)
-        action = my_cls._complete_action_class()
-        action.update({"set_line_status": [(id_, -1)]})
-        bk_act = my_cls.my_bk_act_class()
+        action = my_cls._complete_action_class()  # pylint: disable=not-callable
+        action.update({"set_line_status": [(id_, -1)]})  
+        bk_act = my_cls.my_bk_act_class()  # pylint: disable=not-callable
         bk_act += action
         self.apply_action_public(bk_act)
 
@@ -1461,6 +1470,7 @@ class Backend(GridObjects, ABC):
                                         "`detachment_is_allowed` is False but only if the don't produce / absorb active power."))
             else:
                 sto_maybe_error = None
+                
             # additional check: if the backend detach some things incorrectly
             if cls.detachment_is_allowed:
                 # if the backend automatically disconnect things, I need to catch them
@@ -1523,7 +1533,7 @@ class Backend(GridObjects, ABC):
                                     f"named {cls.name_storage[issue.nonzero()[0]]}")
                 
     def next_grid_state(self,
-                        env: "grid2op.Environment.BaseEnv",
+                        env: "BaseEnv",
                         is_dc: Optional[bool]=False):
         """
         INTERNAL
@@ -1556,13 +1566,13 @@ class Backend(GridObjects, ABC):
 
         """
         infos = []
-        disconnected_during_cf = np.full(type(self).n_line, fill_value=-1, dtype=dt_int)
+        self._disconnected_during_cf[:] = -1
         conv_ = self._runpf_with_diverging_exception(is_dc)
         if env._no_overflow_disconnection or conv_ is not None:
-            return disconnected_during_cf, infos, conv_
+            return self._disconnected_during_cf, infos, conv_
 
         # the environment disconnect some powerlines
-        protection_counter = copy.deepcopy(env._protection_counter)
+        protection_counter = 1 * env._protection_counter
         counter_increased = np.zeros_like(protection_counter, dtype=dt_bool)
         iter_num = 0
         while True:
@@ -1595,7 +1605,7 @@ class Backend(GridObjects, ABC):
                 # no powerlines have been disconnected at this time step, 
                 # i stop the computation there
                 break
-            disconnected_during_cf[to_disc] = iter_num
+            self._disconnected_during_cf[to_disc] = iter_num
             
             # perform the disconnection action
             for i, el in enumerate(to_disc):
@@ -1610,7 +1620,7 @@ class Backend(GridObjects, ABC):
             if conv_ is not None:
                 break
             iter_num += 1
-        return disconnected_during_cf, infos, conv_
+        return self._disconnected_during_cf, infos, conv_
 
     def storages_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -1995,7 +2005,8 @@ class Backend(GridObjects, ABC):
                 raise BackendError(
                     f"Impossible to load the redispatching data. The generator {i} with name {gen_nm} "
                     f'could not be located on the description file "{name}".'
-                )
+                ) from exc_
+                
             self.gen_type[i] = str(tmp_gen["type"])
             self.gen_pmin[i] = self._aux_check_finite_float(
                 tmp_gen["pmin"], f' for gen. "{gen_nm}" and column "pmin"'
@@ -2100,7 +2111,7 @@ class Backend(GridObjects, ABC):
                 f"There are storage unit on the grid, yet we could not locate their description."
                 f'Please make sure to have a file "{name}" where the environment data are located.'
                 f'For this environment the location is "{path}"'
-            )
+            ) from exc_
         mandatory_colnames = [
             "name",
             "type",
@@ -2272,7 +2283,7 @@ class Backend(GridObjects, ABC):
         line_status = line_status.astype(dt_int)
         return line_status
 
-    def get_action_to_set(self) -> "grid2op.Action.CompleteAction":
+    def get_action_to_set(self) -> "CompleteAction":
         """
         Get the action to set another backend to represent the internal state of this current backend.
 
@@ -2297,7 +2308,7 @@ class Backend(GridObjects, ABC):
             # sub processes
             from grid2op.Action import CompleteAction
             type(self)._complete_action_class = CompleteAction.init_grid(type(self))
-        set_me = self._complete_action_class()
+        set_me = self._complete_action_class()  # pylint: disable=not-callable
         dict_ = {
             "set_line_status": line_status,
             "set_bus": 1 * topo_vect,
@@ -2329,8 +2340,8 @@ class Backend(GridObjects, ABC):
         return set_me
 
     def update_from_obs(self,
-                        obs: "grid2op.Observation.CompleteObservation",
-                        force_update: Optional[bool]=False) -> "grid2op.Action._BackendAction._BackendAction":
+                        obs: "CompleteObservation",
+                        force_update: Optional[bool]=False) -> "_BackendAction":
         """
         Takes an observation as input and update the internal state of `self` to match the state of the backend
         that produced this observation.
@@ -2364,8 +2375,8 @@ class Backend(GridObjects, ABC):
             )
 
         cls = type(self)
-        backend_action : "grid2op.Action._BackendAction._BackendAction" = cls.my_bk_act_class()        
-        act = cls._complete_action_class()
+        backend_action : "_BackendAction" = cls.my_bk_act_class()  # pylint: disable=not-callable  
+        act = cls._complete_action_class()  # pylint: disable=not-callable
         line_status = self._aux_get_line_status_to_set(obs.line_status)
         # skip the action part and update directly the backend action !
         dict_ = {
@@ -2529,6 +2540,9 @@ class Backend(GridObjects, ABC):
         my_cls = type(self)
         my_cls._add_internal_classes(_local_dir_cls)
         self._remove_my_attr_cls()
+        
+        # speed optim
+        self._disconnected_during_cf = np.full(my_cls.n_line, fill_value=-1, dtype=dt_int)
 
     @classmethod
     def _add_internal_classes(cls, _local_dir_cls):

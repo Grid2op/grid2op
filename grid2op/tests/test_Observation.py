@@ -10,7 +10,8 @@ import json
 import tempfile
 import warnings
 import copy
-import pdb
+import numpy as np
+import pdb  # noqa: F401
 import unittest
 
 from grid2op.tests.helper_path_test import *
@@ -2262,9 +2263,10 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 continue
             
             ok_ = np.array_equal(val, val_res)
-            assert ok_, (f"values different for {el}: "
-                         f"{dict_[el]} vs "
-                         f"{self.dict_[el]}")
+            if not ok_:
+                raise AssertionError(f"values different for {el}: "
+                                     f"{dict_[el]} vs "
+                                     f"{self.dict_[el]}")
             
         # self.maxDiff = None
         # self.assertDictEqual(dict_, self.dict_)

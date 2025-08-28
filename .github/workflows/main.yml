@@ -44,7 +44,7 @@ jobs:
             version: '3.12',
           }
           - {
-            name: cp313,   # issue with pandapower atm
+            name: cp313,
             abi: cp313,
             version: '3.13',
           }
@@ -61,13 +61,17 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade wheel
-          python -m pip install --upgrade setuptools
-          
+          python -m pip install --upgrade pip wheel setuptools build
+      
+      - name: Rename pyproject_38.toml file (python 3.8)
+        if: matrix.python.name == 'cp38'
+        run: |
+          rm pyproject.toml
+          cp pyproject_38.toml pyproject.toml
+
       - name: Build wheel
         run: |
-          python setup.py bdist_wheel
+          python -m build --wheel .
 
       - name: Install wheel
         run: |
@@ -103,7 +107,7 @@ jobs:
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with:
-          name: grid2op-wheel-${{ matrix.config.name }}-${{ matrix.python.name }}
+          name: grid2op-wheel-${{ matrix.python.name }}
           path: dist/*.whl
 
   macos_windows_build:
@@ -141,7 +145,7 @@ jobs:
             name: cp312,
             version: '3.12',
           }
-          - {  # issue with pandapower atm
+          - {
             name: cp313,
             version: '3.13',
           }
@@ -160,12 +164,22 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade wheel
-          python -m pip install --upgrade setuptools
+          python -m pip install --upgrade pip wheel setuptools build
+
+      - name: Rename pyproject_38.toml file (python 3.8 - macos)
+        if: ((matrix.python.name == 'cp38') && (matrix.config.name == 'darwin'))
+        run: |
+          rm pyproject.toml
+          cp pyproject_38.toml pyproject.toml
+
+      - name: Rename pyproject_38.toml file (python 3.8 - windows)
+        if: ((matrix.python.name == 'cp38') && (matrix.config.name == 'windows'))
+        run: |
+          del pyproject.toml
+          cp pyproject_38.toml pyproject.toml
 
       - name: Build wheel
-        run: python setup.py bdist_wheel
+        run: python -m build --wheel .
 
       - name: Install wheel
         shell: bash
@@ -181,7 +195,7 @@ jobs:
 
       - name: Build source archive
         if: matrix.config.name == 'darwin' && matrix.python.name == 'cp310'
-        run: python setup.py sdist
+        run: python -m build --sdist .
 
       - name: Upload wheel
         uses: actions/upload-artifact@v4
@@ -238,10 +252,10 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip wheel setuptools gymnasium
+          python -m pip install --upgrade pip wheel setuptools gymnasium build
 
       - name: Build wheel
-        run: python setup.py bdist_wheel
+        run: python -m build --wheel .
 
       - name: Install wheel
         shell: bash

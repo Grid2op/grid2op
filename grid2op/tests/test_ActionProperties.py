@@ -9,12 +9,19 @@
 import copy
 import re
 import unittest
+import numpy as np
 
+from grid2op.Exceptions.ambiguousActionExceptions import AmbiguousAction
+from grid2op.Exceptions.illegalActionExceptions import IllegalAction
 from grid2op.tests.helper_path_test import *
 
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Exceptions import *
-from grid2op.Action import *
+from grid2op.Exceptions import (AmbiguousAction,
+                                )
+from grid2op.Action import (ActionSpace,
+                            CompleteAction,
+                            PowerlineSetAction,
+                            )
 from grid2op.Rules import RulesChecker
 from grid2op.Space.space_utils import save_to_dict
 from grid2op.tests.test_Action import _get_action_grid_class
