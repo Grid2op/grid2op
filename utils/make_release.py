@@ -101,15 +101,23 @@ if __name__ == "__main__":
             old_init = f.read()
             
         if not os.path.exists(setup_path):
-            raise RuntimeError(
-                "script \"update_version\" cannot find the root path of Grid2op. "
-                "Please provide a valid \"--path\" argument.")
-        with open(setup_path, "r") as f:
-            new_setup = f.read()
-        try:
-            old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
-        except Exception as e:
-            raise RuntimeError("Impossible to find the old version number. Stopping here")
+            # no setup.py in new grid2op
+            with open(grid2op_init, "r") as f:
+                new_setup = f.read()
+            try:
+                old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
+            except Exception as e:
+                raise RuntimeError("Impossible to find the old version number. Stopping here") from e
+            # raise RuntimeError(
+            #     "script \"update_version\" cannot find the root path of Grid2op. "
+            #     "Please provide a valid \"--path\" argument.")
+        else:
+            with open(setup_path, "r") as f:
+                new_setup = f.read()
+            try:
+                old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
+            except Exception as e:
+                raise RuntimeError("Impossible to find the old version number. Stopping here") from e
         
         old_version = re.sub("__version__ = ", "", old_version)
         old_version = re.sub("'", "", old_version)

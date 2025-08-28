@@ -100,7 +100,7 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
-[1.12.1] - 2025-xx-yy
+[1.12.1] - 2025-08-28
 ----------------------
 - [BREAKING] (small impact) action "property" `shunt_p`, `shunt_q` and `shunt_bus`
   are now named `_shunt_p`, `_shunt_q` and `_shunt_bus`.
