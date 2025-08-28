@@ -122,6 +122,10 @@ class BackendConverter(Backend):
             **kwargs_target_backend
         )  # the one to computes powerflow
         
+        self._needs_active_bus = (
+            self.source_backend._needs_active_bus or 
+            self.target_backend._needs_active_bus
+        )
         #: if the target backend (the one performing the powerflows) needs a different file
         self.target_backend_grid_path :str = target_backend_grid_path
 

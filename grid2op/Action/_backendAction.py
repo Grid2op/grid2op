@@ -552,6 +552,7 @@ class _BackendAction(GridObjects):
         res.storage_power.copy_from(self.storage_power)
         res.activated_bus[:, :] = self.activated_bus
         # res.big_topo_to_subid[:] = self.big_topo_to_subid  # cste
+        
         cls = type(self)
         if cls.shunts_data_available:
             res.shunt_p.copy_from(self.shunt_p)
@@ -569,6 +570,13 @@ class _BackendAction(GridObjects):
         res._lines_or_bus = copy.deepcopy(self._lines_or_bus)
         res._lines_ex_bus = copy.deepcopy(self._lines_ex_bus)
         res._storage_bus = copy.deepcopy(self._storage_bus)
+        
+        res._is_cached = self._is_cached
+        res._injections_cached = self._injections_cached
+        res._topo_cached = self._topo_cached
+        res._shunts_cached = self._shunts_cached
+        
+        res._needs_active_bus = self._needs_active_bus
         
         return res
 
@@ -855,9 +863,9 @@ class _BackendAction(GridObjects):
         # self._is_cached = False  => done in each of the things bellow
         # speed optim: cache is not invalidated if do nothing is added
         
-        set_status = 1 * other._set_line_status
+        set_status = other._set_line_status
         switch_status = other._switch_line_status
-        set_topo_vect = 1 * other._set_topo_vect
+        set_topo_vect = other._set_topo_vect
         switcth_topo_vect = other._change_bus_vect
         redispatching = other._private_redispatch
         storage_power = other._storage_power
