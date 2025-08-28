@@ -1306,9 +1306,9 @@ class Backend(GridObjects, ABC):
 
         """
         my_cls = type(self)
-        action = my_cls._complete_action_class()
-        action.update({"set_line_status": [(id_, -1)]})
-        bk_act = my_cls.my_bk_act_class()
+        action = my_cls._complete_action_class()  # pylint: disable=not-callable
+        action.update({"set_line_status": [(id_, -1)]})  
+        bk_act = my_cls.my_bk_act_class()  # pylint: disable=not-callable
         bk_act += action
         self.apply_action_public(bk_act)
 
@@ -2205,7 +2205,7 @@ class Backend(GridObjects, ABC):
             # sub processes
             from grid2op.Action import CompleteAction
             type(self)._complete_action_class = CompleteAction.init_grid(type(self))
-        set_me = self._complete_action_class()
+        set_me = self._complete_action_class()  # pylint: disable=not-callable
         dict_ = {
             "set_line_status": line_status,
             "set_bus": 1 * topo_vect,
@@ -2272,8 +2272,8 @@ class Backend(GridObjects, ABC):
             )
 
         cls = type(self)
-        backend_action : "_BackendAction" = cls.my_bk_act_class()        
-        act = cls._complete_action_class()
+        backend_action : "_BackendAction" = cls.my_bk_act_class()  # pylint: disable=not-callable  
+        act = cls._complete_action_class()  # pylint: disable=not-callable
         line_status = self._aux_get_line_status_to_set(obs.line_status)
         # skip the action part and update directly the backend action !
         dict_ = {

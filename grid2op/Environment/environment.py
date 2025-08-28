@@ -1440,7 +1440,7 @@ class Environment(BaseEnv):
                     self.chronics_handler.set_current_datetime(init_dt) 
                 self._last_obs = None  # properly initialize the last observation
                 self._called_from_reset = True
-                self.step(self.action_space())
+                self.step(self.action_space())  # pylint: disable=not-callable
             elif skip_ts == 2:
                 self.fast_forward_chronics(1, init_dt)
             else:

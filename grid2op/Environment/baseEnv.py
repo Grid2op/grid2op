@@ -13,7 +13,7 @@ import time
 import copy
 import os
 import json
-from typing import List, Optional, Tuple, Union, Literal
+from typing import List, Optional, Tuple, Union, Literal, Dict, Type
 import importlib
 import sys
 
@@ -700,7 +700,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._needs_active_bus = False
         
     @property
-    def highres_sim_counter(self):
+    def highres_sim_counter(self) -> int:
         return self._highres_sim_counter
     
     @property
@@ -4396,7 +4396,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         return powerline_status
 
     @property
-    def parameters(self):
+    def parameters(self) -> Parameters:
         """
         Return a deepcopy of the parameters used by the environment
 
@@ -4435,13 +4435,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         return res
 
     @parameters.setter
-    def parameters(self, value):
+    def parameters(self, value: Union[Parameters, Dict]):
         raise RuntimeError(
             "Use the env.change_parameters(new_parameters) to change the parameters. "
             "NB: it will only have an effect AFTER the env is reset."
         )
 
-    def change_reward(self, new_reward_func):
+    def change_reward(self, new_reward_func: Union[BaseReward, Type[BaseReward]]):
         """
         Change the reward function used for the environment.
 

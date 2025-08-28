@@ -2474,7 +2474,7 @@ class BaseTestVoltageOWhenDisco(MakeBackend):
             warnings.filterwarnings("ignore")
             with grid2op.make("rte_case14_realistic", test=True, backend=backend, _add_to_name=type(self).__name__) as env:
                 line_id = 1
-                act = env.action_space({"set_line_status": [(line_id, -1)]})
+                act = env.action_space({"set_line_status": [(line_id, -1)]})  # pylint: disable=not-callable
                 obs, *_ = env.step(act)
                 assert (
                     obs.v_or[line_id] == 0.0

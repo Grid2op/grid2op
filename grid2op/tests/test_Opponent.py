@@ -702,7 +702,7 @@ class TestLoadingOpp(unittest.TestCase):
                 obs, reward, done, info = env.step(env.action_space())
                 assert obs.rho[line_id] == 0.0
                 assert not obs.line_status[line_id]
-                simobs, sim_r, sim_d, sim_info = obs.simulate(env.action_space())
+                simobs, sim_r, sim_d, sim_info = obs.simulate(env.action_space())  # pylint: disable=not-callable
                 assert simobs.rho[line_id] == 0.0
                 assert not simobs.line_status[line_id]
                 simobs, sim_r, sim_d, sim_info = obs.simulate(reco_line)

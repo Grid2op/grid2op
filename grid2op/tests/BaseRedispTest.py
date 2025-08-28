@@ -116,7 +116,7 @@ class BaseTestRedispatch(MakeBackend):
 
     def test_negative_dispatch(self):
         self.skip_if_needed()
-        act = self.env.action_space({"redispatch": [(1, -10)]})
+        act = self.env.action_space({"redispatch": [(1, -10)]})  # pylint: disable=not-callable
         obs, reward, done, info = self.env.step(act)
         assert np.all(obs.prod_p - self.env.gen_pmin >= -self.tol_one)
         assert np.all(obs.prod_p <= self.env.gen_pmax + self.tol_one)
