@@ -184,7 +184,10 @@ class SerializableActionSpace(SerializableSpace):
             "curtail",
             "curtail_mw",
             "raise_alarm",
-            "raise_alert"
+            "raise_alert",
+            "detach_load",  # new in 1.11.0
+            "detach_gen",  # new in 1.11.0
+            "detach_storage",  # new in 1.11.0
         ]
         assert action_type in name_action_types, (
             f"The action type provided should be in {name_action_types}. "

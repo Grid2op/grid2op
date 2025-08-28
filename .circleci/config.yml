@@ -177,6 +177,10 @@ jobs:
                    python -m pip install -U numba
             - run:
                command: |
+                   rm pyproject.toml
+                   cp pyproject_38.toml pyproject.toml
+            - run:
+               command: |
                    source venv_test/bin/activate
                    python -m pip install -U "numpy>=1.20,<1.21" "pandas<2.2" "scipy<1.12" numba "pillow<10.4.0" .[test]
                    pip freeze
@@ -215,6 +219,10 @@ jobs:
                    python -m pip install -U lightsim2grid==0.5.3 gymnasium "numpy<1.22"
             - run:
                command: |
+                   rm pyproject.toml
+                   cp pyproject_38.toml pyproject.toml
+            - run:
+               command: |
                    source venv_test/bin/activate
                    python -m pip install -e .
                    pip freeze
@@ -236,6 +244,10 @@ jobs:
                    source venv_test/bin/activate
                    python -m pip install -U pip setuptools wheel
                    python -m pip install -U lightsim2grid==0.6.0 gymnasium "numpy<1.22"
+            - run:
+               command: |
+                   rm pyproject.toml
+                   cp pyproject_38.toml pyproject.toml
             - run:
                command: |
                    source venv_test/bin/activate

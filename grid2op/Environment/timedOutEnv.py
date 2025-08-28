@@ -8,7 +8,7 @@
 import warnings
 import time
 from math import floor
-from typing import Any, Dict, Tuple, Union, List, Literal
+from typing import Dict, Tuple, Union, List, Literal
 import os
 
 from grid2op.Environment.environment import Environment
@@ -148,7 +148,7 @@ class TimedOutEnvironment(Environment):  # TODO heritage ou alors on met un truc
             nb_dn = floor(1000. * (self.__last_act_received  - self.__last_act_send) / (self.time_out_ms))
         else:
             nb_dn = 0
-        do_nothing_action = self.action_space()
+        do_nothing_action = self.action_space()  # pylint: disable=not-callable
         for _ in range(nb_dn):
             obs, reward, done, info = super().step(do_nothing_action)
             self._nb_dn_last += 1

@@ -16,6 +16,35 @@ from grid2op.dtypes import dt_float
 
 
 class ObsWithN1(CompleteObservation):
+    """This is a "new" grid2op Observation, that can be used in all grid2op environments.
+    
+    It is a "complete" observation, meaning that it contains all the information about the powergrid with 
+    some extra attributes, which are the flows obtain after all contingencies.
+    
+    More specifically, an agent can use "obs.n1_vals" which are defined by:
+    
+    - n1_vals is a vector with the same size as the number of contingencies simulated
+      (given in the kwargs `n1_li`)
+    - n1_vals[i] is taken by "reducing" the flows obtained after the i-th contingency
+    
+    The "reduction" of the flows can be:
+    
+    - "max" : the maximum flow on any line of the grid (after a contingency)
+    - "count" : the number of lines that are congested (after a contingency)
+    - "sum" : the sum of the flows on all lines (after a contingency)
+    
+    This reduction is parametrized by the "n1_reduction" attribute of the observation
+    class, which defaults to "max".
+     
+    Powerflows can be run on AC (if specifying `compute_algo="ac"`)
+    or with the DC approximation (if specifying `compute_algo="dc"`)
+    
+    **NB** this class can be used for any environment, using any backend. Computing this
+    will take more time than the standard observation available in grid2op.
+    
+    **NB** This could be customized by counting only the overflows on a given set of lines (similar
+    to `n1_li` but for "monitored lines" and not "disconnected lines").
+    """
     # attributes that will be saved when action is
     # serialized as a numpy vector
     attr_list_vect = copy.deepcopy(CompleteObservation.attr_list_vect)

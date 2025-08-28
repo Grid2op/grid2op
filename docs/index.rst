@@ -179,6 +179,7 @@ For example, you might want to :
 - have an opponent that act differently than the provided ones
 - evaluate the performance of the agent differently (change the reward / score function)
 - use a different way to control the voltages
+- add information for the agent 
 - etc.
  
 The main focuse of these pages of the documentation is put on the 
@@ -192,7 +193,7 @@ but if you want to slightly modify one of its component.
 .. note::
    This type of contribution can be developed and hosted in a different 
    github repository than grid2op (*eg* lightsim2grid, another faster backend
-   is hosted on https://github.com/bdonnot/lightsim2grid.git)
+   is hosted on https://github.com/grid2op/lightsim2grid.git)
 
    Feel free to contact us if you have done such an "external contribution" so 
    that we can at least reference it in the documentation.

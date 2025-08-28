@@ -50,6 +50,18 @@ For now, the actions can act on:
 
   - the status of the powerlines (connected/disconnected)
   - the configuration at substations eg setting different objects to different buses for example
+  - changing the power produced / absorbed by storage units
+  - redispatch some controllable generators (asking them to deviate their active production setpoint 
+    from their initial setpoint - *ie* the setpoint they have in the environment)
+  - curtail some renewable generators (asking them to produce less than what they could)
+  
+More actions are added depdending on user requests. If you want grid2op to support another type of action, 
+it's often not difficult (the hardest part is to properly define *what* this new type of action consist and 
+what is needed to keep the "grid2op problem" a (PO)-MDP) once the "functional specifications" are well established.
+
+If you want to use some grid2op features that are not coded in grid2op, please consult the 
+section :ref:`action-module-backend_callbacks` of this documentation which give a possible way to do this.
+
 
 The BaseAction class is abstract. You can implement it the way you want. If you decide to extend it, make sure
 that the :class:`grid2op.Backend` class will be able to understand it. If you don't, your extension will
@@ -483,6 +495,193 @@ This includes:
   2 or more generators" nor can it "perform redispatching on one generator AND disconnect a powerline")
   which can be rather limited for some applications.
 
+
+.. _action-module-backend_callbacks:
+
+Backend callbacks: implementation of action not handled by grid2op
+---------------------------------------------------------------------
+
+.. versionadded:: 1.12.1
+
+  This feature has been added in grid2op 1.12.1. Upgrade to a supported grid2op version
+  if you want to benefit from it.
+
+
+Goal
+++++++
+
+If you want to use a feature not available in grid2op, the best thing to do would be to
+write a github issue or a start a discussion about this feature. And then to develop (or have some 
+develop) it in general, so that everyone can benefit from it.
+
+Doing so might be not feasible in practice or take too much time and resources.
+
+To circumvent this limitation of grid2op, in version 1.12.1 we decided to add a feature, directly 
+accessible in the action to allow the agent to use function that are not directly availble
+in grid2op but are available in the backend they are using.
+
+
+Limitation
++++++++++++
+
+This function is then backend dependant. If an agent uses this function and decides to change the 
+backend, then it will have to recode these "callbacks".
+
+This function can break "grid2op time handling". This means that grid2op has absolutely no control what is 
+done, how long it will last, whether it breaks some "rules" etc.
+
+.. danger::
+  This function is totally generic and no check at all are made by grid2op. Use with extreme care.
+
+For example, some "callbacks" might break some "rules" of game, allowing to reconnect a powerline that is
+under maintenance for example, or to increase the production of a non controllable generator.
+
+Some "callbacks" might have "long lasting" effects, even after the environment is reset (which is guaranteed
+not to happen if using grid2op-only actions).
+
+If such an action is done at some point, the agent (or "something" outside of the agent) is responsible to 
+"undo" it when needed, for example at the end of an episode, or after the use of "obs.simulate(...)". 
+
+.. warning::
+  This is why we do not recommend to use this feature combined with "obs.simulate"
+
+As grid2op has no way of "controlling" what is done in these callbacks, it is possible to 
+have grid2op generate a "wrong" observation. For example it would be easy with the "PandaPowerBackend"
+to "move" a load from one substation to another (which would be equivalent to physcally move a city from
+one side of the country to another...) 
+
+It is also possible to create elements on the grid. Even if such elements are "modeled" by grid2op, 
+they will not appear in the observation, which might break the Kirchhoff Current Laws (as seen by grid2op).
+This is for example the case if you create a load, such load will not appear on the "obs.load_p" 
+vector.
+
+You can also use it to "hack" the environment and allow the agent to observe things that are not
+normally observable.
+
+Finally, this feature is applied BEFORE any changes made by "real" grid2op entities (environment, agent, etc.).
+This means that you can modify things using this feature, but these modifications might be silently (because
+grid2op does not check anything) overriden by other grid2op instructions.
+
+Recommended Usage
+++++++++++++++++++
+
+We recommend to use this feature if:
+
+- you want to perform actions not currently modeled in grid2op on elements modeled
+  by grid2op (at time of writing, you might want to change the tap ratio of a transformer 
+  or a phase shifting transformer)
+- you want to peform actions on element not modeled in grid2Op (at time of writing this 
+  includes actions on HVDCs for example)
+
+In any case, it's best to let us know so that we can either help you integrate this feature in 
+grid2op (the hard part is to have the "functional specs", actually coding in grid2op is 
+relatively easy).
+
+
+Practical Usage
+++++++++++++++++
+So, how to use it then...
+
+The `action.backend_dependant_callback` is an attribute of 
+the action from grid2op 1.12.1. 
+
+.. warning::
+  This attribute is ignored on earlier grid2op versions !
+
+This attribute is a "callable" (think of it as a function) that 
+takes as input the content of `env.backend._grid` and modifies
+it in place.
+
+.. warning::
+  Its return value is ignored.
+
+You can use it like this for example:
+
+.. code-block:: python
+    
+    import grid2op
+    from grid2op.Action import BaseAction
+    env_name = "educ_case14_storage"  # or any other name
+    env = grid2op.make(env_name, test=True)
+    obs = env.reset(seed=0, options={"time serie id": 0})
+
+    act = env.action_space()
+    
+    def change_whatever(grid):
+        # this needs to modify "grid"
+        # argument in place
+        # Any return values if ignored
+        ...
+        
+    act.backend_dependant_callback = change_whatever
+    obs, reward, done, info = env.step(act)
+  
+The code in the :func:`grid2op.Environment.BaseEnv.step` function for this feature is
+equivalent to:
+
+.. code-block:: python
+
+  action.backend_dependant_callback(self.backend._grid)
+
+You then need to make sure that the function you pass to `action.backend_dependant_callback` takes only
+one argument (which is of type `env.backend._grid`) and returns nothing.
+
+
+Equivalent implementation
+++++++++++++++++++++++++++
+
+Concretely, this function is added to the "env.step" method, BEFORE 
+the rest of the modifications are performed.
+
+This modifies the grid before the rest of the action of the agent,
+before the change of the environment (new load or generator) and
+before the opponent (if any) acts.
+
+If there is an error during the call to `action.backend_dependant_callback(self.backend._grid)`,
+then the action is declared `ambiguous`, an :class:`grid2op.Exceptions.InvalidBackendCallback` is added
+to the `info["exceptions"]` returned value.
+
+In this case, the whole action is replaced by a "do nothing" action and nothing is done
+to the backend.
+
+.. danger::
+  About this last statement, grid2op does not control anything regarding this callback. 
+
+  This means that, if env.backend._grid is "half modified" before an exception is raised 
+  in the application of `action.backend_dependant_callback` then "half of the modifications"
+  will be performed and not removed, and half of them will be ignored.
+
+  In this last case, all other "part" of the actions will be ignored as well.
+
+  For example, if your call back is like this:
+
+  .. code-block:: python
+    
+    def my_callback(grid):
+        grid.something_ok
+        grid.some_other_thing_ok
+        grid.A_CRITICAL_FAILURE
+        # -> suppose an exception is raised here
+        grid.a_last_thing_ok
+  
+  Then in this case, `something_ok` and `some_other_thing_ok` will be implemented
+  on the grid. The critical failure will not and neither will `a_last_thing_ok`.
+
+  And because you apply a "callback", grid2op has no way to know, in general, how to undo your changes
+  so even if your action is ambiguous, it will not be strictly equivalent to 
+  the "do nothing" action: the grid will be modified.
+
+  This breaks the "ACID" (https://en.wikipedia.org/wiki/ACID) "implementation" of the action. In particular
+  the action will not be "atomic" anymore (some part might be implemented and not other) nor will it
+  be "consistent" (the fact that there is a critical failure in the example might lead the grid to be
+  in an inconsistent state from which the grid2op environment might never, even after a `env.reset()`
+  recover).
+
+  "With a great power, come great responsibility" ...
+
+
+Diving even more into the customization
+++++++++++++++++++++++++++++++++++++++++
 
 Detailed Documentation by class
 -------------------------------

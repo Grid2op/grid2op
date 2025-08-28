@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, RTE (https://www.rte-france.com)
+# Copyright (c) 2019-2025, RTE (https://www.rte-france.com)
 # See AUTHORS.txt
 # This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
 # If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
@@ -10,6 +10,8 @@ from typing import Dict, Literal, Any, Union, List
 import datetime
 import numpy as np
 
+#: generic type for the backend
+BACKEND_TYPE = Any
 
 #: type hints corresponding to the "info" part of the env.step return value
 STEP_INFO_TYPING = Dict[Literal["disc_lines",

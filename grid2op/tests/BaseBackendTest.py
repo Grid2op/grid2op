@@ -14,16 +14,25 @@
 import os
 import numpy as np
 import copy
-from abc import ABC, abstractmethod
-import inspect
+import warnings
 
-from grid2op.tests.helper_path_test import PATH_DATA_TEST_PP, PATH_DATA_TEST, MakeBackend, HelperTests
+from grid2op.tests.helper_path_test import PATH_DATA_TEST_PP, PATH_DATA_TEST, MakeBackend
+
+import grid2op
+from grid2op.dtypes import dt_bool, dt_int, dt_float
+from grid2op.Action import ActionSpace, CompleteAction
+from grid2op.Parameters import Parameters
+from grid2op.Chronics import ChronicsHandler
+from grid2op.Environment import Environment
+from grid2op.Exceptions import AmbiguousAction
+from grid2op.Rules import RulesChecker
+from grid2op.Rules import AlwaysLegal
+from grid2op.Action._backendAction import _BackendAction
+from grid2op.Backend import PandaPowerBackend
+
 PATH_DATA_TEST_INIT = PATH_DATA_TEST
 PATH_DATA_TEST = PATH_DATA_TEST_PP
 
-import grid2op
-
-from grid2op.Action import CompleteAction
 
 try:
     # this is only available starting python 3.7 or 3.8... tests are with python 3.6 :-(
@@ -51,22 +60,7 @@ except ImportError:
             real_ = math.comb(i,j)
             assert me_ == real_, "{}, {}".format(i,j)
     """
-import warnings
-
-import grid2op
-from grid2op.dtypes import dt_bool, dt_int, dt_float
-from grid2op.Action import ActionSpace, CompleteAction
-from grid2op.Parameters import Parameters
-from grid2op.Chronics import ChronicsHandler
-from grid2op.Environment import Environment
-from grid2op.Exceptions import *
-from grid2op.Rules import RulesChecker
-from grid2op.Rules import AlwaysLegal
-from grid2op.Action._backendAction import _BackendAction
-from grid2op.Backend import PandaPowerBackend
-
-import pdb
-                    
+             
     
 class BaseTestNames(MakeBackend):
     def get_path(self):
@@ -1196,6 +1190,7 @@ class BaseTestTopoAction(MakeBackend):
 
         action = self.helper_action({"change_bus": {"substations_id": [(id_, arr)]}})
         bk_action += action
+        assert not bk_action._is_cached
 
         # apply the action here
         self.backend.apply_action_public(bk_action)
@@ -1412,7 +1407,7 @@ class BaseTestTopoAction(MakeBackend):
         # change shunt
         if self.backend.shunts_data_available:
             act2 = copy.deepcopy(act)
-            act2.shunt_q[:] = -25.0
+            act2._shunt_q[:] = -25.0
             bk_act2 = self.backend.my_bk_act_class()
             bk_act2 += act2
             self.backend.apply_action_public(bk_act2)
@@ -1542,7 +1537,7 @@ class BaseTestTopoAction(MakeBackend):
         # change shunt
         if self.backend.shunts_data_available:
             act2 = copy.deepcopy(act)
-            act2.shunt_q[:] = -25.0
+            act2._shunt_q[:] = -25.0
             bk_act2 = self.backend.my_bk_act_class()
             bk_act2 += act2
             self.backend.apply_action_public(bk_act2)
@@ -2186,7 +2181,7 @@ class BaseTestShuntAction(MakeBackend):
                 backend=backend,
                 _add_to_name=type(self).__name__ + "_1"
             ) as env_case2:
-                with self.assertRaises(IllegalAction):
+                with self.assertRaises(AmbiguousAction):
                     act = env_case2.action_space({"shunt": {"set_bus": [(0, 2)]}})
 
     def test_shunt_effect(self):
@@ -2479,7 +2474,7 @@ class BaseTestVoltageOWhenDisco(MakeBackend):
             warnings.filterwarnings("ignore")
             with grid2op.make("rte_case14_realistic", test=True, backend=backend, _add_to_name=type(self).__name__) as env:
                 line_id = 1
-                act = env.action_space({"set_line_status": [(line_id, -1)]})
+                act = env.action_space({"set_line_status": [(line_id, -1)]})  # pylint: disable=not-callable
                 obs, *_ = env.step(act)
                 assert (
                     obs.v_or[line_id] == 0.0

@@ -437,4 +437,4 @@ class FromOneEpisodeData(GridValue):
             dict_set["curtail"] = obs.curtailment_limit
             dict_set["curtail"][~type(obs).gen_renewable] = -1
         # TODO shunts !
-        return self.action_space(dict_set, check_legal=False)
+        return self.action_space(dict_set, check_legal=False)  # pylint: disable=not-callable
