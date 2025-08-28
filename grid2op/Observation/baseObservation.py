@@ -1104,7 +1104,7 @@ class BaseObservation(GridObjects):
                 "bus": self.topo_vect[self.gen_pos_topo_vect[gen_id]],
                 "sub_id": cls.gen_to_subid[gen_id],
                 "target_dispatch": self.target_dispatch[gen_id],
-                "actual_dispatch": self.target_dispatch[gen_id],
+                "actual_dispatch": self.actual_dispatch[gen_id],
                 "curtailment": self.curtailment[gen_id],
                 "curtailment_limit": self.curtailment_limit[gen_id],
                 "curtailment_limit_effective": self.curtailment_limit_effective[gen_id],
