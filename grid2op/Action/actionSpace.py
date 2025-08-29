@@ -8,7 +8,7 @@
 
 import warnings
 import copy
-from typing import Dict, List, Any, Literal, Optional
+from typing import Dict, Literal, Optional
 
 import grid2op
 from grid2op.typing_variables import DICT_ACT_TYPING

@@ -673,6 +673,7 @@ class GymEnvAutoClassTester(unittest.TestCase):
     def test_asynch_fork(self):
         if _IS_WINDOWS:
             self.skipTest("no fork on windows")
+        GymEnv(self.env)
         async_vect_env = AsyncVectorEnv((lambda: GymEnv(self.env), lambda: GymEnv(self.env)),
                                         context="fork")
         obs = async_vect_env.reset()

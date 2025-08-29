@@ -2552,7 +2552,6 @@ class Backend(GridObjects, ABC):
         
         cls.my_bk_act_class = _BackendAction.init_grid(cls, _local_dir_cls=_local_dir_cls)
         cls._complete_action_class = CompleteAction.init_grid(cls, _local_dir_cls=_local_dir_cls)
-        cls._complete_action_class.finalize_action_class()
         cls.assert_grid_correct_cls()
         
     def _remove_my_attr_cls(self):

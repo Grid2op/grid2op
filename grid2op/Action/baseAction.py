@@ -6,7 +6,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from array import array
 import copy
+from math import isfinite
 import numpy as np
 import warnings
 from typing import Callable, Tuple, Dict, Literal, Any, List, Optional, TYPE_CHECKING, Type
@@ -509,6 +511,8 @@ class BaseAction(GridObjects):
         "_detach_load": "detach_load",  # new in 1.11.0
         "_detach_gen": "detach_gen",  # new in 1.11.0
         "_detach_storage": "detach_storage",  # new in 1.11.0
+        "_set_switch_status": "set_switch",  # new in TODO DETAILED TOPO
+        "_change_switch_status": "change_switch",  # new in TODO DETAILED TOPO
     }
     
     # new in 1.11.0 (was not set to nan before in serialization)
@@ -1179,7 +1183,7 @@ class BaseAction(GridObjects):
         return res
 
     @classmethod
-    def finalize_action_class(cls):
+    def finalize_class_definition(cls):
         if not cls._IS_CLS_FINALIZED:
             cls._add_shunt_data()
             cls._update_value_set()
@@ -8376,3 +8380,52 @@ class BaseAction(GridObjects):
         `detach_load`, `detach_gen` or `detach_storage`
         """
         return self._modif_detach_gen or self._modif_detach_load or self._modif_detach_storage
+
+    @classmethod
+    def _get_full_cls_str_derived(cls) -> str:
+        def _key_to_proper_string(k):
+            return f'"{k}"'
+        
+        def _identity(x): return x
+        
+        def _serialize_float(el):
+            if el is None:
+                return "None"
+            if np.isfinite(el):
+                return float(el)
+            return "np.nan"
+        
+        def _get_dict_entry(k, v):
+            dtype_str_ = ""
+            if v is None:
+                return f"{_key_to_proper_string(k)}: None, "
+            if len(v) == 0:
+                return f"{_key_to_proper_string(k)}: np.array([]), "
+            first_ = v[0]
+            if isinstance(first_, (bool, dt_bool)):
+                dtype_str_ = "dtype=dt_bool"
+                fun_ser_as_str = bool
+            elif isinstance(first_, (float, dt_float, np.float64, np.float128)):
+                dtype_str_ = "dtype=dt_float"
+                fun_ser_as_str = _serialize_float
+            elif isinstance(first_, (int, dt_int, np.int64)):
+                dtype_str_ = "dtype=dt_int"
+                fun_ser_as_str = int
+            else:
+                fun_ser_as_str = _identity
+            array_str = f'np.array([{",".join([f"{fun_ser_as_str(el)}" for el in v])}], {dtype_str_})'
+            return f"{_key_to_proper_string(k)}: {array_str},"
+        sep_ = "\n\t"
+        authorized_keys_str = f"{{{','.join([_key_to_proper_string(el) for el in cls.authorized_keys])}}}"
+        attr_list_vect_str = f"[{','.join([_key_to_proper_string(el) for el in cls.attr_list_vect])}]"
+        attr_nan_list_set_str = f"set([{','.join([_key_to_proper_string(el) for el in cls.attr_nan_list_set])}])"
+        aux_dict_attr_str_ = sep_.join([_get_dict_entry(k, v) for k, v in cls._DICT_ATTR_.items()])
+        _dict_attr_str = f"{{{aux_dict_attr_str_}}}"
+        res = f"""
+    authorized_keys = {authorized_keys_str}
+    attr_list_vect = {attr_list_vect_str}
+    attr_nan_list_set = {attr_nan_list_set_str}
+    _DICT_ATTR_ = {_dict_attr_str}
+    _IS_CLS_FINALIZED = True
+"""
+        return res

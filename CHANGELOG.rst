@@ -100,6 +100,19 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.13.0] - DETAILED TOPO
+---------------------------
+- [FIXED] some issues with gym classes
+- [IMPROVED] the serialization of class definition 
+  when using "automatic_classes" or "experimental_read_from_local_dir"
+- [IMPROVED] when using gym MultiDiscrete as an action space,
+  if the dimension is 0 (for one of the MultiDiscrete) then it is now
+  removed from the action space (for example, if your environment does not
+  contain storage unit, the corresponding MultiDiscrete will have one less 
+  dimension, because you cannot act on storage unit.)
+- [IMPROVED] classes for action and observation classes are now easier to 
+  initialize (added the `finalize_class_definition` classmethod)
+
 [1.12.1] - 2025-08-28
 ----------------------
 - [BREAKING] (small impact) action "property" `shunt_p`, `shunt_q` and `shunt_bus`

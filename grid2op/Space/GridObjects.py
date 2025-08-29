@@ -17,6 +17,7 @@ complex :class:`grid2op.Action.Action` or :class:`grid2op.Observation.Observaion
 to manipulate.
 
 """
+from re import S
 import warnings
 import copy
 import os
@@ -2947,6 +2948,7 @@ class GridObjects:
         cls._compute_pos_big_topo_cls()
         cls.process_shunt_static_data()
         cls.process_detachment()
+        cls.finalize_class_definition()
         
     @classmethod
     def _aux_init_grid_from_cls(cls, gridobj, name_res):
@@ -3083,7 +3085,6 @@ class GridObjects:
         res_cls._compute_pos_big_topo_cls()
         compat_mode = res_cls.process_grid2op_compat()
         res_cls.process_shunt_static_data()
-        
         res_cls.process_detachment()
             
         # this needs to be done after process_grid2op_compat
@@ -3091,7 +3092,8 @@ class GridObjects:
         # which is not supported in earlier grid2op versions
         if res_cls.detailed_topo_desc is not None:
             res_cls.process_grid2op_detailed_topo_vect()
-            
+        res_cls.finalize_class_definition()
+        
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
@@ -4639,6 +4641,7 @@ class GridObjects:
             my_class.process_grid2op_compat()
             my_class.process_detachment()
             my_class.process_shunt_static_data()
+            my_class.finalize_class_definition()
         return my_class
 
     @staticmethod
@@ -5046,7 +5049,9 @@ class GridObjects:
             tmp_dtds_str = json.dumps(tmp_dtds, separators=(',', ':'))
             detailed_topo_desc_str = f"DetailedTopoDescription.from_dict({tmp_dtds_str})"
 
-        res = f"""# Copyright (c) 2019-2023, RTE (https://www.rte-france.com)
+        other_attr_str_ = cls._get_full_cls_str_derived()
+        
+        res = f"""# Copyright (c) 2019-2025, RTE (https://www.rte-france.com)
 # See AUTHORS.txt
 # This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
 # If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
@@ -5194,8 +5199,14 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
     # shedding
     detachment_is_allowed = {cls.detachment_is_allowed}
 
+    # attributes depending on the class
+    {other_attr_str_}
 """
         return res
+    
+    @classmethod
+    def _get_full_cls_str_derived(cls) -> str:
+        return ""
     
     @classmethod
     def get_line_info(cls, *, line_id : Optional[int]=None, line_name : Optional[str]=None) -> Tuple[int, str, int, int]:
@@ -5591,3 +5602,7 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
         diff_v_bus[:, :] = v_bus[:, :, 1] - v_bus[:, :, 0]
         diff_v_bus[np.abs(diff_v_bus - -2. * some_kind_of_inf) <= 1e-5 ] = 0.  # disconnected bus
         return p_subs, q_subs, p_bus, q_bus, diff_v_bus
+
+    @classmethod
+    def finalize_class_definition(cls):
+        pass

@@ -89,33 +89,25 @@ class SerializableSpace(GridObjects, RandomObject):
                 '(an instance of a class). It is currently "{}"'.format(type(subtype))
             )
 
-        GridObjects.__init__(self)
-        RandomObject.__init__(self)
-        self._init_subtype : Union[Type["BaseAction"], Type["BaseObservation"]] = subtype  # do not use, use to save restore only !!!
-        
         # lazy loading to prevent circular reference
         from grid2op.Action import BaseAction
         from grid2op.Observation import BaseObservation
-            
-        if _init_grid:
-            self.subtype = subtype.init_grid(gridobj, _local_dir_cls=_local_dir_cls)
-            
-            if issubclass(self.subtype, BaseAction):
-                # add the shunt data if needed by the action only
-                self.subtype.finalize_action_class()
-            elif issubclass(self.subtype, BaseObservation):
-                # compute the class attribute "attr_list_set" from "attr_list_vect"
-                self.subtype._update_value_set()
-            else:
-                raise Grid2OpException(f"Unknwon type received for a grid2op Space {self.subtype}")
-        else:
-            self.subtype = subtype
 
         if not issubclass(subtype, (BaseAction, BaseObservation)):
             raise RuntimeError(
                 f'"subtype" should inherit either BaseAction or BaseObservation. Currently it '
                 f'is "{subtype}"'
             )
+            
+        GridObjects.__init__(self)
+        RandomObject.__init__(self)
+        self._init_subtype : Union[Type["BaseAction"], Type["BaseObservation"]] = subtype  # do not use, use to save restore only !!!
+        
+        if _init_grid:
+            self.subtype = subtype.init_grid(gridobj, _local_dir_cls=_local_dir_cls)
+        else:
+            self.subtype = subtype
+            
         self._template_obj = self.subtype()
         self.n = self._template_obj.size()
 

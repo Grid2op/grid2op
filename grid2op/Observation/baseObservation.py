@@ -5310,3 +5310,8 @@ class BaseObservation(GridObjects):
                         pass
             cls._update_value_set()
         return super().process_detachment()
+
+    @classmethod
+    def finalize_class_definition(cls):
+        cls._update_value_set()
+        
