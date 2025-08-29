@@ -554,9 +554,7 @@ class BaseAction(GridObjects):
         IMPORTANT: Use :func:`ActionSpace.__call__` or :func:`ActionSpace.sample` to generate a valid action.
 
         """
-        GridObjects.__init__(self)
-        cls = type(self)
-        
+        GridObjects.__init__(self)        
         if _names_chronics_to_backend is not None:
             # should only be the case for the "init state" action
             self._names_chronics_to_backend = _names_chronics_to_backend
@@ -615,13 +613,9 @@ class BaseAction(GridObjects):
         self.backend_dependant_callback : Optional[Callable[[BACKEND_TYPE], None]] = None
         
         # TODO detailed topo
-        self._set_switch_status = None
-        self._change_switch_status = None
-        if cls.detailed_topo_desc is not None:
-            n_switch = cls.detailed_topo_desc.switches.shape[0]
-            self._set_switch_status = None  # np.full(shape=n_switch, fill_value=0, dtype=dt_int)
-            self._change_switch_status = None  # np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
-        
+        self._set_switch_status : Optional[np.ndarray] = None
+        self._change_switch_status : Optional[np.ndarray] = None
+            
         # flags whether things are changed
         self._modif_inj = False
         self._modif_shunt = False
@@ -833,8 +827,11 @@ class BaseAction(GridObjects):
     def _build_attr(cls, attr_nm: str):
         # False(line is disconnected) / True(line is connected)
         cls._build_dict_attr_if_needed()
+        
         if attr_nm not in cls.DICT_ATTR_:
             # TODO raise ActionException
+            import pdb
+            pdb.set_trace()
             raise Grid2OpException(
                 'Impossible to find the attribute "{}" '
                 'into the BaseAction of type "{}"'.format(attr_nm, cls)
@@ -981,7 +978,7 @@ class BaseAction(GridObjects):
             "_modif_detach_storage",
             "_single_act",
             "_modif_set_switch",
-            "_modif_change_switch"
+            "_modif_change_switch",
             "_cached_is_not_ambiguous",
         ]
 
