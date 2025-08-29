@@ -39,13 +39,34 @@ ENV_NAME = "rte_case14_realistic"
 MAX_TS = 1000
 
 
-class RandomBBsSwitchAgent(BaseAgent):
+class RandomBusSwitchAgent(BaseAgent):
     def act(self, observation, reward, done=False):
         sub_id = self.space_prng.randint(type(self.action_space).n_sub)
         new_position = self.space_prng.choice([-1, 1], size=1)
         return self.action_space({"set_switch": [(sub_id, new_position)]})
 
 
+class RandomElSwitchAgent(BaseAgent):
+    def act(self, observation, reward, done = False):
+        if observation.current_step <= 1:
+            # deactivate the connector between busbars
+            res = self.action_space({"set_switch": [(sub_id, -1)
+                                                    for sub_id in range(type(self.action_space).n_sub)]})
+        else:
+            res = self.action_space()
+            
+        do_act = self.space_prng.choice([0, 1], size=1, p = [0.95, 0.05])
+        if not do_act:
+            return res
+        
+        n_switch = type(self.action_space).detailed_topo_desc.switches.shape[0]
+        switch_id = self.space_prng.randint(type(self.action_space).n_sub, 
+                                            n_switch,
+                                            size=1)
+        new_position = self.space_prng.choice([-1, 1], size=1)
+        res.update({"set_switch": [(switch_id, new_position)]})
+        return res
+        
 def main(max_ts, name, use_lightsim=False, test_env=True):
     param = Parameters()
     if use_lightsim:
@@ -72,8 +93,10 @@ def main(max_ts, name, use_lightsim=False, test_env=True):
                    test=test_env,
                    action_class=CompleteAction)
     assert type(env_klu).detailed_topo_desc is not None
-    agent = RandomBBsSwitchAgent(action_space=env_klu.action_space)
-
+    agent = RandomBusSwitchAgent(action_space=env_klu.action_space)
+    # agent = RandomElSwitchAgent(action_space=env_klu.action_space)
+    # agent.seed(4)
+    
     cp = cProfile.Profile()
     cp.enable()
     nb_ts_klu, time_klu, aor_klu, gen_p_klu, gen_q_klu, time_step = run_env(env_klu, max_ts, agent)

@@ -6,9 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from array import array
 import copy
-from math import isfinite
 import numpy as np
 import warnings
 from typing import Callable, Tuple, Dict, Literal, Any, List, Optional, TYPE_CHECKING, Type
@@ -4087,19 +4085,19 @@ class BaseAction(GridObjects):
         if self._private_change_bus_vect is not None:
             subs_aff_c_bus[cls.grid_objects_types[self._private_change_bus_vect, cls.SUB_COL]] = True
         
-        if np.logical_xor(subs_aff_c_switch, subs_aff_c_bus).any():
+        if (subs_aff_c_switch & subs_aff_c_bus).any():
             raise AmbiguousAction("You used change_switch and change_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
-        if np.logical_xor(subs_aff_c_switch, subs_aff_s_bus).any():
+        if (subs_aff_c_switch & subs_aff_s_bus).any():
             raise AmbiguousAction("You used change_switch and set_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
-        if np.logical_xor(subs_aff_s_switch, subs_aff_c_bus).any():
+        if (subs_aff_s_switch & subs_aff_c_bus).any():
             raise AmbiguousAction("You used set_switch and change_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
-        if np.logical_xor(subs_aff_s_switch, subs_aff_s_bus).any():
+        if (subs_aff_s_switch & subs_aff_s_bus).any():
             raise AmbiguousAction("You used set_switch and set_bus to modify the topology "
                                   "of a given substation. You cannot affect the same substation "
                                   "with switches or change_bus / set_bus")
@@ -8405,10 +8403,10 @@ class BaseAction(GridObjects):
             if isinstance(first_, (bool, dt_bool)):
                 dtype_str_ = "dtype=dt_bool"
                 fun_ser_as_str = bool
-            elif isinstance(first_, (float, dt_float, np.float64, np.float128)):
+            elif isinstance(first_, (float, dt_float, np.float16, np.float32, np.float64)):
                 dtype_str_ = "dtype=dt_float"
                 fun_ser_as_str = _serialize_float
-            elif isinstance(first_, (int, dt_int, np.int64)):
+            elif isinstance(first_, (int, dt_int, np.int16, np.int32, np.int64)):
                 dtype_str_ = "dtype=dt_int"
                 fun_ser_as_str = int
             else:

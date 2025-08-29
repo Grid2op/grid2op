@@ -911,6 +911,8 @@ class _BackendAction(GridObjects):
         set_status = other._private_set_line_status
         switch_status = other._private_switch_line_status
         set_topo_vect = other._private_set_topo_vect
+        if set_topo_vect is None:
+            set_topo_vect = type(other)._build_attr("_set_topo_vect")
         switcth_topo_vect = other._private_change_bus_vect
         redispatching = other._private_redispatch
         storage_power = other._private_storage_power
@@ -950,7 +952,7 @@ class _BackendAction(GridObjects):
             if cls.detailed_topo_desc is None:
                 raise AmbiguousAction("Something modified the switches while "
                                       "no switch information is provided.")
-            orig_switch =  True & self.current_switch  # TODO detailed topo debug
+            orig_switch =  self.current_switch.copy()  # TODO detailed topo debug
             subid_switch = other.get_sub_ids_switch()
             if other._modif_change_switch:
                 # TODO detailed topo method of ValueStore !
