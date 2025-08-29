@@ -908,12 +908,12 @@ class _BackendAction(GridObjects):
         # self._is_cached = False  => done in each of the things bellow
         # speed optim: cache is not invalidated if do nothing is added
         
-        set_status = other._set_line_status
-        switch_status = other._switch_line_status
-        set_topo_vect = other._set_topo_vect
-        switcth_topo_vect = other._change_bus_vect
+        set_status = other._private_set_line_status
+        switch_status = other._private_switch_line_status
+        set_topo_vect = other._private_set_topo_vect
+        switcth_topo_vect = other._private_change_bus_vect
         redispatching = other._private_redispatch
-        storage_power = other._storage_power
+        storage_power = other._private_storage_power
         modif_switch = False
         switch_topo_vect = None
         shunt_tp_from_sw = None

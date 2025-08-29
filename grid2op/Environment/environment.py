@@ -385,11 +385,11 @@ class Environment(BaseEnv):
         bk_type = type(self.backend) 
         self._rewardClass = rewardClass
         self._actionClass : Type[BaseAction] = actionClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
-        self._actionClass._add_shunt_data()
-        self._actionClass._update_value_set()
+        self._actionClass.finalize_action_class()
         self._observationClass = observationClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
 
-        self._complete_action_cls = CompleteAction.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
+        self._complete_action_cls : Type[CompleteAction] = CompleteAction.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
+        self._complete_action_cls.finalize_action_class()
         self._helper_action_class = ActionSpace.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
         self._action_space = self._helper_action_class(
             gridobj=bk_type,

@@ -1351,8 +1351,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             raise EnvError(
                 'Impossible to convert "opponent_init_budget" to a float with error {}'.format(
                     e
-                )
-            )
+                ) 
+            ) from e
         if self._opponent_init_budget < 0.0:
             raise EnvError(
                 "If you want to deactivate the opponent, please don't set its budget to a negative number."
@@ -1364,8 +1364,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "Impossible to make an opponent with a type that does not inherit from BaseOpponent."
             )
 
-        self._opponent_action_class._add_shunt_data()
-        self._opponent_action_class._update_value_set()
         self._opponent_action_space = self._helper_action_class(
             gridobj=type(self.backend),
             legal_action=AlwaysLegal,
@@ -1377,7 +1375,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._opponent_action_space
         )
         self._opponent = self._opponent_class(self._opponent_action_space)
-        self._oppSpace = self._opponent_space_type(
+        self._oppSpace : OpponentSpace = self._opponent_space_type(
             compute_budget=self._compute_opp_budget,
             init_budget=self._opponent_init_budget,
             attack_duration=self._opponent_attack_duration,
@@ -3796,6 +3794,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 self._backend_action += self._env_modification
                 self._backend_action.set_redispatch(self._actual_dispatch)
                 self._backend_action.set_storage(self._storage_power)
+                assert self._env_modification._private_set_line_status is None
+                assert self._env_modification._private_set_topo_vect is None
 
                 # now get the new generator voltage setpoint
                 voltage_control_act = self._voltage_control(action, prod_v_chronics)
@@ -4255,7 +4255,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if self.__is_init:
             res = {}
             for el in self.name_sub:
-                if not el in grid_layout:
+                if el not in grid_layout:
                     raise EnvError(
                         'The substation "{}" is not present in grid_layout while in the powergrid.'
                         "".format(el)
@@ -4532,14 +4532,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             env_path, env_nm = os.path.split(sub_repo)
             if env_path not in sys.path:
                 sys.path.append(env_path)
-            if not package_path in sys.path:
+            if package_path not in sys.path:
                 sys.path.append(package_path)
             super_supermodule = importlib.import_module(env_nm)
             nm_ = f"{tmp_nm}.{nm_}"
             tmp_nm = env_nm
         super_module = importlib.import_module(tmp_nm, package=sub_repo_mod)
         add_sys_path = os.path.dirname(super_module.__file__)
-        if not add_sys_path in sys.path:
+        if add_sys_path not in sys.path:
             sys.path.append(add_sys_path)
             
         if f"{tmp_nm}.{nm_}" in sys.modules:

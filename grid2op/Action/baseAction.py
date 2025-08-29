@@ -537,7 +537,10 @@ class BaseAction(GridObjects):
     ISSUE_WARNING_SWITCH_SET_CHANGE : Literal["always", "once", "never"] = "always"
     
     #: perf optimization
-    DICT_ATTR_ = None
+    _DICT_ATTR_ = None
+    
+    #: perf optim
+    _IS_CLS_FINALIZED = False
     
     def __init__(self, _names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None):
         """
@@ -774,11 +777,8 @@ class BaseAction(GridObjects):
         return self._private_change_switch_status
                   
     @classmethod
-    def _build_dict_attr_if_needed(cls):
-        if cls.DICT_ATTR_ is not None:
-            return
-        
-        cls.DICT_ATTR_ = {
+    def _build_ref_attributes(cls):        
+        cls._DICT_ATTR_ = {
             "_set_line_status": np.full(shape=cls.n_line, fill_value=0, dtype=dt_int),
             "_switch_line_status": np.full(shape=cls.n_line, fill_value=False, dtype=dt_bool),
             "prod_p": np.full(shape=cls.n_gen, fill_value=np.nan, dtype=dt_float),
@@ -822,34 +822,31 @@ class BaseAction(GridObjects):
         
         # shunts
         if cls.shunts_data_available:
-            cls.DICT_ATTR_["_shunt_p"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
-            cls.DICT_ATTR_["_shunt_q"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
-            cls.DICT_ATTR_["_shunt_bus"] = np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
+            cls._DICT_ATTR_["_shunt_p"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
+            cls._DICT_ATTR_["_shunt_q"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
+            cls._DICT_ATTR_["_shunt_bus"] = np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
 
         if cls.detachment_is_allowed:
-            cls.DICT_ATTR_["_detach_load"] = np.full(cls.n_load, dtype=dt_bool, fill_value=False)
-            cls.DICT_ATTR_["_detach_gen"] = np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
-            cls.DICT_ATTR_["_detach_storage"] = np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
+            cls._DICT_ATTR_["_detach_load"] = np.full(cls.n_load, dtype=dt_bool, fill_value=False)
+            cls._DICT_ATTR_["_detach_gen"] = np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
+            cls._DICT_ATTR_["_detach_storage"] = np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
             
         if cls.detailed_topo_desc is not None:
             n_switch = cls.detailed_topo_desc.switches.shape[0]
-            cls.DICT_ATTR_["_set_switch_status"] = np.full(shape=n_switch, fill_value=0, dtype=dt_int)
-            cls.DICT_ATTR_["_change_switch_status"] = np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
+            cls._DICT_ATTR_["_set_switch_status"] = np.full(shape=n_switch, fill_value=0, dtype=dt_int)
+            cls._DICT_ATTR_["_change_switch_status"] = np.full(shape=n_switch, fill_value=False, dtype=dt_bool)
         
     @classmethod
-    def _build_attr(cls, attr_nm: str):
-        # False(line is disconnected) / True(line is connected)
-        cls._build_dict_attr_if_needed()
-        
-        if attr_nm not in cls.DICT_ATTR_:
+    def _build_attr(cls, attr_nm: str):        
+        if attr_nm not in cls._DICT_ATTR_:
             # TODO raise ActionException
             raise Grid2OpException(
                 'Impossible to find the attribute "{}" '
                 'into the BaseAction of type "{}"'.format(attr_nm, cls)
             )
-        tmp_read_only = cls.DICT_ATTR_[attr_nm]
-        return tmp_read_only.copy() if isinstance(tmp_read_only, np.ndarray) else None
-        
+        tmp_read_only = cls._DICT_ATTR_[attr_nm]
+        return None if tmp_read_only is None else tmp_read_only.copy()
+            
     @classmethod
     def process_shunt_static_data(cls):
         if not cls.shunts_data_available:
@@ -1181,6 +1178,14 @@ class BaseAction(GridObjects):
                     del res["change_switch_status"]
         return res
 
+    @classmethod
+    def finalize_action_class(cls):
+        if not cls._IS_CLS_FINALIZED:
+            cls._add_shunt_data()
+            cls._update_value_set()
+            cls._build_ref_attributes()
+            cls._IS_CLS_FINALIZED = True
+        
     @classmethod
     def _add_shunt_data(cls):
         if cls.shunt_added is False and cls.shunts_data_available:
