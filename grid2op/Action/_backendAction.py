@@ -761,20 +761,20 @@ class _BackendAction(GridObjects):
         self.shunt_p.set_val(arr_)
         arr_ = shunts["shunt_q"]
         self.shunt_q.set_val(arr_)
+        self._is_cached = False
+        
+        # handle shunts topology now
         arr_ = shunts["shunt_bus"]
-        self.shunt_bus.set_val(arr_)
         if shunt_tp_from_sw is not None:
             # some shunts have been modified with switches
             mask = shunt_tp_from_sw != 0
             arr_[mask] = shunt_tp_from_sw[mask]
-            self._is_cached = False
             
         mask_changed = (arr_ != 0) & (arr_ != self.shunt_bus.values)
         if mask_changed.any():
-            #shunt has been modified by the action
+            # shunt has been modified by the action
             self.shunt_bus.set_val(arr_)
             self.current_shunt_bus.values[mask_changed] = self.shunt_bus.values[mask_changed]
-            self._is_cached = False
         return True
     
     def _aux_shunt_bus_in_act(self, other: BaseAction):
@@ -969,6 +969,7 @@ class _BackendAction(GridObjects):
             # connected to the impacted substations
             mask_switch = switch_topo_vect != 0
             set_topo_vect[mask_switch] = switch_topo_vect[mask_switch]
+            self._is_cached = False
 
         # II shunts
         if cls.shunts_data_available:
@@ -982,6 +983,7 @@ class _BackendAction(GridObjects):
         # this need to be done BEFORE the topology, as a connected powerline will be connected to their old bus.
         # regardless if the status is changed in the action or not.
         if other._modif_change_status:
+            self._is_cached = False
             self.current_topo.change_status(
                 switch_status,
                 cls.line_or_pos_topo_vect,
@@ -990,6 +992,7 @@ class _BackendAction(GridObjects):
             )
             
         if other._modif_set_status:
+            self._is_cached = False
             self.current_topo.set_status(
                 set_status,
                 cls.line_or_pos_topo_vect,
@@ -1040,8 +1043,8 @@ class _BackendAction(GridObjects):
             subs_impacted_bus[subs_impacted_switch] = False 
             shunt_bus = None 
             if shunt_bus_modif:
-                subs_impacted_bus[cls.shunt_to_subid[other.shunt_bus >= 1]] = True
-                shunt_bus = 1 * other.shunt_bus
+                subs_impacted_bus[cls.shunt_to_subid[other._shunt_bus >= 1]] = True
+                shunt_bus = other._shunt_bus.copy()
             subs_changed = subs_impacted_bus  # maks of the substation affected by BUS modification (not switch)
 
             # try to change the object when simple disconnection
@@ -1055,7 +1058,7 @@ class _BackendAction(GridObjects):
                           )
             tp_el_disco[cls.line_or_pos_topo_vect[lines_disco]] = True
             tp_el_disco[cls.line_ex_pos_topo_vect[lines_disco]] = True
-            shunt_el_disco[other.shunt_bus == -1] = True
+            shunt_el_disco[other._shunt_bus == -1] = True
             tmp_status, mask_status = dtd.disconnect_el_with_switch(tp_el_disco, shunt_el_disco)
             self.current_switch[mask_status] = tmp_status[mask_status]
             # handle more difficult topological changes 

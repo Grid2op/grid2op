@@ -1213,7 +1213,7 @@ class BaseAction(GridObjects):
         if self._modif_alarm:
             return (self._private_raise_alarm).nonzero()[0]
         else:
-            return type(self)._build_attr("_raise_alarm")
+            return np.zeros(0, dtype=bool)
 
     def alert_raised(self) -> np.ndarray:
         """
