@@ -67,7 +67,11 @@ class SerializableSpace(GridObjects, RandomObject):
 
     """
 
-    def __init__(self, gridobj, subtype=object, _init_grid=True, _local_dir_cls=None):
+    def __init__(self,
+                 gridobj,
+                 subtype: Union[Type["BaseAction"], Type["BaseObservation"]]=object,
+                 _init_grid=True,
+                 _local_dir_cls=None):
         """
 
         subtype: ``type``

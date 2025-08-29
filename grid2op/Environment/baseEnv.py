@@ -3102,7 +3102,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # modification of the injections in the action, this erases the actions in the environment
             if inj_key in action._dict_inj:
                 if inj_key in self._env_modification._dict_inj:
-                    this_p_load = 1.0 * self._env_modification._dict_inj[inj_key]
+                    this_p_load = self._env_modification._dict_inj[inj_key].copy()
                     act_modif = action._dict_inj[inj_key]
                     this_p_load[np.isfinite(act_modif)] = act_modif[
                         np.isfinite(act_modif)
@@ -3110,7 +3110,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     self._env_modification._dict_inj[inj_key][:] = this_p_load
                 else:
                     self._env_modification._dict_inj[inj_key] = (
-                        1.0 * action._dict_inj[inj_key]
+                        action._dict_inj[inj_key].copy()
                     )
                     self._env_modification._modif_inj = True
 
@@ -3674,6 +3674,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         beg_step = time.perf_counter()
         self._last_obs : Optional[BaseObservation] = None
         self._forecasts = None  # force reading the forecast from the time series
+        
         try:
             beg_ = time.perf_counter()
 
@@ -3794,8 +3795,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 self._backend_action += self._env_modification
                 self._backend_action.set_redispatch(self._actual_dispatch)
                 self._backend_action.set_storage(self._storage_power)
-                assert self._env_modification._private_set_line_status is None
-                assert self._env_modification._private_set_topo_vect is None
 
                 # now get the new generator voltage setpoint
                 voltage_control_act = self._voltage_control(action, prod_v_chronics)
