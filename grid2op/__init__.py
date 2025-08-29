@@ -11,7 +11,7 @@
 Grid2Op a testbed platform to model sequential decision making in power systems.
 """
 
-__version__ = '1.12.1'
+__version__ = '1.12.2.dev0'
 
 __all__ = [
     "Action",
