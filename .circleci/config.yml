@@ -31,8 +31,8 @@ executors:
 jobs:
     test:
         executor: grid2op-executor
-        resource_class: medium+
-        parallelism: 4
+        resource_class: xlarge
+        parallelism: 8
         steps:
             - checkout
             - run: apt-get update -y
