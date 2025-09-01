@@ -879,7 +879,77 @@ class _BackendAction(GridObjects):
         ) = self.current_topo.get_line_status(
             self.line_or_pos_topo_vect, self.line_ex_pos_topo_vect
         )
+        
+    def _aux_iadd_switch(self, other: BaseAction, modify_topo_bus: bool, set_topo_vect: np.ndarray):
+        cls = type(self)
+        # agent modified the switches
+        if cls.detailed_topo_desc is None:
+            raise AmbiguousAction("Something modified the switches while "
+                                    "no switch information is provided.")
+        orig_switch =  self.current_switch.copy()  # TODO detailed topo debug
+        subid_switch = other.get_sub_ids_switch()
+        if other._modif_change_switch:
+            # TODO detailed topo method of ValueStore !
+            self.current_switch[other._change_switch_status] = ~self.current_switch[other._change_switch_status]
+        if other._modif_set_switch:
+            # TODO detailed topo method of ValueStore
+            mask_set = other._set_switch_status != 0
+            self.current_switch[mask_set] = other._set_switch_status[mask_set] == 1
 
+        # TODO detailed topo: don't do that if the action does not modifies
+        # the set_bus, change_bus etc.                
+        # if modify_topo_bus or True:
+        switch_topo_vect, shunt_tp_from_sw = self.detailed_topo_desc.from_switches_position(self.current_switch, subid_switch)
+        # change the "target topology" for the elements
+        # connected to the impacted substations
+        mask_switch = switch_topo_vect != 0
+        set_topo_vect[mask_switch] = switch_topo_vect[mask_switch]
+        self._is_cached = False
+        return True
+        
+    def _aux_iadd_reconcile_bus_and_switch(self, 
+                                           other,
+                                           shunt_bus_modif,
+                                           dtd):
+        cls = type(self)
+        # here I use the fact that the environment has cached the topological impact
+        # so I get the correct one !
+        lines_impacted, subs_impacted_bus = other.get_topological_impact(_read_from_cache=True)
+        subs_impacted_switch = other.get_sub_ids_switch()
+        
+        # it is ambiguous to modify a substation by
+        # switches and set_bus / change_bus 
+        subs_impacted_bus[subs_impacted_switch] = False 
+        shunt_bus = None 
+        if shunt_bus_modif:
+            subs_impacted_bus[cls.shunt_to_subid[other._shunt_bus >= 1]] = True
+            shunt_bus = other._shunt_bus.copy()
+        subs_changed = subs_impacted_bus  # maks of the substation affected by BUS modification (not switch)
+
+        # try to change the object when simple disconnection
+        # (faster and change only a few switches)
+        tp_el_disco = np.zeros(self.current_topo.values.shape, dtype=dt_bool)
+        shunt_el_disco = np.zeros(cls.n_shunt, dtype=dt_bool)
+        tgt_tv = self.current_topo.values
+        lines_disco = (lines_impacted & 
+                        ((tgt_tv[cls.line_or_pos_topo_vect] == -1) | 
+                        (tgt_tv[cls.line_ex_pos_topo_vect] == -1))
+                        )
+        tp_el_disco[cls.line_or_pos_topo_vect[lines_disco]] = True
+        tp_el_disco[cls.line_ex_pos_topo_vect[lines_disco]] = True
+        shunt_el_disco[other._shunt_bus == -1] = True
+        tmp_status, mask_status = dtd.disconnect_el_with_switch(tp_el_disco, shunt_el_disco)
+        self.current_switch[mask_status] = tmp_status[mask_status]
+        # handle more difficult topological changes 
+        # (slower and changes all the switches of the substation)
+        tmp_bus, mask_bus = dtd.compute_switches_position(self.current_topo.values,
+                                                            shunt_bus,
+                                                            subs_changed)
+        self.current_switch[mask_bus] = tmp_bus[mask_bus]
+        self._is_cached = False
+        # TODO detailed topo : tag the origin of the swtich state (and topological state to
+        # forward it in the observation)
+        
     def __iadd__(self, other : BaseAction) -> Self:
         """
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
@@ -948,30 +1018,9 @@ class _BackendAction(GridObjects):
         # TODO detailed topo: optimize this for staying
         # in the "switch" world
         if other._modif_change_switch or other._modif_set_switch:
-            # agent modified the switches
-            if cls.detailed_topo_desc is None:
-                raise AmbiguousAction("Something modified the switches while "
-                                      "no switch information is provided.")
-            orig_switch =  self.current_switch.copy()  # TODO detailed topo debug
-            subid_switch = other.get_sub_ids_switch()
-            if other._modif_change_switch:
-                # TODO detailed topo method of ValueStore !
-                self.current_switch[other._change_switch_status] = ~self.current_switch[other._change_switch_status]
-            if other._modif_set_switch:
-                # TODO detailed topo method of ValueStore
-                mask_set = other._set_switch_status != 0
-                self.current_switch[mask_set] = other._set_switch_status[mask_set] == 1
-
-            # TODO detailed topo: don't do that if the action does not modifies
-            # the set_bus, change_bus etc.                
-            if modify_topo_bus or True:
-                switch_topo_vect, shunt_tp_from_sw = self.detailed_topo_desc.from_switches_position(self.current_switch, subid_switch)
-            modif_switch = True
-            # change the "target topology" for the elements
-            # connected to the impacted substations
-            mask_switch = switch_topo_vect != 0
-            set_topo_vect[mask_switch] = switch_topo_vect[mask_switch]
-            self._is_cached = False
+            modif_switch = self._aux_iadd_switch(other, modify_topo_bus,
+                                                 set_topo_vect,  # might be modified here
+                                                 )
 
         # II shunts
         if cls.shunts_data_available:
@@ -1035,43 +1084,8 @@ class _BackendAction(GridObjects):
         # if there have been switch modification
         dtd = cls.detailed_topo_desc
         if ((dtd is not None) and modify_topo_bus) :
-            # here I use the fact that the environment has cached the topological impact
-            # so I get the correct one !
-            lines_impacted, subs_impacted_bus = other.get_topological_impact(_read_from_cache=True)
-            subs_impacted_switch = other.get_sub_ids_switch()
-            
-            # it is ambiguous to modify a substation by
-            # switches and set_bus / change_bus 
-            subs_impacted_bus[subs_impacted_switch] = False 
-            shunt_bus = None 
-            if shunt_bus_modif:
-                subs_impacted_bus[cls.shunt_to_subid[other._shunt_bus >= 1]] = True
-                shunt_bus = other._shunt_bus.copy()
-            subs_changed = subs_impacted_bus  # maks of the substation affected by BUS modification (not switch)
-
-            # try to change the object when simple disconnection
-            # (faster and change only a few switches)
-            tp_el_disco = np.zeros(self.current_topo.values.shape, dtype=dt_bool)
-            shunt_el_disco = np.zeros(cls.n_shunt, dtype=dt_bool)
-            tgt_tv = self.current_topo.values
-            lines_disco = (lines_impacted & 
-                           ((tgt_tv[cls.line_or_pos_topo_vect] == -1) | 
-                            (tgt_tv[cls.line_ex_pos_topo_vect] == -1))
-                          )
-            tp_el_disco[cls.line_or_pos_topo_vect[lines_disco]] = True
-            tp_el_disco[cls.line_ex_pos_topo_vect[lines_disco]] = True
-            shunt_el_disco[other._shunt_bus == -1] = True
-            tmp_status, mask_status = dtd.disconnect_el_with_switch(tp_el_disco, shunt_el_disco)
-            self.current_switch[mask_status] = tmp_status[mask_status]
-            # handle more difficult topological changes 
-            # (slower and changes all the switches of the substation)
-            tmp_bus, mask_bus = dtd.compute_switches_position(self.current_topo.values,
-                                                              shunt_bus,
-                                                              subs_changed)
-            self.current_switch[mask_bus] = tmp_bus[mask_bus]
-            self._is_cached = False
-            # TODO detailed topo : tag the origin of the swtich state (and topological state to
-            # forward it in the observation)
+            # reconcile switch and "set_bus" modification
+            self._aux_iadd_reconcile_bus_and_switch(other, shunt_bus_modif, dtd)
             
         return self
 

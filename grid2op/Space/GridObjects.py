@@ -4870,6 +4870,15 @@ class GridObjects:
         return bool_vect_str
 
     @classmethod
+    def _aux_get_full_cls_str_dtd(cls):
+        import json
+        tmp_dtds = {}
+        cls.detailed_topo_desc.save_to_dict(tmp_dtds)
+        tmp_dtds_str = json.dumps(tmp_dtds, separators=(',', ':'))
+        detailed_topo_desc_str = f"DetailedTopoDescription.from_dict({tmp_dtds_str})"
+        return detailed_topo_desc_str
+        
+    @classmethod
     def _get_full_cls_str(cls):
         _PATH_ENV_str = "None" if cls._PATH_GRID_CLASSES is None else f'"{cls._PATH_GRID_CLASSES}"'
         attr_list_vect_str = None
@@ -5017,37 +5026,40 @@ class GridObjects:
 
         assistant_warning_type_str = (None if cls.assistant_warning_type is None 
                                       else f'"{cls.assistant_warning_type}"')
-        alarms_area_names_str = (
-            "[]"
-            if cls.dim_alarms == 0
-            else ",".join([f'"{el}"' for el in cls.alarms_area_names])
-        )
-
-        tmp_tmp_ = ",".join(
-            [f'"{k}": [{format_el(v)}]' for k, v in cls.alarms_lines_area.items()]
-        )
-        tmp_ = f"{{{tmp_tmp_}}}"
-        alarms_lines_area_str = "{}" if cls.dim_alarms == 0 else tmp_
-
-        tmp_tmp_ = ",".join([f"[{format_el(el)}]" for el in cls.alarms_area_lines])
-        tmp_ = f"[{tmp_tmp_}]"
-        alarms_area_lines_str = "[]" if cls.dim_alarms == 0 else tmp_
-
-        tmp_tmp_ = ",".join([f"\"{el}\"" for el in cls.alertable_line_names])
-        tmp_ = f"[{tmp_tmp_}]"
-        alertable_line_names_str = '[]' if cls.dim_alerts == 0 else tmp_
         
-        tmp_tmp_ = ",".join([f"{el}" for el in cls.alertable_line_ids])
-        tmp_ = f"[{tmp_tmp_}]"
-        alertable_line_ids_str = '[]' if cls.dim_alerts == 0 else tmp_
+        if cls.dim_alarms == 0:
+            alarms_area_names_str = "[]"
+            alarms_lines_area_str = "{}" 
+            alarms_area_lines_str = "[]"
+        else:
+            
+            alarms_area_names_str = ",".join([f'"{el}"' for el in cls.alarms_area_names])
+
+            tmp_tmp_ = ",".join(
+                [f'"{k}": [{format_el(v)}]' for k, v in cls.alarms_lines_area.items()]
+            )
+            tmp_ = f"{{{tmp_tmp_}}}"
+            alarms_lines_area_str = tmp_
+
+            tmp_tmp_ = ",".join([f"[{format_el(el)}]" for el in cls.alarms_area_lines])
+            tmp_ = f"[{tmp_tmp_}]"
+            alarms_area_lines_str = tmp_
+
+        if cls.dim_alerts == 0:
+            alertable_line_names_str = '[]'
+            alertable_line_ids_str = '[]'
+        else:
+            tmp_tmp_ = ",".join([f"\"{el}\"" for el in cls.alertable_line_names])
+            tmp_ = f"[{tmp_tmp_}]"
+            alertable_line_names_str = tmp_
+            
+            tmp_tmp_ = ",".join([f"{el}" for el in cls.alertable_line_ids])
+            tmp_ = f"[{tmp_tmp_}]"
+            alertable_line_ids_str = tmp_
 
         detailed_topo_desc_str = "None" # TODO detailed topo
         if cls.detailed_topo_desc is not None:
-            import json
-            tmp_dtds = {}
-            cls.detailed_topo_desc.save_to_dict(tmp_dtds)
-            tmp_dtds_str = json.dumps(tmp_dtds, separators=(',', ':'))
-            detailed_topo_desc_str = f"DetailedTopoDescription.from_dict({tmp_dtds_str})"
+            detailed_topo_desc_str = cls._aux_get_full_cls_str_dtd()
 
         other_attr_str_ = cls._get_full_cls_str_derived()
         
@@ -5605,4 +5617,9 @@ class {cls.__name__}({cls._INIT_GRID_CLS.__name__}):
 
     @classmethod
     def finalize_class_definition(cls):
+        """
+        This class method should be overriden if needed in specific subclass.
+        
+        Some examples are given in :func:`grid2op.Action.BaseAction.finalize_class_definition` 
+        """
         pass

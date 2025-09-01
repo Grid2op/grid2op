@@ -1182,6 +1182,9 @@ class BaseAction(GridObjects):
 
     @classmethod
     def finalize_class_definition(cls):
+        """Finalize the definition of some class attributes
+        that depends on the environmnent.
+        """
         if not cls._IS_CLS_FINALIZED:
             cls._add_shunt_data()
             cls._update_value_set()
@@ -1798,11 +1801,16 @@ class BaseAction(GridObjects):
             return False
 
         # for all the "regular" attribute (generic code)
-        for modif_flag, attr_nm in zip(
-            ["_modif_set_status", "_modif_change_status", "_modif_curtailment", 
-             "_modif_alarm", "_modif_alert", "_modif_set_bus", "_modif_change_bus", "_modif_redispatch"],
-            ["_set_line_status", "_switch_line_status", "_curtail", "_raise_alarm", "_raise_alert", 
+        modif_flags = ["_modif_set_status", "_modif_change_status", "_modif_curtailment", 
+             "_modif_alarm", "_modif_alert", "_modif_set_bus", "_modif_change_bus", "_modif_redispatch"]
+        vect_flags = ["_set_line_status", "_switch_line_status", "_curtail", "_raise_alarm", "_raise_alert", 
              "_set_topo_vect", "_change_bus_vect", "_redispatch"]
+        if type(self).detailed_topo_desc is not None:
+            modif_flags += ["_modif_set_switch", "_modif_change_switch"]
+            vect_flags += ["_set_switch_status", "_change_switch_status"]
+        for modif_flag, attr_nm in zip(
+            modif_flags, vect_flags
+            
         ):
             if self._aux_vect_different(other, modif_flag, attr_nm):
                 return False 
@@ -1822,15 +1830,6 @@ class BaseAction(GridObjects):
         # shunts are the same
         if not self._aux_eq_shunts(other):
             return False
-        
-        # TODO detailed topology
-        if type(self).detailed_topo_desc is not None:
-            for modif_flag, attr_nm in zip(
-                ["_modif_set_switch", "_modif_change_switch"],
-                ["_set_switch_status", "_change_switch_status"]
-            ):
-                if self._aux_vect_different(other, modif_flag, attr_nm):
-                    return False 
         
         return True
 
@@ -2013,6 +2012,24 @@ class BaseAction(GridObjects):
         _lines_impacted |= disco_set_ex
         effective_change[cls.line_or_pos_topo_vect[disco_set_ex]] = False
         effective_change[cls.line_ex_pos_topo_vect[disco_set_ex]] = False
+    
+    def _aux_get_topo_impact_detachment(self, _subs_impacted):
+        cls = type(self)
+        if self._private_detach_load is not None:
+            _subs_impacted[cls.load_to_subid[self._private_detach_load]] = True
+        if self._private_detach_gen is not None:
+            _subs_impacted[cls.gen_to_subid[self._private_detach_gen]] = True
+        if self._private_detach_storage is not None:
+            _subs_impacted[cls.storage_to_subid[self._private_detach_storage]] = True
+            
+    def _aux_get_topo_impact_switches(self, _subs_impacted):
+        cls = type(self)
+        dtd = cls.detailed_topo_desc
+        if self._private_set_switch_status is not None:
+            _subs_impacted[dtd.switches[self._private_set_switch_status != 0, type(dtd).SUB_COL]] = True
+        if self._private_change_switch_status is not None:
+            _subs_impacted[dtd.switches[self._private_change_switch_status, type(dtd).SUB_COL]] = True
+        # TODO detailed topo (siwtches for a line status for example !)
         
     def get_topological_impact(self,
                                powerline_status : Optional[np.ndarray]=None,
@@ -2151,20 +2168,12 @@ class BaseAction(GridObjects):
         
         if cls.detachment_is_allowed:
             # added for detachment: it can also affect substations
-            if self._private_detach_load is not None:
-                _subs_impacted[cls.load_to_subid[self._private_detach_load]] = True
-            if self._private_detach_gen is not None:
-                _subs_impacted[cls.gen_to_subid[self._private_detach_gen]] = True
-            if self._private_detach_storage is not None:
-                _subs_impacted[cls.storage_to_subid[self._private_detach_storage]] = True
+            self._aux_get_topo_impact_detachment(_subs_impacted)
 
         dtd = cls.detailed_topo_desc
         if dtd is not None:
-            if self._private_set_switch_status is not None:
-                _subs_impacted[dtd.switches[self._private_set_switch_status != 0, type(dtd).SUB_COL]] = True
-            if self._private_change_switch_status is not None:
-                _subs_impacted[dtd.switches[self._private_change_switch_status, type(dtd).SUB_COL]] = True
-            # TODO detailed topo
+            # added for switches modification
+            self._aux_get_topo_impact_switches(_subs_impacted)
                         
         if _store_in_cache:
             # store the results in cache if asked too
