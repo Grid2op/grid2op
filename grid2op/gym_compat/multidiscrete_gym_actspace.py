@@ -299,13 +299,14 @@ class __AuxMultiDiscreteActSpace:
                 type(self).ATTR_NEEDBUILD,
             ),  # dimension will be computed on the fly, if the kwarg is used
         }
+        prop_continuous = ["redispatch", "set_storage", "curtail", "curtail_mw"]
         self.dict_properties = {k: v 
                                 for k, v in self.dict_properties.items()
                                 if v[1] > 0}
         self._attr_to_keep = sorted([el for el in self._attr_to_keep
-                                     if el in self.dict_properties]) 
+                                     if el in self.dict_properties.keys() | set(prop_continuous)]) 
         self._nb_bins = nb_bins
-        for el in ["redispatch", "set_storage", "curtail", "curtail_mw"]:
+        for el in prop_continuous:
             self._aux_check_continuous_elements(el, attr_to_keep, nb_bins, act_sp)
             
         self._dims = None
