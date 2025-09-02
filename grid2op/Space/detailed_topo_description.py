@@ -417,8 +417,8 @@ class DetailedTopoDescription(object):
         # fill with the switches between busbars
         res.switches[:nb_switch_busbars, cls.SUB_COL] = np.repeat(np.arange(n_sub), nb_switch_bb_per_sub)
         
-        li_or_bb_switch = sum([[j for i in range(j+1, n_bb_per_sub)] for j in range(n_bb_per_sub - 1)], start=[])  # order relative to the substation
-        li_ex_bb_switch = sum([[i for i in range(j+1, n_bb_per_sub)] for j in range(n_bb_per_sub - 1)], start=[])  # order relative to the substation
+        li_or_bb_switch = sum([[j for _ in range(j+1, n_bb_per_sub)] for j in range(n_bb_per_sub - 1)], start=[])  # order relative to the substation
+        li_ex_bb_switch = sum([list(range(j+1, n_bb_per_sub)) for j in range(n_bb_per_sub - 1)], start=[])  # order relative to the substation
         add_sub_id_unique_id = np.repeat(np.arange(n_sub), nb_switch_bb_per_sub) * n_bb_per_sub  # make it a unique substation labelling
         res.switches[:nb_switch_busbars, cls.CONN_NODE_1_ID_COL] = np.array(n_sub * li_or_bb_switch) + add_sub_id_unique_id
         res.switches[:nb_switch_busbars, cls.CONN_NODE_2_ID_COL] = np.array(n_sub * li_ex_bb_switch) + add_sub_id_unique_id
@@ -507,8 +507,6 @@ class DetailedTopoDescription(object):
     def _aux_compute_busbars_sections(self):
         # TODO detailed topo: speed optimization: install graph-tool (but not available with pip...)
         cls = type(self)
-        # import time
-        # beg_ = time.perf_counter()
         self._connectivity_graph = []
         self._conn_node_to_bbs_conn_node_id = [set() for _ in range(self.conn_node_name.shape[0])]
         for sub_id in range(self._n_sub):
@@ -523,7 +521,6 @@ class DetailedTopoDescription(object):
                 for el in conn_nodes:
                     self._conn_node_to_bbs_conn_node_id[el].add(busbar_id)
             self._connectivity_graph.append(g_this_sub)
-        # print(time.perf_counter() - beg_)  # 2ms for 1 sub
         
         # compute the position of each connectivity node in the substation
         self._cn_pos_in_sub = np.zeros(self.conn_node_to_subid.shape[0], dtype=dt_int) - 1
@@ -835,8 +832,6 @@ class DetailedTopoDescription(object):
         # new_order = np.arange(len(li_bbs))  # debug
         # end perf optim
         # TODO another speed optim: put together the objects that can be connected to the same busbars
-        
-        # cn_can_be_connected = np.ones((nb_conn_node, self.busbar_section_to_subid.shape[0]))
         try:
             # TODO detailed topo: in the df_compute_switches, make clearer what is const and what is not
             res = self._dfs_compute_switches_position(topo_vect, 
@@ -938,7 +933,6 @@ class DetailedTopoDescription(object):
                                                        cn_bbs,
                                                        switch_visited,
                                                        switches_state,
-                                                       bbs_cn_this_sub,
                                                        conn_node_visited,
                                                        topo_vect,
                                                        main_obj_id,
@@ -984,24 +978,6 @@ class DetailedTopoDescription(object):
             n_conn_node_visited[other_bbs_cn_is] = True
             # so I need to check if a path between cn_bbs and other_bbs_cn
             # of the color `my_bus` exists
-            
-            # print(f"\t\t\t\t start to look")
-            # beg = time.perf_counter()
-            # bbs_switch, bbs_cn = self._aux_connect_el_to_switch(conn_graph_this_sub,
-            #                                                     other_bbs_cn,
-            #                                                     cn_bbs,
-            #                                                     n_switch_visited,
-            #                                                     n_switches_state,
-            #                                                     this_tmp_g)
-            # print(f"\t\t\t\t start to look: {time.perf_counter() - beg}")
-            # import pdb
-            # pdb.set_trace()
-            
-            # speed optim:
-            # try first to look for a good results
-            # that involves only a minimum amount of busbar coupler
-            # both_ = self._order_switches(bbs_switch, bbs_cn, bbs_cn_this_sub)
-            # end speed optim
             
             both_ = self._aux_connect_el_to_switch_gen(conn_graph_this_sub,
                                                        other_bbs_cn,
@@ -1084,7 +1060,6 @@ class DetailedTopoDescription(object):
         el_cn_id_is = self._cn_pos_in_sub[el_cn_id]  # element connectivity node id, in the substation
         my_bus = topo_vect[self.conn_node_to_topovect_id[el_cn_id]]
         cn_bbs_possible = np.array(list(self._conn_node_to_bbs_conn_node_id[el_cn_id]))
-        # cn_bbs_possible_is = self._cn_pos_in_sub[cn_bbs_possible]
 
         # check that I have enough remaining busbars to affect other buses
         cn_bbs_for_check = conn_node_to_bus_id[bbs_cn_this_sub]
@@ -1096,7 +1071,6 @@ class DetailedTopoDescription(object):
         if nb_assigned_buses + nb_free_bbs < nb_indep_buses:
             # I would need to affect nb_indep_buses - nb_free_bbs other buses
             # but I have only nb_free_bbs free busbar section
-            # print("error from here")
             return None
         
         # TODO detailed topo: speed optim: this is probably copied too many times
@@ -1106,7 +1080,6 @@ class DetailedTopoDescription(object):
         # conn_node_to_bus_id = copy.deepcopy(conn_node_to_bus_id)
         # conn_node_visited = copy.deepcopy(conn_node_visited)
         
-        str_debug = main_obj_id * "  "
         if conn_node_visited[el_cn_id_is]:
             # object has already been visited, and if so
             # without any issue. I can go to the next one
@@ -1117,8 +1090,6 @@ class DetailedTopoDescription(object):
                                                         all_pos,
                                                         conn_node_visited,
                                                         order_pos)
-            assert main_obj_id_new != main_obj_id  # TODO detailed topo debug
-            # assert main_obj_id > main_obj_prev
             if main_obj_id_new is not None:
                 # still some work to do
                 return self._dfs_compute_switches_position(topo_vect,
@@ -1178,11 +1149,6 @@ class DetailedTopoDescription(object):
                 # and return it 
                 
             elif (n_conn_node_to_bus_id == my_bus).any():
-                # n_conn_node_visited[cn_bbs_is] = True
-                # n_conn_node_to_bus_id[cn_bbs_is] = my_bus
-                # # me
-                # n_conn_node_visited[el_cn_id_is] = True
-                # n_conn_node_to_bus_id[el_cn_id_is] = my_bus
                 tmp = self._aux_dfs_compute_switches_position_connect_bbs(
                                                        n_conn_node_to_bus_id,
                                                        my_bus,
@@ -1190,7 +1156,6 @@ class DetailedTopoDescription(object):
                                                        cn_bbs,
                                                        n_switch_visited,
                                                        n_switches_state,
-                                                       bbs_cn_this_sub,
                                                        n_conn_node_visited,
                                                        topo_vect,
                                                        main_obj_id,
@@ -1216,23 +1181,6 @@ class DetailedTopoDescription(object):
             tmp_g : nx.Graph = copy.deepcopy(conn_graph_this_sub)
             tmp_g.remove_nodes_from([el for el in self.busbar_section_to_conn_node_id if el != cn_bbs])
             
-            # # check if "main" element can be connected to this busbar
-            # possible_switches_tmp, cn_visited_tmp = self._aux_connect_el_to_switch(conn_graph_this_sub,
-            #                                                                        el_cn_id,
-            #                                                                        cn_bbs,
-            #                                                                        n_switch_visited,
-            #                                                                        n_switches_state,
-            #                                                                        tmp_g)
-            # if len(possible_switches_tmp) == 0:
-            #     # this is not possible, I should move to other choice
-            #     # cn_bbs is not correct
-            #     continue
-            
-            # # speed optim: run through the combination in a "smarter"
-            # # order
-            # new_order = self._order_switches(possible_switches_tmp, cn_visited_tmp, bbs_cn_this_sub)
-            # # end speed optim
-            
             both_ = self._aux_connect_el_to_switch_gen(conn_graph_this_sub,
                                                        el_cn_id,
                                                        cn_bbs,
@@ -1243,8 +1191,6 @@ class DetailedTopoDescription(object):
                 
             something_works = False
             this_res = None
-            # if main_obj_id <= 2:
-                # print(f"{str_debug} obj {main_obj_id}, bbs {cn_bbs}, bus : {my_bus}, {conn_node_to_bus_id}: connect element {len(new_order)} different trials")
             while True:
                 try:
                     debug_id2, (path, cn_path) = next(generator_path)
@@ -1264,7 +1210,6 @@ class DetailedTopoDescription(object):
                 nn_conn_node_visited[cn_path] = True
                 is_working = True
                 
-                # this_tmp_g = conn_graph_this_sub
                 this_tmp_g = copy.deepcopy(conn_graph_this_sub)
                 this_tmp_g.remove_nodes_from([el for el in this_tmp_g.nodes 
                                               if (conn_node_to_bus_id[self._cn_pos_in_sub[el]] != 0 and 
@@ -1334,10 +1279,6 @@ class DetailedTopoDescription(object):
                                 # as one element would not be assigned to the right bus
                                 is_working = False
                                 break
-                    # if solve_constraints:
-                        # print("One constraint solved")
-                    # else:
-                        # print("stop trying to add constraints")
                             
                 if not is_working:
                     # this path is not working, I don't use it
@@ -1346,7 +1287,6 @@ class DetailedTopoDescription(object):
                     # this seems to work, I try to see if I can 
                     # handle all the remaining elements
                     main_obj_id_new = self._aux_find_next_el_id(main_obj_id, all_pos, nn_conn_node_visited, order_pos)
-                    # assert main_obj_id_new != main_obj_id  # TODO detailed topo debug
                     if main_obj_id_new is not None:
                         # I still need to visit some other elements
                         this_res = self._dfs_compute_switches_position(topo_vect,
@@ -1418,9 +1358,8 @@ class DetailedTopoDescription(object):
         while True:
             try:
                 cn_path = next(all_paths)
-            except StopIteration as exc:
+            except StopIteration:
                 return
-                # raise StopIteration("_aux_connect_el_to_switch_gen") from exc
             res = self._aux_connect_el_to_switch_aux(
                                         conn_graph_this_sub,
                                         switches_state,
