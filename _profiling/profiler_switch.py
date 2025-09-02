@@ -15,9 +15,7 @@ Data are loaded only once, when the environment is "done" the programm stops.
 This corresponds to the situation: you have a trained agent, you want to assess its performance using the runner
 """
 
-from doctest import FAIL_FAST
 import os
-from pickle import FALSE
 
 from grid2op import make
 from grid2op.Action import CompleteAction
