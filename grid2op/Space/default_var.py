@@ -28,3 +28,11 @@ GRID2OP_CURRENT_VERSION_STR = importlib.metadata.version("grid2op")
 #: current grid2op version used, represented as a "packaging version"
 #: use this for any comparison
 GRID2OP_CURRENT_VERSION = version.parse(GRID2OP_CURRENT_VERSION_STR)
+
+#: TODO detailed topo
+#: Legacy backend could not manipulate switches directly
+DEFAULT_BK_CAN_MANIPULATE_SWITCH = False
+
+#: legacy backend were required to manipulate
+#: "bus breaker" / "nodal" topology
+DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER = True

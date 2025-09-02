@@ -15,13 +15,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 from typing import Tuple, Optional, Any, Dict, Type, Union, TYPE_CHECKING
-
-
-if TYPE_CHECKING:
-    # for type hints to avoid circular import
-    from grid2op.Action._backendAction import _BackendAction
-    from grid2op.Environment import BaseEnv  
-    from grid2op.Action import CompleteAction
     
 try:
     from typing import Self
@@ -29,7 +22,6 @@ except ImportError:
     # python version is probably bellow 3.11
     from typing_extensions import Self # type: ignore
     
-import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import (
     EnvError,
@@ -40,8 +32,21 @@ from grid2op.Exceptions import (
     IncorrectNumberOfLines,
     Grid2OpException,
 )
-from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.Space import (GridObjects,
+                           ElTypeInfo,
+                           DEFAULT_N_BUSBAR_PER_SUB,
+                           DEFAULT_ALLOW_DETACHMENT,
+                           DEFAULT_BK_CAN_MANIPULATE_SWITCH,
+                           DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER,
+                           )
 
+if TYPE_CHECKING:
+    # for type hints to avoid circular import
+    from grid2op.Action._backendAction import _BackendAction
+    from grid2op.Environment import BaseEnv  
+    from grid2op.Action import CompleteAction
+    from grid2op.Observation import CompleteObservation
+    
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
 class Backend(GridObjects, ABC):
@@ -177,14 +182,16 @@ class Backend(GridObjects, ABC):
         #: A flag to indicate whether the :func:`Backend.cannot_handle_more_than_2_busbar`
         #: or the :func:`Backend.cannot_handle_more_than_2_busbar`
         #: has been called when :func:`Backend.load_grid` was called.
-        #: Starting from grid2op 1.10.0 this is a requirement (to 
+        #: Starting from grid2op 1.10.0 calling either of the above method
+        #: is a requirement (to 
         #: ensure backward compatibility)
         self._missing_two_busbars_support_info: bool = True
         
         #: .. versionadded:: 1.10.0
         #: 
         #: There is a difference between this and the class attribute.
-        #: You should not worry about the class attribute of the backend in :func:`Backend.apply_action`
+        #: You should not worry about the class attribute of the backend 
+        #: in :func:`Backend.apply_action`
         self.n_busbar_per_sub: int = DEFAULT_N_BUSBAR_PER_SUB
 
         #: .. versionadded: 1.11.0
@@ -199,13 +206,79 @@ class Backend(GridObjects, ABC):
         
         #: .. versionadded: 1.11.0
         #: will be used later on in future grid2op version
-        self._prevent_automatic_disconnection: bool = True
+        self._prevent_automatic_disconnection : bool = True
         
         #: speed optimization to avoid np.full, which is rather slow
         self._disconnected_during_cf = None
     
         #: speed optimization: avoid to compute some data not used in general
         self._needs_active_bus = False
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        self._missing_switch_support_info: bool = True
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        #: tells wether or not the backend has the possibility
+        #: to directly process switches
+        #: in this case costly (in terms of comptuation time 
+        #: routines are not used grid2op side)
+        #: TODO this optimization is not done yet !
+        self.can_manipulate_switch = DEFAULT_BK_CAN_MANIPULATE_SWITCH
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        self._missing_bus_breaker_topo_support_info: bool = True
+        
+        #: ..versionadded: SWITCH_VERSION
+        #: TODO detailed topo
+        #: tells wether or not the backend has the possibility
+        #: to directly process bus breaker topology
+        #: in this case costly (in terms of comptuation time 
+        #: routines are not used grid2op side)
+        #: TODO this optimization is not done yet !
+        self.can_manipulate_bus_breaker_topo = DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER
+        
+    def can_handle_switch(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_switch_support_info = False
+        self.can_manipulate_switch = True
+        
+    def cannot_handle_switch(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_switch_support_info = False
+        self.can_manipulate_switch = False
+        
+    def can_handle_bus_breaker_topo(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_bus_breaker_topo_support_info = False
+        self.can_manipulate_bus_breaker_topo = True
+        
+    def cannot_handle_bus_breaker_topo(self):
+        """
+        ..versionadded: SWITCH_VERSION
+        
+        TODO detailed topo
+        TODO: doc + test + AAA tests !
+        """
+        self._missing_bus_breaker_topo_support_info = False
+        self.can_manipulate_bus_breaker_topo = False
         
     def can_handle_more_than_2_busbar(self):
         """
@@ -588,16 +661,32 @@ class Backend(GridObjects, ABC):
         """
         pass
 
-    @abstractmethod
-    def get_topo_vect(self) -> np.ndarray:
+    def get_topo_vect(self) -> Optional[np.ndarray]:
         """
         INTERNAL
 
+        TODO detailed topo: change of behaviour !
+        
+            
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
             Prefer using :attr:`grid2op.Observation.BaseObservation.topo_vect`
 
         Get the topology vector from the :attr:`Backend._grid`.
+        
+        .. versionchanged:: 1.11.0
+        
+            **mainly for developer**
+            
+            In grid2op version 1.11.0 we introduced the support (for some environment)
+            for switches.  
+            
+            **IF** your backend expose the switches to grid2op, then you might
+            not need to implement this function. In this case (if you chose not
+            to implement it) then you must implement the :func:`Backend.get_switches_position`
+            and grid2op will compute the "topo_vect" (if required by the `Agent` or the `Rules`
+            using the :func:`grid2op.Space.DetailedTopoDescription.from_switches_position`
+            function, which might be slower than what you backend could do)
         
         .. note::
             It is called after the solver has been ran, only in case of success (convergence).
@@ -626,8 +715,22 @@ class Backend(GridObjects, ABC):
             An array saying to which bus the object is connected.
 
         """
-        pass
+        return None
 
+    def get_switches_position(self) -> Optional[np.ndarray]:
+        """INTERNAL
+
+        TODO detailed topo: change of behaviour !
+        
+        .. newinversion:: 1.11.0
+        
+        Returns
+        -------
+        np.ndarray
+            _description_
+        """
+        return None
+    
     @abstractmethod
     def generators_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -2237,7 +2340,7 @@ class Backend(GridObjects, ABC):
         return set_me
 
     def update_from_obs(self,
-                        obs: "grid2op.Observation.CompleteObservation",
+                        obs: "CompleteObservation",
                         force_update: Optional[bool]=False) -> "_BackendAction":
         """
         Takes an observation as input and update the internal state of `self` to match the state of the backend
@@ -2365,6 +2468,51 @@ class Backend(GridObjects, ABC):
             self.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
             warnings.warn("Your backend is missing the `_missing_detachment_support_info` "
                           "attribute.")
+            
+        if hasattr(self, "_missing_switch_support_info"):
+            if self._missing_switch_support_info:
+                warnings.warn("The backend implementation you are using is probably too old to take advantage of the "
+                              "new feature added in grid2op SWITCH_VERSION: the possibility "
+                              "to modify the grid topology with swtiches directly."
+                              "To silence this warning, you can modify the `load_grid` implementation "
+                              "of your backend and either call:\n"
+                              "- self.can_handle_switch if the current implementation "
+                              "   can handle the modification of switches OR\n"
+                              "- self.cannot_handle_switch if not."
+                              "\nAnd of course, ideally, if the current implementation "
+                              "of your backend cannot handle switches, adapt it to make it work. "
+                              f"\nThis is set to {DEFAULT_BK_CAN_MANIPULATE_SWITCH}, to match legacy code."
+                              "\nThis entails that grid2op will compute the resulting topology after a switch "
+                              "has been modified by the agent, which will increase computation time.")
+                self._missing_switch_support_info = False
+                self.can_manipulate_switch = DEFAULT_BK_CAN_MANIPULATE_SWITCH
+        else:
+            self._missing_switch_support_info = False
+            self.can_manipulate_switch = DEFAULT_BK_CAN_MANIPULATE_SWITCH
+            warnings.warn("Your backend is missing the `_missing_switch_support_info` "
+                          "attribute.")
+            
+        if hasattr(self, "_missing_bus_breaker_topo_support_info"):
+            if self._missing_bus_breaker_topo_support_info:
+                warnings.warn("The backend implementation you are using is probably too old to take advantage of the "
+                              "new feature added in grid2op SWITCH_VERSION: the possibility "
+                              "to modify the grid topology with swtiches directly."
+                              "For legacy backends, this imposed that the backend is able to process"
+                              "'bus breaker' topology as it used to be required by grid2op.")
+                self._missing_bus_breaker_topo_support_info = False
+                self.can_manipulate_bus_breaker_topo = DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER
+        else:
+            self._missing_bus_breaker_topo_support_info = False
+            self.can_manipulate_bus_breaker_topo = DEFAULT_BK_CAN_MANIPULATE_BUS_BREAKER
+            warnings.warn("Your backend is missing the `_missing_bus_breaker_topo_support_info` "
+                          "attribute.")
+            
+        if (not self.can_manipulate_bus_breaker_topo) and not (self.can_manipulate_switch):
+            warnings.warn("No topological action will be able to be performed by the agent, as"
+                          "your backend does not know how to modify the topology.")
+            # TODO detailed topo: force also the emulation of protection, 
+            # the opponent,
+            # and other kind of things in this case.
         
         orig_type = type(self)
         if orig_type.my_bk_act_class is None and orig_type._INIT_GRID_CLS is None:
@@ -2404,8 +2552,6 @@ class Backend(GridObjects, ABC):
         
         cls.my_bk_act_class = _BackendAction.init_grid(cls, _local_dir_cls=_local_dir_cls)
         cls._complete_action_class = CompleteAction.init_grid(cls, _local_dir_cls=_local_dir_cls)
-        cls._complete_action_class._add_shunt_data()
-        cls._complete_action_class._update_value_set()
         cls.assert_grid_correct_cls()
         
     def _remove_my_attr_cls(self):

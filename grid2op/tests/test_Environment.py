@@ -651,16 +651,17 @@ class TestLineChangeLastBus(unittest.TestCase):
         switch_action = self.env.action_space({"change_line_status": switch_status})
 
         obs, r, d, _ = self.env.step(bus_action)
-        assert d is False
+        assert d is False, f"{d} vs False"
         assert obs.topo_vect[line_ex_topo] == 2
-        assert obs.line_status[LINE_ID] == True
+        assert obs.line_status[LINE_ID]
+        print("here here here")
         obs, r, d, info = self.env.step(switch_action)
-        assert d is False
-        assert obs.line_status[LINE_ID] == False
+        assert d is False, f"{d} vs False"
+        assert  not obs.line_status[LINE_ID]
         obs, r, d, info = self.env.step(switch_action)
         assert d is False, "Diverged powerflow on reconnection"
-        assert info["is_illegal"] == False, "Reconnecting should be legal"
-        assert obs.line_status[LINE_ID] == True, "Line is not reconnected"
+        assert not info["is_illegal"], "Reconnecting should be legal"
+        assert obs.line_status[LINE_ID], "Line is not reconnected"
         # Its reconnected to bus 2, without specifying it
         assert obs.topo_vect[line_ex_topo] == 2, "Line ex should be on bus 2"
 

@@ -301,8 +301,11 @@ class __AuxGymActionSpace:
                     # storage power
                     low = -1.0 * act_cls.storage_max_p_prod
                     high = 1.0 * act_cls.storage_max_p_absorb
-                my_type = SpaceType(low=low, high=high, shape=shape, dtype=dt)
-
+                try:
+                    my_type = SpaceType(low=low, high=high, shape=shape, dtype=dt)
+                except ValueError:
+                    import pdb
+                    pdb.set_trace()
             if my_type is None:
                 # if nothing has been found in the specific cases above
                 my_type = self._generic_gym_space(dt, sh)

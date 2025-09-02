@@ -12,9 +12,7 @@ import grid2op
 from grid2op.Action import CompleteAction
 from grid2op.Backend import PandaPowerBackend
 from lightsim2grid import LightSimBackend
-import pandapower as pp
 import numpy as np
-import pdb
 
 
 class AuxTestBugShuntDC:

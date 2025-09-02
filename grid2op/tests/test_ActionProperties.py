@@ -81,7 +81,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp[:-1]
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # array too big
         with self.assertRaises(AmbiguousAction):
@@ -90,7 +90,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp2
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # float vect
         with self.assertRaises(AmbiguousAction):
@@ -99,7 +99,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp3
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # one of the value too small
         with self.assertRaises(AmbiguousAction):
@@ -109,7 +109,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp4
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # one of the value too large
         with self.assertRaises(AmbiguousAction):
@@ -119,7 +119,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp5
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # wrong type
         with self.assertRaises(AmbiguousAction):
@@ -129,7 +129,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp6
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
     def test_load_set_bus_tuple(self):
         # second set of tests, with tuple
@@ -143,7 +143,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = (3.0, 1)
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -151,7 +151,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = (False, 1)
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -159,7 +159,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = ("toto", 1)
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -167,7 +167,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = (1, "toto")
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -175,7 +175,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = (11, 1)
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -183,7 +183,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = (-1, 1)
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # not enough element in the tuple
         act = self.helper_action()
@@ -191,7 +191,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = (1,)
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # too much element in the tuple
         act = self.helper_action()
@@ -199,7 +199,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = (1, 2, 3)
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
     def test_load_set_bus_list_asarray(self):
         """test the set attribute when list are given (list convertible to array)"""
@@ -219,7 +219,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp0
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # list too big
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -228,7 +228,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp1
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # list of float
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -236,7 +236,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp3
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # one of the value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -245,7 +245,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp4
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # one of the value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -254,7 +254,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp5
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # wrong type
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -263,7 +263,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp6
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
     def test_load_set_bus_list_oftuple(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -280,7 +280,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp3
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -289,7 +289,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp4
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -298,7 +298,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp5
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -307,7 +307,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp6
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -316,7 +316,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp7
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -325,7 +325,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp8
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -334,7 +334,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp9
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # last test, when we give a list of tuple of exactly the right size
         act = self.helper_action()
@@ -356,7 +356,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp3
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -365,7 +365,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp4
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -374,7 +374,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp5
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -383,7 +383,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp6
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -392,7 +392,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp7
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -401,7 +401,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp8
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -410,7 +410,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp9
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
     def test_load_set_bus_dict_with_name(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -427,7 +427,7 @@ class TestSetBus(unittest.TestCase):
             act.load_set_bus = tmp6
         assert np.all(
             act.load_set_bus == 0
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
     def test_gen_set_bus_array(self):
         li_orig = [1, 2, -1, 2, 1]  # because i have 5 gens
@@ -444,7 +444,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp[:-1]
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # array too big
         with self.assertRaises(AmbiguousAction):
@@ -453,7 +453,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp2
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # float vect
         with self.assertRaises(AmbiguousAction):
@@ -462,7 +462,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp3
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # one of the value too small
         with self.assertRaises(AmbiguousAction):
@@ -472,7 +472,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp4
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # one of the value too large
         with self.assertRaises(AmbiguousAction):
@@ -482,7 +482,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp5
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # wrong type
         with self.assertRaises(AmbiguousAction):
@@ -492,7 +492,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp6
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
     def test_gen_set_bus_tuple(self):
         # second set of tests, with tuple
@@ -506,7 +506,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = (3.0, 1)
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -514,7 +514,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = (False, 1)
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -522,7 +522,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = ("toto", 1)
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -530,7 +530,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = (1, "toto")
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -538,7 +538,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = (6, 1)
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -546,7 +546,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = (-1, 1)
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # not enough element in the tuple
         act = self.helper_action()
@@ -554,7 +554,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = (1,)
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # too much element in the tuple
         act = self.helper_action()
@@ -562,7 +562,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = (1, 2, 3)
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
     def test_gen_set_bus_list_asarray(self):
         """test the set attribute when list are given (list convertible to array)"""
@@ -582,7 +582,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp0
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # list too big
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -591,7 +591,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp1
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # list of float
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -599,7 +599,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp3
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # one of the value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -608,7 +608,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp4
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # one of the value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -617,7 +617,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp5
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # wrong type
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -626,7 +626,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp6
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
     def test_gen_set_bus_list_oftuple(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -643,7 +643,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp3
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -652,7 +652,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp4
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -661,7 +661,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp5
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -670,7 +670,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp6
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -679,7 +679,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp7
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -688,7 +688,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp8
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -697,7 +697,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp9
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
         # when the list has exactly the same size
         act = self.helper_action()
@@ -719,7 +719,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp3
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -728,7 +728,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp4
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -737,7 +737,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp5
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -746,7 +746,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp6
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -755,7 +755,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp7
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -764,7 +764,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp8
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -773,7 +773,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp9
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
     def test_gen_set_bus_dict_with_name(self):
         """test the set attribute when dict are given with key = names"""
@@ -790,7 +790,7 @@ class TestSetBus(unittest.TestCase):
             act.gen_set_bus = tmp6
         assert np.all(
             act.gen_set_bus == 0
-        ), "a gen has been modified by an illegal action"
+        ), "a gen has been modified by an ambiguous action"
 
     def test_storage_set_bus_array(self):
         li_orig = [1, 2]  # because i have 2 loads
@@ -808,7 +808,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp[0]
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # array too big
         act = self.helper_action()
@@ -817,7 +817,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp2
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # float vect
         act = self.helper_action()
@@ -826,7 +826,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp3
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # one of the value too small
         act = self.helper_action()
@@ -836,7 +836,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp4
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # one of the value too large
         act = self.helper_action()
@@ -846,7 +846,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp5
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -856,7 +856,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp6
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
     def test_storage_set_bus_tuple(self):
         # second set of tests, with tuple
@@ -870,7 +870,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = (1.0, 1)
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -878,7 +878,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = (False, 1)
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -886,7 +886,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = ("toto", 1)
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -894,7 +894,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = (1, "toto")
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -902,7 +902,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = (11, 1)
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -910,7 +910,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = (-1, 1)
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # not enough element in the tuple
         act = self.helper_action()
@@ -918,7 +918,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = (1,)
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # too much element in the tuple
         act = self.helper_action()
@@ -926,7 +926,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = (1, 2, 3)
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
     def test_storage_set_bus_list_asarray(self):
         """test the set attribute when list are given (list convertible to array)"""
@@ -946,7 +946,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp0
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # list too big
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -955,7 +955,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp1
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # list of float
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -963,7 +963,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp3
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # one of the value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -972,7 +972,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp4
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # one of the value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -981,7 +981,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp5
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # wrong type
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -990,7 +990,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp6
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
     def test_storage_set_bus_list_oftuple(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -1007,7 +1007,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp3
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1016,7 +1016,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp4
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1025,7 +1025,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp5
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1034,7 +1034,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp6
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1043,7 +1043,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp7
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1052,7 +1052,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp8
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1061,7 +1061,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp9
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
         # last test, when we give a list of tuple of exactly the right size
         act = self.helper_action()
@@ -1083,7 +1083,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp3
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1092,7 +1092,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp4
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1101,7 +1101,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp5
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1110,7 +1110,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp6
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1119,7 +1119,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp7
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1128,7 +1128,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp8
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1137,7 +1137,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp9
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
     def test_storage_set_bus_dict_with_name(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -1154,7 +1154,7 @@ class TestSetBus(unittest.TestCase):
             act.storage_set_bus = tmp6
         assert np.all(
             act.storage_set_bus == 0
-        ), "a storage unit has been modified by an illegal action"
+        ), "a storage unit has been modified by an ambiguous action"
 
     def test_line_or_set_bus_array(self):
         li_orig = [
@@ -1193,7 +1193,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp[0]
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # array too big
         act = self.helper_action()
@@ -1202,7 +1202,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp2
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # float vect
         act = self.helper_action()
@@ -1211,7 +1211,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp3
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # one of the value too small
         act = self.helper_action()
@@ -1221,7 +1221,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp4
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # one of the value too large
         act = self.helper_action()
@@ -1231,7 +1231,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp5
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1241,7 +1241,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp6
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
     def test_line_or_set_bus_tuple(self):
         # second set of tests, with tuple
@@ -1255,7 +1255,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = (1.0, 1)
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1263,7 +1263,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = (False, 1)
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1271,7 +1271,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = ("toto", 1)
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1279,7 +1279,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = (1, "toto")
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -1287,7 +1287,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = (21, 1)
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -1295,7 +1295,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = (-1, 1)
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # not enough element in the tuple
         act = self.helper_action()
@@ -1303,7 +1303,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = (1,)
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # too much element in the tuple
         act = self.helper_action()
@@ -1311,7 +1311,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = (1, 2, 3)
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
     def test_line_or_set_bus_list_asarray(self):
         """test the set attribute when list are given (list convertible to array)"""
@@ -1331,7 +1331,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp0
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # list too big
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1340,7 +1340,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp1
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # list of float
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1348,7 +1348,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp3
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # one of the value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1357,7 +1357,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp4
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # one of the value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1366,7 +1366,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp5
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # wrong type
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1375,7 +1375,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp6
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
     def test_line_or_set_bus_list_oftuple(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -1392,7 +1392,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp3
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1401,7 +1401,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp4
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1410,7 +1410,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp5
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1419,7 +1419,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp6
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1428,7 +1428,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp7
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1437,7 +1437,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp8
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1446,7 +1446,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp9
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
         # last test, when we give a list of tuple of exactly the right size
         act = self.helper_action()
@@ -1468,7 +1468,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp3
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1477,7 +1477,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp4
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1486,7 +1486,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp5
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1495,7 +1495,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp6
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1504,7 +1504,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp7
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1513,7 +1513,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp8
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1522,7 +1522,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp9
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
     def test_line_or_set_bus_dict_with_name(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -1539,7 +1539,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp6
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
     def test_line_ex_set_bus_array(self):
         li_orig = [
@@ -1578,7 +1578,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp[0]
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ext) unit has been modified by an illegal action"
+        ), "a line (ext) unit has been modified by an ambiguous action"
 
         # array too big
         act = self.helper_action()
@@ -1587,7 +1587,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp2
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ext) unit has been modified by an illegal action"
+        ), "a line (ext) unit has been modified by an ambiguous action"
 
         # float vect
         act = self.helper_action()
@@ -1596,7 +1596,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp3
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ext) unit has been modified by an illegal action"
+        ), "a line (ext) unit has been modified by an ambiguous action"
 
         # one of the value too small
         act = self.helper_action()
@@ -1606,7 +1606,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp4
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ext) unit has been modified by an illegal action"
+        ), "a line (ext) unit has been modified by an ambiguous action"
 
         # one of the value too large
         act = self.helper_action()
@@ -1616,7 +1616,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp5
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ext) unit has been modified by an illegal action"
+        ), "a line (ext) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1626,7 +1626,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp6
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ext) unit has been modified by an illegal action"
+        ), "a line (ext) unit has been modified by an ambiguous action"
 
     def test_line_ex_set_bus_tuple(self):
         # second set of tests, with tuple
@@ -1640,7 +1640,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = (1.0, 1)
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1648,7 +1648,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = (False, 1)
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1656,7 +1656,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = ("toto", 1)
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -1664,7 +1664,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = (1, "toto")
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -1672,7 +1672,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = (21, 1)
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -1680,7 +1680,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = (-1, 1)
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # not enough element in the tuple
         act = self.helper_action()
@@ -1688,7 +1688,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = (1,)
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # too much element in the tuple
         act = self.helper_action()
@@ -1696,7 +1696,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = (1, 2, 3)
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
     def test_line_ex_set_bus_list_asarray(self):
         """test the set attribute when list are given (list convertible to array)"""
@@ -1716,7 +1716,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp0
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # list too big
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1725,7 +1725,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp1
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # list of float
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1733,7 +1733,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp3
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # one of the value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1742,7 +1742,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp4
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # one of the value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1751,7 +1751,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp5
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # wrong type
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1760,7 +1760,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp6
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
     def test_line_ex_set_bus_list_oftuple(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -1777,7 +1777,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp3
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1786,7 +1786,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp4
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1795,7 +1795,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp5
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1804,7 +1804,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp6
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1813,7 +1813,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp7
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1822,7 +1822,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp8
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1831,7 +1831,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp9
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
         # last test, when we give a list of tuple of exactly the right size
         act = self.helper_action()
@@ -1853,7 +1853,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp3
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1862,7 +1862,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp4
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1871,7 +1871,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp5
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1880,7 +1880,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp6
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1889,7 +1889,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp7
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1898,7 +1898,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp8
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -1907,7 +1907,7 @@ class TestSetBus(unittest.TestCase):
             act.line_ex_set_bus = tmp9
         assert np.all(
             act.line_ex_set_bus == 0
-        ), "a line (ex) unit has been modified by an illegal action"
+        ), "a line (ex) unit has been modified by an ambiguous action"
 
     def test_line_ex_set_bus_dict_with_name(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -1924,7 +1924,7 @@ class TestSetBus(unittest.TestCase):
             act.line_or_set_bus = tmp6
         assert np.all(
             act.line_or_set_bus == 0
-        ), "a line (origin) unit has been modified by an illegal action"
+        ), "a line (origin) unit has been modified by an ambiguous action"
 
     def test_set_by_sub(self):
         # TODO more thorough testing !!!
@@ -2071,7 +2071,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp[0]
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # array too big
         act = self.helper_action()
@@ -2080,7 +2080,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp2
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # float vect
         act = self.helper_action()
@@ -2089,7 +2089,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp3
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # one of the value too small
         act = self.helper_action()
@@ -2099,7 +2099,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp4
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # one of the value too large
         act = self.helper_action()
@@ -2109,17 +2109,17 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp5
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
-        with self.assertRaises(IllegalAction):
+        with self.assertRaises(AmbiguousAction):
             tmp6 = np.array(li_orig).astype(str)
             tmp6[1] = "toto"
-            act.line_ex_set_bus = tmp6
+            act.line_set_status = tmp6
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
     def test_line_set_status_tuple(self):
         # second set of tests, with tuple
@@ -2133,7 +2133,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = (1.0, 1)
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2141,7 +2141,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = (False, 1)
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2149,7 +2149,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = ("toto", 1)
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2157,7 +2157,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = (1, "toto")
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -2165,7 +2165,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = (21, 1)
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -2173,7 +2173,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = (-1, 1)
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # not enough element in the tuple
         act = self.helper_action()
@@ -2181,7 +2181,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = (1,)
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # too much element in the tuple
         act = self.helper_action()
@@ -2189,7 +2189,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = (1, 2, 3)
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
     def test_line_set_status_list_asarray(self):
         """test the set attribute when list are given (list convertible to array)"""
@@ -2209,7 +2209,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp0
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # list too big
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2218,7 +2218,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp1
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # list of float
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2226,7 +2226,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp3
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2235,7 +2235,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp4
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2244,7 +2244,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp5
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # wrong type
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2253,7 +2253,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp6
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
     def test_line_set_status_list_oftuple(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -2270,7 +2270,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp3
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2279,7 +2279,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp4
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2288,7 +2288,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp5
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2297,7 +2297,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp6
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2306,7 +2306,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp7
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2315,7 +2315,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp8
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2324,7 +2324,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp9
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
         # last test, when we give a list of tuple of exactly the right size
         act = self.helper_action()
@@ -2346,7 +2346,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp3
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2355,7 +2355,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp4
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2364,7 +2364,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp5
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2373,7 +2373,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp6
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2382,7 +2382,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp7
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2391,7 +2391,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp8
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -2400,7 +2400,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp9
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
     def test_line_set_status_dict_with_name(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -2417,7 +2417,7 @@ class TestSetStatus(unittest.TestCase):
             act.line_set_status = tmp6
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
 
 class TestChangeBus(unittest.TestCase):
@@ -2473,7 +2473,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, 3.0)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2481,7 +2481,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, False)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2489,7 +2489,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, "toto")
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2497,7 +2497,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, (1, "toto"))
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -2505,7 +2505,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, nb_el + 1)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -2513,7 +2513,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, -1)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
     def test_load_change_bus_int(self):
         self._aux_change_bus_int("load", self.helper_action.n_load)
@@ -2543,19 +2543,19 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, (1,))
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
             setattr(act, prop_name, (1, False))
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
             setattr(act, prop_name, (1, False, 3))
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
     def test_load_change_bus_tuple(self):
         self._aux_change_bus_tuple("load", self.helper_action.n_load)
@@ -2609,7 +2609,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp[:-1])
         assert np.all(
             ~getattr(act, prop_name)
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # list too big
         act = self.helper_action()
@@ -2618,7 +2618,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp_1)
         assert np.all(
             ~getattr(act, prop_name)
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
     def test_load_change_bus_arraybool(self):
         self._aux_change_bus_arraybool("load", self.helper_action.n_load)
@@ -2673,7 +2673,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp2)
         assert np.all(
             ~getattr(act, prop_name)
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
         # one id too high
         act = self.helper_action()
@@ -2682,7 +2682,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp3)
         assert np.all(
             ~getattr(act, prop_name)
-        ), "a load has been modified by an illegal action"
+        ), "a load has been modified by an ambiguous action"
 
     def test_load_change_bus_arrayint(self):
         self._aux_change_bus_arrayint("load", self.helper_action.n_load)
@@ -2718,7 +2718,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, li_orig)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # list too short
         act = self.helper_action()
@@ -2726,7 +2726,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, li_orig[:-1])
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # list too big
         act = self.helper_action()
@@ -2736,7 +2736,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, li_2)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # list mixed types (str)
         act = self.helper_action()
@@ -2746,7 +2746,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, li_3)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # list mixed types (float)
         act = self.helper_action()
@@ -2756,7 +2756,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, li_4)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # list mixed types (int)
         act = self.helper_action()
@@ -2766,7 +2766,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, li_5)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
     def test_load_change_bus_listbool(self):
         self._aux_change_bus_listbool("load", nb_el=self.helper_action.n_load)
@@ -2808,7 +2808,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp2)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # one id too high
         act = self.helper_action()
@@ -2818,7 +2818,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp3)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # one string
         act = self.helper_action()
@@ -2828,7 +2828,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp4)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # one float
         act = self.helper_action()
@@ -2838,7 +2838,7 @@ class TestChangeBus(unittest.TestCase):
             setattr(act, prop_name, tmp5)
         assert np.all(
             ~getattr(act, prop_name)
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # test it revert back to proper thing
         act = self.helper_action()
@@ -2944,7 +2944,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (3.0, 1.0))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2952,7 +2952,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (False, 1.0))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2960,7 +2960,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, ("toto", 1.0))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2968,7 +2968,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (1, "toto"))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # wrong type
         act = self.helper_action()
@@ -2976,7 +2976,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (1, False))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # id too large
         act = self.helper_action()
@@ -2984,7 +2984,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (nb_el + 1, 1.0))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # id too low
         act = self.helper_action()
@@ -2992,7 +2992,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (-1, 1.0))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # tuple wrong size
         act = self.helper_action()
@@ -3000,7 +3000,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (1,))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # tuple wrong size
         act = self.helper_action()
@@ -3008,7 +3008,7 @@ class TestSetValues(unittest.TestCase):
             setattr(act, prop_name, (1, 1.0, 1))
         assert np.all(
             getattr(act, prop_name) == this_zero
-        ), f"a {name_el} has been modified by an illegal action"
+        ), f"a {name_el} has been modified by an ambiguous action"
 
         # test correct canceling
         act = self.helper_action()
@@ -3226,7 +3226,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp3
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the bus value too small
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -3235,7 +3235,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp4
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # one of the bus value too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -3244,7 +3244,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp5
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # wrong type (element id)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -3253,7 +3253,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp6
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # wrong type (bus value)
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -3262,7 +3262,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp7
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # el_id too large
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -3271,7 +3271,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp8
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
         # el_id too low
         act = self.helper_action()
         with self.assertRaises(AmbiguousAction):
@@ -3280,7 +3280,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp9
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
     def todo_line_set_status_dict_with_name(self):
         """test the set attribute when list are given (list of tuple)"""
@@ -3297,7 +3297,7 @@ class TestSetValues(unittest.TestCase):
             act.line_set_status = tmp6
         assert np.all(
             act.line_set_status == 0
-        ), "a line status has been modified by an illegal action"
+        ), "a line status has been modified by an ambiguous action"
 
 
 if __name__ == "__main__":
