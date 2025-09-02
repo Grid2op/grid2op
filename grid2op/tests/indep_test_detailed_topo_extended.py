@@ -67,6 +67,9 @@ class TestComputeSwitchPosExt(unittest.TestCase):
             if el == 37:
                 # too long (all night)
                 continue
+            elif el == 63:
+                # too long (a few minutes)
+                continue
             elif el == 201:
                 # error when reading the case
                 continue

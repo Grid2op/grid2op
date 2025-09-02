@@ -7,7 +7,7 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
-from typing import Optional
+from typing import Callable, Iterable, List, Optional
 import numpy as np
 
 from grid2op.Exceptions import Grid2OpException
@@ -109,3 +109,25 @@ class ElTypeInfo:
         self._p = el_p
         self._q = el_q
         self._v = el_v
+
+
+def _save_to_dict_generic_type(as_list, convert_type_fun):
+    """Should only be used in the `_save_to_dict_xxx` methods !"""
+    if as_list:
+        return lambda arr: [convert_type_fun(el) for el in arr]
+    return None
+
+
+def _save_to_dict_str(as_list) -> Optional[Callable[[Iterable[str]], List[str]]]:
+    """Should only be used in the `save_to_dict` method !"""
+    return _save_to_dict_generic_type(as_list, str)
+
+
+def _save_to_dict_float(as_list) -> Optional[Callable[[Iterable[float]], List[float]]]:
+    """Should only be used in the `save_to_dict` method !"""
+    return _save_to_dict_generic_type(as_list, float)
+
+
+def _save_to_dict_int(as_list) -> Optional[Callable[[Iterable[int]], List[int]]]:
+    """Should only be used in the `save_to_dict` method !"""
+    return _save_to_dict_generic_type(as_list, int)

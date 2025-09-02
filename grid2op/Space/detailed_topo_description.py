@@ -6,13 +6,12 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import time
 from typing import List, Optional, Type
 
 from grid2op.Space import GridObjects
 try:
     from typing import Self
-except ImportError as exc_:
+except ImportError:
     from typing_extensions import Self
     
 import numpy as np
@@ -22,7 +21,11 @@ import copy
 import grid2op
 from grid2op.dtypes import dt_int, dt_bool
 from grid2op.Exceptions import Grid2OpException, ImpossibleTopology
-from grid2op.Space.space_utils import extract_from_dict, save_to_dict
+from grid2op.Space.space_utils import (extract_from_dict,
+                                       save_to_dict,
+                                       _save_to_dict_str,
+                                       _save_to_dict_float,
+                                       _save_to_dict_int)
 
 
 class DetailedTopoDescription(object):
@@ -697,6 +700,36 @@ class DetailedTopoDescription(object):
         affected_switch[switches] = True  # say these switches have been modified
         return full_res, affected_switch
         
+    def _compute_switches_position_check_inputs(self,
+                                                topo_vect: np.ndarray,
+                                                shunt_bus: Optional[np.ndarray]=None,
+                                                subs_changed : Optional[np.ndarray]=None
+                                                ):
+        conn_shunt = None
+        if topo_vect.shape[0] != self._dim_topo:
+            raise Grid2OpException("Incorrect input size for the topology vector.")
+        if shunt_bus is not None and shunt_bus.shape[0] != self._n_shunt:
+            raise Grid2OpException("Incorrect size for the shunt bus vector.")
+        conn_topo_vect = topo_vect[topo_vect != -1]
+        if len(conn_topo_vect) and conn_topo_vect.min() < 1:
+            raise Grid2OpException("In grid2op buses are labelled starting from 1 and not 0 "
+                                   "(check your `topo_vect` input)")
+        if self._n_shunt > 0 and shunt_bus is not None:
+            conn_shunt = shunt_bus[shunt_bus != -1]
+            if conn_shunt.shape[0] and conn_shunt.min() < 1:
+                    raise Grid2OpException("In grid2op buses are labelled starting from 1 and not 0 "
+                                           "(check your `shunt_bus` input)")
+        if np.unique(conn_topo_vect).shape[0] > self.busbar_section_to_subid.shape[0]:
+            raise ImpossibleTopology("You ask for more independant buses than there are "
+                                     "busbar section on this substation")
+        
+        if subs_changed is None:
+            subs_changed = np.ones(self._n_sub, dtype=dt_bool)
+        else:
+            if subs_changed.shape[0] != self._n_sub:
+                raise Grid2OpException("Incorrect size for the substation mask")
+        return conn_topo_vect, conn_shunt, subs_changed
+    
     def compute_switches_position(self,
                                   topo_vect: np.ndarray,
                                   shunt_bus: Optional[np.ndarray]=None,
@@ -722,34 +755,13 @@ class DetailedTopoDescription(object):
         """
         # TODO detailed topo: input the previous switch state
         
-        if topo_vect.shape[0] != self._dim_topo:
-            raise Grid2OpException("Incorrect input size for the topology vector.")
-        if shunt_bus is not None and shunt_bus.shape[0] != self._n_shunt:
-            raise Grid2OpException("Incorrect size for the shunt bus vector.")
-        conn_topo_vect = topo_vect[topo_vect != -1]
-        if len(conn_topo_vect):
-            if conn_topo_vect.min() < 1:
-                raise Grid2OpException("In grid2op buses are labelled starting from 1 and not 0 "
-                                    "(check your `topo_vect` input)")
-        if self._n_shunt > 0 and shunt_bus is not None:
-            conn_shunt = shunt_bus[shunt_bus != -1]
-            if conn_shunt.shape[0]:
-                if conn_shunt.min() < 1:
-                    raise Grid2OpException("In grid2op buses are labelled starting from 1 and not 0 "
-                                           "(check your `shunt_bus` input)")
-        if np.unique(conn_topo_vect).shape[0] > self.busbar_section_to_subid.shape[0]:
-            raise ImpossibleTopology("You ask for more independant buses than there are "
-                                     "busbar section on this substation")
-        if subs_changed is None:
-            subs_changed = np.ones(self._n_sub, dtype=dt_bool)
             
+        *_, subs_changed = self._compute_switches_position_check_inputs(topo_vect, shunt_bus, subs_changed)
         if self._from_ieee_grid:
             # specific case for IEEE grid, consistent with the AddDetailedTopoIEEE
             # class
             return self.compute_switches_position_ieee(topo_vect, shunt_bus, subs_changed)
         
-        if subs_changed.shape[0] != self._n_sub:
-            raise Grid2OpException("Incorrect size for the substation mask")
         
         if self._conn_node_to_bbs_conn_node_id is None:
             self._aux_compute_busbars_sections()
@@ -1751,14 +1763,14 @@ class DetailedTopoDescription(object):
             res,
             self,
             "conn_node_name",
-            (lambda arr: [str(el) for el in arr]) if as_list else None,
+            _save_to_dict_str(as_list),
             copy_,
         )
         save_to_dict(
             res,
             self,
             "conn_node_to_subid",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
+            _save_to_dict_int(as_list),
             copy_,
         )
         res["_from_ieee_grid"] = self._from_ieee_grid
@@ -1800,64 +1812,20 @@ class DetailedTopoDescription(object):
             )
         
         # for the switches per element
-        save_to_dict(
-            res,
-            self,
-            "load_to_conn_node_id",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            self,
-            "gen_to_conn_node_id",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            self,
-            "line_or_to_conn_node_id",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            self,
-            "line_ex_to_conn_node_id",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            self,
-            "storage_to_conn_node_id",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            self,
-            "busbar_section_to_conn_node_id",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            self,
-            "busbar_section_to_subid",
-            (lambda arr: [int(el) for el in arr]) if as_list else None,
-            copy_,
-        )
+        li_attr_saved = ["load_to_conn_node_id", "gen_to_conn_node_id",
+                         "line_or_to_conn_node_id", "line_ex_to_conn_node_id",
+                         "storage_to_conn_node_id", "busbar_section_to_conn_node_id",
+                         "busbar_section_to_subid"]
         if self.shunt_to_conn_node_id is not None:
+            li_attr_saved.append("shunt_to_conn_node_id")
+        for attr_nm in li_attr_saved:
             save_to_dict(
                 res,
                 self,
-                "shunt_to_conn_node_id",
-                (lambda arr: [int(el) for el in arr]) if as_list else None,
+                attr_nm,
+                _save_to_dict_int(as_list),
                 copy_,
             )
-        # TODO detailed topo
         
     @classmethod
     def from_dict(cls, dict_) -> Self:

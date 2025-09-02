@@ -15,7 +15,9 @@ Data are loaded only once, when the environment is "done" the programm stops.
 This corresponds to the situation: you have a trained agent, you want to assess its performance using the runner
 """
 
+from doctest import FAIL_FAST
 import os
+from pickle import FALSE
 
 from grid2op import make
 from grid2op.Action import CompleteAction
@@ -37,6 +39,8 @@ except ImportError:
 ENV_NAME = "rte_case5_example"
 ENV_NAME = "rte_case14_realistic"
 MAX_TS = 1000
+RANDOM_SWITCH_AGENT = False  # do not change this
+# for profiling it has no impact.
 
 
 class RandomBusSwitchAgent(BaseAgent):
@@ -94,12 +98,13 @@ def main(max_ts, name, use_lightsim=False, test_env=True):
                    action_class=CompleteAction)
     assert type(env_klu).detailed_topo_desc is not None
     agent = RandomBusSwitchAgent(action_space=env_klu.action_space)
-    # agent = RandomElSwitchAgent(action_space=env_klu.action_space)
-    # agent.seed(4)
+    if RANDOM_SWITCH_AGENT:
+        agent = RandomElSwitchAgent(action_space=env_klu.action_space)
+    agent.seed(4)
     
     cp = cProfile.Profile()
     cp.enable()
-    nb_ts_klu, time_klu, aor_klu, gen_p_klu, gen_q_klu, time_step = run_env(env_klu, max_ts, agent)
+    nb_ts_klu, *_, time_step = run_env(env_klu, max_ts, agent)
     cp.disable()
     print(f'Time for {nb_ts_klu} steps: {time_step} => {time_step / nb_ts_klu} s/step or {nb_ts_klu / time_step:.3e} step / s')
     nm_f, ext = os.path.splitext(__file__)

@@ -885,7 +885,7 @@ class _BackendAction(GridObjects):
         # agent modified the switches
         if cls.detailed_topo_desc is None:
             raise AmbiguousAction("Something modified the switches while "
-                                    "no switch information is provided.")
+                                  "no switch information is provided.")
         orig_switch =  self.current_switch.copy()  # TODO detailed topo debug
         subid_switch = other.get_sub_ids_switch()
         if other._modif_change_switch:
@@ -987,7 +987,6 @@ class _BackendAction(GridObjects):
         redispatching = other._private_redispatch
         storage_power = other._private_storage_power
         modif_switch = False
-        switch_topo_vect = None
         shunt_tp_from_sw = None
 
         modif_set_bus = other._modif_set_bus
@@ -1025,10 +1024,10 @@ class _BackendAction(GridObjects):
         # II shunts
         if cls.shunts_data_available:
             shunt_bus_modif = self._aux_iadd_shunt(other, shunt_tp_from_sw)
-            if shunt_bus_modif:
-                modify_topo_bus = True
         else:
             shunt_bus_modif = False
+        if shunt_bus_modif:
+            modify_topo_bus = True
             
         # III line status
         # this need to be done BEFORE the topology, as a connected powerline will be connected to their old bus.

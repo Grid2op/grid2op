@@ -1910,8 +1910,6 @@ class BaseAction(GridObjects):
 
         # TODO detailed topo put elsewhere maybe ?
         raise NotImplementedError("Not implemented yet, maybe check detailed_topo_desc.from_switches_position")
-
-        return set_topo_vect, change_bus_vect, shunt_bus
     
     def _aux_get_topo_impact_notopo(self, _store_in_cache: bool):
         cls = type(self)

@@ -48,7 +48,13 @@ from grid2op.Exceptions import (
     IncorrectPositionOfStorages,
     InvalidRedispatching,
 )
-from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
+from grid2op.Space.space_utils import (extract_from_dict,
+                                       save_to_dict,
+                                       _save_to_dict_str,
+                                       _save_to_dict_float,
+                                       _save_to_dict_int,
+                                       ElTypeInfo)
+
 from grid2op.Space.detailed_topo_description import DetailedTopoDescription
 from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
                                        DEFAULT_N_BUSBAR_PER_SUB,
@@ -3846,158 +3852,36 @@ class GridObjects:
             res["_PATH_GRID_CLASSES"] = cls._PATH_GRID_CLASSES  # i do that manually for more control
             save_to_dict(res, cls, "n_busbar_per_sub", str, copy_)
         
-        save_to_dict(
-            res,
-            cls,
-            "name_gen",
-            (lambda arr: [str(el) for el in arr]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "name_load",
-            (lambda li: [str(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "name_line",
-            (lambda li: [str(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "name_sub",
-            (lambda li: [str(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "name_storage",
-            (lambda li: [str(el) for el in li]) if as_list else None,
-            copy_,
-        )
+        li_nm_attrs = ["name_gen", "name_load", "name_line",
+                       "name_sub", "name_storage"]
+        for nm in li_nm_attrs:
+            save_to_dict(
+                res,
+                cls,
+                nm,
+                _save_to_dict_str(as_list),
+                copy_,
+            )
         save_to_dict(res, cls, "env_name", str, copy_)
 
-        save_to_dict(
-            res,
-            cls,
-            "sub_info",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-
-        save_to_dict(
-            res,
-            cls,
-            "load_to_subid",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "gen_to_subid",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "line_or_to_subid",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "line_ex_to_subid",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "storage_to_subid",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-
-        save_to_dict(
-            res,
-            cls,
-            "load_to_sub_pos",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "gen_to_sub_pos",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "line_or_to_sub_pos",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "line_ex_to_sub_pos",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "storage_to_sub_pos",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-
-        save_to_dict(
-            res,
-            cls,
-            "load_pos_topo_vect",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "gen_pos_topo_vect",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "line_or_pos_topo_vect",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "line_ex_pos_topo_vect",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
-        save_to_dict(
-            res,
-            cls,
-            "storage_pos_topo_vect",
-            (lambda li: [int(el) for el in li]) if as_list else None,
-            copy_,
-        )
+        li_attr_ints = ["sub_info",
+                        "load_to_subid", "gen_to_subid", 
+                        "line_or_to_subid", "line_ex_to_subid",
+                        "storage_to_subid",
+                        "load_to_sub_pos", "gen_to_sub_pos",
+                        "line_or_to_sub_pos", "line_ex_to_sub_pos",
+                        "storage_to_sub_pos",
+                        "load_pos_topo_vect", "gen_pos_topo_vect",
+                        "line_or_pos_topo_vect", "line_ex_pos_topo_vect",
+                        "storage_pos_topo_vect", ]
+        for nm in li_attr_ints:
+            save_to_dict(
+                res,
+                cls,
+                nm,
+                _save_to_dict_int(as_list),
+                copy_,
+            )
 
         # shunts (not in topo vect but still usefull)
         if cls.shunts_data_available:
@@ -4005,14 +3889,14 @@ class GridObjects:
                 res,
                 cls,
                 "name_shunt",
-                (lambda li: [str(el) for el in li]) if as_list else None,
+                _save_to_dict_str(as_list),
                 copy_,
             )
             save_to_dict(
                 res,
                 cls,
                 "shunt_to_subid",
-                (lambda li: [int(el) for el in li]) if as_list else None,
+                _save_to_dict_int(as_list),
                 copy_,
             )
         else:
@@ -4061,62 +3945,18 @@ class GridObjects:
                 (lambda li: [str(el) for el in li]) if as_list else None,
                 copy_,
             )
-            save_to_dict(
-                res,
-                cls,
-                "storage_Emax",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
-            save_to_dict(
-                res,
-                cls,
-                "storage_Emin",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
-            save_to_dict(
-                res,
-                cls,
-                "storage_max_p_prod",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
-            save_to_dict(
-                res,
-                cls,
-                "storage_max_p_absorb",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
-            save_to_dict(
-                res,
-                cls,
-                "storage_marginal_cost",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
-            save_to_dict(
-                res,
-                cls,
-                "storage_loss",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
-            save_to_dict(
-                res,
-                cls,
-                "storage_charging_efficiency",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
-            save_to_dict(
-                res,
-                cls,
-                "storage_discharging_efficiency",
-                (lambda li: [float(el) for el in li]) if as_list else None,
-                copy_,
-            )
+            attr_storage_float = ["storage_Emax", "storage_Emin",
+                                  "storage_max_p_prod", "storage_max_p_absorb",
+                                  "storage_marginal_cost", "storage_loss",
+                                  "storage_charging_efficiency", "storage_discharging_efficiency"]
+            for el in attr_storage_float:
+                save_to_dict(
+                    res,
+                    cls,
+                    el,
+                    _save_to_dict_float(as_list),
+                    copy_,
+                )
 
             # alert or alarm
             if cls.assistant_warning_type is not None:
