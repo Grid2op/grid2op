@@ -49,6 +49,7 @@ class SerializableActionSpace(SerializableSpace):
     STORAGE_POWER_ID = 5
     RAISE_ALARM_ID = 6
     RAISE_ALERT_ID = 7
+    FLEXIBILITY_ID = 8
 
     ERR_MSG_WRONG_TYPE = ('The action to update using `ActionSpace` is of type "{}" '
                          '"which is not the type of action handled by this action space "'
@@ -126,6 +127,8 @@ class SerializableActionSpace(SerializableSpace):
             rnd_types.append(cls.RAISE_ALARM_ID)
         if cls.dim_alerts > 0 and "raise_alert" in self.actionClass.authorized_keys:
             rnd_types.append(cls.RAISE_ALERT_ID)
+        if "flexibility" in self.actionClass.authorized_keys:
+            rnd_types.append(cls.FLEXIBILITY_ID)
         return rnd_types
 
     def supports_type(self,
@@ -134,6 +137,7 @@ class SerializableActionSpace(SerializableSpace):
                                            "set_bus",
                                            "change_bus",
                                            "redispatch",
+                                           "flexibility",
                                            "storage_power",
                                            "set_storage",
                                            "curtail",
@@ -148,7 +152,8 @@ class SerializableActionSpace(SerializableSpace):
         ----------
         action_type: ``str``
             One of "set_line_status", "change_line_status", "set_bus", "change_bus", "redispatch",
-            "storage_power", "set_storage", "curtail", "curtail_mw", "raise_alarm" or "raise_alert"
+            "flexibility", "storage_power", "set_storage", "curtail", "curtail_mw", "raise_alarm" 
+            or "raise_alert".
             A string representing the action types you want to inspect.
 
         Returns
@@ -179,6 +184,7 @@ class SerializableActionSpace(SerializableSpace):
             "set_bus",
             "change_bus",
             "redispatch",
+            "flexibility", # new in 1.12.x
             "storage_power",
             "set_storage",
             "curtail",
@@ -248,6 +254,20 @@ class SerializableActionSpace(SerializableSpace):
         rnd_disp[rnd_gen] = rnd_gen_disp
         rnd_update["redispatch"] = rnd_disp
         rnd_update["redispatch"] = rnd_update["redispatch"].astype(dt_float)
+        return rnd_update
+    
+    def _sample_flexibility(self, rnd_update=None):
+        if rnd_update is None:
+            rnd_update = {}
+        loads = np.arange(self.n_load)[self.load_flexible]
+        rnd_load = self.space_prng.choice(loads)
+        rd = -self.load_max_ramp_down[rnd_load]
+        ru = self.load_max_ramp_up[rnd_load]
+        rnd_load_disp = (ru - rd) * self.space_prng.random() + rd
+        rnd_disp = np.zeros(self.n_load)
+        rnd_disp[rnd_load] = rnd_load_disp
+        rnd_update["flexibility"] = rnd_disp
+        rnd_update["flexibility"] = rnd_update["flexibility"].astype(dt_float)
         return rnd_update
 
     def _sample_storage_power(self, rnd_update=None):
@@ -365,6 +385,8 @@ class SerializableActionSpace(SerializableSpace):
             rnd_update = self._sample_raise_alarm()
         elif rnd_type == cls.RAISE_ALERT_ID:
             rnd_update = self._sample_raise_alert()
+        elif rnd_type == cls.FLEXIBILITY_ID:
+            rnd_update = self._sample_flexibility()
         else:
             raise Grid2OpException(
                 "Impossible to sample action of type {}".format(rnd_type)
@@ -1390,6 +1412,85 @@ class SerializableActionSpace(SerializableSpace):
         return res
 
     @staticmethod
+    def get_all_unitary_flexibility(
+        action_space, num_down=5, num_up=5, max_ratio_value=1.0
+    ) -> List[BaseAction]:
+        """
+        Flexibility (demand response) actions are continuous. This method is an helper to convert the continuous
+        action into "discrete actions" (by rounding).
+
+        The number of actions is equal to num_down + num_up (by default 10) per dispatchable generator.
+
+
+        This method acts as followed:
+
+        - it will divide the interval [-load_max_ramp_down, 0] into `num_down`, each will make
+          a distinct action (then counting `num_down` different action, because 0.0 is removed)
+        - it will do the same for [0, load_max_ramp_up]
+
+        .. note::
+            With this "helper" only one load is affected by one action. For example
+            there are no action acting on both load 1 and load 2 at the same
+            time.
+
+        Parameters
+        ----------
+        action_space: :class:`ActionSpace`
+            The action space used.
+
+        num_down: ``int``
+            In how many intervals the "flexibility down" will be split
+
+        num_up: ``int``
+            In how many intervals the "flexibility up" will be split
+
+        max_ratio_value: ``float``
+            Expressed in terms of ratio of `load_max_ramp_up` / `load_max_ramp_down`, it gives the maximum value
+            that will be used to generate the actions. For example, if `max_ratio_value=0.5`, then it will not
+            generate actions that attempts to apply flexibility more than `0.5 * load_max_ramp_up` (or less than
+            `- 0.5 * load_max_ramp_down`). This helps reducing the instability that can be caused by demand
+            response.
+
+        Returns
+        -------
+        res: ``list``
+            The list of all discretized flexibility actions.
+
+        """
+
+        res = []
+        n_load = len(action_space.load_flexible)
+
+        for load_idx in range(n_load):
+            # Skip non-dispatchable generators
+            if not action_space.load_flexible[load_idx]:
+                continue
+
+            # Create evenly spaced positive interval
+            ramps_up = np.linspace(
+                0.0, max_ratio_value * action_space.load_max_ramp_up[load_idx], num=num_up
+            )
+            ramps_up = ramps_up[1:]  # Exclude flexibility of 0MW
+
+            # Create evenly spaced negative interval
+            ramps_down = np.linspace(
+                -max_ratio_value * action_space.load_max_ramp_down[load_idx],
+                0.0,
+                num=num_down,
+            )
+            ramps_down = ramps_down[:-1]  # Exclude flexibility of 0MW
+
+            # Merge intervals
+            ramps = np.append(ramps_up, ramps_down)
+
+            # Create ramp up actions
+            for ramp in ramps:
+                action = action_space({"flexibility": [(load_idx, ramp)]})
+                res.append(action)
+
+        return res
+
+    @staticmethod
     def get_all_unitary_curtail(action_space : Self, num_bin: int=10, min_value: float=0.5) -> List[BaseAction]:
         """
         Curtailment action are continuous action. This method is an helper to convert the continuous
@@ -1629,7 +1730,68 @@ class SerializableActionSpace(SerializableSpace):
                     (gen_id, red_) for gen_id, red_ in zip(need_redisp, reds)
                 ]
                 res["redispatching"].append(act)
+                
+    def _aux_get_back_to_ref_state_flexibility(self, res, obs, precision=1e-5):
+        # TODO this is ugly, probably slow and could definitely be optimized
+        notflex_setpoint = np.abs(obs.target_flex) >= 1e-7
+        if notflex_setpoint.any():
+            need_flex = (notflex_setpoint).nonzero()[0]
+            res["flexibility"] = []
+            # combine generators and do not exceed ramps (up or down)
+            rem = np.zeros(self.n_load, dtype=dt_float)
+            nb_ = np.zeros(self.n_load, dtype=dt_int)
+            for load_id in need_flex:
+                if obs.target_flex[load_id] > 0.0:
+                    div_ = obs.target_flex[load_id] / obs.load_max_ramp_down[load_id]
+                else:
+                    div_ = -obs.target_flex[load_id] / obs.load_max_ramp_up[load_id]
+                div_ = np.round(div_, precision)
+                nb_[load_id] = int(div_)
+                if div_ != int(div_):
+                    if obs.target_flex[load_id] > 0.0:
+                        rem[load_id] = (
+                            obs.target_flex[load_id]
+                            - obs.load_max_ramp_down[load_id] * nb_[load_id]
+                        )
+                    else:
+                        rem[load_id] = (
+                            -obs.target_flex[load_id]
+                            - obs.load_max_ramp_up[load_id] * nb_[load_id]
+                        )
+                    nb_[load_id] += 1
+            # now create the proper actions
+            for nb_act in range(np.max(nb_)):
+                act = self.actionClass()
+                if not self.supports_type("flexibility"):
+                    warnings.warn(
+                        "Some flexibility has been set, but you cannot modify it with your action type. Impossible to get back to the original flexibility settings."
+                    )
+                    break
+                reds = np.zeros(self.n_load, dtype=dt_float)
+                for load_id in need_flex:
+                    if nb_act >= nb_[load_id]:
+                        # nothing to add for this generator in this case
+                        continue
+                    if obs.target_dispatch[load_id] > 0.0:
+                        if nb_act < nb_[load_id] - 1 or (
+                            np.abs(rem[load_id]) <= 1e-7 and nb_act == nb_[load_id] - 1
+                        ):
+                            reds[load_id] = -obs.load_max_ramp_down[load_id]
+                        else:
+                            reds[load_id] = -rem[load_id]
+                    else:
+                        if nb_act < nb_[load_id] - 1 or (
+                            np.abs(rem[load_id]) <= 1e-7 and nb_act == nb_[load_id] - 1
+                        ):
+                            reds[load_id] = obs.load_max_ramp_up[load_id]
+                        else:
+                            reds[load_id] = rem[load_id]
 
+                act.flexibility = [
+                    (load_id, red_) for load_id, red_ in zip(need_flex, reds)
+                ]
+                res["flexibility"].append(act)
+    
     def _aux_get_back_to_ref_state_storage(
         self, res, obs, storage_setpoint, precision=5
     ):
@@ -1709,6 +1871,7 @@ class SerializableActionSpace(SerializableSpace):
     ) -> Dict[Literal["powerline",
                       "substation",
                       "redispatching",
+                      "flexibility",
                       "storage",
                       "curtailment"],
               List[BaseAction]]:
@@ -1726,17 +1889,19 @@ class SerializableActionSpace(SerializableSpace):
         - an action that acts on a single powerline
         - an action on a single substation
         - a redispatching action (acting possibly on all generators)
+        - a flexibility action (acting possibly on all loads)
         - a storage action (acting possibly on all generators)
 
         The list might be relatively long, in the case where lots of actions are needed. Depending on the rules of the game (for example limiting the
         action on one single substation), in order to get back to this topology, multiple consecutive actions will need to be implemented.
 
-        It is returned as a dictionnary of list. This dictionnary has 4 keys:
+        It is returned as a dictionnary of list. This dictionnary has 5 keys:
 
         - "powerline" for the list of actions needed to set back the powerlines in a proper state (connected). They can be of type "change_line" or "set_line".
         - "substation" for the list of actions needed to set back each substation in its initial state (everything connected to bus 1). They can be
           implemented as "set_bus" or "change_bus"
         - "redispatching": for the redispatching actions (there can be multiple redispatching actions needed because of the ramps of the generator)
+        - "flexibility": for the flexibility actions (there can be multiple flexibility actions needed because of the ramps of the loads)
         - "storage": for action on storage units (you might need to perform multiple storage actions because of the maximum power these units can absorb / produce )
         - "curtailment": for curtailment action (usually at most one such action is needed)
 
@@ -1795,6 +1960,8 @@ class SerializableActionSpace(SerializableSpace):
         self._aux_get_back_to_ref_state_sub(res, obs)
         # redispatching
         self._aux_get_back_to_ref_state_redisp(res, obs, precision=precision)
+        # flexibility
+        self._aux_get_back_to_ref_state_flexibility(res, obs, precision=precision)
         # storage
         self._aux_get_back_to_ref_state_storage(
             res, obs, storage_setpoint, precision=precision

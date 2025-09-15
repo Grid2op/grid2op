@@ -483,6 +483,7 @@ class GridObjects:
 
     BEFORE_COMPAT_VERSION : ClassVar[str] = "neurips_2020_compat"
     MIN_VERSION_DETACH : ClassVar[str] = version.parse("1.11.0.dev0")
+    MIN_VERSION_FLEX : ClassVar[str] = version.parse("1.12.0")
     glop_version : ClassVar[str] = GRID2OP_CURRENT_VERSION_STR
     
     _INIT_GRID_CLS = None  # do not modify that, this is handled by grid2op automatically

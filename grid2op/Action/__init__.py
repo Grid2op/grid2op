@@ -20,6 +20,7 @@ __all__ = [
     "TopologyChangeAction",
     "TopologyChangeAndDispatchAction",
     "DispatchAction",
+    "FlexibilityAction",
     "_BackendAction"
 ]
 
@@ -50,4 +51,5 @@ from grid2op.Action.topologyChangeAndDispatchAction import (
     TopologyChangeAndDispatchAction,
 )
 from grid2op.Action.dispatchAction import DispatchAction
+from grid2op.Action.flexibilityAction import FlexibilityAction
 import grid2op.Action._backendAction as _BackendAction
