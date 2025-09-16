@@ -197,6 +197,8 @@ Add tests
 -----------
 
 TODO
+* Add a test for creating the action type
+
 
 Add documentation
 -------------------

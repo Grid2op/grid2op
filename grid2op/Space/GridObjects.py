@@ -399,6 +399,10 @@ class GridObjects:
 
     shunts_data_available: ``bool``
         Whether or not the backend support the shunt data. [*class attribute*]
+        
+    flexibility_is_available: ``bool``
+        Whether or not flexibility data is available in the environment [*class attribute*]
+        .. versionadded:: 1.12.x
 
     n_shunt: ``int`` or ``None``
         Number of shunts on the grid. It might be ``None`` if the backend does not support shunts. [*class attribute*]
@@ -616,6 +620,9 @@ class GridObjects:
     n_shunt : ClassVar[Optional[int]] = None
     name_shunt : ClassVar[Optional[np.ndarray]] = None
     shunt_to_subid : ClassVar[Optional[np.ndarray]] = None
+    
+    # flexibility, not available in every environment
+    flexibility_is_available: ClassVar[bool] = False
 
     # alarm / alert
     assistant_warning_type = None
@@ -2915,6 +2922,7 @@ class GridObjects:
         cls._compute_pos_big_topo_cls()
         cls.process_shunt_static_data()
         cls.process_detachment()
+        cls.process_flexiblity()
         
     @classmethod
     def _aux_init_grid_from_cls(cls, gridobj, name_res):
@@ -4480,6 +4488,13 @@ class GridObjects:
         pass
     
     @classmethod
+    def process_flexiblity(cls):
+        """process demand response / flexibility that is applied to loads, is overloaded for :class:`grid2op.Action.BaseAction`
+        or :class:`grid2op.Observation.BaseObservation`
+        """
+        pass
+    
+    @classmethod
     def set_no_storage(cls):
         """
         this function is used to set all necessary parameters when the grid do not contain any storage element.
@@ -4575,6 +4590,7 @@ class GridObjects:
         my_class.process_grid2op_compat()
         my_class.process_detachment()
         my_class.process_shunt_static_data()
+        my_class.process_flexiblity()
         return my_class
 
     @staticmethod
@@ -4612,6 +4628,7 @@ class GridObjects:
                 res_cls.process_grid2op_compat()
             res_cls.process_shunt_static_data()
             res_cls.process_detachment()
+            res_cls.process_flexibility()
             # add the class in the "globals" for reuse later
             globals()[name_res] = res_cls
 

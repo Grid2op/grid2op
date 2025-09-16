@@ -680,13 +680,6 @@ class BaseAction(GridObjects):
         return self._private_redispatch
     
     @property
-    def _flexibility(self) -> np.ndarray:
-        if self._private_flexibility is None:
-            cls = type(self)
-            self._private_flexibility = cls._build_attr("_flexibility")
-        return self._private_flexibility
-    
-    @property
     def _set_line_status(self) -> np.ndarray:
         if self._private_set_line_status is None:
             cls = type(self)
@@ -797,6 +790,13 @@ class BaseAction(GridObjects):
         if self._private_detach_storage is None and cls.detachment_is_allowed:
             self._private_detach_storage = cls._build_attr("_detach_storage")
         return self._private_detach_storage
+    
+    @property
+    def _flexibility(self) -> np.ndarray:
+        cls = type(self)
+        if self._private_flexibility is None and cls.flexibility_is_available:
+            self._private_flexibility = cls._build_attr("_flexibility")
+        return self._private_flexibility
                   
     @classmethod
     def _build_dict_attr_if_needed(cls):
@@ -908,6 +908,26 @@ class BaseAction(GridObjects):
                     cls.authorized_keys.remove(el)
             cls._update_value_set()
         return super().process_detachment()
+    
+    @classmethod
+    def process_flexibility(cls):
+        if not cls.flexibility_is_available:
+            # this is really important, otherwise things from grid2op base types will be affected
+            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+            cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
+            # remove the flexibility from the list to vector
+            for el in ["_flexibility"]:
+                if el in cls.attr_list_vect:
+                    try:
+                        cls.attr_list_vect.remove(el)
+                    except ValueError:
+                        pass
+            # remove the flexibility from the allowed action
+            for el in ["flexibility"]:
+                if el in cls.authorized_keys:
+                    cls.authorized_keys.remove(el)
+            cls._update_value_set()
+        return super().process_flexibility()
 
     def copy(self) -> "BaseAction":
         # sometimes this method is used...
