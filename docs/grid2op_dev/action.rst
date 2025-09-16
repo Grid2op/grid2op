@@ -192,6 +192,7 @@ Backend "private" API
 
 Then you need to modify the `__iadd__` method of the `BackendAction` class to handle the modification
 you performed and pass it to the backend.
+* Add a `set_YOURACTION()`  if your action modifies setpoints / injections.
 
 
 Add tests

@@ -586,6 +586,23 @@ class GridObjects:
         float,
         bool,
     ]
+    
+    # for flexibility / demand response
+    _li_attr_flex_load : ClassVar[List[str]] = [
+        "load_size",
+        "load_flexible",
+        "load_max_ramp_up",
+        "load_max_ramp_down",
+        "load_cost_per_MW",
+    ]
+    
+    _type_attr_flex_load : ClassVar[List] = [
+        float,
+        bool,
+        float,
+        float,
+        float
+    ]
 
     # redispatch data, not available in all environment
     redispatching_unit_commitment_availble : ClassVar[bool] = False
@@ -601,6 +618,14 @@ class GridObjects:
     gen_startup_cost : ClassVar[Optional[np.ndarray]] = None  # start cost (in currency)
     gen_shutdown_cost : ClassVar[Optional[np.ndarray]] = None  # shutdown cost (in currency)
     gen_renewable : ClassVar[Optional[np.ndarray]] = None
+    
+    # Flexible load data, not available in all Environments, new in 1.12.x
+    flexible_load_available: ClassVar[bool] = False
+    load_size: ClassVar[Optional[np.ndarray]] = None
+    load_flexible: ClassVar[Optional[np.ndarray]] = None
+    load_max_ramp_up: ClassVar[Optional[np.ndarray]] = None
+    load_max_ramp_down: ClassVar[Optional[np.ndarray]] = None
+    load_cost_per_MW: ClassVar[Optional[np.ndarray]] = None
 
     # storage unit static data
     storage_type : ClassVar[Optional[np.ndarray]] = None
@@ -723,6 +748,15 @@ class GridObjects:
             "gen_shutdown_cost",
             "gen_renewable",
         ]
+        
+                
+        cls._li_attr_flex_load = [
+            "load_size",
+            "load_flexible",
+            "load_max_ramp_up",
+            "load_max_ramp_down",
+            "load_cost_per_MW",
+        ]
 
         cls._type_attr_disp = [
             str,
@@ -737,6 +771,14 @@ class GridObjects:
             float,
             float,
             bool,
+        ]
+        
+        cls._type_attr_flex_load = [
+            float,
+            bool,
+            float,
+            float,
+            float
         ]
 
         cls.SUB_COL = 0
@@ -828,7 +870,7 @@ class GridObjects:
         cls.gen_startup_cost = None  # start cost (in currency)
         cls.gen_shutdown_cost = None  # shutdown cost (in currency)
         cls.gen_renewable = None
-
+        
         # storage unit static data
         cls.storage_type = None
         cls.storage_Emax = None
@@ -862,8 +904,14 @@ class GridObjects:
         cls.alertable_line_names = []
         cls.alertable_line_ids = []
         
-        # flexibility
+        # Flexible load data, not available in all environments
         cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
+        cls.load_size = None
+        cls.load_flexible = None
+        cls.load_max_ramp_up = None
+        cls.load_max_ramp_down = None
+        cls.load_cost_per_MW = None
+
         
     @classmethod
     def _update_value_set(cls) -> None:
@@ -1518,7 +1566,7 @@ class GridObjects:
         if len(cls.load_to_subid) != cls.n_load:
             raise IncorrectNumberOfLoads()
         if np.min(cls.load_to_subid) < 0:
-            raise EnvError("Some shunt is connected to a negative substation id.")
+            raise EnvError("Some load is connected to a negative substation id.")
         if np.max(cls.load_to_subid) > cls.n_sub:
             raise EnvError(
                 "Some load is supposed to be connected to substations with id {} which"
@@ -1980,6 +2028,12 @@ class GridObjects:
         
     @classmethod
     def _check_convert_to_np_array(cls, raise_if_none=True):
+        # convert bool to array of bools
+        attrs_bool = []
+        if cls.flexibility_is_available: # new in 1.12.x
+            attrs_bool.append("load_flexible")
+        cls._assign_attr(attrs_bool, dt_bool, "bool", raise_if_none)
+        
         # convert int to array of ints
         attrs_int = ["load_pos_topo_vect",
                      "load_to_subid",
@@ -2032,6 +2086,11 @@ class GridObjects:
                             "gen_cost_per_MW",
                             "gen_startup_cost",
                             "gen_shutdown_cost"]
+        if cls.flexibility_is_available:
+            attrs_float += ["load_size",
+                            "load_max_ramp_up",
+                            "load_max_ramp_down",
+                            "load_cost_per_MW"]
         cls._assign_attr(attrs_float, dt_float, "float", raise_if_none)
     
     @classmethod
@@ -2076,6 +2135,13 @@ class GridObjects:
         else:
             raise EnvError("Grid2op cannot handle disconnection of loads / generators "
                            "at the moment (make sure `detachment_is_allowed` "
+                           "is a bool)")
+            
+        if isinstance(cls.flexibility_is_available, (bool, dt_bool)):
+            cls.flexibility_is_available = dt_bool(cls.flexibility_is_available)
+        else:
+            raise EnvError("Grid2op cannot handle flexibility of loads "
+                           "at the moment (make sure `flexibility_is_available` "
                            "is a bool)")
         
         if (cls.n_busbar_per_sub < 1).any():
@@ -2354,6 +2420,10 @@ class GridObjects:
         # redispatching / unit commitment
         if cls.redispatching_unit_commitment_availble:
             cls._check_validity_dispathcing_data()
+            
+        # flexibility / demand response
+        if cls.flexibility_is_available:
+            cls._check_validity_flexibility_data()
 
         # shunt data
         if cls.shunts_data_available:
@@ -2882,6 +2952,46 @@ class GridObjects:
             raise InvalidRedispatching(
                 "Invalid maximum ramp for some generator (above pmax)"
             )
+            
+    @classmethod
+    def _check_validity_flexibility_data(cls):
+        for attr_name in cls._li_attr_flex_load:
+            attr = getattr(cls, attr_name, None)
+            if attr is None:
+                raise InvalidFlexibility(
+                    f"Impossible to recognize the ({attr_name}) of loads when "
+                     "flexibility is supposed to be available."
+                )
+            elif len(attr) != cls.n_load:
+                raise InvalidFlexibility(
+                    f"Invalid length for the ({attr_name}) of loads when "
+                     "flexibility is supposed to be available."
+                 )
+            elif attr.dtype is not np.dtype(bool) and  (attr < 0).any():
+                raise InvalidFlexibility(
+                    f"One of the ({attr_name}) is negative"
+                )
+        
+        for el, prim_type in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
+            type_ = {float:dt_float, bool:dt_bool, int:dt_int, str:str}[prim_type]
+            if not isinstance(getattr(cls, el), np.ndarray):
+                try:
+                    setattr(cls, el, getattr(cls, el).astype(type_))
+                except Exception as exc_:
+                    raise InvalidFlexibility(
+                        '{} should be convertible to a numpy array with error:\n "{}"'
+                        "".format(el, exc_)
+                    )
+            if not np.issubdtype(getattr(cls, el).dtype, np.dtype(type_).type):
+                try:
+                    setattr(cls, el, getattr(cls, el).astype(type_))
+                except Exception as exc_:
+                    raise InvalidFlexibility(
+                        "{} should be convertible data should be convertible to "
+                        '{} with error: \n"{}"'.format(el, type_, exc_)
+                    )
+        if (cls.load_max_ramp_up[cls.load_flexible] > cls.load_size[cls.load_flexible]).any():
+            raise InvalidFlexibility("Invalid maximum ramp for some loads (above size of load)")
 
     @classmethod
     def attach_layout(cls, grid_layout):
@@ -4373,9 +4483,9 @@ class GridObjects:
                 
         # Demand Response / Flexibility
         if dict_.get("load_size", None) is None:
-            cls.flexible_load_available = False
+            cls.flexibility_is_available = False
         else:
-            cls.flexible_load_available = True
+            cls.flexibility_is_available = True
             type_attr_flex_load = [
                 dt_float,
                 dt_bool,

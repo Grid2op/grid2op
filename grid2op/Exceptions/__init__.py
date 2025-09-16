@@ -27,6 +27,7 @@ __all__ = [
     "GeneratorTurnedOffTooSoon",
     "GeneratorTurnedOnTooSoon",
     "InvalidRedispatching",
+    "InvalidFlexibility", # new in 1.12.x
     "InvalidBusStatus",
     "InvalidNumberOfObjectEnds",
     "InvalidNumberOfLines",
@@ -118,7 +119,8 @@ from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
                                                           AmbiguousAction,
                                                           NonFiniteElement,
                                                           AmbiguousActionRaiseAlert,
-                                                          InvalidBackendCallback)
+                                                          InvalidBackendCallback,
+                                                          InvalidFlexibility)
 
 from grid2op.Exceptions.observationExceptions import (BaseObservationError,
                                                       NoForecastAvailable,
