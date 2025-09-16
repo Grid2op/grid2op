@@ -15,6 +15,7 @@ __all__ = [
     "MultiEnvException",
     "IllegalAction",
     "IllegalRedispatching",
+    "IllegalFlexibility", # new in 1.12.x
     "OnProduction",
     "VSetpointModified",
     "ActiveSetPointAbovePmax",
@@ -101,6 +102,7 @@ from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         InvalidReconnection,
                                                         UnitCommitorRedispachingNotAvailable,
                                                         IllegalRedispatching,
+                                                        IllegalFlexibility,
                                                         )
 
 from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,

@@ -98,6 +98,14 @@ class IllegalRedispatching(IllegalAction):
 
     pass
 
+class IllegalFlexibility(IllegalAction):
+    """
+    This is a more precise exception than :class:`IllegalAction` indicating that
+    the :class:`grid2op.BaseAction.BaseAction`
+    try to apply an invalid flexibility / demand response strategy.
+    """
+
+    pass
 
 # attempt to use redispatching or unit commit method in an environment not set up.
 class UnitCommitorRedispachingNotAvailable(IllegalAction):

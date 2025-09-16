@@ -38,6 +38,7 @@ from grid2op.typing_variables import N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import (Grid2OpException,
                                 EnvError,
                                 IllegalRedispatching,
+                                IllegalFlexibility,
                                 ImpossibleRedispatching,
                                 GeneratorTurnedOffTooSoon,
                                 GeneratorTurnedOnTooSoon,
@@ -2176,290 +2177,407 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         if redisp_act_orig is None:
             redisp_act_orig = type(action)._build_attr("_redispatch")
+
+        if flex_act_orig is None:
+            flex_act_orig = type(action)._build_attr("_flexibility")
             
-        # check that everything is consistent with pmin, pmax:
-        if (self._target_dispatch > cls.gen_pmax - cls.gen_pmin).any():
-            # action is invalid, the target redispatching would be above pmax for at least a generator
-            cond_invalid = self._target_dispatch > cls.gen_pmax - cls.gen_pmin
-            except_ = IllegalRedispatching(
-                "You cannot ask for a dispatch higher than pmax - pmin  [it would be always "
-                "invalid because, even if the sepoint is pmin, this dispatch would set it "
-                "to a number higher than pmax, which is impossible]. Invalid dispatch for "
-                "generator(s): "
-                "{}".format((cond_invalid).nonzero()[0])
-            )
-            self._target_dispatch -= redisp_act_orig
-            return valid, except_, info_
-        if (self._target_dispatch < cls.gen_pmin - cls.gen_pmax).any():
-            # action is invalid, the target redispatching would be below pmin for at least a generator
-            cond_invalid = self._target_dispatch < cls.gen_pmin - cls.gen_pmax
-            except_ = IllegalRedispatching(
-                "You cannot ask for a dispatch lower than pmin - pmax  [it would be always "
-                "invalid because, even if the sepoint is pmax, this dispatch would set it "
-                "to a number bellow pmin, which is impossible]. Invalid dispatch for "
-                "generator(s): "
-                "{}".format((cond_invalid).nonzero()[0])
-            )
-            self._target_dispatch -= redisp_act_orig
-            return valid, except_, info_
-
-        # i can't redispatch turned off generators [turned off generators need to be turned on before redispatching]
-        if (redisp_act_orig[np.abs(new_gen_p) <= 1e-7]).any() and self._forbid_dispatch_off:
-            # action is invalid, a generator has been redispatched, but it's turned off
-            except_ = IllegalRedispatching(
-                "Impossible to dispatch a turned off generator"
-            )
-            self._target_dispatch -= redisp_act_orig
-            return valid, except_, info_
-
-        if self._forbid_dispatch_off:
-            redisp_act_orig_cut = redisp_act_orig.copy()
-            redisp_act_orig_cut[np.abs(new_gen_p) <= 1e-7] = 0.0
-            if (redisp_act_orig_cut != redisp_act_orig).any():
-                info_.append(
-                    {
-                        "INFO: redispatching cut because generator will be turned_off": (
-                            redisp_act_orig_cut != redisp_act_orig
-                        ).nonzero()[0]
-                    }
+        
+        if self.redispatching_unit_commitment_availble:
+            # Check that generator redispatching is consistent with pmin, pmax:
+            if (self._target_dispatch > cls.gen_pmax - cls.gen_pmin).any():
+                # action is invalid, the target redispatching would be above pmax for at least a generator
+                cond_invalid = self._target_dispatch > cls.gen_pmax - cls.gen_pmin
+                except_ = IllegalRedispatching(
+                    "You cannot ask for a dispatch higher than pmax - pmin  [it would be always "
+                    "invalid because, even if the sepoint is pmin, this dispatch would set it "
+                    "to a number higher than pmax, which is impossible]. Invalid dispatch for "
+                    "generator(s): "
+                    "{}".format((cond_invalid).nonzero()[0])
                 )
-        return valid, except_, info_
+                self._target_dispatch -= redisp_act_orig
+                return valid, except_, info_
+            if (self._target_dispatch < cls.gen_pmin - cls.gen_pmax).any():
+                # action is invalid, the target redispatching would be below pmin for at least a generator
+                cond_invalid = self._target_dispatch < cls.gen_pmin - cls.gen_pmax
+                except_ = IllegalRedispatching(
+                    "You cannot ask for a dispatch lower than pmin - pmax  [it would be always "
+                    "invalid because, even if the sepoint is pmax, this dispatch would set it "
+                    "to a number bellow pmin, which is impossible]. Invalid dispatch for "
+                    "generator(s): "
+                    "{}".format((cond_invalid).nonzero()[0])
+                )
+                self._target_dispatch -= redisp_act_orig
+                return valid, except_, info_
 
-    def _make_redisp(self, already_modified_gen, new_p):
-        """this computes the redispaching vector, taking into account the storage units"""
+            # Can't redispatch turned off generators [turned off generators need to be turned on before redispatching
+            if (redisp_act_orig[np.abs(new_gen_p) <= 1e-7]).any() and self._forbid_dispatch_off:
+                # action is invalid, a generator has been redispatched, but it's turned off
+                except_ = IllegalRedispatching(
+                    "Impossible to dispatch a turned off generator"
+                )
+                self._target_dispatch -= redisp_act_orig
+                return valid, except_, info_
+
+            if self._forbid_dispatch_off:
+                redisp_act_orig_cut = redisp_act_orig.copy()
+                redisp_act_orig_cut[np.abs(new_gen_p) <= 1e-7] = 0.0
+                if (redisp_act_orig_cut != redisp_act_orig).any():
+                    info_.append(
+                        {
+                            "INFO: redispatching cut because generator will be turned_off": (
+                                redisp_act_orig_cut != redisp_act_orig
+                            ).nonzero()[0]
+                        }
+                    )
+            if self.flexibility_is_available:
+                if (self._target_flex > self.load_size).any():
+                    # Action is invalid, the target flexibility would be above the size of at least one flexible load
+                    cond_invalid = self._target_flex > self.load_size
+                    except_ = IllegalFlexibility(
+                        "You cannot ask for flexibility greater than load_size [it would be always "
+                        "invalid because, even if the setpoint is 0, this dispatch would set it "
+                        "to a number higher than the size of the load, which is impossible]. Invalid flexibility for "
+                        "loads(s): "
+                        "{}".format((cond_invalid).nonzero()[0])
+                    )
+                    self._target_flex -= flex_act_orig
+                    return valid, except_, info_
+                
+                # Check that flexible load adjustments are consistent with their size (max consumption):
+                if (self._target_flex < -self.load_size).any():
+                    # Action is invalid, the target redispatching would be above pmax for at least a generator
+                    cond_invalid = self._target_flex < -self.load_size
+                    except_ = IllegalFlexibility(
+                        "You cannot ask for flexibility greater than load_size [it would be always "
+                        "invalid because, even if the setpoint is load_size, this dispatch would set it "
+                        "to a number lower than 0, which is impossible]. Invalid flexibility for "
+                        "loads(s): "
+                        "{}".format((cond_invalid).nonzero()[0])
+                    )
+                    self._target_flex -= flex_act_orig
+                    return valid, except_, info_
+                
+                # Can't adjust turned off loads [turned off loads need to be turned on before using their flexibility]
+                if (flex_act_orig[np.abs(new_load_p) <= 1e-7]).any() and self._forbid_flex_off:
+                    # Action is invalid, a flexible load has been adjusted, but it's turned off
+                    except_ = IllegalFlexibility("Impossible to change a turned off flexible load")
+                    self._target_flex -= flex_act_orig
+                    return valid, except_, info_
+                
+                if self._forbid_flex_off is True:
+                    flex_act_orig_cut = 1.0 * flex_act_orig
+                    flex_act_orig_cut[np.abs(new_load_p) <= 1e-7] = 0.0
+                    if (flex_act_orig_cut != flex_act_orig).any():
+                        info_.append({
+                            "INFO: Use of Flexibility in load cancelled because it is off":
+                            (flex_act_orig_cut != flex_act_orig).nonzero()[0]
+                        })
+            return valid, except_, info_
+
+    def _make_redisp_and_flex(self, already_modified_gen:np.ndarray, new_gen_p:np.ndarray,
+                                    already_modified_load:np.ndarray, new_load_p:np.ndarray):
+        """
+        Compute the Redispatching vector. Taking into account:
+        1. Storage Units
+        2. Flexible Loads
+        3. Curtailment
+        """
         except_ = None
         valid = True
-        mismatch = self._actual_dispatch - self._target_dispatch
-        mismatch = np.abs(mismatch)
-        if (
-            np.abs((self._actual_dispatch).sum()) >= self._tol_poly
-            or np.max(mismatch) >= self._tol_poly
-            or np.abs(self._amount_storage) >= self._tol_poly
-            or np.abs(self._sum_curtailment_mw) >= self._tol_poly
-            or np.abs(self._detached_elements_mw) >= self._tol_poly
-        ):
-            except_ = self._compute_dispatch_vect(already_modified_gen, new_p)
+        redisp_mismatch = np.abs(self._actual_dispatch - self._target_dispatch)
+        flex_mismatch = np.abs(self._actual_flex - self._target_flex)
+
+        disp_cond = (np.abs((self._actual_dispatch).sum()) >= self._tol_poly or
+                     np.max(redisp_mismatch) >= self._tol_poly or 
+                     np.abs(self._amount_storage) >= self._tol_poly or
+                     np.abs(self._sum_curtailment_mw) >= self._tol_poly or
+                     np.abs(self._detached_elements_mw) >= self._tol_poly)
+        flex_cond = self.flexible_load_available and \
+                    (np.abs((self._actual_flex).sum()) >= self._tol_poly or
+                     np.max(flex_mismatch) >= self._tol_poly)
+
+        # If either redispatch or flexibility is active, we need to compute the dispatch/flex vector
+        if (disp_cond or flex_cond):
+            except_ = self._compute_dispatch_and_flex_vect(already_modified_gen, new_gen_p,
+                                                           already_modified_load, new_load_p)
             valid = except_ is None
         return valid, except_
 
-    def _compute_dispatch_vect(self, already_modified_gen, new_p):        
+    def _compute_dispatch_and_flex_vect(self, already_modified_gen:np.ndarray, new_gen_p:np.ndarray,
+                                              already_modified_load:np.ndarray, new_load_p:np.ndarray):        
         except_ = None
         cls = type(self)
         this_dt_float = float  # to be compliant with scipy 1.16 (removes np.float32)
-        # handle the case where there are storage or redispatching
-        # action or curtailment action on the "init state"
-        # of the grid
+        # Handle the case where there are storage, flexibility, or redispatching
+        # actions or curtailment actions on the "init state" of the grid
         if self.nb_time_step == 0:
-            self._gen_activeprod_t_redisp[:] = new_p
+            self._gen_activeprod_t_redisp[:] = new_gen_p
+            if cls.flexibility_is_available:
+                self._load_demand_t_flex[:] = new_load_p
             
-        # first i define the participating generators
-        # these are the generators that will be adjusted for redispatching
-        gen_participating = (
-            (new_p > 0.0)
+        # First define the involved generators / flexible loads
+        # these are the generators / loads that will be adjust
+        gen_involved = (
+            (new_gen_p > 0.0)
             | (np.abs(self._actual_dispatch) >= 1e-7)
             | (self._target_dispatch != self._actual_dispatch)
         )
-        gen_participating[~cls.gen_redispatchable] = False
+        gen_involved[~cls.gen_redispatchable] = False
         if cls.detachment_is_allowed:
-            gen_participating[self._backend_action.get_gen_detached()] = False
-        incr_in_chronics = new_p - (
-            self._gen_activeprod_t_redisp - self._actual_dispatch
-        )
+            gen_involved[self._backend_action.get_gen_detached()] = False
+        incr_in_gen_chronics = new_gen_p - (self._gen_activeprod_t_redisp - self._actual_dispatch)
 
-        # check if the constraints are violated
-        ## total available "juice" to go down (incl ramp and pmin / pmax)
-        p_min_down = (
-            cls.gen_pmin[gen_participating]
-            - self._gen_activeprod_t_redisp[gen_participating]
+        load_involved = (
+            (new_load_p > 0.0)
+            | (np.abs(self._actual_flex) >= 1e-7)
+            | (self._target_flex != self._actual_flex)
         )
-        avail_down = np.maximum(p_min_down, -cls.gen_max_ramp_down[gen_participating])
-        ## total available "juice" to go up (incl. ramp and pmin / pmax)
-        p_max_up = (
-            cls.gen_pmax[gen_participating]
-            - self._gen_activeprod_t_redisp[gen_participating]
-        )
-        avail_up = np.minimum(p_max_up, cls.gen_max_ramp_up[gen_participating])
+        load_involved[~self.load_flexible] = False
+        if cls.detachment_is_allowed:
+            load_involved[self._backend_action.get_load_detached()] = False
+        incr_in_load_chronics = new_load_p - (self._load_demand_t_flex - self._actual_flex)
+
+        # Check if the constraints are violated
+        ## Total available "juice" to go down (incl ramping rates, pmin, pmax, and load size)
+        p_min_gen_down = (cls.gen_pmin[gen_involved] - 
+                          self._gen_activeprod_t_redisp[gen_involved])
+        avail_gen_down = np.maximum(p_min_gen_down, -cls.gen_max_ramp_down[gen_involved])
+        p_min_load_down = (0.0 - self._load_demand_t_flex[load_involved])
+        avail_load_down = np.maximum(p_min_load_down, -cls.load_max_ramp_down[load_involved])
+
+        ## Total available "juice" to go up (incl ramping rates, pmin, pmax, and load size)
+        p_max_gen_up = (cls.gen_pmax[gen_involved] - 
+                        self._gen_activeprod_t_redisp[gen_involved])
+        avail_gen_up = np.minimum(p_max_gen_up, cls.gen_max_ramp_up[gen_involved])
+        p_max_load_up = (cls.load_size[load_involved] -
+                            self._load_demand_t_flex[load_involved])
+        avail_load_up = np.minimum(p_max_load_up, cls.load_max_ramp_up[load_involved])
+        
         except_ = self._detect_infeasible_dispatch(
-            incr_in_chronics[gen_participating], avail_down, avail_up
+            incr_in_gen_chronics[gen_involved], avail_gen_down, avail_gen_up,
+            incr_in_load_chronics[load_involved], avail_load_down, avail_load_up
         )
         if except_ is not None:
             # try to force the turn on of turned off generators (if parameters allow it)
-            if (
-                self._parameters.IGNORE_MIN_UP_DOWN_TIME
-                and self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF
-            ):
-                gen_participating_tmp = self.gen_redispatchable
+            if (self._parameters.IGNORE_MIN_UP_DOWN_TIME and self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF):
+                gen_involved_tmp = self.gen_redispatchable
                 if cls.detachment_is_allowed:
-                    gen_participating_tmp[self._backend_action.get_gen_detached()] = False
-                p_min_down_tmp = (
-                    cls.gen_pmin[gen_participating_tmp]
-                    - self._gen_activeprod_t_redisp[gen_participating_tmp]
-                )
-                avail_down_tmp = np.maximum(
-                    p_min_down_tmp, -cls.gen_max_ramp_down[gen_participating_tmp]
-                )
-                p_max_up_tmp = (
-                    cls.gen_pmax[gen_participating_tmp]
-                    - self._gen_activeprod_t_redisp[gen_participating_tmp]
-                )
-                avail_up_tmp = np.minimum(
-                    p_max_up_tmp, cls.gen_max_ramp_up[gen_participating_tmp]
-                )
+                    gen_involved_tmp[self._backend_action.get_gen_detached()] = False
+                p_min_gen_down_tmp = (cls.gen_pmin[gen_involved_tmp] - 
+                                      self._gen_activeprod_t_redisp[gen_involved_tmp])
+                avail_gen_down_tmp = np.maximum(p_min_gen_down_tmp, 
+                                                -cls.gen_max_ramp_down[gen_involved_tmp])
+                p_max_gen_up_tmp = (cls.gen_pmax[gen_involved_tmp] - 
+                                    self._gen_activeprod_t_redisp[gen_involved_tmp])
+                avail_gen_up_tmp = np.minimum(p_max_gen_up_tmp, 
+                                              cls.gen_max_ramp_up[gen_involved_tmp])
+                if cls.flexibility_is_available and self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF:
+                    load_involved_tmp = self.load_flexible
+                    if cls.detachment_is_allowed:
+                        load_involved_tmp[self._backend_action.get_load_detached()] = False
+                    p_min_load_down_tmp = (0.0 - self._load_demand_t_flex[load_involved_tmp])
+                    avail_load_down_tmp = np.maximum(p_min_load_down_tmp,
+                                                     -cls.load_max_ramp_down[load_involved_tmp])
+                    p_max_load_up_tmp = (cls.load_size[load_involved_tmp] -
+                                         self._load_demand_t_flex[load_involved_tmp])
+                    avail_load_up_tmp = np.minimum(p_max_load_up_tmp,
+                                                   cls.load_max_ramp_up[load_involved_tmp])
+                else:
+                    avail_load_down_tmp = np.zeros([], dtype=dt_float)
+                    avail_load_up_tmp = np.zeros([], dtype=dt_float)
                 except_tmp = self._detect_infeasible_dispatch(
-                    incr_in_chronics[gen_participating_tmp],
-                    avail_down_tmp,
-                    avail_up_tmp,
+                    incr_in_gen_chronics[gen_involved_tmp], avail_gen_down_tmp, avail_gen_up_tmp,
+                    incr_in_load_chronics[load_involved_tmp], avail_load_down_tmp, avail_load_up_tmp
                 )
                 if except_tmp is None:
-                    # I can "save" the situation by turning on all generators, I do it
-                    # TODO logger here
-                    gen_participating = gen_participating_tmp
+                    # If it is possible to "save" the situation by turning on all
+                    # generators / flexible loads, do so.
+                    gen_involved = gen_involved_tmp
+                    load_involved = self.load_flexible
                     except_ = None
                 else:
                     return except_tmp
             else:
                 return except_
 
-        # define the objective value
-        target_vals = (
-            self._target_dispatch[gen_participating]
-            - self._actual_dispatch[gen_participating]
-        )
+        # Define the objective value
+        target_gen_vals = (self._target_dispatch[gen_involved] - 
+                           self._actual_dispatch[gen_involved])
+        modded_involved_gens = already_modified_gen[gen_involved]
+        target_gen_vals_mi = target_gen_vals[modded_involved_gens]
+        target_load_vals = (self._target_flex[load_involved] -
+                            self._actual_flex[load_involved])
+        modded_involved_loads = already_modified_load[load_involved]
+        target_load_vals_mi = target_load_vals[modded_involved_loads]
+
+        nb_dispatchable = gen_involved.sum()
+        nb_flexible = load_involved.sum()
+
+        tmp_zeros = np.zeros((1, nb_dispatchable + nb_flexible), dtype=this_dt_float)
+        gen_coeffs = 1.0 / (self.gen_max_ramp_up +
+                            self.gen_max_ramp_down + self._epsilon_poly)
+        load_coeffs = 1.0 / (self.load_max_ramp_up +
+                             self.load_max_ramp_down + self._epsilon_poly)
+        coeffs = np.concatenate((gen_coeffs[gen_involved], load_coeffs[load_involved]))
         
-        already_modified_gen_me = already_modified_gen[gen_participating]
-        target_vals_me = target_vals[already_modified_gen_me]
-        nb_dispatchable = gen_participating.sum()
-        tmp_zeros = np.zeros((1, nb_dispatchable), dtype=this_dt_float)
-        coeffs = 1.0 / (
-            self.gen_max_ramp_up + self.gen_max_ramp_down + self._epsilon_poly
-        )
-        weights = np.ones(nb_dispatchable) * coeffs[gen_participating]
+        involved = np.concatenate((gen_involved, load_involved))
+        weights = np.ones(nb_dispatchable + nb_flexible) * coeffs[involved]
         weights /= weights.sum()
 
-        if target_vals_me.shape[0] == 0:
-            # no dispatch means all dispatchable, otherwise i will never get to 0
-            already_modified_gen_me[:] = True
-            target_vals_me = target_vals[already_modified_gen_me]
+        if target_gen_vals_mi.shape[0] == 0 and target_load_vals_mi.shape[0] == 0:
+            # No dispatch and flex means all dispatchable and flexible
+            # Otherwise will never get to 0
+            modded_involved_gens[:] = True
+            modded_involved_loads[:] = True
+            target_gen_vals_mi = target_gen_vals[modded_involved_gens]
+            target_load_vals_mi = target_load_vals[modded_involved_loads]
 
-        # for numeric stability
-        # to scale the input also:
-        # see https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
-        scale_x = max(np.max(np.abs(self._actual_dispatch)), 1.0)
-        scale_x = this_dt_float(scale_x)
-        target_vals_me_optim = 1.0 * (target_vals_me / scale_x)
-        target_vals_me_optim = target_vals_me_optim.astype(this_dt_float)
+        # For numeric stability
+        # To also scale the input see:
+        # https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearchh
+        scale_gen_x = max(np.max(np.abs(self._actual_dispatch)), 1.0)
+        scale_load_x = max(np.max(np.abs(self._actual_flex)), 1.0)
+        scale_x = this_dt_float(max(scale_gen_x, scale_load_x))
+        target_vals_mi = np.concatenate((target_gen_vals_mi, target_load_vals_mi))
+        target_vals_mi_optim =  (1.0 * (target_vals_mi / scale_x))
+        target_vals_mi_optim = target_vals_mi_optim.astype(this_dt_float)
 
-        # see https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
-        # where they advised to scale the function
-        scale_objective = max(0.5 * np.abs(target_vals_me_optim).sum() ** 2, 1.0)
+        # See https://stackoverflow.com/questions/11155721/positive-directional-derivative-for-linesearch
+        # where it is advised to scale the function
+        scale_objective = max(0.5 * np.abs(target_vals_mi_optim).sum() ** 2, 1.0)
         scale_objective = np.round(scale_objective, decimals=4)
         scale_objective = this_dt_float(scale_objective)
 
-        # add the "sum to 0"
-        mat_sum_0_no_turn_on = np.ones((1, nb_dispatchable), dtype=this_dt_float)
-        # this is where the storage is taken into account
-        # storages are "load convention" this means that i need to sum the amount of production to sum of storage
+        # Add the "sum to 0"
+        mat_sum_0_no_turn_on = np.ones((1, nb_dispatchable+nb_flexible), dtype=this_dt_float)
+
+        # Take into account Energy Storage Systems (ESSs)
+        # Storages follow the "load convention" so we need to sum the amount of production to sum of storage
         # hence the "+ self._amount_storage" below
         # self._sum_curtailment_mw is "generator convention" hence the "-" there
-        const_sum_0_no_turn_on = (
-            np.zeros(1, dtype=this_dt_float)
-            + self._amount_storage
-            - self._sum_curtailment_mw
-            + self._detached_elements_mw
-        )
+        const_sum_0_no_turn_on = (np.zeros(1, dtype=this_dt_float) +
+                                  self._amount_storage - 
+                                  self._sum_curtailment_mw + 
+                                  self._detached_elements_mw)
         
-        # gen increase in the chronics
-        new_p_th = new_p[gen_participating] + self._actual_dispatch[gen_participating]
+        # Gen increase in the chronics
+        new_gen_p_th = new_gen_p[gen_involved] + self._actual_dispatch[gen_involved]
 
-        # minimum value available for disp
-        ## first limit delta because of pmin
-        p_min_const = self.gen_pmin[gen_participating] - new_p_th
-        ## second limit delta because of ramps
-        ramp_down_const = (
-            -self.gen_max_ramp_down[gen_participating]
-            - incr_in_chronics[gen_participating]
-        )
-        ## take max of the 2
+        # Load increase in the chronics
+        new_load_p_th = new_load_p[load_involved] + self._actual_flex[load_involved]
+
+        # Minimum value available for dispatch
+        ## 1st limit delta because of pmin
+        p_min_gen_const = self.gen_pmin[gen_involved] - new_gen_p_th
+        p_min_load_const = 0 - new_load_p_th
+        p_min_const = np.concatenate((p_min_gen_const, p_min_load_const))
+
+        ## 2nd limit delta because of ramping rates
+        ramp_gen_down_const = (-self.gen_max_ramp_down[gen_involved] -
+                                incr_in_gen_chronics[gen_involved])
+        ramp_load_down_const = (-self.load_max_ramp_down[load_involved] -
+                                 incr_in_load_chronics[load_involved])
+        ramp_down_const = np.concatenate((ramp_gen_down_const, ramp_load_down_const))
+
+        ## Take the maximum of the 2
         min_disp = np.maximum(p_min_const, ramp_down_const)
         min_disp = min_disp.astype(this_dt_float)
 
-        # maximum value available for disp
-        ## first limit delta because of pmin
-        p_max_const = self.gen_pmax[gen_participating] - new_p_th
-        ## second limit delta because of ramps
-        ramp_up_const = (
-            self.gen_max_ramp_up[gen_participating]
-            - incr_in_chronics[gen_participating]
-        )
-        ## take min of the 2
+        # Maximum value available for dispatch
+        ## 1st limit delta because of pmax
+        p_max_gen_const = self.gen_pmax[gen_involved] - new_gen_p_th
+        p_max_load_const = self.load_size[load_involved] - new_load_p_th
+        p_max_const = np.concatenate((p_max_gen_const, p_max_load_const))
+
+        ## 2nd limit delta because of ramps
+        ramp_gen_up_const = (self.gen_max_ramp_up[gen_involved] -
+                             incr_in_gen_chronics[gen_involved])
+        ramp_load_up_const = (self.load_max_ramp_up[load_involved] - 
+                              incr_in_load_chronics[load_involved])
+        ramp_up_const = np.concatenate((ramp_gen_up_const, ramp_load_up_const))
+
+        ## Take minimum of the 2
         max_disp = np.minimum(p_max_const, ramp_up_const)
         max_disp = max_disp.astype(this_dt_float)
 
-        # add everything into a linear constraint object
-        # equality
+        # Add everything into a linear constraint (object equality)
         added = 0.5 * self._epsilon_poly
         equality_const = LinearConstraint(
-            mat_sum_0_no_turn_on,  # do the sum
-            (const_sum_0_no_turn_on) / scale_x,  # lower bound
-            (const_sum_0_no_turn_on) / scale_x,  # upper bound
+            mat_sum_0_no_turn_on,  # Sum
+            (const_sum_0_no_turn_on) / scale_x,  # Lower Bound
+            (const_sum_0_no_turn_on) / scale_x,  # Upper Bound
         )
-        mat_pmin_max_ramps = np.eye(nb_dispatchable)
+        mat_pmin_max_ramps = np.eye(nb_dispatchable + nb_flexible)
         ineq_const = LinearConstraint(
             mat_pmin_max_ramps,
             (min_disp - added) / scale_x,
             (max_disp + added) / scale_x,
         )
 
-        # choose a good initial point (close to the solution)
-        # the idea here is to chose a initial point that would be close to the
-        # desired solution (split the (sum of the) dispatch to the available generators)
-        x0 = np.zeros(gen_participating.sum(), dtype=this_dt_float)
-        if (np.abs(self._target_dispatch) >= 1e-7).any() or already_modified_gen.any():
-            gen_for_x0 = np.abs(self._target_dispatch[gen_participating]) >= 1e-7
-            gen_for_x0 |= already_modified_gen[gen_participating]
-            x0[gen_for_x0] = (
-                self._target_dispatch[gen_participating][gen_for_x0]
-                - self._actual_dispatch[gen_participating][gen_for_x0]
-            ) / scale_x
-            # at this point x0 is made of the difference between the target and the
-            # actual dispatch for all generators that have a 
-            # target dispatch non 0.
-            
-            # in this "if" block I set the other component of x0 to 
-            # their "right" value
+        # Choose a good initial point x0 (close to the solution)
+        # Desired solution is one where the (sum of the) dispatch is split among 
+        # the available generators / flexible loads)
+        x0 = np.zeros(nb_dispatchable + nb_flexible, dtype=this_dt_float)
+        disp_cond = ((np.abs(self._target_dispatch) >= 1e-7).any() or already_modified_gen.any())
+        flex_cond = ((np.abs(self._target_flex) >= 1e-7).any() or already_modified_load.any())
+
+        if disp_cond or flex_cond:
+            # Find all dispatched generators or those which have already been modified
+            gen_for_x0 = np.abs(self._target_dispatch[gen_involved]) >= 1e-7
+            gen_for_x0 |= already_modified_gen[gen_involved]
+            # Find all flexible loads or those which have already been modified
+            load_for_x0 = np.abs(self._target_flex[load_involved]) >= 1e-7
+            load_for_x0 |= already_modified_load[load_involved]
+            elts_for_x0 = np.concatenate((gen_for_x0, load_for_x0))
+
+            # x0 will be made of the difference between the target and the
+            # actual dispatch/flex for all generators/flexible loads that have a
+            # non-zero target dispatch/flex
+            gen_mismatch = self._target_dispatch[gen_involved][gen_for_x0] - \
+                           self._actual_dispatch[gen_involved][gen_for_x0]
+            load_mismatch = self._target_flex[load_involved][load_for_x0] - \
+                            self._actual_flex[load_involved][load_for_x0]
+            mismatch = np.concatenate((gen_mismatch, load_mismatch))
+
+            # Subtitute in initial points for each controllable variable
+            x0[elts_for_x0] = mismatch / scale_x
+
+            # Set the other component of x0 to their "right" value
             can_adjust = (np.abs(x0) <= 1e-7)
             if can_adjust.any():
                 init_sum = x0.sum()
                 denom_adjust = (1.0 / weights[can_adjust]).sum()
                 if denom_adjust <= 1e-2:
-                    # i don't want to divide by something too cloose to 0.
+                    # Don't divide by something too close to 0.
                     denom_adjust = 1.0
                 x0[can_adjust] = -init_sum / (weights[can_adjust] * denom_adjust)
         else:
-            # to "force" the exact reset to 0.0 for all components
-            x0 -= self._actual_dispatch[gen_participating] / scale_x
+            # "force" the exact reset to 0.0 for all components
+            dispatch = np.concatenate((self._actual_dispatch[gen_involved],
+                                       self._actual_flex[load_involved]))
+            x0 -= dispatch / scale_x
+
+        modded_involved = np.concatenate((modded_involved_gens, modded_involved_loads))
 
         def target(actual_dispatchable):
-            # define my real objective
-            quad_ = (
-                actual_dispatchable[already_modified_gen_me] - target_vals_me_optim
-            ) ** 2
-            coeffs_quads = weights[already_modified_gen_me] * quad_
+            # Define objective (quadratic)
+            quad_ = (actual_dispatchable[modded_involved_gens] - target_vals_mi_optim) ** 2
+            coeffs_quads = weights[modded_involved_gens] * quad_
             coeffs_quads_const = coeffs_quads.sum()
             coeffs_quads_const /= scale_objective  # scaling the function
             return coeffs_quads_const
 
         def jac(actual_dispatchable):
             res_jac = 1.0 * tmp_zeros
-            res_jac[0, already_modified_gen_me] = (
+            res_jac[0, modded_involved_gens] = (
                 2.0
-                * weights[already_modified_gen_me]
-                * (actual_dispatchable[already_modified_gen_me] - target_vals_me_optim)
+                * weights[modded_involved_gens]
+                * (actual_dispatchable[modded_involved_gens] - target_vals_mi_optim)
             )
             res_jac /= scale_objective  # scaling the function
             return res_jac.reshape(-1)
 
-        # objective function
+        # Objective function
         def f(init):
             this_res = minimize(
                 target,
@@ -2472,56 +2590,69 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     "disp": False,
                 },
                 jac=jac
-                # hess=hess  # not used for SLSQP
             )
             return this_res
         res = f(x0)
         if res.success:
-            self._actual_dispatch[gen_participating] += res.x * scale_x
+            optim_gen_dispatch = res.x[0:nb_dispatchable]
+            self._actual_dispatch[gen_involved] += optim_gen_dispatch * scale_x
+            optim_load_flex = res.x[nb_dispatchable:]
+            self._actual_flex[load_involved] += optim_load_flex * scale_x
         else:
-            # check if constraints are "approximately" met
+            # Check if constraints are "approximately" met
             mat_const = np.concatenate((mat_sum_0_no_turn_on, mat_pmin_max_ramps))
-            downs = np.concatenate(
-                (const_sum_0_no_turn_on / scale_x, (min_disp - added) / scale_x)
-            )
-            ups = np.concatenate(
-                (const_sum_0_no_turn_on / scale_x, (max_disp + added) / scale_x)
-            )
+            downs = np.concatenate((const_sum_0_no_turn_on / scale_x, 
+                                    (min_disp - added) / scale_x))
+            ups = np.concatenate((const_sum_0_no_turn_on / scale_x,
+                                  (max_disp + added) / scale_x))
             vals = np.matmul(mat_const, res.x)
-            ok_down = np.all(
-                vals - downs >= -self._tol_poly
-            )  # i don't violate "down" constraints
+
+            # Check: Don't violate "down" constraints
+            ok_down = np.all(vals - downs >= -self._tol_poly)
+            # Check: Don't violate "up" constraints
             ok_up = np.all(vals - ups <= self._tol_poly)
             if ok_up and ok_down:
-                # it's ok i can tolerate "small" perturbations
-                self._actual_dispatch[gen_participating] += res.x * scale_x
+                # Can tolerate "small" perturbations
+                optim_gen_dispatch = res.x[0:nb_dispatchable]
+                self._actual_dispatch[gen_involved] += optim_gen_dispatch * scale_x
+                optim_load_flex = res.x[nb_dispatchable:]
+                self._actual_flex[load_involved] += optim_load_flex * scale_x
             else:
                 # TODO try with another method here, maybe
                 error_dispatch = (
-                    "Redispatching automaton terminated with error (no more information available "
+                    "Redispatching / Flexibility automaton terminated with error (no more information available "
                     'at this point):\n"{}"'.format(res.message)
                 )
                 except_ = ImpossibleRedispatching(error_dispatch)
         return except_
 
-    def _detect_infeasible_dispatch(self, incr_in_chronics, avail_down, avail_up):
-        """This function is an attempt to give more detailed log by detecting infeasible dispatch"""
+    def _detect_infeasible_dispatch(self, incr_in_gen_chronics:np.ndarray, avail_gen_down:np.ndarray, avail_gen_up:np.ndarray,
+                                          incr_in_load_chronics:np.ndarray, avail_load_down:np.ndarray, avail_load_up:np.ndarray):
+        """
+        This function is an attempt to give more detailed logging information by detecting
+        infeasible dispatch / flexibility.
+        """
         except_ = None
-        sum_move = (
-            incr_in_chronics.sum() + self._amount_storage - self._sum_curtailment_mw + self._detached_elements_mw
-        )
-        avail_down_sum = avail_down.sum()
-        avail_up_sum = avail_up.sum()
+        sum_move = (incr_in_gen_chronics.sum() + incr_in_load_chronics.sum() + 
+                    self._amount_storage - self._sum_curtailment_mw + self._detached_elements_mw)
+        avail_down_sum = avail_gen_down.sum() + avail_load_down.sum()
+        avail_up_sum = avail_gen_up.sum() + avail_load_up.sum()
         gen_setpoint = self._gen_activeprod_t_redisp[self.gen_redispatchable]
+        load_setpoint = self._load_demand_t_flex[self.load_flexible]
+
         if sum_move > avail_up_sum:
-            # infeasible because too much is asked
+            # Infeasible because too much is asked
             msg = DETAILED_REDISP_ERR_MSG.format(
                 sum_move=sum_move,
                 avail_up_sum=avail_up_sum,
                 gen_setpoint=np.round(gen_setpoint, decimals=2),
-                ramp_up=self.gen_max_ramp_up[self.gen_redispatchable],
+                load_setpoint=np.round(load_setpoint, decimals=2),
+                gen_ramp_up=self.gen_max_ramp_up[self.gen_redispatchable],
+                load_ramp_up=self.load_max_ramp_up[self.load_flexible],
                 gen_pmax=self.gen_pmax[self.gen_redispatchable],
-                avail_up=np.round(avail_up, decimals=2),
+                load_size=self.load_size[self.load_flexible],
+                avail_gen_up=np.round(avail_gen_up, decimals=2),
+                avail_load_up=np.round(avail_load_up, decimals=2),
                 increase="increase",
                 decrease="decrease",
                 maximum="maximum",
@@ -2530,14 +2661,18 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             )
             except_ = ImpossibleRedispatching(msg)
         elif sum_move < avail_down_sum:
-            # infeasible because not enough is asked
+            # Infeasible because not enough is asked
             msg = DETAILED_REDISP_ERR_MSG.format(
                 sum_move=sum_move,
                 avail_up_sum=avail_down_sum,
                 gen_setpoint=np.round(gen_setpoint, decimals=2),
-                ramp_up=self.gen_max_ramp_down[self.gen_redispatchable],
+                load_setpoint=np.round(load_setpoint, decimals=2),
+                gen_ramp_up=self.gen_max_ramp_down[self.gen_redispatchable],
+                load_ramp_up=self.load_max_ramp_down[self.load_flexible],
                 gen_pmax=self.gen_pmin[self.gen_redispatchable],
-                avail_up=np.round(avail_up, decimals=2),
+                load_size=self.load_size[self.load_flexible],
+                avail_gen_up=np.round(avail_gen_up, decimals=2),
+                avail_load_up=np.round(avail_load_up, decimals=2),
                 increase="decrease",
                 decrease="increase",
                 maximum="minimum",
@@ -3256,7 +3391,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._storage_power_prev[:] = self._storage_power
         # case where the action modifies load (TODO maybe make a different env for that...)
         self._aux_handle_act_inj(action)
-        valid_disp, except_tmp = self._make_redisp(already_modified_gen, new_p)
+        valid_disp, except_tmp = self._make_redisp_and_flex(already_modified_gen, new_p)
 
         if not valid_disp or except_tmp is not None:
             # game over case (divergence of the scipy routine to compute redispatching)
