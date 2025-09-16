@@ -1841,6 +1841,7 @@ class BaseAction(GridObjects):
             and (not self._modif_detach_load)
             and (not self._modif_detach_gen)
             and (not self._modif_detach_storage)
+            and (not self._modif_flexibility) # new in 1.12.x
         )
     
     def _aux_get_topo_impact_notopo(self, _store_in_cache: bool):

@@ -31,7 +31,8 @@ from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
 from grid2op.Exceptions import *
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
-from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
+from grid2op.Space.default_var import (DEFAULT_FLEXIBILITY_IS_AVAILABLE,
+                                       DEFAULT_ALLOW_DETACHMENT,
                                        DEFAULT_N_BUSBAR_PER_SUB,
                                        GRID2OP_CLASSES_ENV_FOLDER,
                                        GRID2OP_CURRENT_VERSION_STR,
@@ -622,7 +623,7 @@ class GridObjects:
     shunt_to_subid : ClassVar[Optional[np.ndarray]] = None
     
     # flexibility, not available in every environment
-    flexibility_is_available: ClassVar[bool] = False
+    flexibility_is_available: ClassVar[bool] = DEFAULT_FLEXIBILITY_IS_AVAILABLE
 
     # alarm / alert
     assistant_warning_type = None
@@ -860,6 +861,9 @@ class GridObjects:
         cls.dim_alerts = 0
         cls.alertable_line_names = []
         cls.alertable_line_ids = []
+        
+        # flexibility
+        cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
         
     @classmethod
     def _update_value_set(cls) -> None:
@@ -3011,6 +3015,9 @@ class GridObjects:
             
         if gridobj.detachment_is_allowed != DEFAULT_ALLOW_DETACHMENT:
             name_res += "_allowDetach"
+            
+        if gridobj.flexibility_is_available != DEFAULT_FLEXIBILITY_IS_AVAILABLE:
+            name_res += "_allowFlexibility"
                 
         if _local_dir_cls is not None and gridobj._PATH_GRID_CLASSES is not None:
             # new in grid2op 1.10.3:
@@ -4363,6 +4370,25 @@ class GridObjects:
                         dict_, nm_attr, lambda x: np.array(x).astype(type_attr)
                     ),
                 )
+                
+        # Demand Response / Flexibility
+        if dict_.get("load_size", None) is None:
+            cls.flexible_load_available = False
+        else:
+            cls.flexible_load_available = True
+            type_attr_flex_load = [
+                dt_float,
+                dt_bool,
+                dt_float,
+                dt_float,
+                dt_float,
+            ]
+            for nm_attr, type_attr in zip(cls._li_attr_flex_load, type_attr_flex_load):
+                setattr(cls, nm_attr,
+                    extract_from_dict(
+                        dict_, nm_attr,
+                        lambda x, type_attr=type_attr: np.array(x).astype(type_attr)
+                ))
 
         cls.grid_layout = extract_from_dict(dict_, "grid_layout", lambda x: x)
 
@@ -4436,6 +4462,8 @@ class GridObjects:
             cls.process_grid2op_compat()
         
         cls.process_detachment()
+        
+        cls.process_flexiblity() # new in 1.12.x
         
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]

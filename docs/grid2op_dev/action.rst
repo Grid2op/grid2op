@@ -133,6 +133,7 @@ TODO add the `cls.attr_list_vect` to baseAction:
 * Add a check to `impact_on_objects()` for your action
 * Add a boolean for your action in `get_types()`
 * Modify `_aux_effect_on_XXX()` as appropriate
+* If you action does NOT modify topology, add it to the `_dont_affect_topology()` method
 
 Worry about the backward compatibility
 ****************************************
