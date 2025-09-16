@@ -47,7 +47,14 @@ class TestFlexibility(unittest.TestCase):
         self.flex_small_down = self.env.action_space(
             {"flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
         )
-
+        
+    def test_create_flex_action(self):
+        try:
+            flex_act = self.env.action_space({"flexibiity":[(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]})
+            assert True
+        except:
+            assert False
+    
     def test_zero_flex(self):
         flex_obs, *_ = self.env.step(self.flex_all_zero)
         flex_mask = self.env.load_flexible

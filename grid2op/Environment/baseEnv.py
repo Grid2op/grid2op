@@ -65,18 +65,21 @@ from grid2op.VoltageControler import ControlVoltageFromFile
 DETAILED_REDISP_ERR_MSG = (
     "\nThis is an attempt to explain why the dispatch did not succeed and caused a game over.\n"
     "To compensate the {increase} of loads and / or {decrease} of "
-    "renewable energy (due to naturl causes but also through curtailment) and / or variation in the storage units, "
-    "the generators should {increase} their total production of {sum_move:.2f}MW (in total).\n"
-    "But, if you take into account the generator constraints ({pmax} and {max_ramp_up}) you "
-    "can have at most {avail_up_sum:.2f}MW.\n"
-    "Indeed at time t, generators are in state:\n\t{gen_setpoint}\ntheir ramp max is:"
-    "\n\t{ramp_up}\n and pmax is:\n\t{gen_pmax}\n"
-    "Wrapping up, each generator can {increase} at {maximum} of:\n\t{avail_up}\n"
-    "NB: if you did not do any dispatch during this episode, it would have been possible to "
-    "meet these constraints. This situation is caused by not having enough degree of freedom "
-    'to "compensate" the variation of the load due to (most likely) an "over usage" of '
-    "redispatching feature (some generators stuck at {pmax} as a consequence of your "
-    "redispatching. They can't increase their productions to meet the {increase} in demand or "
+    "renewable energy (due to natural causes but also through curtailment) and / or variation in the storage units, "
+    "the generators & flexible loads should {increase} their total production of {sum_move:.2f}MW (in total).\n"
+    "But, if you take into account the generator constraints ('{pmax}' and '{max_ramp_up}'), as well as the flexible\n"
+    "load constraints ('load_size' and '{max_ramp_up}') you can have at most {avail_up_sum:.2f}MW.\n"
+    "Indeed at time t, generators have setpoints of:\n\t{gen_setpoint}\ntheir ramp max is:"
+    "\n\t{gen_ramp_up}\nand pmax is:\n\t{gen_pmax}\n"
+    "The flexible loads have setpoints of:\n\t{load_setpoint}\ntheir max ramp is:"
+    "\n\t{load_ramp_up}\nand their size is:\n\t{load_size}\n"
+    "Wrapping up, each generator can {increase} at {maximum} of:\n\t{avail_gen_up}\n"
+    "And each flexible load can {increase} at {maximum} of:\n\t{avail_load_up}\n"
+    "NB: if you did not do any dispatch during this episode, it would have been possible to\n"
+    "meet these constraints. This situation is caused by not having enough degree of freedom\n"
+    'to "compensate" the variation of the load due to (most likely) an "over usage" of\n'
+    "redispatching feature (some generators stuck at {pmax} as a consequence of your\n"
+    "redispatching. They can't increase their productions to meet the {increase} in demand or\n"
     "{decrease} of renewables)"
 )
 
@@ -465,6 +468,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._forbid_dispatch_off: bool = (
             not self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF
         )
+        
+
 
         # type of power flow to play
         # if True, then it will not disconnect lines above their thermal limits
@@ -698,6 +703,15 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # 1.12.1
         self._needs_active_bus = False
+        
+        # flexibility / demand response, new in 1.12.x
+        if type(self).flexibility_is_available:
+            self._forbid_flex_off:bool = (not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF)
+            self._target_flex: np.ndarray = None
+            self._already_modified_load: np.ndarray = None
+            self._actual_flex: np.ndarray = None
+            self._load_demand_t: np.ndarray = None
+            self._load_demand_t_flex: np.ndarray = None
         
     @property
     def highres_sim_counter(self) -> int:
@@ -1028,6 +1042,15 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         new_obj._called_from_reset = self._called_from_reset
         new_obj._needs_active_bus = self._needs_active_bus
+        
+        # flexibility / demand response, new in 1.12.x
+        if type(self).flexibility_is_available:
+            new_obj._forbid_flex_off = self._forbid_flex_off
+            new_obj._target_flex = copy.deepcopy(self._target_flex)
+            new_obj._already_modified_load = copy.deepcopy(self._already_modified_load)
+            new_obj._actual_flex = copy.deepcopy(self._actual_flex)
+            new_obj._load_demand_t = copy.deepcopy(self._load_demand_t)
+            new_obj._load_demand_t_flex = copy.deepcopy(self._load_demand_t_flex)
         
     def get_path_env(self):
         """
@@ -1501,6 +1524,15 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # slack (1.11.0)
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
         
+        # flexibility / demand response (1.12.x)
+        if type(self).flexibility_is_available:
+            self._target_flex = np.zeros(self.n_load, dtype=dt_float)
+            self._already_modified_load = np.zeros(self.n_load, dtype=dt_bool)
+            self._actual_flex = np.zeros(self.n_load, dtype=dt_float)
+            self._load_demand_t = np.zeros(self.n_load, dtype=dt_float)
+            self._load_demand_t_flex = np.zeros(self.n_load, dtype=dt_float)
+            self._reset_flexibility()
+        
         # previous state (complete)
         n_shunt = bk_type.n_shunt if bk_type.shunts_data_available else 0
         self._previous_conn_state = _EnvPreviousState(bk_type,
@@ -1544,6 +1576,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._parameters = self.__new_param
         self._ignore_min_up_down_times = self._parameters.IGNORE_MIN_UP_DOWN_TIME
         self._forbid_dispatch_off = not self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF
+        if type(self).flexibility_is_available: # flexibility / demand response, new in 1.12.x
+            self._forbid_flex_off = not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF
 
         # type of power flow to play
         # if True, then it will not disconnect lines above their thermal limits
@@ -2038,6 +2072,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._gen_downtime[:] = 0
         self._gen_activeprod_t[:] = 0.0
         self._gen_activeprod_t_redisp[:] = 0.0
+        
+    def _reset_flexibility(self):
+        # flexibility / demand response, new in 1.12.x
+        self._target_flex[:] = 0.0
+        self._already_modified_load[:] = False
+        self._actual_flex[:] = 0.0
+        self._load_demand_t[:] = 0.0
+        self._load_demand_t_flex[:] = 0.0
 
     def _feed_data_for_detachment(self, new_p_th):
         """feed the attribute for the detachment"""
@@ -2085,8 +2127,23 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         )
         self._already_modified_gen[is_redisped] = True
         return self._already_modified_gen
+    
+    def _get_already_modified_load(self, action: BaseAction):
+        if not action._modif_flexibility:
+            # nothing changes if the action does
+            # not affect flexibility
+            return self._already_modified_load
+        flex_act_orig = action._flexibility
+        is_flexed = np.abs(flex_act_orig) > 1e-7
+        self._target_flex[self._already_modified_load] += flex_act_orig[self._already_modified_load]
+        first_modified = (~self._already_modified_load) & is_flexed
+        self._target_flex[first_modified] = (
+            self._actual_flex[first_modified] + flex_act_orig[first_modified]
+        )
+        self._already_modified_load[is_flexed] = True
+        return self._already_modified_load
 
-    def _prepare_redisp(self, action: BaseAction, new_p, already_modified_gen):
+    def _prepare_redisp_and_flex(self, action: BaseAction, new_gen_p:np.ndarray, new_load_p:np.ndarray):
         cls = type(self)
         # trying with an optimization method
         except_ = None
@@ -2099,11 +2156,22 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         else:
             redisp_act_orig = None
             
-        if (
-            (redisp_act_orig is not None and (np.abs(redisp_act_orig) <= 1e-7).all())
+        # get the flexibility action (if any)
+        if action._modif_flexibility and cls.flexibility_is_available:
+            flex_act_orig = action._flexibility.copy()
+        else:
+            flex_act_orig = None
+        
+        disp_cond = redisp_act_orig is not None and ((np.abs(redisp_act_orig) <= 1e-7).all()
             and (np.abs(self._target_dispatch) <= 1e-7).all()
-            and (np.abs(self._actual_dispatch) <= 1e-7).all()
-        ):
+            and (np.abs(self._actual_dispatch) <= 1e-7).all())
+        flex_cond = flex_act_orig is not None and ((np.abs(flex_act_orig) <= 1e-7).all()
+            and (np.abs(self._target_flex) <= 1e-7).all()
+            and (np.abs(self._actual_flex) <= 1e-7).all())
+        # If no redispatching / flexibility is active, return
+        if disp_cond and not cls.flexibility_is_available:
+            return valid, except_, info_
+        if disp_cond and flex_cond and cls.flexibility_is_available:
             return valid, except_, info_
         
         if redisp_act_orig is None:
@@ -2136,7 +2204,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             return valid, except_, info_
 
         # i can't redispatch turned off generators [turned off generators need to be turned on before redispatching]
-        if (redisp_act_orig[np.abs(new_p) <= 1e-7]).any() and self._forbid_dispatch_off:
+        if (redisp_act_orig[np.abs(new_gen_p) <= 1e-7]).any() and self._forbid_dispatch_off:
             # action is invalid, a generator has been redispatched, but it's turned off
             except_ = IllegalRedispatching(
                 "Impossible to dispatch a turned off generator"
@@ -2146,7 +2214,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         if self._forbid_dispatch_off:
             redisp_act_orig_cut = redisp_act_orig.copy()
-            redisp_act_orig_cut[np.abs(new_p) <= 1e-7] = 0.0
+            redisp_act_orig_cut[np.abs(new_gen_p) <= 1e-7] = 0.0
             if (redisp_act_orig_cut != redisp_act_orig).any():
                 info_.append(
                     {
@@ -3152,7 +3220,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # compute the redispatching and the new productions active setpoint
         already_modified_gen = self._get_already_modified_gen(action)
-        valid_disp, except_tmp, info_ = self._prepare_redisp(
+        valid_disp, except_tmp, info_ = self._prepare_redisp_and_flex(
             action, new_p, already_modified_gen
         )
 
