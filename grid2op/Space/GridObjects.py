@@ -193,6 +193,17 @@ class GridObjects:
     - :attr:`GridObjects.gen_renewable`
 
     These information are loaded using the :func:`grid2op.Backend.Backend.load_redispacthing_data` method.
+    
+    Note that if you want to model an environment with flexibility capabilities, you also need
+    to provide the following attributes:
+
+    - :attr:`GridObjects.load_size`
+    - :attr:`GridObjects.load_flexible`
+    - :attr:`GridObjects.load_max_ramp_up`
+    - :attr:`GridObjects.load_max_ramp_down`
+    - :attr:`GridObjects.load_cost_per_MW`
+    
+    This information is loaded using the :func:`grid2op.Backend.Backend.load_flexibility_data` method.
 
     **NB** it does not store any information about the current state of the powergrid. It stores information that
     cannot be modified by the BaseAgent, the Environment or any other entity.
@@ -308,7 +319,7 @@ class GridObjects:
         to/from it. This parameter is also used to compute automatically :func:`GridObjects.dtype` and
         :func:`GridObjects.shape` as well as :func:`GridObjects.size`. If this class is derived, then it's really
         important that this vector is properly set. All the attributes with the name on this vector should have
-        consistently the same size and shape, otherwise, some methods will not behave as expected. [*class attribute*]
+        consistently the same size and shape, othercwise, some methods will not behave as expected. [*class attribute*]
 
     _vectorized: :class:`numpy.ndarray`, dtype:float
         The representation of the GridObject as a vector. See the help of :func:`GridObjects.to_vect` and
@@ -393,6 +404,17 @@ class GridObjects:
           - :attr:`GridObjects.gen_startup_cost`
           - :attr:`GridObjects.gen_shutdown_cost`
           - :attr:`GridObjects.gen_renewable`
+          
+    flexibility_is_available: ``bool``
+        Does the current grid allow for flexible loads. If not, any attempt to use it
+        will raise a :class:`grid2op.Exceptions.FlexibilityNotAvailable` error. [*class attribute*]
+        For an environment to be compatible with this feature, you need to set up, when loading the backend:
+
+          - :attr:`GridObjects.load_size`
+          - :attr:`GridObjects.load_flexible`
+          - :attr:`GridObjects.load_max_ramp_up`
+          - :attr:`GridObjects.load_max_ramp_down`
+          - :attr:`GridObjects.load_cost_per_MW`
 
     grid_layout: ``dict`` or ``None``
         The layout of the powergrid in a form of a dictionnary with keys the substation name, and value a tuple of
@@ -620,7 +642,7 @@ class GridObjects:
     gen_renewable : ClassVar[Optional[np.ndarray]] = None
     
     # Flexible load data, not available in all Environments, new in 1.12.x
-    flexible_load_available: ClassVar[bool] = False
+    flexibility_is_available: ClassVar[bool] = False
     load_size: ClassVar[Optional[np.ndarray]] = None
     load_flexible: ClassVar[Optional[np.ndarray]] = None
     load_max_ramp_up: ClassVar[Optional[np.ndarray]] = None
@@ -4106,6 +4128,22 @@ class GridObjects:
             else:
                 for nm_attr in cls._li_attr_disp:
                     res[nm_attr] = None
+                    
+            # Flexibility, new in 1.12.x
+            if cls.flexibility_is_available:
+                for nm_attr, type_attr in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
+                    if nm_attr not in res and hasattr(cls, nm_attr) is False:
+                        # Note: Need default values here for flex to work together
+                        # correctly with redispatch
+                        res[nm_attr] = np.zeros(shape=cls.n_load, dtype=type_attr)
+                    if getattr(cls, nm_attr, None) is not None:
+                        save_to_dict(
+                            res,
+                            cls,
+                            nm_attr,
+                            (lambda li, type_attr=type_attr: [type_attr(el) for el in li]) if as_list else None,
+                            copy_,
+                        )
             
             # layout (position of substation on a map of the grid)
             if cls.grid_layout is not None:
@@ -4280,6 +4318,9 @@ class GridObjects:
             res[
                 "redispatching_unit_commitment_availble"
             ] = cls.redispatching_unit_commitment_availble
+            
+            # flexibility / deamnd response
+            res["flexibility_is_available"] = cls.flexibility_is_available
             
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
