@@ -3274,6 +3274,12 @@ class GridObjects:
             cls.detachment_is_allowed = DEFAULT_ALLOW_DETACHMENT
             res = True
             
+        if glop_ver < cls.MIN_VERSION_FLEX:
+            # Flexibility / demand response did not exist, default value
+            # should have no effect
+            cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
+            res = True
+            
         if res:
             cls._reset_cls_dict()  # forget the previous class (stored as dict)
         return res
@@ -4524,7 +4530,7 @@ class GridObjects:
                 
         # Demand Response / Flexibility
         if dict_.get("load_size", None) is None:
-            cls.flexibility_is_available = False
+            cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
         else:
             cls.flexibility_is_available = True
             type_attr_flex_load = [
