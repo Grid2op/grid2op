@@ -4137,20 +4137,19 @@ class GridObjects:
                     res[nm_attr] = None
                     
             # Flexibility, new in 1.12.x
-            if cls.flexibility_is_available:
-                for nm_attr, type_attr in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
-                    if nm_attr not in res and hasattr(cls, nm_attr) is False:
-                        # Note: Need default values here for flex to work together
-                        # correctly with redispatch
-                        res[nm_attr] = np.zeros(shape=cls.n_load, dtype=type_attr)
-                    if getattr(cls, nm_attr, None) is not None:
-                        save_to_dict(
-                            res,
-                            cls,
-                            nm_attr,
-                            (lambda li, type_attr=type_attr: [type_attr(el) for el in li]) if as_list else None,
-                            copy_,
-                        )
+            for nm_attr, type_attr in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
+                if nm_attr not in res and hasattr(cls, nm_attr) is False:
+                    # Note: Need default values here for flex to work together
+                    # correctly with redispatch
+                    res[nm_attr] = np.zeros(shape=cls.n_load, dtype=type_attr)
+                if getattr(cls, nm_attr, None) is not None:
+                    save_to_dict(
+                        res,
+                        cls,
+                        nm_attr,
+                        (lambda li, type_attr=type_attr: [type_attr(el) for el in li]) if as_list else None,
+                        copy_,
+                    )
             
             # layout (position of substation on a map of the grid)
             if cls.grid_layout is not None:
