@@ -16,7 +16,7 @@ import grid2op
 
 class TestFlexibility(unittest.TestCase):
     def setUp(self) -> None:
-        self.env_name = os.path.join(PATH_DATA_TEST, "5bus_example_with_flexibility")
+        self.env_name = "rte_case5_flexibility"
         
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
@@ -50,7 +50,7 @@ class TestFlexibility(unittest.TestCase):
         
     def test_create_flex_action(self):
         try:
-            flex_act = self.env.action_space({"flexibiity":[(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]})
+            flex_act = self.env.action_space({"flexibility":[(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]})
             assert True
         except:
             assert False
