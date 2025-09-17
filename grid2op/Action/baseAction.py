@@ -38,7 +38,7 @@ from grid2op.Exceptions import (Grid2OpException,
                                 IncorrectNumberOfElements,
                                 InvalidStorage,
                                 InvalidCurtailment,
-                                )
+                                InvalidFlexibility)
 from grid2op.Space import GridObjects, GRID2OP_CURRENT_VERSION_STR
 
 # TODO time delay somewhere (eg action is implemented after xxx timestep, and not at the time where it's proposed)
@@ -2465,6 +2465,7 @@ class BaseAction(GridObjects):
         self._modif_inj = self._modif_inj or other._modif_inj
         self._modif_shunt = self._modif_shunt or other._modif_shunt
         self._modif_redispatch = self._modif_redispatch or other._modif_redispatch
+        self._modif_flexibility = self._modif_flexibility or other._modif_flexibility # new in 1.12.x
         self._modif_storage = self._modif_storage or other._modif_storage
         self._modif_curtailment = self._modif_curtailment or other._modif_curtailment
         self._modif_alarm = self._modif_alarm or other._modif_alarm
@@ -3643,6 +3644,18 @@ class BaseAction(GridObjects):
           - For switches, ambiguous actions can come from:
 
             - TODO
+
+          - For flexibility, Ambiguous actions can happen when:
+
+            - A flexibility action is active, but
+              :attr:`grid2op.Space.GridObjects.flexibility_available` is set to ``False``
+            - The length of the flexibility vector :attr:`BaseAction._flexibility` is not compatible with the number
+              of loads.
+            - Some of the asked for flexibility is above the maximum ramp up :attr:`grid2op.Space.GridObjects.load_max_ramp_up`
+            - some of the asked for flexibility is below the maximum ramp down :attr:`grid2op.Space.GridObjects.load_max_ramp_down`
+            - The flexibility action affects a non-flexible load
+            - The flexibility and consumption values, when added, are above load_size for at least one load
+            - The flexibility and consumption values, when added, are below 0 for at least one load
 
         In case of need to overload this method, it is advise to still call this one from the base :class:`BaseAction`
         with ":code:`super()._check_for_ambiguity()`" or ":code:`BaseAction._check_for_ambiguity(self)`".
