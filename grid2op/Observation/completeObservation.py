@@ -212,7 +212,7 @@ class CompleteObservation(BaseObservation):
         "gen_p_detached",
         "storage_p_detached",
         # protections (>= 1.11.0)
-        "timestep_protection_engaged"
+        "timestep_protection_engaged",
         # flexibility / demand response, new in 1.12.x
         "target_flex",
         "actual_flex",

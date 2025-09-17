@@ -706,13 +706,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._needs_active_bus = False
         
         # flexibility / demand response, new in 1.12.x
-        if type(self).flexibility_is_available:
-            self._forbid_flex_off:bool = (not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF)
-            self._target_flex: np.ndarray = None
-            self._already_modified_load: np.ndarray = None
-            self._actual_flex: np.ndarray = None
-            self._load_demand_t: np.ndarray = None
-            self._load_demand_t_flex: np.ndarray = None
+        # if type(self).flexibility_is_available:
+        self._forbid_flex_off:bool = (not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF)
+        self._target_flex: np.ndarray = None
+        self._already_modified_load: np.ndarray = None
+        self._actual_flex: np.ndarray = None
+        self._load_demand_t: np.ndarray = None
+        self._load_demand_t_flex: np.ndarray = None
         
     @property
     def highres_sim_counter(self) -> int:
@@ -1045,13 +1045,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj._needs_active_bus = self._needs_active_bus
         
         # flexibility / demand response, new in 1.12.x
-        if type(self).flexibility_is_available:
-            new_obj._forbid_flex_off = self._forbid_flex_off
-            new_obj._target_flex = copy.deepcopy(self._target_flex)
-            new_obj._already_modified_load = copy.deepcopy(self._already_modified_load)
-            new_obj._actual_flex = copy.deepcopy(self._actual_flex)
-            new_obj._load_demand_t = copy.deepcopy(self._load_demand_t)
-            new_obj._load_demand_t_flex = copy.deepcopy(self._load_demand_t_flex)
+        # if type(self).flexibility_is_available:
+        new_obj._forbid_flex_off = self._forbid_flex_off
+        new_obj._target_flex = copy.deepcopy(self._target_flex)
+        new_obj._already_modified_load = copy.deepcopy(self._already_modified_load)
+        new_obj._actual_flex = copy.deepcopy(self._actual_flex)
+        new_obj._load_demand_t = copy.deepcopy(self._load_demand_t)
+        new_obj._load_demand_t_flex = copy.deepcopy(self._load_demand_t_flex)
         
     def get_path_env(self):
         """
@@ -1526,13 +1526,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
         
         # flexibility / demand response (1.12.x)
-        if type(self).flexibility_is_available:
-            self._target_flex = np.zeros(self.n_load, dtype=dt_float)
-            self._already_modified_load = np.zeros(self.n_load, dtype=dt_bool)
-            self._actual_flex = np.zeros(self.n_load, dtype=dt_float)
-            self._load_demand_t = np.zeros(self.n_load, dtype=dt_float)
-            self._load_demand_t_flex = np.zeros(self.n_load, dtype=dt_float)
-            self._reset_flexibility()
+        # if type(self).flexibility_is_available:
+        self._target_flex = np.zeros(self.n_load, dtype=dt_float)
+        self._already_modified_load = np.zeros(self.n_load, dtype=dt_bool)
+        self._actual_flex = np.zeros(self.n_load, dtype=dt_float)
+        self._load_demand_t = np.zeros(self.n_load, dtype=dt_float)
+        self._load_demand_t_flex = np.zeros(self.n_load, dtype=dt_float)
+        self._reset_flexibility()
         
         # previous state (complete)
         n_shunt = bk_type.n_shunt if bk_type.shunts_data_available else 0
@@ -2307,7 +2307,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                      np.abs(self._amount_storage) >= self._tol_poly or
                      np.abs(self._sum_curtailment_mw) >= self._tol_poly or
                      np.abs(self._detached_elements_mw) >= self._tol_poly)
-        flex_cond = self.flexible_load_available and \
+        flex_cond = self.flexibility_is_available and \
                     (np.abs((self._actual_flex).sum()) >= self._tol_poly or
                      np.max(flex_mismatch) >= self._tol_poly)
 
@@ -3752,7 +3752,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             new_load_p[load_detached_user] = 0.
             new_load_pth[load_detached_user] = 0.
             self._actual_flex[load_detached_user] = 0.
-        return new_gen_p, new_gen_pth
+        return new_gen_p, new_gen_pth, new_load_p, new_load_pth
         
     def _aux_step_reset_action(self):
         action = self._action_space({})

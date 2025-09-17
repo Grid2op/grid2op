@@ -216,6 +216,7 @@ def _hash_env(
             "grid_layout.json",
             "prods_charac.csv",
             "storage_units_charac.csv",
+            "flex_loads_charac.csv",
             # chronix2grid files, if any
             "loads_charac.csv",
             "params.json",

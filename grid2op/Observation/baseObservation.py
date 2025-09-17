@@ -677,7 +677,10 @@ class BaseObservation(GridObjects):
         "gen_p_detached",
         "storage_p_detached",
         # soft_overflow_threshold
-        "timestep_protection_engaged"
+        "timestep_protection_engaged",
+        # flexibility / demand response, new in 1.12.x
+        "target_flex",
+        "actual_flex"
     ]
 
     def __init__(self,
@@ -1523,11 +1526,6 @@ class BaseObservation(GridObjects):
         # redispatching
         self.target_dispatch[:] = np.nan
         self.actual_dispatch[:] = np.nan
-        
-        # flexibility, new in 1.12.x
-        if type(self).flexibility_is_available:
-            self.target_flex[:] = np.nan
-            self.actual_flex[:] = np.nan
 
         # storage units
         self.storage_charge[:] = np.nan
@@ -1591,6 +1589,11 @@ class BaseObservation(GridObjects):
             self.load_q_detached[:] = 0.
             self.gen_p_detached[:] = 0.
             self.storage_p_detached[:] = 0.
+
+        # flexibility, new in 1.12.x
+        if type(self).flexibility_is_available:
+            self.target_flex[:] = np.nan
+            self.actual_flex[:] = np.nan
         
     def set_game_over(self,
                       env: Optional["grid2op.Environment.Environment"]=None) -> None:
@@ -1742,6 +1745,11 @@ class BaseObservation(GridObjects):
             self.load_q_detached[:] = 0.
             self.gen_p_detached[:] = 0.
             self.storage_p_detached[:] = 0.
+
+        # flexibility, new in 1.12.x
+        if type(self).flexibility_is_available:
+            self.target_flex[:] = 0.0
+            self.actual_flex[:] = 0.0
         
     def __compare_stats(self, other: Self, name: str) -> bool:
         attr_me = getattr(self, name)
@@ -5358,6 +5366,22 @@ class BaseObservation(GridObjects):
                        "load_q_detached",
                        "gen_p_detached",
                        "storage_p_detached",]:
+                if el in cls.attr_list_vect:
+                    try:
+                        cls.attr_list_vect.remove(el)
+                    except ValueError:
+                        pass
+            cls._update_value_set()
+        return super().process_detachment()
+    
+    @classmethod
+    def process_flexibility(cls):
+        if not cls.flexibility_is_available:
+            # this is really important, otherwise things from grid2op base types will be affected
+            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+            # remove the detachment from the list to vector
+            for el in ["target_flex",
+                        "actual_flex"]:
                 if el in cls.attr_list_vect:
                     try:
                         cls.attr_list_vect.remove(el)

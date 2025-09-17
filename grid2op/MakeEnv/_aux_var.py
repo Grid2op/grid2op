@@ -22,6 +22,7 @@ TEST_DEV_ENVS = {
     "rte_case14_redisp": DEV_DATASET.format("rte_case14_redisp"),
     "rte_case14_test": DEV_DATASET.format("rte_case14_test"),
     "rte_case5_example": DEV_DATASET.format("rte_case5_example"),
+    "rte_case5_flexibility": DEV_DATASET.format("rte_case5_flexibility"),
     "rte_case118_example": DEV_DATASET.format("rte_case118_example"),
     "rte_case14_opponent": DEV_DATASET.format("rte_case14_opponent"),
     "l2rpn_wcci_2020": DEV_DATASET.format("l2rpn_wcci_2020"),

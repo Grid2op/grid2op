@@ -3058,7 +3058,7 @@ class GridObjects:
         cls._compute_pos_big_topo_cls()
         cls.process_shunt_static_data()
         cls.process_detachment()
-        cls.process_flexiblity()
+        cls.process_flexibility()
         
     @classmethod
     def _aux_init_grid_from_cls(cls, gridobj, name_res):
@@ -3197,6 +3197,7 @@ class GridObjects:
         compat_mode = res_cls.process_grid2op_compat()
         res_cls.process_detachment()
         res_cls.process_shunt_static_data()
+        res_cls.process_flexibility() # new in 1.12.x
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
@@ -4620,7 +4621,7 @@ class GridObjects:
         
         cls.process_detachment()
         
-        cls.process_flexiblity() # new in 1.12.x
+        cls.process_flexibility() # new in 1.12.x
         
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]
@@ -4673,7 +4674,7 @@ class GridObjects:
         pass
     
     @classmethod
-    def process_flexiblity(cls):
+    def process_flexibility(cls):
         """process demand response / flexibility that is applied to loads, is overloaded for :class:`grid2op.Action.BaseAction`
         or :class:`grid2op.Observation.BaseObservation`
         """
@@ -4775,7 +4776,7 @@ class GridObjects:
         my_class.process_grid2op_compat()
         my_class.process_detachment()
         my_class.process_shunt_static_data()
-        my_class.process_flexiblity()
+        my_class.process_flexibility()
         return my_class
 
     @staticmethod

@@ -595,7 +595,10 @@ class BaseAction(GridObjects):
         self._private_redispatch : Optional[np.ndarray] = None  # np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float)
         
         # demand response / flexibility vector
-        self._private_flexibility : Optional[np.ndarray] = None
+        if cls.flexibility_is_available:
+            self._private_flexibility : Optional[np.ndarray] = None
+        else:
+            self._private_flexibility = None
 
         # storage unit vector
         self._private_storage_power : Optional[np.ndarray] = None  # np.full(
@@ -843,6 +846,8 @@ class BaseAction(GridObjects):
             
             "_set_switch_status": None,
             "_change_switch_status": None,
+
+            "_flexibility": None, # new in 1.12.x
         }
         
         # shunts
@@ -858,7 +863,7 @@ class BaseAction(GridObjects):
         
         # new in 1.12.x
         if cls.flexibility_is_available:
-            cls.DICT_ATTR_["_flexibility"] = np.full(shape=cls.n_load, fill_value=0.0, dtype=dt_float),
+            cls.DICT_ATTR_["_flexibility"] = np.full(shape=cls.n_load, dtype=dt_float, fill_value=0.0)
 
     @classmethod
     def _build_attr(cls, attr_nm: str):
@@ -1159,16 +1164,6 @@ class BaseAction(GridObjects):
             ]
             if not res["curtail"]:
                 del res["curtail"]
-        
-        if self.flexibility_is_available: # new in 1.12.x
-            if self._modif_flexibility: 
-                res["flexibility"] = [
-                    (str(cls.name_Load[id_]), float(val))
-                    for id_, val in enumerate(self._private_flexibility)
-                    if np.abs(val) >= 1e-7
-                ]
-                if not res["flexibility"]:
-                    del res["flexibility"]
 
         # more advanced options
         if self._modif_inj:
@@ -1212,6 +1207,16 @@ class BaseAction(GridObjects):
                     res[attr_key] = [str(xxx_name[el]) for el in vect_.nonzero()[0]]
                 if not res[attr_key]:
                     del res[attr_key]
+
+        if self.flexibility_is_available: # new in 1.12.x
+            if self._modif_flexibility: 
+                res["flexibility"] = [
+                    (str(cls.name_Load[id_]), float(val))
+                    for id_, val in enumerate(self._private_flexibility)
+                    if np.abs(val) >= 1e-7
+                ]
+                if not res["flexibility"]:
+                    del res["flexibility"]
                     
         return res
 
@@ -4019,7 +4024,7 @@ class BaseAction(GridObjects):
                         'Action of type "flexibility" are not supported by this action type'
                     )
 
-                if (np.abs(self._private_flex[~type(self).load_flexible]) >= 1e-7).any():
+                if (np.abs(self._private_flexibility[~type(self).load_flexible]) >= 1e-7).any():
                     raise InvalidFlexibility(
                         "Trying to apply a flexibility action on a non redispatchable generator"
                     )
@@ -4366,22 +4371,22 @@ class BaseAction(GridObjects):
         
     
         # flexibility, new in 1.12.x
-        if self.flexibility_is_available:
-            if self._modif_flexibility:
-                res.append(
-                    "\t - Modify the loads with flexibility in the following way:"
-                )
-                for load_idx in range(self.n_load):
-                    if np.abs(self._private_flexibility[load_idx]) >= 1e-7:
-                        load_name = self.name_load[load_idx]
-                        f_amount = self._private_flexibility[load_idx]
-                        res.append(
-                            '\t \t - Flexibility "{}" of {:.2f} MW'.format(
-                                load_name, f_amount
-                            )
-                        )
-            else:
-                res.append("\t - NOT perform any flexibility action")
+        # if self.flexibility_is_available:
+        #     if self._modif_flexibility:
+        #         res.append(
+        #             "\t - Modify the loads with flexibility in the following way:"
+        #         )
+        #         for load_idx in range(self.n_load):
+        #             if np.abs(self._private_flexibility[load_idx]) >= 1e-7:
+        #                 load_name = self.name_load[load_idx]
+        #                 f_amount = self._private_flexibility[load_idx]
+        #                 res.append(
+        #                     '\t \t - Flexibility "{}" of {:.2f} MW'.format(
+        #                         load_name, f_amount
+        #                     )
+        #                 )
+        #     else:
+        #         res.append("\t - NOT perform any flexibility action")
         
         return "\n".join(res)
 
