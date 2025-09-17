@@ -509,9 +509,9 @@ class BackendConverter(Backend):
         if self.path_flexibility is not None:
             # Flexibility / demand response data is available, new in 1.12.x
             try:
-                super().load_flexibility_data(self.path_flex, name=self.name_flex)
+                super().load_flexibility_data(self.path_flexibility, name=self.name_flexibility)
                 self.source_backend.load_flexibility_data(
-                    self.path_flex, name=self.name_flex
+                    self.path_flexibility, name=self.name_flexibility
                 )
             except BackendError as exc_:
                 self.flexibility_is_available = False

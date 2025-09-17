@@ -4026,7 +4026,7 @@ class BaseAction(GridObjects):
 
                 if (np.abs(self._private_flexibility[~type(self).load_flexible]) >= 1e-7).any():
                     raise InvalidFlexibility(
-                        "Trying to apply a flexibility action on a non redispatchable generator"
+                        "Trying to apply a flexibility action on a non-flexible load"
                     )
 
                 if self._single_act:
@@ -4371,22 +4371,22 @@ class BaseAction(GridObjects):
         
     
         # flexibility, new in 1.12.x
-        # if self.flexibility_is_available:
-        #     if self._modif_flexibility:
-        #         res.append(
-        #             "\t - Modify the loads with flexibility in the following way:"
-        #         )
-        #         for load_idx in range(self.n_load):
-        #             if np.abs(self._private_flexibility[load_idx]) >= 1e-7:
-        #                 load_name = self.name_load[load_idx]
-        #                 f_amount = self._private_flexibility[load_idx]
-        #                 res.append(
-        #                     '\t \t - Flexibility "{}" of {:.2f} MW'.format(
-        #                         load_name, f_amount
-        #                     )
-        #                 )
-        #     else:
-        #         res.append("\t - NOT perform any flexibility action")
+        if self.flexibility_is_available:
+            if self._modif_flexibility:
+                res.append(
+                    "\t - Modify the loads with flexibility in the following way:"
+                )
+                for load_idx in range(self.n_load):
+                    if np.abs(self._private_flexibility[load_idx]) >= 1e-7:
+                        load_name = self.name_load[load_idx]
+                        f_amount = self._private_flexibility[load_idx]
+                        res.append(
+                            '\t \t - Flexibility "{}" of {:.2f} MW'.format(
+                                load_name, f_amount
+                            )
+                        )
+            else:
+                res.append("\t - NOT perform any flexibility action")
         
         return "\n".join(res)
 
@@ -4555,7 +4555,7 @@ class BaseAction(GridObjects):
                     if np.abs(self._private_flexibility[load_idx]) >= 1e-7:
                         load_name = self.name_load[load_idx]
                         f_amount = self._private_flexibility[load_idx]
-                        redispatch["loads"].append(
+                        flexibility["loads"].append(
                             {"load_id": load_idx, "gen_name": load_name, "amount": f_amount}
                         )
                 flexibility["changed"] = True

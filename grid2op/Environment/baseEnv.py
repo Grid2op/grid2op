@@ -2347,7 +2347,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             | (np.abs(self._actual_flex) >= 1e-7)
             | (self._target_flex != self._actual_flex)
         )
-        load_involved[~self.load_flexible] = False
+        load_involved[~cls.load_flexible] = False
         if cls.detachment_is_allowed:
             load_involved[self._backend_action.get_load_detached()] = False
         incr_in_load_chronics = new_load_p - (self._load_demand_t_flex - self._actual_flex)
@@ -2435,8 +2435,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                              self.load_max_ramp_down + self._epsilon_poly)
         coeffs = np.concatenate((gen_coeffs[gen_involved], load_coeffs[load_involved]))
         
-        involved = np.concatenate((gen_involved, load_involved))
-        weights = np.ones(nb_dispatchable + nb_flexible) * coeffs[involved]
+        # involved = np.concatenate((gen_involved, load_involved))
+        weights = np.ones(nb_dispatchable + nb_flexible) * coeffs # [involved]
         weights /= weights.sum()
 
         if target_gen_vals_mi.shape[0] == 0 and target_load_vals_mi.shape[0] == 0:
@@ -2576,18 +2576,18 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         def target(actual_dispatchable):
             # Define objective (quadratic)
-            quad_ = (actual_dispatchable[modded_involved_gens] - target_vals_mi_optim) ** 2
-            coeffs_quads = weights[modded_involved_gens] * quad_
+            quad_ = (actual_dispatchable[modded_involved] - target_vals_mi_optim) ** 2
+            coeffs_quads = weights[modded_involved] * quad_
             coeffs_quads_const = coeffs_quads.sum()
             coeffs_quads_const /= scale_objective  # scaling the function
             return coeffs_quads_const
 
         def jac(actual_dispatchable):
             res_jac = 1.0 * tmp_zeros
-            res_jac[0, modded_involved_gens] = (
+            res_jac[0, modded_involved] = (
                 2.0
-                * weights[modded_involved_gens]
-                * (actual_dispatchable[modded_involved_gens] - target_vals_mi_optim)
+                * weights[modded_involved]
+                * (actual_dispatchable[modded_involved] - target_vals_mi_optim)
             )
             res_jac /= scale_objective  # scaling the function
             return res_jac.reshape(-1)
