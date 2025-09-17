@@ -53,6 +53,7 @@ class AAATestBackendAPI(MakeBackend):
                                                    extra_name=extra_name)
         backend.load_grid_public(self.get_path(), self.get_casefile())
         backend.load_redispacthing_data("tmp")  # pretend there is no generator
+        backend.load_flexibility_data("tmp") 
         backend.load_storage_data(self.get_path())
         backend.assert_grid_correct()
         try:
@@ -96,6 +97,7 @@ class AAATestBackendAPI(MakeBackend):
         backend = self.make_backend()
         backend.load_grid_public(self.get_path(), self.get_casefile())  # both argument filled
         backend.load_redispacthing_data(self.get_path())
+        backend.load_flexibility_data(self.get_path())
         backend.load_storage_data(self.get_path())
         env_name = "BasicTest_load_grid0_" + type(self).__name__
         backend.env_name = env_name
@@ -116,6 +118,7 @@ class AAATestBackendAPI(MakeBackend):
         backend.env_name = "BasicTest_load_grid2_" + type(self).__name__
         backend.load_grid(os.path.join(self.get_path(), self.get_casefile()))  # first argument filled, second None
         backend.load_redispacthing_data(self.get_path())
+        backend.load_flexibility_data(self.get_path())
         backend.load_storage_data(self.get_path())
         backend.assert_grid_correct() 
         backend.close()
