@@ -14,6 +14,7 @@ import numpy as np
 from grid2op.tests.helper_path_test import PATH_DATA_TEST
 import grid2op
 
+
 class TestFlexibility(unittest.TestCase):
     def setUp(self) -> None:
         self.env_name = "rte_case5_flexibility"

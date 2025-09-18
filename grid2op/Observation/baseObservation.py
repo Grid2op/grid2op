@@ -5388,4 +5388,4 @@ class BaseObservation(GridObjects):
                     except ValueError:
                         pass
             cls._update_value_set()
-        return super().process_detachment()
+        return super().process_flexibility()
