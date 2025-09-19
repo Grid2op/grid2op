@@ -2400,6 +2400,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 else:
                     avail_load_down_tmp = np.zeros([], dtype=dt_float)
                     avail_load_up_tmp = np.zeros([], dtype=dt_float)
+                    load_involved_tmp = np.zeros([], dtype=dt_bool)
                 except_tmp = self._detect_infeasible_dispatch(
                     incr_in_gen_chronics[gen_involved_tmp], avail_gen_down_tmp, avail_gen_up_tmp,
                     incr_in_load_chronics[load_involved_tmp], avail_load_down_tmp, avail_load_up_tmp
