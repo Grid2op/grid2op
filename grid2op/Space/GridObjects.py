@@ -4528,8 +4528,8 @@ class GridObjects:
                     ),
                 )
                 
-        # Demand Response / Flexibility
-        if dict_.get("load_size", None) is None:
+        # Demand Response / Flexibility, new in 1.12.x
+        if np.isclose(dict_.get("load_size", np.zeros(1)), 0.0).all():
             cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
         else:
             cls.flexibility_is_available = True
