@@ -756,10 +756,10 @@ class BaseObservation(GridObjects):
         self.target_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
         self.actual_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
         
-        # flexibility / demand response
-        if cls.flexibility_is_available:
-            self.target_flex = np.empty(shape=cls.n_load, dtype=dt_float)
-            self.actual_flex = np.empty(shape=cls.n_load, dtype=dt_float)
+        # Flexibility / demand response, new in 1.12.x
+        # if cls.flexibility_is_available:
+        self.target_flex = np.empty(shape=cls.n_load, dtype=dt_float)
+        self.actual_flex = np.empty(shape=cls.n_load, dtype=dt_float)
 
         # storage unit
         self.storage_charge = np.empty(shape=cls.n_storage, dtype=dt_float)  # in MWh
@@ -1591,9 +1591,9 @@ class BaseObservation(GridObjects):
             self.storage_p_detached[:] = 0.
 
         # flexibility, new in 1.12.x
-        if type(self).flexibility_is_available:
-            self.target_flex[:] = np.nan
-            self.actual_flex[:] = np.nan
+        # if type(self).flexibility_is_available:
+        self.target_flex[:] = 0.0
+        self.actual_flex[:] = 0.0
         
     def set_game_over(self,
                       env: Optional["grid2op.Environment.Environment"]=None) -> None:
@@ -1747,9 +1747,9 @@ class BaseObservation(GridObjects):
             self.storage_p_detached[:] = 0.
 
         # flexibility, new in 1.12.x
-        if type(self).flexibility_is_available:
-            self.target_flex[:] = 0.0
-            self.actual_flex[:] = 0.0
+        # if type(self).flexibility_is_available:
+        self.target_flex[:] = 0.0
+        self.actual_flex[:] = 0.0
         
     def __compare_stats(self, other: Self, name: str) -> bool:
         attr_me = getattr(self, name)
@@ -4009,9 +4009,6 @@ class BaseObservation(GridObjects):
             self._dictionnarized["loads"]["p"] = self.load_p
             self._dictionnarized["loads"]["q"] = self.load_q
             self._dictionnarized["loads"]["v"] = self.load_v
-            if type(self).flexibility_is_available: # new in 1.12.x
-                self._dictionnarized["loads"]["target_flex"] = self.target_flex
-                self._dictionnarized["loads"]["actual_flex"] = self.actual_flex
             self._dictionnarized[
                 "prods"
             ] = {}  # TODO will be removed in future versions
@@ -4104,6 +4101,11 @@ class BaseObservation(GridObjects):
             self._dictionnarized["max_step"] = self.max_step
             
             # TODO shedding: add relevant attributes
+            
+            # Flexibility, new in 1.12.x
+            self._dictionnarized["flexibility"] = {}
+            self._dictionnarized["flexibility"]["target_flex"] = self.target_flex
+            self._dictionnarized["flexibility"]["actual_flex"] = self.actual_flex
 
         return self._dictionnarized
 
@@ -4580,9 +4582,10 @@ class BaseObservation(GridObjects):
         self.target_dispatch[:] = env._target_dispatch
         self.actual_dispatch[:] = env._actual_dispatch
         
-        if type(self).flexibility_is_available:
-            self.target_flex[:] = env._target_flex
-            self.actual_flex[:] = env._actual_flex
+        # Flexibility, new in 1.12.x
+        # if type(self).flexibility_is_available:
+        self.target_flex[:] = env._target_flex
+        self.actual_flex[:] = env._actual_flex
 
         self._thermal_limit[:] = env.get_thermal_limit()
 
@@ -5374,18 +5377,18 @@ class BaseObservation(GridObjects):
             cls._update_value_set()
         return super().process_detachment()
     
-    @classmethod
-    def process_flexibility(cls):
-        if not cls.flexibility_is_available:
-            # this is really important, otherwise things from grid2op base types will be affected
-            cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
-            # remove the detachment from the list to vector
-            for el in ["target_flex",
-                        "actual_flex"]:
-                if el in cls.attr_list_vect:
-                    try:
-                        cls.attr_list_vect.remove(el)
-                    except ValueError:
-                        pass
-            cls._update_value_set()
-        return super().process_flexibility()
+    # @classmethod
+    # def process_flexibility(cls):
+    #     if not cls.flexibility_is_available:
+    #         # this is really important, otherwise things from grid2op base types will be affected
+    #         cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+    #         # remove the detachment from the list to vector
+    #         for el in ["target_flex",
+    #                     "actual_flex"]:
+    #             if el in cls.attr_list_vect:
+    #                 try:
+    #                     cls.attr_list_vect.remove(el)
+    #                 except ValueError:
+    #                     pass
+    #         cls._update_value_set()
+    #     return super().process_flexibility()
