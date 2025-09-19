@@ -32,8 +32,7 @@ pkgs = {
         "requests>=2.23.0",
         "packaging",  # because gym changes the way it uses numpy prng in version 0.26 and i need both gym before and after...
         "typing_extensions",
-        "orderly_set<5.4.0; python_version<='3.8'",
-        "pyarrow>=17.0.0"
+        "orderly_set<5.4.0; python_version<='3.8'"
     ],
     "extras": {
         "optional": [
@@ -49,6 +48,7 @@ pkgs = {
             "psutil>=5.7.0",
             "gymnasium",
             "lightsim2grid",
+            "pyarrow>=17.0.0",
         ],
         "gym": [
             "gym>=0.17.2",

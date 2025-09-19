@@ -91,7 +91,7 @@ BASE_TXT_COPYRIGHT = """# Copyright (c) 2019-2020, RTE (https://www.rte-france.c
 # WE DO NOT RECOMMEND TO ALTER IT IN ANY WAY
 """
 
-class BaseEnv(EnvInterface, GridObjects, RandomObject, ABC):
+class BaseEnv(GridObjects, EnvInterface, RandomObject, ABC):
     """
     INTERNAL
 
