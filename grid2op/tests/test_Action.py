@@ -459,6 +459,7 @@ class TestActionBase(ABC):
             redispatching,
             storage,
             shunts,
+            flexibility, # new in 1.12.x
         ) = action()
 
     def test_compare(self):
