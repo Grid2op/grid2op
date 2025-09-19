@@ -1512,7 +1512,7 @@ class BaseAction(GridObjects):
             self._modif_detach_storage = self._private_detach_storage is not None and (self._private_detach_storage).any()
         
         if cls.flexibility_is_available:
-            self._modif_flexibility = self._modif_flexibility is not None and (
+            self._modif_flexibility = self._private_flexibility is not None and (
                 np.isfinite(self._private_flexibility) & (np.abs(self._private_flexibility) >= 1e-7)
             ).any()
         
