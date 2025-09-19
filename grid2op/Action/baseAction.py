@@ -2774,9 +2774,9 @@ class BaseAction(GridObjects):
             set_topo_vect,
             change_bus_vect,
             redispatch,
-            flexibility,
+            flexibility, # new in 1.12.x
             storage_power,
-            shunts,
+            shunts
         )
 
     def _aux_digest_shunt_issue_warning_if_needed(self, ddict_):
@@ -4813,12 +4813,12 @@ class BaseAction(GridObjects):
             Does it affect the line status (line status change / switch are **NOT** counted as topology)
         redispatching: ``bool``
             Does it performs (explicitly) any redispatching
+        flexibility: ``bool``
+            Does it performs (explicitly) any flexibility / demand response
         storage: ``bool``
             Does it performs (explicitly) any action on the storage production / consumption
         curtailment: ``bool``
             Does it performs (explicitly) any action on renewable generator
-        flexibility: ``bool``
-            Does it performs (explicitly) any flexibility / demand response
         """
         injection = "load_p" in self._dict_inj or "prod_p" in self._dict_inj
         voltage = "prod_v" in self._dict_inj
@@ -4838,7 +4838,7 @@ class BaseAction(GridObjects):
             flexibility = self._private_flexibility is not None and (np.abs(self._private_flexibility) >= 1e-7).any()
         else:
             flexibility = False
-        return injection, voltage, topology, line, redispatching, storage, curtailment, flexibility
+        return injection, voltage, topology, line, redispatching, flexibility, storage, curtailment
 
     def _aux_effect_on_load(self, load_id):
         if load_id >= self.n_load:

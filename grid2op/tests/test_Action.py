@@ -450,6 +450,7 @@ class TestActionBase(ABC):
 
     def test_call(self):
         action = self.helper_action()
+        # injection, voltage, topology, line, redispatching, storage, curtailment, flexibility
         (
             dict_injection,
             set_status,
@@ -457,9 +458,9 @@ class TestActionBase(ABC):
             set_topo_vect,
             switcth_topo_vect,
             redispatching,
+            flexibility, # new in 1.12.x
             storage,
-            shunts,
-            flexibility # new in 1.12.x
+            shunts
         ) = action()
 
     def test_compare(self):

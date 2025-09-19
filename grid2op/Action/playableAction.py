@@ -110,6 +110,7 @@ class PlayableAction(BaseAction):
             self._set_topo_vect,
             self._change_bus_vect,
             self._redispatch,
+            self._flexibility,
             self._storage_power,
             {},
         )
