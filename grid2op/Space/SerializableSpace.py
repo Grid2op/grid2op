@@ -11,12 +11,17 @@ import os
 import re
 import json
 import copy
+from typing import Type, Union, TYPE_CHECKING
 
 from grid2op.Exceptions import Grid2OpException
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict
 
 from grid2op.Space.GridObjects import GridObjects
 from grid2op.Space.RandomObject import RandomObject
+
+if TYPE_CHECKING:
+    from grid2op.Action import BaseAction
+    from grid2op.Observation import BaseObservation
 
 
 class SerializableSpace(GridObjects, RandomObject):
@@ -62,7 +67,11 @@ class SerializableSpace(GridObjects, RandomObject):
 
     """
 
-    def __init__(self, gridobj, subtype=object, _init_grid=True, _local_dir_cls=None):
+    def __init__(self,
+                 gridobj,
+                 subtype: Union[Type["BaseAction"], Type["BaseObservation"]]=object,
+                 _init_grid=True,
+                 _local_dir_cls=None):
         """
 
         subtype: ``type``
@@ -80,33 +89,25 @@ class SerializableSpace(GridObjects, RandomObject):
                 '(an instance of a class). It is currently "{}"'.format(type(subtype))
             )
 
-        GridObjects.__init__(self)
-        RandomObject.__init__(self)
-        self._init_subtype = subtype  # do not use, use to save restore only !!!
-        if _init_grid:
-            self.subtype = subtype.init_grid(gridobj, _local_dir_cls=_local_dir_cls)
-            from grid2op.Action import (
-                BaseAction,
-            )  # lazy loading to prevent circular reference
-
-            if issubclass(self.subtype, BaseAction):
-                # add the shunt data if needed by the action only
-                self.subtype._add_shunt_data()
-            # compute the class attribute "attr_list_set" from "attr_list_vect"
-            self.subtype._update_value_set()
-        else:
-            self.subtype = subtype
-
-        from grid2op.Action import BaseAction  # lazy import to avoid circular reference
-        from grid2op.Observation import (
-            BaseObservation,
-        )  # lazy import to avoid circular reference
+        # lazy loading to prevent circular reference
+        from grid2op.Action import BaseAction
+        from grid2op.Observation import BaseObservation
 
         if not issubclass(subtype, (BaseAction, BaseObservation)):
             raise RuntimeError(
                 f'"subtype" should inherit either BaseAction or BaseObservation. Currently it '
                 f'is "{subtype}"'
             )
+            
+        GridObjects.__init__(self)
+        RandomObject.__init__(self)
+        self._init_subtype : Union[Type["BaseAction"], Type["BaseObservation"]] = subtype  # do not use, use to save restore only !!!
+        
+        if _init_grid:
+            self.subtype = subtype.init_grid(gridobj, _local_dir_cls=_local_dir_cls)
+        else:
+            self.subtype = subtype
+            
         self._template_obj = self.subtype()
         self.n = self._template_obj.size()
 

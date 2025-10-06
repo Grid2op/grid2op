@@ -100,6 +100,19 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.13.0] - DETAILED TOPO
+---------------------------
+- [FIXED] some issues with gym classes
+- [IMPROVED] the serialization of class definition 
+  when using "automatic_classes" or "experimental_read_from_local_dir"
+- [IMPROVED] when using gym MultiDiscrete as an action space,
+  if the dimension is 0 (for one of the MultiDiscrete) then it is now
+  removed from the action space (for example, if your environment does not
+  contain storage unit, the corresponding MultiDiscrete will have one less 
+  dimension, because you cannot act on storage unit.)
+- [IMPROVED] classes for action and observation classes are now easier to 
+  initialize (added the `finalize_class_definition` classmethod)
+  
 [1.12.2] - 2025-10-xx
 ----------------------
 - [FIXED] an issue preventing to change the way
@@ -296,9 +309,13 @@ Native multi agents support:
 
 [1.10.4] - 2024-10-14
 -------------------------
-- [FIXED] an issue in the backend: if the backend failed to be
+- [FIXED] an issue in the backend: if the backend failed to be copied
   created the `_grid` attribute was set to `None` and not set back to
+  its original value in the copied backend.
 - [FIXED] the `self.skip_if_needed()` was missing for one of the test suite.
+- [FIXED] the correct `AmbiguousAction` is now raised when grid2op does not understand
+  what an action should be doing (an incorrect `IllegalAction` used to be sent)
+- [FIXED] a test in `test_ActionProperties` did not test the correct property
 - [FIXED] an error in the descirption of the `educ_case14_storage` environment
   (wrong sign for the slack generator)
 - [FIXED] the environment would not load in case of an incorrect "layout.json"
@@ -311,6 +328,7 @@ Native multi agents support:
   in the readme)
 - [ADDED] numpy 2 support (now that pandapower allows it)
 - [IMPROVED] error message when forecasts are not correctly set-up
+- [IMPROVED] an error message when loading a grid with forecasts
 
 
 [1.10.3] - 2024-07-12
@@ -380,7 +398,6 @@ Native multi agents support:
 - [IMPROVED] the `EpisodeData` have now explicitely a mode where they can be shared accross 
   processes (using `fork` at least), see `ep_data.make_serializable`
 - [IMPROVED] chronix2grid tests are now done independantly on the CI
-
 
 [1.10.2] - 2024-05-27
 -------------------------
@@ -1168,7 +1185,7 @@ Native multi agents support:
 - [ADDED]: function to retrieve the maximum duration of the current episode.
 - [ADDED]: a new kind of opponent that is able to attack at "more random" times with "more random" duration.
   See the `GeometricOpponent`.
-- [IMPROVED]: on windows at least, grid2op does not work with gym < 0.17.2 Checks are performed in order to make sure
+- [IMPROVED]: on windows at least, grid2op does not work with `gym < 0.17.2` Checks are performed in order to make sure
   the installed open ai gym package meets this requirement (see issue
   `Issue#185 <https://github.com/Grid2Op/grid2op/issues/185>`_ )
 - [IMPROVED] the seed of openAI gym for composed action space (see issue `https://github.com/openai/gym/issues/2166`):

@@ -31,7 +31,7 @@ executors:
 jobs:
     test:
         executor: grid2op-executor
-        resource_class: medium+
+        resource_class: large
         parallelism: 4
         steps:
             - checkout

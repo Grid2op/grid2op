@@ -112,4 +112,8 @@ class ControlVoltageFromFile(BaseVoltageController):
             res = self.action_space({"injection": {"prod_v": prod_v_chronics}})
         else:
             res = self.action_space()
+        if observation is not None:
+            # cache the get_topological_impact to avoid useless computations later
+            # this is a speed optimization
+            _ = res.get_topological_impact(observation.line_status, _store_in_cache=True, _read_from_cache=False)
         return res

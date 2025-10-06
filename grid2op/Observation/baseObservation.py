@@ -577,8 +577,15 @@ class BaseObservation(GridObjects):
     attr_list_vect = None
     # value to assess if two observations are equal
     _tol_equal = 1e-3
-    MAX_INT = dt_int(np.iinfo(dt_int).max)
     
+    #: .. versionadded: todo detailed topo
+    #: attributes that will be copied with other.attr = self.attr.copy()
+    attr_copy_method = [
+        "_prev_conn"
+    ]
+    
+    #: .. versionadded: 1.12.0
+    #: attributes that will be copied with other.attr = copy.copy(self.attr)    
     attr_simple_cpy = [
         "max_step",
         "current_step",
@@ -591,9 +598,10 @@ class BaseObservation(GridObjects):
         "year",
         "delta_time",
         "_is_done",
-        "_prev_conn"
     ]
-
+    
+    #: .. versionadded: 1.12.0
+    # attributes that will be copied with other.attr[:] = self.attr
     attr_vect_cpy = [
         "storage_theta",
         "gen_theta",
@@ -661,6 +669,10 @@ class BaseObservation(GridObjects):
         # soft_overflow_threshold
         "timestep_protection_engaged"
     ]
+    
+    #: to avoid reading it each time an
+    #: observation is built
+    MAX_INT = dt_int(np.iinfo(dt_int).max)
 
     def __init__(self,
                  obs_env=None,
@@ -817,6 +829,11 @@ class BaseObservation(GridObjects):
                 # for old code (eg lightsim2grid legacy)
                 # some attribute did not exist
                 getattr(other, attr_nm)[:] = getattr(self, attr_nm)
+                
+        for attr_nm in cls.attr_copy_method:
+            tmp = getattr(self, attr_nm)
+            if tmp is not None:
+                setattr(other, attr_nm, tmp.copy())
 
     def change_reward(self, reward_func: "grid2op.Reward.BaseReward"):
         """Allow to change the reward used when calling :func:`BaseObservation.simulate`
@@ -5293,3 +5310,8 @@ class BaseObservation(GridObjects):
                         pass
             cls._update_value_set()
         return super().process_detachment()
+
+    @classmethod
+    def finalize_class_definition(cls):
+        cls._update_value_set()
+        

@@ -10,6 +10,7 @@ import time
 import numpy as np
 from tqdm import tqdm
 import argparse
+from grid2op.Environment import Environment
 from grid2op.Agent import AgentWithConverter
 from grid2op.Converter import IdToAct
 
@@ -179,12 +180,12 @@ def print_res(env_klu, env_pp,
     print("Absolute value of the difference for gen_q: {}".format(np.max(np.abs(gen_q_klu - gen_q_pp))))
 
 
-def run_env(env, max_ts, agent):
+def run_env(env: Environment, max_ts, agent):
     nb_rows = min(env.chronics_handler.max_timestep(), max_ts)
     aor = np.zeros((nb_rows, env.n_line))
     gen_p = np.zeros((nb_rows, env.n_gen))
     gen_q = np.zeros((nb_rows, env.n_gen))
-    obs = env.get_obs()
+    obs = env.get_obs(_do_copy=False)
     done = False
     reward = env.reward_range[0]
     nb_ts = 0
@@ -196,6 +197,7 @@ def run_env(env, max_ts, agent):
             act = agent.act(obs, reward, done)
             beg_step = time.perf_counter()
             obs, reward, done, info = env.step(act)
+            assert not info["is_ambiguous"], info["exception"]
             time_step += time.perf_counter() - beg_step
             aor[nb_ts, :] = obs.a_or
             gen_p[nb_ts, :] = obs.prod_p

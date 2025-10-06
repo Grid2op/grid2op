@@ -9,6 +9,7 @@ import os
 import numpy as np
 
 from grid2op.Exceptions import OpponentError
+from grid2op.Opponent.baseOpponent import BaseOpponent
 
 
 class OpponentSpace(object):
@@ -64,7 +65,7 @@ class OpponentSpace(object):
         self.init_budget = init_budget
         self.budget = init_budget
         self.compute_budget = compute_budget
-        self.opponent = opponent
+        self.opponent : BaseOpponent = opponent
         self._do_nothing = self.action_space()
         self.previous_fails = False
         self.budget_per_timestep = budget_per_timestep

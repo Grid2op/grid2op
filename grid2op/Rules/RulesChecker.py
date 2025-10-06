@@ -84,5 +84,4 @@ class RulesChecker(object):
         if env.nb_time_step <= 0:
           # only access when env is reset
           return True, None
-      
         return self.legal_action(action, env)

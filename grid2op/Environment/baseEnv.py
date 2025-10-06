@@ -22,6 +22,7 @@ import numpy as np
 from scipy.optimize import (minimize, LinearConstraint)
 from abc import ABC, abstractmethod
 
+from grid2op.Space.detailed_topo_description import DetailedTopoDescription
 from grid2op._glop_platform_info import _IS_WINDOWS
 from grid2op.Environment._env_prev_state import _EnvPreviousState
 from grid2op.Observation import (BaseObservation,
@@ -1350,8 +1351,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             raise EnvError(
                 'Impossible to convert "opponent_init_budget" to a float with error {}'.format(
                     e
-                )
-            )
+                ) 
+            ) from e
         if self._opponent_init_budget < 0.0:
             raise EnvError(
                 "If you want to deactivate the opponent, please don't set its budget to a negative number."
@@ -1363,8 +1364,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "Impossible to make an opponent with a type that does not inherit from BaseOpponent."
             )
 
-        self._opponent_action_class._add_shunt_data()
-        self._opponent_action_class._update_value_set()
         self._opponent_action_space = self._helper_action_class(
             gridobj=type(self.backend),
             legal_action=AlwaysLegal,
@@ -1376,7 +1375,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._opponent_action_space
         )
         self._opponent = self._opponent_class(self._opponent_action_space)
-        self._oppSpace = self._opponent_space_type(
+        self._oppSpace : OpponentSpace = self._opponent_space_type(
             compute_budget=self._compute_opp_budget,
             init_budget=self._opponent_init_budget,
             attack_duration=self._opponent_attack_duration,
@@ -1503,6 +1502,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # previous state (complete)
         n_shunt = bk_type.n_shunt if bk_type.shunts_data_available else 0
+        dtd: Optional[DetailedTopoDescription] = bk_type.detailed_topo_desc
         self._previous_conn_state = _EnvPreviousState(bk_type,
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
                                                       np.zeros(bk_type.n_load, dtype=dt_float),
@@ -1513,17 +1513,20 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                       np.zeros(n_shunt, dtype=dt_float),
                                                       np.zeros(n_shunt, dtype=dt_float),
                                                       np.zeros(n_shunt, dtype=dt_int),
+                                                      np.zeros(dtd.switches.shape[0]) if dtd is not None else None
                                                       )
         
         if self._init_obs is None:
             # regular environment, initialized from scratch
             try:
                 self.backend.runpf(is_dc=self._parameters.ENV_DC)
-                self._previous_conn_state.update_from_backend(self.backend)
+                self._previous_conn_state.update_from_backend(self.backend)  # TODO detailed topo: handle cases: a) backend has switch information b) backend does not know switches
             except Exception as exc_:
                 # nothing to do in this case
                 self.logger.warning(f"Impossible to retrieve the initial state of the grid before running the initial powerflow: {exc_}")
                 self._previous_conn_state._topo_vect[:] = 1  # I force assign everything to busbar 1 by default...
+                # TODO detailed topo: in this case make the algorithm to find a possible configuration to all 1 for
+                # the switches
             self._cst_prev_state_at_init = copy.deepcopy(self._previous_conn_state)
             self._backend_action = self._backend_action_class()
         else:
@@ -3099,7 +3102,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # modification of the injections in the action, this erases the actions in the environment
             if inj_key in action._dict_inj:
                 if inj_key in self._env_modification._dict_inj:
-                    this_p_load = 1.0 * self._env_modification._dict_inj[inj_key]
+                    this_p_load = self._env_modification._dict_inj[inj_key].copy()
                     act_modif = action._dict_inj[inj_key]
                     this_p_load[np.isfinite(act_modif)] = act_modif[
                         np.isfinite(act_modif)
@@ -3107,7 +3110,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                     self._env_modification._dict_inj[inj_key][:] = this_p_load
                 else:
                     self._env_modification._dict_inj[inj_key] = (
-                        1.0 * action._dict_inj[inj_key]
+                        action._dict_inj[inj_key].copy()
                     )
                     self._env_modification._modif_inj = True
 
@@ -3671,6 +3674,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         beg_step = time.perf_counter()
         self._last_obs : Optional[BaseObservation] = None
         self._forecasts = None  # force reading the forecast from the time series
+        
         try:
             beg_ = time.perf_counter()
 
@@ -3711,7 +3715,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # explicitly store in cache the topological impact (not to recompute it again and again)
             # and this regardless of the 
             _ = action.get_topological_impact(powerline_status, _store_in_cache=True, _read_from_cache=False)
-            
             if not self._called_from_reset:
                 # avoid checking this at first environment "step" which is a "reset"
                 is_legal, reason = self._game_rules(action=action, env=self)
@@ -4251,7 +4254,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if self.__is_init:
             res = {}
             for el in self.name_sub:
-                if not el in grid_layout:
+                if el not in grid_layout:
                     raise EnvError(
                         'The substation "{}" is not present in grid_layout while in the powergrid.'
                         "".format(el)
@@ -4528,14 +4531,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             env_path, env_nm = os.path.split(sub_repo)
             if env_path not in sys.path:
                 sys.path.append(env_path)
-            if not package_path in sys.path:
+            if package_path not in sys.path:
                 sys.path.append(package_path)
             super_supermodule = importlib.import_module(env_nm)
             nm_ = f"{tmp_nm}.{nm_}"
             tmp_nm = env_nm
         super_module = importlib.import_module(tmp_nm, package=sub_repo_mod)
         add_sys_path = os.path.dirname(super_module.__file__)
-        if not add_sys_path in sys.path:
+        if add_sys_path not in sys.path:
             sys.path.append(add_sys_path)
             
         if f"{tmp_nm}.{nm_}" in sys.modules:

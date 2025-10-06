@@ -21,6 +21,7 @@ from grid2op.MakeEnv.PathUtils import _create_path_folder
 from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
 from grid2op.Download.DownloadDataset import _aux_download
 from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
+from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
 
 _VAR_FORCE_TEST = "_GRID2OP_FORCE_TEST"
 

@@ -7,13 +7,15 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import copy
-from typing import Optional, Type, Union
+from typing import Optional, Type, Union, TYPE_CHECKING
 import numpy as np
 from grid2op.Space import GridObjects
-import grid2op.Backend
 from grid2op.dtypes import dt_int
 from grid2op.typing_variables import CLS_AS_DICT_TYPING
 from grid2op.Exceptions import Grid2OpException
+
+if TYPE_CHECKING:
+    from grid2op.Backend import Backend
 
 
 class _EnvPreviousState(object):
@@ -117,7 +119,7 @@ class _EnvPreviousState(object):
                 raise Grid2OpException("No new switch values to update previous values")
                     
     def update_from_backend(self,
-                            backend: "grid2op.Backend.Backend"):
+                            backend: "Backend"):
         if not self._can_modif:
             raise Grid2OpException(type(self).ERR_MSG_IMP_MODIF)
         topo_vect = backend.get_topo_vect()
@@ -132,12 +134,11 @@ class _EnvPreviousState(object):
         else:
             shunt_p, shunt_q, _, shunt_bus = None, None, None, None
             
-        switches = None
-        # if type(backend).detailed_topo_desc is not None:
-        #     # TODO detailed topo !
-        #     switches = np.ones(type(backend).detailed_topo_desc.switches.shape[0], dtype=dt_int)
-        # else:
-        #     switches = None
+        if type(backend).detailed_topo_desc is not None:
+            # TODO detailed topo !
+            switches = np.ones(type(backend).detailed_topo_desc.switches.shape[0], dtype=dt_int)
+        else:
+            switches = None
             
         self.update(load_p, load_q,
                     gen_p, gen_v,
