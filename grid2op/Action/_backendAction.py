@@ -6,12 +6,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from collections.abc import Callable
 import copy
 import numpy as np
-from typing import List, Tuple, Union
+from typing import  Tuple, Union
 
-from grid2op.typing_variables import BACKEND_TYPE
 try:
     from typing import Self
 except ImportError:
