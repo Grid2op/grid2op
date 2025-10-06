@@ -557,7 +557,7 @@ def make_from_dataset_path(
         voltage_class_cfg = config_data["voltage_class"]
     ### Create controler for voltages
     volagecontroler_class = _get_default_aux(
-        "volagecontroler_class",
+        "voltagecontroler_class",
         kwargs,
         defaultClassApp=voltage_class_cfg,
         defaultClass=ControlVoltageFromFile,

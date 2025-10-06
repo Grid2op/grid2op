@@ -1,0 +1,26 @@
+global-exclude */__pycache__/*
+global-exclude *.pyc
+recursive-exclude grid2op/data_test *
+recursive-exclude binder *
+recursive-exclude build *
+recursive-exclude dist *
+recursive-exclude docs *
+recursive-exclude documentation *
+recursive-exclude examples *
+recursive-exclude getting_started *
+recursive-exclude logo *
+recursive-exclude utils *
+recursive-exclude _profiling *
+recursive-exclude .circleci *
+recursive-exclude .git *
+recursive-exclude .github *
+recursive-exclude .idea *
+recursive-exclude .ipynb_checkpoints *
+recursive-exclude .pytest_cache *
+recursive-exclude .vscode *
+recursive-exclude . test_* .readthedocs.yml MakeFile Dockerfile 
+recursive-exclude grid2op/data/l2rpn_idf_2023/chronics keep_only_beginning.py
+prune **venv*
+prune **__pycache__*
+prune **_grid2op_classes*
+prune **.DS_Store*
