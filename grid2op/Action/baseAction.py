@@ -462,7 +462,6 @@ class BaseAction(GridObjects):
         "set_bus",
         "change_bus",
         "redispatch",
-        "flexibility", # new in 1.12.x
         "set_storage",
         "curtail",
         "raise_alarm",
@@ -470,6 +469,7 @@ class BaseAction(GridObjects):
         "detach_load",  # new in 1.11.0
         "detach_gen",  # new in 1.11.0
         "detach_storage",  # new in 1.11.0
+        "load_flexibility", # new in 1.12.2
     }
 
     attr_list_vect = [
@@ -478,7 +478,6 @@ class BaseAction(GridObjects):
         "load_p",
         "load_q",
         "_redispatch",
-        "_flexibility", # new in 1.12.x
         "_set_line_status",
         "_switch_line_status",
         "_set_topo_vect",
@@ -492,6 +491,7 @@ class BaseAction(GridObjects):
         "_detach_load",  # new in 1.11.0
         "_detach_gen",  # new in 1.11.0
         "_detach_storage",  # new in 1.11.0
+        "_load_flexibility", # new in 1.12.2
     ]
     
     #: new in 1.12.1: mapping between code name and agent name
@@ -501,7 +501,7 @@ class BaseAction(GridObjects):
         "load_p": "injection",
         "load_q": "injection",
         "_redispatch": "redispatch",
-        "_flexibility": "flexibility", # new in 1.12.x
+        "_load_flexibility": "load_flexibility", # new in 1.12.2
         "_set_line_status": "set_line_status",
         "_switch_line_status": "change_line_status",
         "_set_topo_vect": "set_bus",
@@ -595,10 +595,10 @@ class BaseAction(GridObjects):
         self._private_redispatch : Optional[np.ndarray] = None  # np.full(shape=cls.n_gen, fill_value=0.0, dtype=dt_float)
         
         # demand response / flexibility vector
-        if cls.flexibility_is_available:
-            self._private_flexibility : Optional[np.ndarray] = None
+        if cls.load_flexibility_is_available:
+            self._private_load_flexibility : Optional[np.ndarray] = None
         else:
-            self._private_flexibility = None
+            self._private_load_flexibility = None
 
         # storage unit vector
         self._private_storage_power : Optional[np.ndarray] = None  # np.full(
@@ -660,7 +660,6 @@ class BaseAction(GridObjects):
         self._modif_set_status = False
         self._modif_change_status = False
         self._modif_redispatch = False
-        self._modif_flexibility = False
         self._modif_storage = False
         self._modif_curtailment = False
         self._modif_alarm = False
@@ -668,6 +667,7 @@ class BaseAction(GridObjects):
         self._modif_detach_load = False
         self._modif_detach_gen = False
         self._modif_detach_storage = False
+        self._modif_load_flexibility = False
         
         #: .. versionadded:: 1.12.1
         #: cache not to recompute the `is_ambiguous` for the same action
@@ -795,11 +795,11 @@ class BaseAction(GridObjects):
         return self._private_detach_storage
     
     @property
-    def _flexibility(self) -> np.ndarray:
+    def _load_flexibility(self) -> np.ndarray:
         cls = type(self)
-        if self._private_flexibility is None and cls.flexibility_is_available:
-            self._private_flexibility = cls._build_attr("_flexibility")
-        return self._private_flexibility
+        if cls.load_flexibility_is_available and self._private_load_flexibility is None:
+            self._private_load_flexibility = cls._build_attr("_load_flexibility")
+        return self._private_load_flexibility
                   
     @classmethod
     def _build_dict_attr_if_needed(cls):
@@ -847,7 +847,7 @@ class BaseAction(GridObjects):
             "_set_switch_status": None,
             "_change_switch_status": None,
 
-            "_flexibility": None, # new in 1.12.x
+            "_load_flexibility": None, # new in 1.12.2
         }
         
         # shunts
@@ -861,9 +861,9 @@ class BaseAction(GridObjects):
             cls.DICT_ATTR_["_detach_gen"] = np.full(cls.n_gen, dtype=dt_bool, fill_value=False)
             cls.DICT_ATTR_["_detach_storage"] = np.full(cls.n_storage, dtype=dt_bool, fill_value=False)
         
-        # new in 1.12.x
-        if cls.flexibility_is_available:
-            cls.DICT_ATTR_["_flexibility"] = np.full(shape=cls.n_load, dtype=dt_float, fill_value=0.0)
+        # new in 1.12.2
+        if cls.load_flexibility_is_available:
+            cls.DICT_ATTR_["_load_flexibility"] = np.full(shape=cls.n_load, dtype=dt_float, fill_value=0.0)
 
     @classmethod
     def _build_attr(cls, attr_nm: str):
@@ -916,19 +916,20 @@ class BaseAction(GridObjects):
     
     @classmethod
     def process_flexibility(cls):
-        if not cls.flexibility_is_available:
+        if not cls.load_flexibility_is_available:
             # this is really important, otherwise things from grid2op base types will be affected
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
             cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
             # remove the flexibility from the list to vector
-            for el in ["_flexibility"]:
+            for el in ["_load_flexibility"]:
                 if el in cls.attr_list_vect:
                     try:
                         cls.attr_list_vect.remove(el)
                     except ValueError:
                         pass
+                    
             # remove the flexibility from the allowed action
-            for el in ["flexibility"]:
+            for el in ["load_flexibility"]:
                 if el in cls.authorized_keys:
                     cls.authorized_keys.remove(el)
             cls._update_value_set()
@@ -953,7 +954,6 @@ class BaseAction(GridObjects):
             "_modif_set_status",
             "_modif_change_status",
             "_modif_redispatch",
-            "_modif_flexibility", # new in 1.12.x
             "_modif_storage",
             "_modif_curtailment",
             "_modif_alarm",
@@ -963,6 +963,7 @@ class BaseAction(GridObjects):
             "_modif_detach_storage",
             "_single_act",
             "_cached_is_not_ambiguous",
+            "_modif_load_flexibility", # new in 1.12.2
         ]
 
         attr_vect = [
@@ -987,7 +988,7 @@ class BaseAction(GridObjects):
             attr_vect += ["_private_detach_load", "_private_detach_gen", "_private_detach_storage"]
         
         if cls.flexibility_is_available:
-            attr_vect += ["_private_flexibility"]
+            attr_vect += ["_private_load_flexibility"]
         
         for attr_nm in attr_simple:
             setattr(other, attr_nm, getattr(self, attr_nm))
@@ -1208,15 +1209,15 @@ class BaseAction(GridObjects):
                 if not res[attr_key]:
                     del res[attr_key]
 
-        if self.flexibility_is_available: # new in 1.12.x
-            if self._modif_flexibility: 
-                res["flexibility"] = [
+        if cls.load_flexibility_is_available: # new in 1.12.x
+            if self._modif_load_flexibility: 
+                res["load_flexibility"] = [
                     (str(cls.name_Load[id_]), float(val))
-                    for id_, val in enumerate(self._private_flexibility)
+                    for id_, val in enumerate(self._private_load_flexibility)
                     if np.abs(val) >= 1e-7
                 ]
-                if not res["flexibility"]:
-                    del res["flexibility"]
+                if not res["load_flexibility"]:
+                    del res["load_flexibility"]
                     
         return res
 
@@ -1350,10 +1351,10 @@ class BaseAction(GridObjects):
             # this feature did not exist before.
             cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
-            attr_key = "flexibility"
+            attr_key = "load_flexibility"
             if attr_key in cls.authorized_keys:
                 cls.authorized_keys.remove(attr_key)
-            attr_vect = "_private_flexibility"
+            attr_vect = "_private_load_flexibility"
             if attr_vect in cls.attr_list_vect:
                 cls.attr_list_vect.remove(attr_vect)
                 
@@ -1385,7 +1386,7 @@ class BaseAction(GridObjects):
         self._modif_detach_gen = False
         self._modif_detach_storage = False
         # flexibility
-        self._modif_flexibility = False
+        self._modif_load_flexibility = False
 
     def can_affect_something(self) -> bool:
         """
@@ -1403,7 +1404,7 @@ class BaseAction(GridObjects):
             or self._modif_set_status
             or self._modif_change_status
             or self._modif_redispatch
-            or self._modif_flexibility
+            or self._modif_load_flexibility
             or self._modif_storage
             or self._modif_curtailment
             or self._modif_alarm
@@ -1511,10 +1512,10 @@ class BaseAction(GridObjects):
             self._modif_detach_gen = self._private_detach_gen is not None and (self._private_detach_gen).any()
             self._modif_detach_storage = self._private_detach_storage is not None and (self._private_detach_storage).any()
         
-        if cls.flexibility_is_available:
-            self._modif_flexibility = self._private_flexibility is not None and (
-                np.isfinite(self._private_flexibility) & (np.abs(self._private_flexibility) >= 1e-7)
-            ).any()
+        if cls.load_flexibility_is_available:
+            self._modif_load_flexibility = self._private_load_flexibility is not None and (
+                (np.abs(self._private_load_flexibility) > 1e-7).any()
+            )
         
         if self.can_affect_something():
             # reset the ambiguous cache
@@ -1846,7 +1847,7 @@ class BaseAction(GridObjects):
             and (not self._modif_detach_load)
             and (not self._modif_detach_gen)
             and (not self._modif_detach_storage)
-            and (not self._modif_flexibility) # new in 1.12.x
+            # and (not self._modif_load_flexibility) # new in 1.12.2 => flexibility does not affect topology
         )
     
     def _aux_get_topo_impact_notopo(self, _store_in_cache: bool):
@@ -2332,48 +2333,62 @@ class BaseAction(GridObjects):
         Reset the action to the "do nothing" state.
 
         """
+        cls = type(self)
         # False(line is disconnected) / True(line is connected)
-        self._private_set_line_status[:] = 0
-        self._private_switch_line_status[:] = False
+        if self._private_set_line_status is not None:
+            self._private_set_line_status[:] = cls._build_attr("_set_line_status")
+        if self._private_switch_line_status is not None:
+            self._private_switch_line_status[:] = cls._build_attr("_switch_line_status")
 
         # injection change
         self._dict_inj = {}
 
         # topology changed
-        self._private_set_topo_vect[:] = 0
-        self._private_change_bus_vect[:] = False
+        if self._private_set_topo_vect is not None:
+            self._private_set_topo_vect[:] = cls._build_attr("_set_topo_vect")
+        
+        if self._private_change_bus_vect is not None:
+            self._private_change_bus_vect[:] = cls._build_attr("_change_bus_vect")
 
         # add the hazards and maintenance usefull for saving.
-        self._private_hazards[:] = False
-        self._private_maintenance[:] = False
+        if self._private_hazards is not None:
+            self._private_hazards[:] = cls._build_attr("_hazards")
+        if self._private_maintenance is not None:
+            self._private_maintenance[:] = cls._build_attr("_maintenance")
 
         # redispatching vector
-        self._private_redispatch[:] = 0.0
+        if self._private_redispatch is not None:
+            self._private_redispatch[:] = cls._build_attr("_redispatch")
         
         # flexibility vector
-        self._private_flexibility[:] = 0.0
+        if self._private_load_flexibility is not None:
+            self._private_load_flexibility[:] = cls._build_attr("_load_flexibility")
 
         # storage
-        self._private_storage_power[:] = 0.0
+        if self._private_storage_power is not None:
+            self._private_storage_power[:] = cls._build_attr("_storage_power")
 
         # storage
-        self._private_curtail[:] = -1.0
+        if self._private_curtail is not None:
+            self._private_curtail[:] = cls._build_attr("_curtail")
 
         self._vectorized = None
         self._lines_impacted = None
         self._subs_impacted = None
 
         # shunts
-        if type(self).shunts_data_available:
+        if cls.shunts_data_available:
             self._private_shunt_p[:] = np.nan
             self._private_shunt_q[:] = np.nan
             self._private_shunt_bus[:] = 0
 
         # alarm
-        self._private_raise_alarm[:] = False        
+        if self._private_raise_alarm is not None:
+            self._private_raise_alarm[:] = cls._build_attr("_raise_alarm")        
         
         # alert
-        self._private_raise_alert[:] = False
+        if self._private_raise_alert is not None: 
+            self._private_raise_alert[:] = cls._build_attr("_raise_alert") 
 
         self._reset_modified_flags()
 
@@ -2421,19 +2436,19 @@ class BaseAction(GridObjects):
                 self._redispatch[ok_ind] += redispatching[ok_ind]
 
     def _aux_iadd_flexibility(self, other: "BaseAction"):
-        if other._private_flexibility is None:
+        if other._private_load_flexibility is None:
             return
-        flexibility = other._flexibility
-        if (np.abs(flexibility) >= 1e-7).any():
-            if "_flexibility" not in self.attr_list_set:
+        flex = other._load_flexibility
+        if (np.isfinite(flex)).any():
+            if "_load_flexibility" not in self.attr_list_set:
                 warnings.warn(
-                    type(self).ERR_ACTION_CUT.format("_flexibility")
+                    type(self).ERR_ACTION_CUT.format("_load_flexibility")
                 )
             else:
-                ok_ind = np.isfinite(flexibility)
-                self._flexibility[ok_ind] += flexibility[ok_ind]
+                ok_ind = np.isfinite(flex)
+                self._load_flexibility[ok_ind] += flex[ok_ind]
                     
-    def _aux_iadd_curtail(self, other):
+    def _aux_iadd_curtail(self, other: "BaseAction"):
         curtailment = other._curtail
         ok_ind = np.isfinite(curtailment) & (np.abs(curtailment + 1.0) >= 1e-7)
         if ok_ind.any():
@@ -2470,7 +2485,7 @@ class BaseAction(GridObjects):
         self._modif_inj = self._modif_inj or other._modif_inj
         self._modif_shunt = self._modif_shunt or other._modif_shunt
         self._modif_redispatch = self._modif_redispatch or other._modif_redispatch
-        self._modif_flexibility = self._modif_flexibility or other._modif_flexibility # new in 1.12.x
+        self._modif_flexibility = self._modif_flexibility or other._modif_flexibility # new in 1.12.2
         self._modif_storage = self._modif_storage or other._modif_storage
         self._modif_curtailment = self._modif_curtailment or other._modif_curtailment
         self._modif_alarm = self._modif_alarm or other._modif_alarm
@@ -2634,7 +2649,7 @@ class BaseAction(GridObjects):
         self._aux_iadd_redisp(other)
 
         # flexibility, new in 1.12.x
-        if type(self).flexibility_is_available:
+        if type(self).load_flexibility_is_available:
             self._aux_iadd_flexibility(other)
         
         # storage
@@ -2757,7 +2772,7 @@ class BaseAction(GridObjects):
         set_topo_vect = self._private_set_topo_vect
         change_bus_vect = self._private_change_bus_vect
         redispatch = self._private_redispatch
-        flexibility = self._private_flexibility # new in 1.12.x
+        flexibility = self._private_load_flexibility # new in 1.12.x
         storage_power = self._private_storage_power
         # remark: curtailment is handled by an algorithm in the environment, so don't need to be returned here
         shunts = {}
@@ -3102,8 +3117,8 @@ class BaseAction(GridObjects):
             self.redispatch = dict_["redispatch"]
 
     def _digest_flexibility(self, dict_):
-        if "flexibility" in dict_:
-            self.flexibility = dict_["flexibility"]
+        if "load_flexibility" in dict_:
+            self.load_flexibility = dict_["load_flexibility"]
 
     def _digest_storage(self, dict_):
         if "set_storage" in dict_:
@@ -3176,7 +3191,7 @@ class BaseAction(GridObjects):
                     # with shunt in "init_state.json" with a backend that does not
                     # handle shunt
                     continue
-                if kk == "flexibility" and not action_cls.flexibility_is_available:
+                if kk == "load_flexibility" and not action_cls.load_flexibility_is_available:
                     # no warnings are raised in this case because if a warning
                     # were raised it could crash some environment
                     # with flexibility in "init_state.json" with a backend that does not
@@ -3267,9 +3282,9 @@ class BaseAction(GridObjects):
               tuple, each tuple being 2 elements: first the generator ID, second the amount of redispatching,
               for example `[(1, -23), (12, +17)]`
 
-            - "flexibility": the best use of this is to specify either the numpy array of the flexibility / demand response
+            - "load_flexibility": the best use of this is to specify either the numpy array of the flexibility / demand response
               vector you want to apply (that should have the size of the number of loads on the grid) or to specify a list
-              of tuples, each tuple being 2 elements: first the load ID, second the amount of flexibility,
+              of tuples, each tuple being 2 elements: first the load ID, second the amount of flexibility (in MW),
               for example `[(0, -12), (3, +7)]`
 
             - "set_storage": the best use of this is to specify either the numpy array of the storage units vector
@@ -3400,11 +3415,11 @@ class BaseAction(GridObjects):
             storage_act = env.action_space({"curtail": [(renewable_energy_source, 0.8)]})
             print(storage_act)
 
-        *Example 9*: apply flexibility of +7.21 MW at load with id 2 and -12.3 at load with id 1
+        *Example 9*: apply flexibility of +7.21 MW at load with id 2 and -12.3MW at load with id 1
 
         .. code-block:: python
 
-            flex_act = env.action_space({"flexibility": [(2, +7.21), (1, -12.3)]})
+            flex_act = env.action_space({"load_flexibility": [(2, +7.21), (1, -12.3)]})
             print(flex_act)
 
         Returns
@@ -3422,7 +3437,7 @@ class BaseAction(GridObjects):
             if cls.shunts_data_available:
                 # do not digest shunt when backend does not support it
                 self._digest_shunt(dict_)
-            if cls.flexibility_is_available:
+            if cls.load_flexibility_is_available:
                 self._digest_flexibility(dict_)
             
             self._digest_injection(dict_)
@@ -3539,17 +3554,17 @@ class BaseAction(GridObjects):
             if "redispatch" not in cls.authorized_keys:
                 raise IllegalAction("You illegally act on the redispatching")
         
-        if cls.flexibility_is_available:
-            if self._private_flexibility is not None and (np.abs(self._private_flexibility) >= 1e-7).any():
-                if not self._modif_flexibility:
+        if cls.load_flexibility_is_available:
+            if self._private_load_flexibility is not None and (np.abs(self._private_load_flexibility) >= 1e-7).any():
+                if not self._modif_load_flexibility:
                     raise AmbiguousAction(
-                        "A action of type flexibility is performed while the appropriate flag "
+                        "A action of type load flexibility is performed while the appropriate flag "
                         "is not "
-                        "set. Please use the official grid2op action API to perform flexibility "
+                        "set. Please use the official grid2op action API to perform load flexibility "
                         "action."
                     )
-                if "flexibility" not in cls.authorized_keys:
-                    raise IllegalAction("You illegally act on the flexibility")
+                if "load_flexibility" not in cls.authorized_keys:
+                    raise IllegalAction("You illegally act on the load flexibility")
 
         if self._private_storage_power is not None and (np.abs(self._private_storage_power) >= 1e-7).any():
             if not self._modif_storage:
@@ -3650,7 +3665,7 @@ class BaseAction(GridObjects):
 
             - TODO
 
-          - For flexibility, Ambiguous actions can happen when:
+          - For load flexibility, Ambiguous actions can happen when:
 
             - A flexibility action is active, but
               :attr:`grid2op.Space.GridObjects.flexibility_available` is set to ``False``
@@ -3739,10 +3754,10 @@ class BaseAction(GridObjects):
                 "there are {} in the grid".format(len(self._private_redispatch), cls.n_gen)
             )
         
-        if self._private_flexibility is not None and len(self._private_flexibility) != cls.n_load:
+        if self._private_load_flexibility is not None and len(self._private_load_flexibility) != cls.n_load:
             raise InvalidNumberOfLoads(
-                "This action acts on {} loads (flexibility= while "
-                "there are {} in the grid".format(len(self._private_flexibility), cls.n_load)
+                "This action acts on {} loads flexibility while "
+                "there are {} in the grid".format(len(self._private_load_flexibility), cls.n_load)
             )
 
 
@@ -4017,24 +4032,25 @@ class BaseAction(GridObjects):
     
     def _is_flexibility_ambiguous(self):
         "check if flexibility actions are ambiguous"
-        if self.flexibility_is_available:
+        cls = type(self)
+        if cls.load_flexibility_is_available:
             if self._modif_flexibility: # new in 1.12.x
-                if "flexibility" not in type(self).authorized_keys:
+                if "load_flexibility" not in cls.authorized_keys:
                     raise AmbiguousAction(
-                        'Action of type "flexibility" are not supported by this action type'
+                        'Action of type "load_flexibility" are not supported by this action type'
                     )
 
-                if (np.abs(self._private_flexibility[~type(self).load_flexible]) >= 1e-7).any():
+                if (np.abs(self._private_load_flexibility[~cls.load_flexible]) >= 1e-7).any():
                     raise InvalidFlexibility(
                         "Trying to apply a flexibility action on a non-flexible load"
                     )
 
                 if self._single_act:
-                    if (self._private_flexibility > type(self).load_max_ramp_up).any():
+                    if (self._private_load_flexibility > cls.load_max_ramp_up).any():
                         raise InvalidFlexibility(
                             "Some flexibility amount are above the maximum ramp up"
                         )
-                    if (-self._private_flexibility > type(self).load_max_ramp_down).any():
+                    if (-self._private_load_flexibility > cls.load_max_ramp_down).any():
                         raise InvalidFlexibility(
                             "Some flexibility amount are bellow the maximum ramp down"
                         )
@@ -4371,22 +4387,22 @@ class BaseAction(GridObjects):
         
     
         # flexibility, new in 1.12.x
-        if self.flexibility_is_available:
+        if type(self).load_flexibility_is_available:
             if self._modif_flexibility:
                 res.append(
                     "\t - Modify the loads with flexibility in the following way:"
                 )
                 for load_idx in range(self.n_load):
-                    if np.abs(self._private_flexibility[load_idx]) >= 1e-7:
+                    if np.abs(self._private_load_flexibility[load_idx]) >= 1e-7:
                         load_name = self.name_load[load_idx]
-                        f_amount = self._private_flexibility[load_idx]
+                        f_amount = self._private_load_flexibility[load_idx]
                         res.append(
                             '\t \t - Flexibility "{}" of {:.2f} MW'.format(
                                 load_name, f_amount
                             )
                         )
             else:
-                res.append("\t - NOT perform any flexibility action")
+                res.append("\t - NOT perform any load flexibility action")
         
         return "\n".join(res)
 
@@ -4398,7 +4414,7 @@ class BaseAction(GridObjects):
         -------
         dict: :class:`dict`
             The dictionary representation of an action impact on objects with keys, "has_impact", "injection",
-            "force_line", "switch_line", "topology", "redispatch", "flexibility", "storage", "curtailment".
+            "force_line", "switch_line", "topology", "redispatch", "load_flexibility", "storage", "curtailment".
 
         """
         # handles actions on injections
@@ -4548,13 +4564,13 @@ class BaseAction(GridObjects):
             has_impact = True
         
         flexibility = {"changed": False, "loads": []}
-        if self.flexibility_is_available: # new in 1.12.x
+        if type(self).load_flexibility_is_available: # new in 1.12.x
             # handle flexibility
-            if self._private_flexibility is not None and (np.abs(self._private_flexibility) >= 1e-7).any():
+            if self._private_load_flexibility is not None and (np.abs(self._private_load_flexibility) >= 1e-7).any():
                 for load_idx in range(cls.n_load):
-                    if np.abs(self._private_flexibility[load_idx]) >= 1e-7:
+                    if np.abs(self._private_load_flexibility[load_idx]) >= 1e-7:
                         load_name = self.name_load[load_idx]
-                        f_amount = self._private_flexibility[load_idx]
+                        f_amount = self._private_load_flexibility[load_idx]
                         flexibility["loads"].append(
                             {"load_id": load_idx, "gen_name": load_name, "amount": f_amount}
                         )
@@ -4568,7 +4584,7 @@ class BaseAction(GridObjects):
             "switch_line": switch_line_status,
             "topology": topology,
             "redispatch": redispatch,
-            "flexibility": flexibility,
+            "load_flexibility": flexibility,
             "storage": storage,
             "curtailment": curtailment,
         }
@@ -4678,7 +4694,7 @@ class BaseAction(GridObjects):
     def as_dict(self) -> Dict[Literal["load_p", "load_q", "prod_p", "prod_v",
                                       "change_line_status", "set_line_status",
                                       "change_bus_vect", "set_bus_vect",
-                                      "redispatch", "flexibility",
+                                      "redispatch", "load_flexibility",
                                       "storage_power", "curtailment"],
                               Any]:
         """
@@ -4733,7 +4749,7 @@ class BaseAction(GridObjects):
             disconnected because of maintenance operations.
           * `redispatch` the redispatching action (if any). It gives, for each generator (all generator, not just the
             dispatchable one) the amount of power redispatched in this action.
-          * `flexibility` the flexibility action (if any). It gives, for each load (all loads, not just the
+          * `load flexibility` the flexibility action (if any). It gives, for each load (all loads, not just the
             flexible ones) the amount of demand flexibility in this action.
           * `storage_power`: the setpoint for production / consumption for all storage units
           * `curtailment`: the curtailment performed on all generator
@@ -4768,9 +4784,9 @@ class BaseAction(GridObjects):
         if type(self).shunts_data_available:
             self._aux_as_dict_shunt(res)
 
-        if type(self).flexibility_is_available:
-            if self._private_flexibility is not None and (np.abs(self._private_flexibility) >= 1e-7).any():
-                res["flexibility"] = 1.0 * self._private_flexibility
+        if type(self).load_flexibility_is_available:
+            if self._private_load_flexibility is not None and (np.abs(self._private_flexibility) >= 1e-7).any():
+                res["load_flexibility"] = 1.0 * self._private_load_flexibility
 
         return res
 
@@ -4783,7 +4799,7 @@ class BaseAction(GridObjects):
         - "topology": does this action modifies the topology of the grid (*ie* set or switch some buses)
         - "line": does this action modifies the line status
         - "redispatching" does this action modifies the redispatching
-        - "flexibility" does this action modify the flexibility
+        - "load_flexibility" does this action modify the flexibility
         - "storage" does this action impact the production / consumption of storage units
         - "curtailment" does this action impact the non renewable generators through curtailment
 
@@ -4833,9 +4849,10 @@ class BaseAction(GridObjects):
         redispatching = self._private_redispatch is not None and (np.abs(self._private_redispatch) >= 1e-7).any()
         storage = self._modif_storage
         curtailment = self._modif_curtailment
-        # flexibility, new in 1.12.x
-        if type(self).flexibility_is_available:
-            flexibility = self._private_flexibility is not None and (np.abs(self._private_flexibility) >= 1e-7).any()
+        
+        # flexibility, new in 1.12.2
+        if type(self).load_flexibility_is_available:
+            flexibility = self._private_load_flexibility is not None and (np.abs(self._private_load_flexibility) >= 1e-7).any()
         else:
             flexibility = False
         return injection, voltage, topology, line, redispatching, flexibility, storage, curtailment
@@ -4857,8 +4874,8 @@ class BaseAction(GridObjects):
         my_id = cls.load_pos_topo_vect[load_id]
         res["change_bus"] = self._private_change_bus_vect[my_id] if self._private_change_bus_vect is not None else False
         res["set_bus"] = self._private_set_topo_vect[my_id] if self._private_set_topo_vect is not None else 0
-        if cls.flexibility_is_available:
-            res["flexibility"] = self._private_flexibility[load_id] if self._private_flexibility is not None else 0.
+        if cls.load_flexibility_is_available:
+            res["load_flexibility"] = self._private_load_flexibility[load_id] if self._private_load_flexibility is not None else 0.
         return res
 
     def _aux_effect_on_gen(self, gen_id):
@@ -7199,31 +7216,31 @@ class BaseAction(GridObjects):
             )
         
     @property
-    def flexibility(self) -> np.ndarray:
-        res = 1.0 * self._flexibility
+    def load_flexibility(self) -> np.ndarray:
+        res = 1.0 * self._load_flexibility
         res.flags.writeable = False 
         return res
     
-    @flexibility.setter
-    def flexibility(self, values):
-        if "flexibility" not in self.authorized_keys:
+    @load_flexibility.setter
+    def load_flexibility(self, values):
+        if "load_flexibility" not in self.authorized_keys:
             raise IllegalAction(
-                "Impossible to perform flexibility with this action type."
+                "Impossible to perform load flexibility with this action type."
             )
-        orig_ = self.flexibility
+        orig_ = self.load_flexibility
         try:
             self._aux_affect_object_float(
                 values,
-                "flexibility",
+                "load_flexibility",
                 self.n_load,
                 self.name_load,
                 np.arange(self.n_load),
-                self._flexibility,
+                self._load_flexibility,
                 _nm_ch_bk_key="loads",
             )
-            self._modif_flexibility = True
+            self._modif_load_flexibility = True
         except Exception as exc_:
-            self._private_flexibility[:] = orig_
+            self._private_load_flexibility[:] = orig_
             raise AmbiguousAction(
                 f"Impossible to modify the flexibility with your input. "
                 f"Please consult the documentation. "
@@ -7970,22 +7987,22 @@ class BaseAction(GridObjects):
                 res["redispatch"].append(tmp)
 
     def _aux_decompose_as_unary_actions_flexibility(self,
-                                               cls: Type[Self],
-                                               group_flexibility: bool,
-                                               res):
+                                                    cls: Type[Self],
+                                                    group_flexibility: bool,
+                                                    res):
         if group_flexibility:
             tmp = cls()
             tmp._modif_flexibility = True
-            tmp._flexibility[:] = self._private_flexibility
-            res["flexibility"] = [tmp]
+            tmp._load_flexibility[:] = self._private_load_flexibility
+            res["load_flexibility"] = [tmp]
         else:
-            load_changed = (np.abs(self._private_flexibility) >= 1e-7).nonzero()[0]
-            res["flexibility"] = []
+            load_changed = (np.abs(self._private_load_flexibility) >= 1e-7).nonzero()[0]
+            res["load_flexibility"] = []
             for load_id in load_changed:
                 tmp = cls()
                 tmp._modif_flexibility = True   
-                tmp._redis_flexibilitypatch[load_id] = self._private_flexibility[load_id]
-                res["flexibility"].append(tmp)
+                tmp._load_flexibility[load_id] = self._private_load_flexibility[load_id]
+                res["load_flexibility"].append(tmp)
                 
     def _aux_decompose_as_unary_actions_storage(self,
                                                 cls: Type[Self],
@@ -8034,7 +8051,7 @@ class BaseAction(GridObjects):
                                                                        "change_line_status",
                                                                        "set_line_status",
                                                                        "redispatch",
-                                                                       "flexibility",
+                                                                       "load_flexibility",
                                                                        "set_storage",
                                                                        "curtail"],
                                                                List["BaseAction"]]:
@@ -8064,7 +8081,7 @@ class BaseAction(GridObjects):
         -  "redispatch" if the action affects the grid with `redispatch`
            In this case the value associated with this key is a list containing
            only action that performs `redispatch`
-        -  "flexibility" if the action affects the grid with `flexibility`
+        -  "load_flexibility" if the action affects the grid with `flexibility`
            In this case the value associated with this key is a list containing
            only action that performs `flexibility`
         -  "set_storage" if the action affects the grid with `set_storage`
@@ -8175,8 +8192,8 @@ class BaseAction(GridObjects):
             self._aux_decompose_as_unary_actions_set_ls(cls, group_line_status, res)
         if self._modif_redispatch:
             self._aux_decompose_as_unary_actions_redisp(cls, group_redispatch, res)
-        if cls.flexibility_is_available: # new in 1.12.x
-            if self._modif_flexibility:
+        if cls.load_flexibility_is_available: # new in 1.12.2
+            if self._modif_load_flexibility:
                 self._aux_decompose_as_unary_actions_flexibility(cls, group_flexibility, res)
         if self._modif_storage:
             self._aux_decompose_as_unary_actions_storage(cls, group_storage, res)

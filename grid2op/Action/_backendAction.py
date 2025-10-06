@@ -894,11 +894,10 @@ class _BackendAction(GridObjects):
             self._is_cached = False
             
         # Ib2 change the (load) injection aka flexibility
-        if cls.flexibility_is_available:
-            flexibility = other._private_flexibility
-            if other._modif_flexibility:
-                self.load_p.change_val(flexibility)
-                self._is_cached = False
+        if cls.load_flexibility_is_available and other._modif_load_flexibility:
+            flexibility = other._private_load_flexibility
+            self.load_p.change_val(flexibility)
+            self._is_cached = False
 
         # Ic storage unit
         if other._modif_storage:

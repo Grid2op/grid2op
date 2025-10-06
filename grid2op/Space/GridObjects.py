@@ -194,7 +194,7 @@ class GridObjects:
 
     These information are loaded using the :func:`grid2op.Backend.Backend.load_redispacthing_data` method.
     
-    Note that if you want to model an environment with flexibility capabilities, you also need
+    Note that if you want to model an environment with load_flexibility capabilities, you also need
     to provide the following attributes:
 
     - :attr:`GridObjects.load_size`
@@ -405,7 +405,7 @@ class GridObjects:
           - :attr:`GridObjects.gen_shutdown_cost`
           - :attr:`GridObjects.gen_renewable`
           
-    flexibility_is_available: ``bool``
+    load_flexibility_is_available: ``bool``
         Does the current grid allow for flexible loads. If not, any attempt to use it
         will raise a :class:`grid2op.Exceptions.FlexibilityNotAvailable` error. [*class attribute*]
         For an environment to be compatible with this feature, you need to set up, when loading the backend:
@@ -422,10 +422,6 @@ class GridObjects:
 
     shunts_data_available: ``bool``
         Whether or not the backend support the shunt data. [*class attribute*]
-        
-    flexibility_is_available: ``bool``
-        Whether or not flexibility data is available in the environment [*class attribute*]
-        .. versionadded:: 1.12.x
 
     n_shunt: ``int`` or ``None``
         Number of shunts on the grid. It might be ``None`` if the backend does not support shunts. [*class attribute*]
@@ -642,7 +638,7 @@ class GridObjects:
     gen_renewable : ClassVar[Optional[np.ndarray]] = None
     
     # Flexible load data, not available in all Environments, new in 1.12.x
-    flexibility_is_available: ClassVar[bool] = False
+    load_flexibility_is_available: ClassVar[bool] = False
     load_size: ClassVar[Optional[np.ndarray]] = None
     load_flexible: ClassVar[Optional[np.ndarray]] = None
     load_max_ramp_up: ClassVar[Optional[np.ndarray]] = None
@@ -670,7 +666,7 @@ class GridObjects:
     shunt_to_subid : ClassVar[Optional[np.ndarray]] = None
     
     # flexibility, not available in every environment
-    flexibility_is_available: ClassVar[bool] = DEFAULT_FLEXIBILITY_IS_AVAILABLE
+    load_flexibility_is_available: ClassVar[bool] = DEFAULT_FLEXIBILITY_IS_AVAILABLE
 
     # alarm / alert
     assistant_warning_type = None
@@ -927,7 +923,7 @@ class GridObjects:
         cls.alertable_line_ids = []
         
         # Flexible load data, not available in all environments
-        cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
+        cls.load_flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
         cls.load_size = None
         cls.load_flexible = None
         cls.load_max_ramp_up = None
@@ -2052,7 +2048,7 @@ class GridObjects:
     def _check_convert_to_np_array(cls, raise_if_none=True):
         # convert bool to array of bools
         attrs_bool = []
-        if cls.flexibility_is_available: # new in 1.12.x
+        if cls.load_flexibility_is_available: # new in 1.12.2
             attrs_bool.append("load_flexible")
         cls._assign_attr(attrs_bool, dt_bool, "bool", raise_if_none)
         
@@ -2108,7 +2104,7 @@ class GridObjects:
                             "gen_cost_per_MW",
                             "gen_startup_cost",
                             "gen_shutdown_cost"]
-        if cls.flexibility_is_available:
+        if cls.load_flexibility_is_available:
             attrs_float += ["load_size",
                             "load_max_ramp_up",
                             "load_max_ramp_down",
@@ -2159,11 +2155,11 @@ class GridObjects:
                            "at the moment (make sure `detachment_is_allowed` "
                            "is a bool)")
             
-        if isinstance(cls.flexibility_is_available, (bool, dt_bool)):
-            cls.flexibility_is_available = dt_bool(cls.flexibility_is_available)
+        if isinstance(cls.load_flexibility_is_available, (bool, dt_bool)):
+            cls.load_flexibility_is_available = dt_bool(cls.load_flexibility_is_available)
         else:
             raise EnvError("Grid2op cannot handle flexibility of loads "
-                           "at the moment (make sure `flexibility_is_available` "
+                           "at the moment (make sure `load_flexibility_is_available` "
                            "is a bool)")
         
         if (cls.n_busbar_per_sub < 1).any():
@@ -2444,7 +2440,7 @@ class GridObjects:
             cls._check_validity_dispathcing_data()
             
         # flexibility / demand response
-        if cls.flexibility_is_available:
+        if cls.load_flexibility_is_available:
             cls._check_validity_flexibility_data()
 
         # shunt data
@@ -3148,8 +3144,8 @@ class GridObjects:
         if gridobj.detachment_is_allowed != DEFAULT_ALLOW_DETACHMENT:
             name_res += "_allowDetach"
             
-        if gridobj.flexibility_is_available != DEFAULT_FLEXIBILITY_IS_AVAILABLE:
-            name_res += "_allowFlexibility"
+        if gridobj.load_flexibility_is_available != DEFAULT_FLEXIBILITY_IS_AVAILABLE:
+            name_res += "_allowLoadFlexibility"
                 
         if _local_dir_cls is not None and gridobj._PATH_GRID_CLASSES is not None:
             # new in grid2op 1.10.3:
@@ -3278,7 +3274,7 @@ class GridObjects:
         if glop_ver < cls.MIN_VERSION_FLEX:
             # Flexibility / demand response did not exist, default value
             # should have no effect
-            cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
+            cls.load_flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
             res = True
             
         if res:
@@ -3904,7 +3900,7 @@ class GridObjects:
         raise Grid2OpException(f"Unknown element at position {topo_vect_id}")
 
     @staticmethod
-    def _make_cls_dict(cls, res, as_list=True, copy_=True, _topo_vect_only=False):
+    def _make_cls_dict(cls: "Type[GridObjects]", res, as_list=True, copy_=True, _topo_vect_only=False):
         """ 
         INTERNAL
 
@@ -4136,7 +4132,7 @@ class GridObjects:
                 for nm_attr in cls._li_attr_disp:
                     res[nm_attr] = None
                     
-            # Flexibility, new in 1.12.x
+            # Flexibility, new in 1.12.2
             for nm_attr, type_attr in zip(cls._li_attr_flex_load, cls._type_attr_flex_load):
                 if nm_attr not in res and hasattr(cls, nm_attr) is False:
                     # Note: Need default values here for flex to work together
@@ -4326,7 +4322,7 @@ class GridObjects:
             ] = cls.redispatching_unit_commitment_availble
             
             # flexibility / deamnd response
-            res["flexibility_is_available"] = cls.flexibility_is_available
+            res["load_flexibility_is_available"] = cls.load_flexibility_is_available
             
             # n_busbar_per_sub
             res["n_busbar_per_sub"] = cls.n_busbar_per_sub
@@ -4528,11 +4524,11 @@ class GridObjects:
                     ),
                 )
                 
-        # Demand Response / Flexibility, new in 1.12.x
+        # Demand Response / Flexibility, new in 1.12.2
         if np.isclose(dict_.get("load_size", np.zeros(1)), 0.0).all():
-            cls.flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
+            cls.load_flexibility_is_available = DEFAULT_FLEXIBILITY_IS_AVAILABLE
         else:
-            cls.flexibility_is_available = True
+            cls.load_flexibility_is_available = True
             type_attr_flex_load = [
                 dt_float,
                 dt_bool,
@@ -4620,7 +4616,7 @@ class GridObjects:
         
         cls.process_detachment()
         
-        cls.process_flexibility() # new in 1.12.x
+        cls.process_flexibility() # new in 1.12.2
         
         if "assistant_warning_type" in dict_:
             cls.assistant_warning_type = dict_["assistant_warning_type"]
@@ -4771,6 +4767,7 @@ class GridObjects:
         except (ModuleNotFoundError, ImportError) as exc_:
             # normal behaviour i don't do anything there
             # TODO explain why
+            # TODO log exc_ somewhere
             pass
         my_class.process_grid2op_compat()
         my_class.process_detachment()

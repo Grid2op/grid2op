@@ -7,7 +7,6 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import warnings
-import os
 import unittest
 import numpy as np
 
@@ -26,35 +25,35 @@ class TestFlexibility(unittest.TestCase):
                 test=True,
                 _add_to_name=type(self).__name__
             )
-        self.env.set_id(0)
-        _ = self.env.reset()
-        self.ref_obs, *_ = self.env.step(self.env.action_space())
+        assert type(self.env).load_flexibility_is_available
         
-        self.env.set_id(0)
-        _ = self.env.reset()
+        _ = self.env.reset(seed=0, options={"time serie id": 0})
+        self.ref_obs, *_ = self.env.step(self.env.action_space())
+        _ = self.env.reset(seed=0, options={"time serie id": 0})
+        
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
 
-        self.flex_max_ramp_up = self.env.action_space(
-            {"flexibility": [(el, self.env.load_max_ramp_up[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
-        )
-        self.flex_max_ramp_down = self.env.action_space(
-            {"flexibility": [(el, -self.env.load_max_ramp_down[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
-        )
-        self.flex_all_zero = self.env.action_space(
-            {"flexibility": [(el, 0.0) for el in np.nonzero(self.env.load_flexible)[0]]}
-        )
-        self.flex_small_up = self.env.action_space(
-            {"flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
-        )
-        self.flex_small_down = self.env.action_space(
-            {"flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
-        )
+            self.flex_max_ramp_up = self.env.action_space(
+                {"load_flexibility": [(el, self.env.load_max_ramp_up[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_max_ramp_down = self.env.action_space(
+                {"load_flexibility": [(el, -self.env.load_max_ramp_down[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_all_zero = self.env.action_space(
+                {"load_flexibility": [(el, 0.0) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_small_up = self.env.action_space(
+                {"load_flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_small_down = self.env.action_space(
+                {"load_flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
         
     def test_create_flex_action(self):
-        try:
-            flex_act = self.env.action_space({"flexibility":[(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]})
-            assert True
-        except:
-            assert False
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
+            _ = self.env.action_space({"load_flexibility":[(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]})
     
     def test_zero_flex(self):
         flex_obs, *_ = self.env.step(self.flex_all_zero)
@@ -68,7 +67,7 @@ class TestFlexibility(unittest.TestCase):
         flex_mask = self.env.load_flexible
         # Change in load relative to DoNothing scenario (i.e. normal Chronics)
         change_in_load = flex_obs.load_p[flex_mask] - self.ref_obs.load_p[flex_mask]
-        assert np.isclose(change_in_load, self.flex_small_up.flexibility[flex_mask], atol=0.001).all()
+        assert np.isclose(change_in_load, self.flex_small_up.load_flexibility[flex_mask], atol=0.001).all()
 
     def test_flex_small_down(self):
         flex_obs, *_  = self.env.step(self.flex_small_down)
@@ -76,14 +75,14 @@ class TestFlexibility(unittest.TestCase):
 
         # Change in load relative to DoNothing scenario (i.e. normal Chronics)
         change_in_load = flex_obs.load_p[flex_mask] - self.ref_obs.load_p[flex_mask]
-        assert np.isclose(change_in_load, self.flex_small_down.flexibility[flex_mask], atol=0.001).all()
+        assert np.isclose(change_in_load, self.flex_small_down.load_flexibility[flex_mask], atol=0.001).all()
 
     def test_flex_max_ramp_up(self):
         flex_obs, *_ = self.env.step(self.flex_max_ramp_up)
         flex_mask = self.env.load_flexible
         # Load meets max ramp up, or the max size of the load
         ref_load = self.ref_obs.load_p[flex_mask]
-        expected_load = ref_load + self.flex_max_ramp_up.flexibility[flex_mask]
+        expected_load = ref_load + self.flex_max_ramp_up.load_flexibility[flex_mask]
         maximum_feasible_load = np.minimum(self.env.load_size[flex_mask], expected_load)
         assert np.isclose(flex_obs.load_p[flex_mask], maximum_feasible_load, atol=0.001).all()
 
@@ -92,13 +91,13 @@ class TestFlexibility(unittest.TestCase):
         flex_mask = self.env.load_flexible
         # Load meets max ramp down, or the minimum load (of 0)
         ref_load = self.ref_obs.load_p[flex_mask]
-        expected_load = ref_load + self.flex_max_ramp_down.flexibility[flex_mask]
+        expected_load = ref_load + self.flex_max_ramp_down.load_flexibility[flex_mask]
         minimum_feasible_load = np.maximum(np.zeros(flex_mask.sum()), expected_load)
         assert np.isclose(flex_obs.load_p[flex_mask], minimum_feasible_load, atol=0.001).all()
 
     def test_flex_in_obs(self):
         flex_obs, *_ = self.env.step(self.flex_max_ramp_up)
-        assert np.isclose(flex_obs.target_flex, self.flex_max_ramp_up.flexibility).all()
+        assert np.isclose(flex_obs.target_flex, self.flex_max_ramp_up.load_flexibility).all()
         
 if __name__ == "__main__":
     unittest.main()

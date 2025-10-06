@@ -1045,7 +1045,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_obj._needs_active_bus = self._needs_active_bus
         
         # flexibility / demand response, new in 1.12.x
-        # if type(self).flexibility_is_available:
+        # if type(self).load_flexibility_is_available:
         new_obj._forbid_flex_off = self._forbid_flex_off
         new_obj._target_flex = copy.deepcopy(self._target_flex)
         new_obj._already_modified_load = copy.deepcopy(self._already_modified_load)
@@ -1526,7 +1526,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
         
         # flexibility / demand response (1.12.x)
-        # if type(self).flexibility_is_available:
+        # if type(self).load_flexibility_is_available:
         self._target_flex = np.zeros(self.n_load, dtype=dt_float)
         self._already_modified_load = np.zeros(self.n_load, dtype=dt_bool)
         self._actual_flex = np.zeros(self.n_load, dtype=dt_float)
@@ -1577,7 +1577,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._parameters = self.__new_param
         self._ignore_min_up_down_times = self._parameters.IGNORE_MIN_UP_DOWN_TIME
         self._forbid_dispatch_off = not self._parameters.ALLOW_DISPATCH_GEN_SWITCH_OFF
-        if type(self).flexibility_is_available: # flexibility / demand response, new in 1.12.x
+        if type(self).load_flexibility_is_available: # flexibility / demand response, new in 1.12.x
             self._forbid_flex_off = not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF
 
         # type of power flow to play
@@ -2145,11 +2145,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         return self._already_modified_gen
     
     def _get_already_modified_load(self, action: BaseAction):
-        if not action._modif_flexibility:
+        if not action._modif_load_flexibility:
             # nothing changes if the action does
             # not affect flexibility
             return self._already_modified_load
-        flex_act_orig = action._flexibility
+        flex_act_orig = action._load_flexibility
         is_flexed = np.abs(flex_act_orig) > 1e-7
         self._target_flex[self._already_modified_load] += flex_act_orig[self._already_modified_load]
         first_modified = (~self._already_modified_load) & is_flexed
@@ -2173,8 +2173,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             redisp_act_orig = None
             
         # get the flexibility action (if any)
-        if action._modif_flexibility and cls.flexibility_is_available:
-            flex_act_orig = action._flexibility.copy()
+        if action._modif_load_flexibility and cls.load_flexibility_is_available:
+            flex_act_orig = action._load_flexibility.copy()
         else:
             flex_act_orig = None
         
@@ -2185,16 +2185,16 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             and (np.abs(self._target_flex) <= 1e-7).all()
             and (np.abs(self._actual_flex) <= 1e-7).all())
         # If no redispatching / flexibility is active, return
-        if disp_cond and not cls.flexibility_is_available:
+        if disp_cond and not cls.load_flexibility_is_available:
             return valid, except_, info_
-        if disp_cond and flex_cond and cls.flexibility_is_available:
+        if disp_cond and flex_cond and cls.load_flexibility_is_available:
             return valid, except_, info_
         
         if redisp_act_orig is None:
             redisp_act_orig = type(action)._build_attr("_redispatch")
 
         if flex_act_orig is None:
-            flex_act_orig = type(action)._build_attr("_flexibility")
+            flex_act_orig = type(action)._build_attr("_load_flexibility")
             
         
         if self.redispatching_unit_commitment_availble:
@@ -2244,7 +2244,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                             ).nonzero()[0]
                         }
                     )
-            if self.flexibility_is_available:
+            if type(self).load_flexibility_is_available:
                 if (self._target_flex > self.load_size).any():
                     # Action is invalid, the target flexibility would be above the size of at least one flexible load
                     cond_invalid = self._target_flex > self.load_size
@@ -2307,7 +2307,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                      np.abs(self._amount_storage) >= self._tol_poly or
                      np.abs(self._sum_curtailment_mw) >= self._tol_poly or
                      np.abs(self._detached_elements_mw) >= self._tol_poly)
-        flex_cond = self.flexibility_is_available and \
+        flex_cond = type(self).load_flexibility_is_available and \
                     (np.abs((self._actual_flex).sum()) >= self._tol_poly or
                      np.max(flex_mismatch) >= self._tol_poly)
 
@@ -2327,7 +2327,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # actions or curtailment actions on the "init state" of the grid
         if self.nb_time_step == 0:
             self._gen_activeprod_t_redisp[:] = new_gen_p
-            if cls.flexibility_is_available:
+            if cls.load_flexibility_is_available:
                 self._load_demand_t_flex[:] = new_load_p
             
         # First define the involved generators / flexible loads
@@ -2386,7 +2386,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                     self._gen_activeprod_t_redisp[gen_involved_tmp])
                 avail_gen_up_tmp = np.minimum(p_max_gen_up_tmp, 
                                               cls.gen_max_ramp_up[gen_involved_tmp])
-                if cls.flexibility_is_available and self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF:
+                if cls.load_flexibility_is_available and self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF:
                     load_involved_tmp = self.load_flexible
                     if cls.detachment_is_allowed:
                         load_involved_tmp[self._backend_action.get_load_detached()] = False
@@ -3466,16 +3466,16 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         res_exc_ = None
         # cancel the redisp and storage tags (set later in the code)
         tag_redisp = action._modif_redispatch
-        tag_flex = action._modif_flexibility
+        tag_flex = action._modif_load_flexibility
         tag_storage = action._modif_storage
         action._modif_redispatch = False
-        action._modif_flexibility = False
+        action._modif_load_flexibility = False
         action._modif_storage = False
         # cancel the values
         if tag_redisp:
             action._redispatch[:] = 0.0  # redispatch is added after everything in the code (even after the opponent)
         if tag_flex:
-            action._flexibility[:] = 0.0 # flexibility, new in 1.12.x
+            action._load_flexibility[:] = 0.0 # flexibility, new in 1.12.x
         if tag_storage:
             action._storage_power[:] = 0.0  # storage is also added after everything
         # add the action
@@ -3484,12 +3484,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if tag_storage:
             action._storage_power[:] = action_storage_power
         if tag_flex:
-            action._flexibility[:] = init_flex
+            action._load_flexibility[:] = init_flex
         if tag_redisp:
             action._redispatch[:] = init_disp
         # put back the tags
         action._modif_redispatch = tag_redisp
-        action._modif_flexibility = tag_flex
+        action._modif_load_flexibility = tag_flex
         action._modif_storage = tag_storage
         return res_exc_
 
@@ -3749,7 +3749,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         new_gen_p[gen_detached_user] = 0.
         new_gen_pth[gen_detached_user] = 0.
         self._actual_dispatch[gen_detached_user] = 0.
-        if type(self).flexibility_is_available:
+        if type(self).load_flexibility_is_available:
             new_load_p[load_detached_user] = 0.
             new_load_pth[load_detached_user] = 0.
             self._actual_flex[load_detached_user] = 0.
@@ -3886,10 +3886,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             init_disp = action._redispatch.copy()  # dispatching action
         else:
             init_disp = type(action)._build_attr("_redispatch")
-        if action._modif_flexibility:
-            init_flex = action._flexibility.copy()  # flexibility action
+        if action._modif_load_flexibility:
+            init_flex = action._load_flexibility.copy()  # flexibility action
         else:
-            init_flex = type(action)._build_attr("_flexibility")
+            init_flex = type(action)._build_attr("_load_flexibility")
             
         init_alert = None
         if cls.dim_alerts > 0:
@@ -4006,7 +4006,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
             # Redispatch + Flexibility
             beg__redisp = time.perf_counter()
-            if (cls.redispatching_unit_commitment_availble or cls.n_storage > 0 or cls.flexibility_is_available) and self._parameters.ENV_DOES_REDISPATCHING:
+            if (cls.redispatching_unit_commitment_availble or cls.n_storage > 0 or cls.load_flexibility_is_available) and self._parameters.ENV_DOES_REDISPATCHING:
                 # This computes the "optimal" redispatching of generators and flexibility
                 # adjustment of loads
                 # Note: It is in this function that the limiting of the curtailment / storage actions
