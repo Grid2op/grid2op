@@ -112,6 +112,14 @@ Native multi agents support:
   dimension, because you cannot act on storage unit.)
 - [IMPROVED] classes for action and observation classes are now easier to 
   initialize (added the `finalize_class_definition` classmethod)
+  
+[1.12.2] - 2025-10-xx
+----------------------
+- [FIXED] an issue preventing to change the way
+  the voltages are set
+- [FIXED] a test when using gymnasium>= 1.2.1 (AsynchVectEnv)
+- [ADDED] a convenience class to allow agent to override
+  voltage setpoint from provided time seies (`VCFromFileAgentOverrides`)
 
 [1.12.1] - 2025-08-28
 ----------------------
