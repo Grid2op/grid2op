@@ -239,7 +239,7 @@ class BaseAction(GridObjects):
         on a generator, and on another you ask +10 MW then the total setpoint for this generator that the environment
         will try to implement is +20MW.
 
-    _flexibility: :class:`numpy.ndarray`, dtype:float
+    _load_flexibility: :class:`numpy.ndarray`, dtype:float
         Amount of demand response that this action will perform. Flexiblity will increase the load's active
         consumption value. This will be added to the value of the loads. The Environment will make sure that every
         physical constraint is met. This means that the agent provides a change in flexiblity, but there is no guarantee
@@ -3669,7 +3669,7 @@ class BaseAction(GridObjects):
 
             - A flexibility action is active, but
               :attr:`grid2op.Space.GridObjects.flexibility_available` is set to ``False``
-            - The length of the flexibility vector :attr:`BaseAction._flexibility` is not compatible with the number
+            - The length of the flexibility vector :attr:`BaseAction._load_flexibility` is not compatible with the number
               of loads.
             - Some of the asked for flexibility is above the maximum ramp up :attr:`grid2op.Space.GridObjects.load_max_ramp_up`
             - some of the asked for flexibility is below the maximum ramp down :attr:`grid2op.Space.GridObjects.load_max_ramp_down`

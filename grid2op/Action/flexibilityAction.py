@@ -19,7 +19,7 @@ class FlexibilityAction(PlayableAction):
 
     authorized_keys = {"flexibility"}
 
-    attr_list_vect = ["_flexibility"]
+    attr_list_vect = ["_load_flexibility"]
     attr_list_set = set(attr_list_vect)
 
     def __init__(self, _names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None):
