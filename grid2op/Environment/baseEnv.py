@@ -706,7 +706,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._needs_active_bus = False
         
         # flexibility / demand response, new in 1.12.x
-        # if type(self).flexibility_is_available:
+        # if type(self).load_flexibility_is_available:
         self._forbid_flex_off:bool = (not self._parameters.ALLOW_FLEX_LOAD_SWITCH_OFF)
         self._target_flex: np.ndarray = None
         self._already_modified_load: np.ndarray = None

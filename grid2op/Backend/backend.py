@@ -1970,7 +1970,7 @@ class Backend(GridObjects, ABC):
             to change it.
 
         """
-        self.flexibility_is_available = False
+        self.load_flexibility_is_available = False
         
         self.load_size = np.full(self.n_load, fill_value=0.0, dtype=dt_float)
         self.load_flexible = np.full(self.n_load, fill_value=False, dtype=dt_bool)
@@ -2037,7 +2037,7 @@ class Backend(GridObjects, ABC):
             if np.isfinite(tmp):
                 self.load_max_ramp_down[i] = tmp
             self.load_cost_per_MW[i] = dt_float(tmp_load["marginal_cost"])
-        self.flexibility_is_available = True
+        self.load_flexibility_is_available = True
 
     def load_storage_data(self,
                           path : Union[os.PathLike, str],

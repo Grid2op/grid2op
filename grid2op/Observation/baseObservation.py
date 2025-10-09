@@ -757,7 +757,7 @@ class BaseObservation(GridObjects):
         self.actual_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
         
         # Flexibility / demand response, new in 1.12.x
-        # if cls.flexibility_is_available:
+        # if cls.load_flexibility_is_available:
         self.target_flex = np.empty(shape=cls.n_load, dtype=dt_float)
         self.actual_flex = np.empty(shape=cls.n_load, dtype=dt_float)
 
@@ -1591,7 +1591,7 @@ class BaseObservation(GridObjects):
             self.storage_p_detached[:] = 0.
 
         # flexibility, new in 1.12.x
-        # if type(self).flexibility_is_available:
+        # if type(self).load_flexibility_is_available:
         self.target_flex[:] = 0.0
         self.actual_flex[:] = 0.0
         
@@ -1747,7 +1747,7 @@ class BaseObservation(GridObjects):
             self.storage_p_detached[:] = 0.
 
         # flexibility, new in 1.12.x
-        # if type(self).flexibility_is_available:
+        # if type(self).load_flexibility_is_available:
         self.target_flex[:] = 0.0
         self.actual_flex[:] = 0.0
         
@@ -3008,7 +3008,7 @@ class BaseObservation(GridObjects):
         else:
             nodes_prop = []
         
-        if type(self).flexibility_is_available:
+        if type(self).load_flexibility_is_available:
             nodes_prop.extend([
                 ("target_flex", self.target_flex),
                 ("actual_flcex", self.actual_flex)
@@ -4583,7 +4583,7 @@ class BaseObservation(GridObjects):
         self.actual_dispatch[:] = env._actual_dispatch
         
         # Flexibility, new in 1.12.x
-        # if type(self).flexibility_is_available:
+        # if type(self).load_flexibility_is_available:
         self.target_flex[:] = env._target_flex
         self.actual_flex[:] = env._actual_flex
 
@@ -5379,7 +5379,7 @@ class BaseObservation(GridObjects):
     
     # @classmethod
     # def process_flexibility(cls):
-    #     if not cls.flexibility_is_available:
+    #     if not cls.load_flexibility_is_available:
     #         # this is really important, otherwise things from grid2op base types will be affected
     #         cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
     #         # remove the detachment from the list to vector

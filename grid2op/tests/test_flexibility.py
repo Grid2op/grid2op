@@ -49,6 +49,12 @@ class TestFlexibility(unittest.TestCase):
             self.flex_small_down = self.env.action_space(
                 {"load_flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
             )
+            self.flex_up_ambiguous = self.env.action_space(
+                {"load_flexibility": [(el, 1.1*self.env.load_max_ramp_up[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_down_ambiguous = self.env.action_space(
+                {"load_flexibility": [(el, -1.1*self.env.load_max_ramp_down[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
         
     def test_create_flex_action(self):
         with warnings.catch_warnings():
@@ -94,7 +100,23 @@ class TestFlexibility(unittest.TestCase):
         expected_load = ref_load + self.flex_max_ramp_down.load_flexibility[flex_mask]
         minimum_feasible_load = np.maximum(np.zeros(flex_mask.sum()), expected_load)
         assert np.isclose(flex_obs.load_p[flex_mask], minimum_feasible_load, atol=0.001).all()
-
+        
+    def test_flex_up_beyond_limits(self):
+        # Ambiguous action gets replaced with Do Nothing
+        flex_obs, _, _, info = self.env.step(self.flex_up_ambiguous)
+        flex_mask = self.env.load_flexible
+        ref_load = self.ref_obs.load_p[flex_mask]
+        assert np.isclose(flex_obs.load_p[flex_mask], ref_load, atol=0.001).all()
+        assert info["is_ambiguous"]
+    
+    def test_flex_down_beyond_limits(self):
+        # Ambiguous action gets replaced with Do Nothing
+        flex_obs, _, _, info = self.env.step(self.flex_down_ambiguous)
+        flex_mask = self.env.load_flexible
+        ref_load = self.ref_obs.load_p[flex_mask]
+        assert np.isclose(flex_obs.load_p[flex_mask], ref_load, atol=0.001).all()
+        assert info["is_ambiguous"]
+    
     def test_flex_in_obs(self):
         flex_obs, *_ = self.env.step(self.flex_max_ramp_up)
         assert np.isclose(flex_obs.target_flex, self.flex_max_ramp_up.load_flexibility).all()

@@ -987,7 +987,7 @@ class BaseAction(GridObjects):
         if cls.detachment_is_allowed:
             attr_vect += ["_private_detach_load", "_private_detach_gen", "_private_detach_storage"]
         
-        if cls.flexibility_is_available:
+        if cls.load_flexibility_is_available:
             attr_vect += ["_private_load_flexibility"]
         
         for attr_nm in attr_simple:
@@ -2485,7 +2485,7 @@ class BaseAction(GridObjects):
         self._modif_inj = self._modif_inj or other._modif_inj
         self._modif_shunt = self._modif_shunt or other._modif_shunt
         self._modif_redispatch = self._modif_redispatch or other._modif_redispatch
-        self._modif_flexibility = self._modif_flexibility or other._modif_flexibility # new in 1.12.2
+        self._modif_load_flexibility = self._modif_load_flexibility or other._modif_load_flexibility # new in 1.12.2
         self._modif_storage = self._modif_storage or other._modif_storage
         self._modif_curtailment = self._modif_curtailment or other._modif_curtailment
         self._modif_alarm = self._modif_alarm or other._modif_alarm
@@ -4034,7 +4034,7 @@ class BaseAction(GridObjects):
         "check if flexibility actions are ambiguous"
         cls = type(self)
         if cls.load_flexibility_is_available:
-            if self._modif_flexibility: # new in 1.12.x
+            if self._modif_load_flexibility: # new in 1.12.x
                 if "load_flexibility" not in cls.authorized_keys:
                     raise AmbiguousAction(
                         'Action of type "load_flexibility" are not supported by this action type'
@@ -4388,7 +4388,7 @@ class BaseAction(GridObjects):
     
         # flexibility, new in 1.12.x
         if type(self).load_flexibility_is_available:
-            if self._modif_flexibility:
+            if self._modif_load_flexibility:
                 res.append(
                     "\t - Modify the loads with flexibility in the following way:"
                 )
@@ -7992,7 +7992,7 @@ class BaseAction(GridObjects):
                                                     res):
         if group_flexibility:
             tmp = cls()
-            tmp._modif_flexibility = True
+            tmp._modif_load_flexibility = True
             tmp._load_flexibility[:] = self._private_load_flexibility
             res["load_flexibility"] = [tmp]
         else:
@@ -8000,7 +8000,7 @@ class BaseAction(GridObjects):
             res["load_flexibility"] = []
             for load_id in load_changed:
                 tmp = cls()
-                tmp._modif_flexibility = True   
+                tmp._modif_load_flexibility = True   
                 tmp._load_flexibility[load_id] = self._private_load_flexibility[load_id]
                 res["load_flexibility"].append(tmp)
                 

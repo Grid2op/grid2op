@@ -321,7 +321,7 @@ class Environment(BaseEnv):
             try:
                 self.backend.load_flexibility_data(self.get_path_env())
             except BackendError as exc_:
-                self.backend.flexibility_is_available = False
+                self.backend.load_flexibility_is_available = False
                 warnings.warn(f"Impossible to load flexibility data. This is not an error but you will not be able "
                               f"to use all grid2op functionalities. "
                               f"The error was: \"{exc_}\"")
