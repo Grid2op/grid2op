@@ -301,6 +301,12 @@ class TestBasisObsBehaviour(unittest.TestCase):
             "alertable_line_ids": [],
             "assistant_warning_type": None,
             "_PATH_GRID_CLASSES": None,
+            # Flexibility, new in 1.12.x
+            "load_size":[0.0]*self.env.n_load,
+            "load_flexible":[False]*self.env.n_load,
+            "load_max_ramp_up":[0.0]*self.env.n_load,
+            "load_max_ramp_down":[0.0]*self.env.n_load,
+            "load_cost_per_MW":[0.0]*self.env.n_load,
         }
 
         self.json_ref = {
@@ -755,6 +761,10 @@ class TestBasisObsBehaviour(unittest.TestCase):
             ],
             "target_dispatch": [0.0, 0.0, 0.0, 0.0, 0.0],
             "actual_dispatch": [0.0, 0.0, 0.0, 0.0, 0.0],
+            # Flexibility, new in 1.12.x
+            "target_flex": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "actual_flex": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            
             "_shunt_p": [0.0],
             "_shunt_q": [-17.923625946044922],
             "_shunt_v": [0.20202238857746124],
@@ -910,8 +920,10 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 dt_int,
                 dt_int,
                 dt_int,
+                # Redispatch
                 dt_float,
                 dt_float,
+                # Storage
                 dt_float,
                 dt_float,
                 dt_float,
@@ -958,7 +970,10 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 # dt_float,
                 # dt_float,
                 # timestep_protection_engaged
-                dt_int
+                dt_int,
+                # Flexibility, new in 1.12.x
+                dt_float,
+                dt_float,
             ],
             dtype=object,
         )
@@ -995,8 +1010,10 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 14,
                 20,
                 20,
+                # redispatch
                 5,
                 5,
+                # storage
                 0,
                 0,
                 0,
@@ -1038,10 +1055,13 @@ class TestBasisObsBehaviour(unittest.TestCase):
                 # 5,
                 # 0,
                 # timestep_protection_engaged
-                20
+                20,
+                # flexibility, new in 1.12.x
+                11,
+                11,
             ]
         )
-        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 + 20
+        self.size_obs = 429 + 4 + 4 + 2 + 1 + 10 + 5 + 0 + 5 + 20 + 11 + 11
 
     def tearDown(self):
         self.env.close()

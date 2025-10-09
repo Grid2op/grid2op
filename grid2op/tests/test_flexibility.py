@@ -1,0 +1,125 @@
+# Copyright (c) 2019-2022, RTE (https://www.rte-france.com)
+# See AUTHORS.txt
+# This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
+# If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
+# you can obtain one at http://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+# This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
+import warnings
+import unittest
+import numpy as np
+
+from grid2op.tests.helper_path_test import PATH_DATA_TEST
+import grid2op
+
+
+class TestFlexibility(unittest.TestCase):
+    def setUp(self) -> None:
+        self.env_name = "rte_case5_flexibility"
+        
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make(
+                self.env_name,
+                test=True,
+                _add_to_name=type(self).__name__
+            )
+        assert type(self.env).load_flexibility_is_available
+        
+        _ = self.env.reset(seed=0, options={"time serie id": 0})
+        self.ref_obs, *_ = self.env.step(self.env.action_space())
+        _ = self.env.reset(seed=0, options={"time serie id": 0})
+        
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
+
+            self.flex_max_ramp_up = self.env.action_space(
+                {"load_flexibility": [(el, self.env.load_max_ramp_up[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_max_ramp_down = self.env.action_space(
+                {"load_flexibility": [(el, -self.env.load_max_ramp_down[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_all_zero = self.env.action_space(
+                {"load_flexibility": [(el, 0.0) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_small_up = self.env.action_space(
+                {"load_flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_small_down = self.env.action_space(
+                {"load_flexibility": [(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_up_ambiguous = self.env.action_space(
+                {"load_flexibility": [(el, 1.1*self.env.load_max_ramp_up[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+            self.flex_down_ambiguous = self.env.action_space(
+                {"load_flexibility": [(el, -1.1*self.env.load_max_ramp_down[el]) for el in np.nonzero(self.env.load_flexible)[0]]}
+            )
+        
+    def test_create_flex_action(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error")
+            _ = self.env.action_space({"load_flexibility":[(el, 0.01) for el in np.nonzero(self.env.load_flexible)[0]]})
+    
+    def test_zero_flex(self):
+        flex_obs, *_ = self.env.step(self.flex_all_zero)
+        flex_mask = self.env.load_flexible
+        # Change in load relative to DoNothing scenario (i.e. normal Chronics)
+        change_in_load = self.ref_obs.load_p[flex_mask] - flex_obs.load_p[flex_mask]
+        assert np.isclose(change_in_load, np.zeros(flex_mask.sum()), atol=0.001).all()
+    
+    def test_flex_small_up(self):
+        flex_obs, *_ = self.env.step(self.flex_small_up)
+        flex_mask = self.env.load_flexible
+        # Change in load relative to DoNothing scenario (i.e. normal Chronics)
+        change_in_load = flex_obs.load_p[flex_mask] - self.ref_obs.load_p[flex_mask]
+        assert np.isclose(change_in_load, self.flex_small_up.load_flexibility[flex_mask], atol=0.001).all()
+
+    def test_flex_small_down(self):
+        flex_obs, *_  = self.env.step(self.flex_small_down)
+        flex_mask = self.env.load_flexible
+
+        # Change in load relative to DoNothing scenario (i.e. normal Chronics)
+        change_in_load = flex_obs.load_p[flex_mask] - self.ref_obs.load_p[flex_mask]
+        assert np.isclose(change_in_load, self.flex_small_down.load_flexibility[flex_mask], atol=0.001).all()
+
+    def test_flex_max_ramp_up(self):
+        flex_obs, *_ = self.env.step(self.flex_max_ramp_up)
+        flex_mask = self.env.load_flexible
+        # Load meets max ramp up, or the max size of the load
+        ref_load = self.ref_obs.load_p[flex_mask]
+        expected_load = ref_load + self.flex_max_ramp_up.load_flexibility[flex_mask]
+        maximum_feasible_load = np.minimum(self.env.load_size[flex_mask], expected_load)
+        assert np.isclose(flex_obs.load_p[flex_mask], maximum_feasible_load, atol=0.001).all()
+
+    def test_flex_max_ramp_down(self):
+        flex_obs, *_ = self.env.step(self.flex_max_ramp_down)
+        flex_mask = self.env.load_flexible
+        # Load meets max ramp down, or the minimum load (of 0)
+        ref_load = self.ref_obs.load_p[flex_mask]
+        expected_load = ref_load + self.flex_max_ramp_down.load_flexibility[flex_mask]
+        minimum_feasible_load = np.maximum(np.zeros(flex_mask.sum()), expected_load)
+        assert np.isclose(flex_obs.load_p[flex_mask], minimum_feasible_load, atol=0.001).all()
+        
+    def test_flex_up_beyond_limits(self):
+        # Ambiguous action gets replaced with Do Nothing
+        flex_obs, _, _, info = self.env.step(self.flex_up_ambiguous)
+        flex_mask = self.env.load_flexible
+        ref_load = self.ref_obs.load_p[flex_mask]
+        assert np.isclose(flex_obs.load_p[flex_mask], ref_load, atol=0.001).all()
+        assert info["is_ambiguous"]
+    
+    def test_flex_down_beyond_limits(self):
+        # Ambiguous action gets replaced with Do Nothing
+        flex_obs, _, _, info = self.env.step(self.flex_down_ambiguous)
+        flex_mask = self.env.load_flexible
+        ref_load = self.ref_obs.load_p[flex_mask]
+        assert np.isclose(flex_obs.load_p[flex_mask], ref_load, atol=0.001).all()
+        assert info["is_ambiguous"]
+    
+    def test_flex_in_obs(self):
+        flex_obs, *_ = self.env.step(self.flex_max_ramp_up)
+        assert np.isclose(flex_obs.target_flex, self.flex_max_ramp_up.load_flexibility).all()
+        
+if __name__ == "__main__":
+    unittest.main()

@@ -14,6 +14,7 @@ dependencies = [
   "scipy>=1.4.1",
   "pandas>=1.0.3,<3",  # pandas 3 might break pandapower backend
   "pandapower>=3.1.1; python_version>='3.9'",
+  "lxml",
   "numpy",
   "scipy",
   "tqdm>=4.45.0",
@@ -66,7 +67,7 @@ version = { attr = "grid2op.__version__" }
 # All the following settings are optional:
 where = ["."]                    # by default
 include = ["grid2op*"]           # ["*"] by default
-exclude = ["grid2op/tests*"]                     # empty by default
+exclude = ["binder*", "documentation*", "utils*"]                     # empty by default
 namespaces = false      
 
 [project.urls]
@@ -139,4 +140,7 @@ grid2op = [
     "*/__pycache__/*",
     "**/*.pyc",
     "*_grid2op_classes*",
+    "binder*",
+    "documentation*",
+    "utils*"
 ]

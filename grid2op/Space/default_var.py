@@ -18,6 +18,9 @@ DEFAULT_N_BUSBAR_PER_SUB = 2
 #: from the grid
 DEFAULT_ALLOW_DETACHMENT = False
 
+#: whether or not grid2op will process flexiblity actions
+DEFAULT_FLEXIBILITY_IS_AVAILABLE = False
+
 #: in which subfolder (of the environment) the grid2op classes
 #: will be stored
 GRID2OP_CLASSES_ENV_FOLDER = "_grid2op_classes"

@@ -316,6 +316,15 @@ class Environment(BaseEnv):
                 warnings.warn(f"Impossible to load redispatching data. This is not an error but you will not be able "
                               f"to use all grid2op functionalities. "
                               f"The error was: \"{exc_}\"")
+                
+            # Flexibility / demand response, new in 1.12.x
+            try:
+                self.backend.load_flexibility_data(self.get_path_env())
+            except BackendError as exc_:
+                self.backend.load_flexibility_is_available = False
+                warnings.warn(f"Impossible to load flexibility data. This is not an error but you will not be able "
+                              f"to use all grid2op functionalities. "
+                              f"The error was: \"{exc_}\"")
             exc_ = self.backend.load_grid_layout(self.get_path_env())
             if exc_ is not None:
                 warnings.warn(
@@ -495,6 +504,7 @@ class Environment(BaseEnv):
         # first injections given)
         self._reset_maintenance()
         self._reset_redispatching()
+        self._reset_flexibility()
         self._reward_to_obs = {}
         do_nothing = self._helper_action_env({})
         
@@ -1413,6 +1423,7 @@ class Environment(BaseEnv):
         self._env_modification = None
         self._reset_maintenance()
         self._reset_redispatching()
+        self._reset_flexibility()
         self._reset_vectors_and_timings()  # it need to be done BEFORE to prevent cascading failure when there has been
             
         if options is not None and "init datetime" in options:

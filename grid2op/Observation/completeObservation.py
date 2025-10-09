@@ -76,6 +76,10 @@ class CompleteObservation(BaseObservation):
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
         #. :attr:`BaseObservation.actual_dispatch` the actual dispatch for each generator
             [:attr:`grid2op.Space.GridObjects.n_gen` elements]
+        #. :attr:`BaseObservation.target_flex` the target flexibility for each load
+            [:attr:`grid2op.Space.GridObjects.n_load` elements]
+        #. :attr:`BaseObservation.actual_flex` the actual flexibility for each load
+            [:attr:`grid2op.Space.GridObjects.n_load` elements]
         #. :attr:`BaseObservation.storage_charge` the actual state of charge of each storage unit
             [:attr:`grid2op.Space.GridObjects.n_storage` elements]
         #. :attr:`BaseObservation.storage_power_target` the production / consumption of setpoint of each storage unit
@@ -208,7 +212,10 @@ class CompleteObservation(BaseObservation):
         "gen_p_detached",
         "storage_p_detached",
         # protections (>= 1.11.0)
-        "timestep_protection_engaged"
+        "timestep_protection_engaged",
+        # flexibility / demand response, new in 1.12.x
+        "target_flex",
+        "actual_flex",
     ]
     attr_list_json = [
         "_thermal_limit",

@@ -1929,6 +1929,116 @@ class Backend(GridObjects, ABC):
             
         self.redispatching_unit_commitment_availble = True
 
+    def load_flexibility_data(self,
+                            path : Union[os.PathLike, str],
+                            name : Optional[str]="flex_loads_charac.csv") -> None:
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+        This method will load everything needed for the environment to support
+        demand response / flexible loads.
+
+        We don't recommend at all to modify this function.
+
+        Notes
+        -----
+        Before you use this function, make sure the names of the loads are properly set.
+        
+        For example you can either read them from the grid (setting self.name_load) or call 
+        self._fill_names_obj() beforehand (the later is done in the environment.)
+        
+        Parameters
+        ----------
+        path: ``str``
+            Location of the dataframe containing the flexibility data. This dataframe (csv, comma separated)
+            should have at least the columns (other columns are ignored, order of the colums do not matter):
+
+            - "name": identifying the name of the load (should match the names in self.name_load)
+            - "size": the maximum size of the load (in MW)
+            - "max_ramp_up": maximum value the load can increase its production between two consecutive
+              steps
+            - "max_ramp_down": maximum value the load can decrease its production between two consecutive
+              steps (is positive)
+            - "marginal_cost": "average" marginal cost of the flexible load. For now we don't allow it to vary across
+              different steps or episode in $/(MW.time step duration) and NOT $/MWh. This is needed to compute the
+              economic cost of different interventions in the grid.
+
+        name: ``str``
+            Name of the dataframe containing the flexibility data. Defaults to 'flex_load_charac.csv', we don't advise
+            to change it.
+
+        """
+        self.load_flexibility_is_available = False
+        
+        self.load_size = np.full(self.n_load, fill_value=0.0, dtype=dt_float)
+        self.load_flexible = np.full(self.n_load, fill_value=False, dtype=dt_bool)
+        self.load_max_ramp_up = np.full(self.n_load, fill_value=0.0, dtype=dt_float)
+        self.load_max_ramp_down = np.full(self.n_load, fill_value=0.0, dtype=dt_float)
+        self.load_cost_per_MW = np.full(self.n_load, fill_value=0.0, dtype=dt_float)
+
+        # For flexibility
+        fullpath = os.path.join(path, name)
+        if not os.path.exists(fullpath):
+            return
+        try:
+            df = pd.read_csv(fullpath, sep=",")
+        except Exception as exc_:
+            warnings.warn(
+                f'Impossible to load the flexibility data for this environment with error:\n"{exc_}"\n'
+                f"Flexibility will be unavailable.\n"
+                f"Please make sure \"{name}\" file is a csv (comma ',') separated file."
+            )
+            return
+
+        mandatory_columns = [
+            "size",
+            "is_flexible",
+            "max_ramp_up",
+            "max_ramp_down",
+            "marginal_cost",
+        ]
+        for el in mandatory_columns:
+            if el not in df.columns:
+                warnings.warn(
+                    f"Impossible to load the flexibility data for this environment because"
+                    f"one of the mandatory column is not present ({el}). Please check the file "
+                    f'"{name}" contains all the mandatory columns: {mandatory_columns}'
+                )
+                return
+
+        load_info = {}
+        for _, row in df.iterrows():
+            load_info[row["name"]] = {
+                "size": row["size"],
+                "flexible": row["is_flexible"],
+                "max_ramp_up": row["max_ramp_up"],
+                "max_ramp_down": row["max_ramp_down"],
+                "marginal_cost": row["marginal_cost"],
+            }
+
+        for i, load_nm in enumerate(self.name_load):
+            try:
+                tmp_load = load_info[load_nm]
+            except KeyError:
+                raise BackendError(
+                    f"Impossible to load the flexibility data. The load {i} with name {load_nm} "
+                    f'could not be located on the description file "{name}".'
+                )
+            self.load_size[i] = self._aux_check_finite_float(
+                tmp_load["size"], f' for load. "{load_nm}" and column "size"'
+            )
+            self.load_flexible[i] = dt_bool(tmp_load["flexible"])
+            tmp = dt_float(tmp_load["max_ramp_up"])
+            if np.isfinite(tmp):
+                self.load_max_ramp_up[i] = tmp
+            tmp = dt_float(tmp_load["max_ramp_down"])
+            if np.isfinite(tmp):
+                self.load_max_ramp_down[i] = tmp
+            self.load_cost_per_MW[i] = dt_float(tmp_load["marginal_cost"])
+        self.load_flexibility_is_available = True
+
     def load_storage_data(self,
                           path : Union[os.PathLike, str],
                           name: Optional[str] ="storage_units_charac.csv") -> None:
@@ -1976,7 +2086,7 @@ class Backend(GridObjects, ABC):
               state of charge of 3MWh.
 
         name: ``str``
-            Name of the dataframe containing the redispatching data. Defaults to 'prods_charac.csv', we don't advise
+            Name of the dataframe containing the storage data. Defaults to 'storage_units_charac.csv', we don't advise
             to change it.
 
         Notes

@@ -193,23 +193,68 @@ jobs:
           python -c "from grid2op import *"
           python -c "from grid2op.Action._backendAction import _BackendAction"
 
-      - name: Build source archive
-        if: matrix.config.name == 'darwin' && matrix.python.name == 'cp310'
-        run: python -m build --sdist .
-
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with:
           name: grid2op-wheel-${{ matrix.config.name }}-${{ matrix.python.name }}
           path: dist/*.whl
 
+  source_build:
+    name: Build tar.gz grid2op file on ${{ matrix.config.name}}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          - {
+            name: darwin,
+            os: macos-latest,
+          }
+          - {
+            name: windows,
+            os: windows-2022,
+          }
+          - {
+            name: linux,
+            os: ubuntu-latest,
+          }
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools build   
+
+      - name: Build tar gz
+        run: python -m build --sdist .
+
+      - name: Install tar gz
+        shell: bash
+        run: |
+          python -m pip install dist/*.tar.gz --user
+          pip freeze
+
+      - name: Check package can be imported
+        run: |
+          python -c "import grid2op"
+          python -c "from grid2op import *"
+          python -c "from grid2op.Action._backendAction import _BackendAction"  
+
       - name: Upload source archive
+        if: (matrix.config.name == 'darwin')
         uses: actions/upload-artifact@v4
-        if: matrix.config.name == 'darwin' && matrix.python.name == 'cp310'
         with:
           name: grid2op-sources
-          path: dist/*.tar.gz
-
+          path: dist/*.tar.gz        
+          
   auto_class_in_file:
     name: Test ${{ matrix.config.name }} OS can handle automatic class generation for python ${{matrix.python.version}}
     runs-on: ${{ matrix.config.os }}

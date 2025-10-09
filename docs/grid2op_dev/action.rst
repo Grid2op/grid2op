@@ -97,11 +97,43 @@ the `cls.authorized_keys` and
 function `def supports_type` of SerializableActionSpace and
 `cls.mapping_vect_auth_keys` (BaseAction) 
 
+Checklist for SerializableActionSpace:
+    Add a new ID number for your action to `SerializeableActionSpace`'s class attributes. Add this to the sample() 
+    and "_get_possible_action_types()" methods. 
+    Add a _sample_YOURACTION() method to `SerializableActionSpace`
+    Add a _aux_get_back_to_ref_state_YOURACTION() method.
+    Add your action to get_back_to_ref_state() method.
+    Optional: If your new action is continuous, add a get_all_unitary_YOURACTION() method to
+    `SerializableActionSpace` to help users discretize it.
+
+Create a new YourAction.py file in `Grid2op/Action/*` and add this to the `Grid2Op/Action/__init__.py`.
+
 
 Add the vectorization
 ***********************
 
-TODO add the `cls.attr_list_vect`
+TODO add the `cls.attr_list_vect` to baseAction:
+* Add to baseAction.authorized_keys
+* Add to baseAction.attr_list_vect
+* Add to baseAction.mapping_vect_auth_keys
+* Make sure your `self._private_YOURACTION = None` attribute is in baseAction's `__init__`
+* Add a self._modif_YOURACTION to baseAction's `__init__`
+* Double check you added a @property for your action in BaseAction
+* Update the BaseAction._aux_copy() method to include your action (ideally in an if-statement)
+* Modify the end of `process_grid2op_compat()`
+* Add your _modif_YOURACTION to `reset_modified_flags()` and `can_affect_something()`
+* Add your action to `_post_process_from_vect()` as appropriate
+* Add a new method called `_aux_iadd_YOURACTION()` and reference this in `__iadd__()`
+* Add your action to `__call__(self)` by referencing self._private_YOURACTION
+* Add a `_digest_YOURACTION()` method
+* Add an example to the docstring of `update(self)`
+* Add modification check to `_check_for_corret_modif_flags()`
+* Add ambiguity checks for your action in `_check_for_ambiguity()`, for instance by adding and calling a new `_is_YOURACTION_ambigious()` method
+* Add a string formatting for your action to `__str__()`
+* Add a check to `impact_on_objects()` for your action
+* Add a boolean for your action in `get_types()`
+* Modify `_aux_effect_on_XXX()` as appropriate
+* If you action does NOT modify topology, add it to the `_dont_affect_topology()` method
 
 Worry about the backward compatibility
 ****************************************
@@ -160,12 +192,15 @@ Backend "private" API
 
 Then you need to modify the `__iadd__` method of the `BackendAction` class to handle the modification
 you performed and pass it to the backend.
+* Add a `set_YOURACTION()`  if your action modifies setpoints / injections.
 
 
 Add tests
 -----------
 
 TODO
+* Add a test for creating the action type
+
 
 Add documentation
 -------------------

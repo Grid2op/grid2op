@@ -217,12 +217,27 @@ class BaseObservation(GridObjects):
         dispatchable.
 
     actual_dispatch: :class:`numpy.ndarray`, dtype:float
+        .. versionadded:: 1.12.x
         For **each** generators, it gives the redispatching currently implemented by the environment.
         Indeed, the environment tries to implement at best the :attr:`BaseObservation.target_dispatch`, but sometimes,
         due to physical limitation (pmin, pmax, ramp min and ramp max) it cannot. In this case, only the best possible
         redispatching is implemented at the current time step, and this is what this vector stores. Note that there is
         information about all generators there, even the one that are not
         dispatchable.
+        
+    target_flex: :class:`numpy.ndarray`, dtype:float
+        .. versionadded:: 1.12.x
+        For **each** load, it gives the target flexibility, asked by the agent. This is the sum of all
+        flexibility asked by the agent during the episode. For each load it is a number between:
+        0 and `load_size`. Note that there is information about all loads here, even the one that are not
+        flexible.
+
+    actual_flex: :class:`numpy.ndarray`, dtype:float
+        For **each** load, it gives the flexibility currently implemented by the environment.
+        Indeed, the environment tries to implement at best the :attr:`BaseObservation.target_flex`, but sometimes,
+        due to physical limitations (e.g. size) it cannot. In this case, only the best possible
+        flexibility is implemented at the current time step, and this is what this vector stores. Note that there is
+        information about all loads here, even the one that are not flexible.
 
     storage_charge: :class:`numpy.ndarray`, dtype:float
         The actual 'state of charge' of each storage unit, expressed in MWh.
@@ -572,6 +587,9 @@ class BaseObservation(GridObjects):
         "storage_p_detached",
         # better handling of soft_overflow_threshold (>= 1.11.0)
         "timestep_protection_engaged",
+        # flexibility / demand response, new in 1.12.x
+        "target_flex",
+        "actual_flex"
     ]
 
     attr_list_vect = None
@@ -659,7 +677,10 @@ class BaseObservation(GridObjects):
         "gen_p_detached",
         "storage_p_detached",
         # soft_overflow_threshold
-        "timestep_protection_engaged"
+        "timestep_protection_engaged",
+        # flexibility / demand response, new in 1.12.x
+        "target_flex",
+        "actual_flex"
     ]
 
     def __init__(self,
@@ -734,6 +755,11 @@ class BaseObservation(GridObjects):
         # redispatching
         self.target_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
         self.actual_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
+        
+        # Flexibility / demand response, new in 1.12.x
+        # if cls.load_flexibility_is_available:
+        self.target_flex = np.empty(shape=cls.n_load, dtype=dt_float)
+        self.actual_flex = np.empty(shape=cls.n_load, dtype=dt_float)
 
         # storage unit
         self.storage_charge = np.empty(shape=cls.n_storage, dtype=dt_float)  # in MWh
@@ -902,8 +928,8 @@ class BaseObservation(GridObjects):
         storage_id=None,
         substation_id=None,
     ) -> Dict[Literal["p", "q", "v", "theta", "bus", "sub_id", "actual_dispatch", "target_dispatch",
-                      "maintenance", "cooldown_time", "storage_power", "storage_charge", 
-                      "storage_power_target", "storage_theta", 
+                      "actual_flex", "target_flex", "maintenance", "cooldown_time", "storage_power", 
+                      "storage_charge", "storage_power_target", "storage_theta", 
                       "topo_vect", "nb_bus", "origin", "extremity"],
               Union[int, float, Dict[Literal["p", "q", "v", "a", "sub_id", "bus", "theta"], Union[int, float]]]
               ]:
@@ -956,6 +982,9 @@ class BaseObservation(GridObjects):
                   the detachment of this load (if detachement is allowed in the environment)
                 - "q_detached" (>= 1.11.0) amount of MVAr detached from the grid cause by 
                   the detachment of this load (if detachement is allowed in the environment)
+                - "actual_flex" (new in 1.12.x) the actual flexibility implemented for this load
+                - "target_flex" (new in 1.12.x) the target flexibility (cumulation of all previously asked 
+                   flexibility by the agent) for this load
 
             - if a generator is inspected, then the keys are:
 
@@ -1072,6 +1101,8 @@ class BaseObservation(GridObjects):
                 "p": self.load_p[load_id],
                 "q": self.load_q[load_id],
                 "v": self.load_v[load_id],
+                "target_flex": self.target_flex[load_id],
+                "actual_flex": self.actual_flex[load_id],
                 "bus": self.topo_vect[self.load_pos_topo_vect[load_id]],
                 "sub_id": cls.load_to_subid[load_id],
             }
@@ -1364,6 +1395,26 @@ class BaseObservation(GridObjects):
                 pass 
         
     @classmethod
+    def _aux_process_grid2op_compat_1_12_x(cls):
+        cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+
+        for el in [
+            # flexibility, new in 1.12.x
+            "load_size",
+            "load_flexible",
+            "load_max_ramp_up",
+            "load_max_ramp_down",
+            "load_cost_per_MW",
+            "target_flex",
+            "actual_flex",
+        ]:
+            try:
+                cls.attr_list_vect.remove(el)
+            except ValueError as exc_:
+                # this attribute was not there in the first place
+                pass 
+    
+    @classmethod
     def process_grid2op_compat(cls) -> None:
         super().process_grid2op_compat()
         glop_ver = cls._get_grid2op_version_as_version_obj()
@@ -1395,6 +1446,10 @@ class BaseObservation(GridObjects):
         if glop_ver < cls.MIN_VERSION_DETACH:
             # detachment has been added in grid2op 1.11
             cls._aux_process_grid2op_compat_1_11_0()
+            
+        if glop_ver < cls.MIN_VERSION_FLEX:
+            # flexibility / demand response has been added in grid2op 1.12.x
+            cls._aux_process_grid2op_compat_1_12_x()
             
         cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
         cls.attr_list_set = set(cls.attr_list_vect)
@@ -1534,6 +1589,11 @@ class BaseObservation(GridObjects):
             self.load_q_detached[:] = 0.
             self.gen_p_detached[:] = 0.
             self.storage_p_detached[:] = 0.
+
+        # flexibility, new in 1.12.x
+        # if type(self).load_flexibility_is_available:
+        self.target_flex[:] = 0.0
+        self.actual_flex[:] = 0.0
         
     def set_game_over(self,
                       env: Optional["grid2op.Environment.Environment"]=None) -> None:
@@ -1685,6 +1745,11 @@ class BaseObservation(GridObjects):
             self.load_q_detached[:] = 0.
             self.gen_p_detached[:] = 0.
             self.storage_p_detached[:] = 0.
+
+        # flexibility, new in 1.12.x
+        # if type(self).load_flexibility_is_available:
+        self.target_flex[:] = 0.0
+        self.actual_flex[:] = 0.0
         
     def __compare_stats(self, other: Self, name: str) -> bool:
         attr_me = getattr(self, name)
@@ -2941,6 +3006,14 @@ class BaseObservation(GridObjects):
                 ("q_detached", self.load_q_detached),
             ]
         else:
+            nodes_prop = []
+        
+        if type(self).load_flexibility_is_available:
+            nodes_prop.extend([
+                ("target_flex", self.target_flex),
+                ("actual_flcex", self.actual_flex)
+            ])
+        if nodes_prop == []:
             nodes_prop = None
             
         edges_prop=[
@@ -4028,6 +4101,11 @@ class BaseObservation(GridObjects):
             self._dictionnarized["max_step"] = self.max_step
             
             # TODO shedding: add relevant attributes
+            
+            # Flexibility, new in 1.12.x
+            self._dictionnarized["flexibility"] = {}
+            self._dictionnarized["flexibility"]["target_flex"] = self.target_flex
+            self._dictionnarized["flexibility"]["actual_flex"] = self.actual_flex
 
         return self._dictionnarized
 
@@ -4503,6 +4581,11 @@ class BaseObservation(GridObjects):
         # redispatching
         self.target_dispatch[:] = env._target_dispatch
         self.actual_dispatch[:] = env._actual_dispatch
+        
+        # Flexibility, new in 1.12.x
+        # if type(self).load_flexibility_is_available:
+        self.target_flex[:] = env._target_flex
+        self.actual_flex[:] = env._actual_flex
 
         self._thermal_limit[:] = env.get_thermal_limit()
 
@@ -5293,3 +5376,19 @@ class BaseObservation(GridObjects):
                         pass
             cls._update_value_set()
         return super().process_detachment()
+    
+    # @classmethod
+    # def process_flexibility(cls):
+    #     if not cls.load_flexibility_is_available:
+    #         # this is really important, otherwise things from grid2op base types will be affected
+    #         cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
+    #         # remove the detachment from the list to vector
+    #         for el in ["target_flex",
+    #                     "actual_flex"]:
+    #             if el in cls.attr_list_vect:
+    #                 try:
+    #                     cls.attr_list_vect.remove(el)
+    #                 except ValueError:
+    #                     pass
+    #         cls._update_value_set()
+    #     return super().process_flexibility()

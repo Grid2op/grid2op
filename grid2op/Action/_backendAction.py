@@ -6,12 +6,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from collections.abc import Callable
 import copy
 import numpy as np
-from typing import List, Tuple, Union
+from typing import  Tuple, Union
 
-from grid2op.typing_variables import BACKEND_TYPE
 try:
     from typing import Self
 except ImportError:
@@ -684,6 +682,14 @@ class _BackendAction(GridObjects):
         """
         self.prod_p.change_val(new_redispatching)
         
+    def set_flexibility(self, new_flexibility):
+        """
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+            
+            This is called by the environment, do not alter.
+        """
+        self.load_p.change_val(new_flexibility)
+        
     def set_storage(self, new_storage):
         """
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
@@ -882,9 +888,15 @@ class _BackendAction(GridObjects):
         if modif_inj:
             self._aux_iadd_inj(other._dict_inj)
             
-        # Ib change the injection aka redispatching
+        # Ib change the (generator) injection aka redispatching
         if other._modif_redispatch:
             self.prod_p.change_val(redispatching)
+            self._is_cached = False
+            
+        # Ib2 change the (load) injection aka flexibility
+        if cls.load_flexibility_is_available and other._modif_load_flexibility:
+            flexibility = other._private_load_flexibility
+            self.load_p.change_val(flexibility)
             self._is_cached = False
 
         # Ic storage unit

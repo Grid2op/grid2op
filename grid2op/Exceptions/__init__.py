@@ -15,6 +15,7 @@ __all__ = [
     "MultiEnvException",
     "IllegalAction",
     "IllegalRedispatching",
+    "IllegalFlexibility", # new in 1.12.x
     "OnProduction",
     "VSetpointModified",
     "ActiveSetPointAbovePmax",
@@ -27,6 +28,7 @@ __all__ = [
     "GeneratorTurnedOffTooSoon",
     "GeneratorTurnedOnTooSoon",
     "InvalidRedispatching",
+    "InvalidFlexibility", # new in 1.12.x
     "InvalidBusStatus",
     "InvalidNumberOfObjectEnds",
     "InvalidNumberOfLines",
@@ -100,6 +102,7 @@ from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         InvalidReconnection,
                                                         UnitCommitorRedispachingNotAvailable,
                                                         IllegalRedispatching,
+                                                        IllegalFlexibility,
                                                         )
 
 from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
@@ -118,7 +121,8 @@ from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
                                                           AmbiguousAction,
                                                           NonFiniteElement,
                                                           AmbiguousActionRaiseAlert,
-                                                          InvalidBackendCallback)
+                                                          InvalidBackendCallback,
+                                                          InvalidFlexibility)
 
 from grid2op.Exceptions.observationExceptions import (BaseObservationError,
                                                       NoForecastAvailable,
