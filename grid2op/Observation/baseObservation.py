@@ -13,14 +13,13 @@ import networkx
 from abc import abstractmethod
 import numpy as np
 from scipy.sparse import csr_matrix
-from typing import Optional
 from packaging import version
 
-from typing import Dict, Union, Tuple, List, Optional, Any, Literal
+from typing import Dict, Union, Tuple, List, Optional, Literal
 try:
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self # type: ignore
 
 import grid2op  # for type hints
 import grid2op.Environment  # for type hints
@@ -578,16 +577,102 @@ class BaseObservation(GridObjects):
     attr_list_vect = None
     # value to assess if two observations are equal
     _tol_equal = 1e-3
+    MAX_INT = dt_int(np.iinfo(dt_int).max)
+    
+    attr_simple_cpy = [
+        "max_step",
+        "current_step",
+        "support_theta",
+        "day_of_week",
+        "minute_of_hour",
+        "hour_of_day",
+        "day",
+        "month",
+        "year",
+        "delta_time",
+        "_is_done",
+        "_prev_conn"
+    ]
+
+    attr_vect_cpy = [
+        "storage_theta",
+        "gen_theta",
+        "load_theta",
+        "theta_ex",
+        "theta_or",
+        "curtailment_limit",
+        "curtailment",
+        "gen_p_before_curtail",
+        "_thermal_limit",
+        "is_alarm_illegal",
+        "time_since_last_alarm",
+        "last_alarm",
+        "attention_budget",
+        "was_alarm_used_after_game_over",
+        # alert (new in 1.9.1)
+        "active_alert",
+        "attack_under_alert",
+        "time_since_last_alert",
+        "alert_duration",
+        "total_number_of_alert",
+        "time_since_last_attack",
+        "was_alert_used_after_attack",
+        # other
+        "storage_power",
+        "storage_power_target",
+        "storage_charge",
+        "actual_dispatch",
+        "target_dispatch",
+        "duration_next_maintenance",
+        "time_next_maintenance",
+        "time_before_cooldown_sub",
+        "time_before_cooldown_line",
+        "rho",
+        "a_ex",
+        "v_ex",
+        "q_ex",
+        "p_ex",
+        "a_or",
+        "v_or",
+        "q_or",
+        "p_or",
+        "load_p",
+        "load_q",
+        "load_v",
+        "gen_p",
+        "gen_q",
+        "gen_v",
+        "topo_vect",
+        "line_status",
+        "timestep_overflow",
+        "gen_margin_up",
+        "gen_margin_down",
+        "curtailment_limit_effective",
+        # slack (>= 1.11.0)
+        "gen_p_delta",
+        # detachment (>= 1.11.0)
+        "load_detached",
+        "gen_detached",
+        "storage_detached",
+        "load_p_detached",
+        "load_q_detached",
+        "gen_p_detached",
+        "storage_p_detached",
+        # soft_overflow_threshold
+        "timestep_protection_engaged"
+    ]
 
     def __init__(self,
                  obs_env=None,
                  action_helper=None,
                  random_prng=None,
-                 kwargs_env=None):
+                 kwargs_env=None,
+                 **kwargs):
         GridObjects.__init__(self)
         self._is_done = True
         self.random_prng = random_prng
-
+        self.__kwargs = kwargs
+        
         self.action_helper = action_helper
         # handles the forecasts here
         self._forecasted_grid_act = {}
@@ -643,8 +728,8 @@ class BaseObservation(GridObjects):
         # cool down and reconnection time after hard overflow, soft overflow or cascading failure
         self.time_before_cooldown_line = np.empty(shape=cls.n_line, dtype=dt_int)
         self.time_before_cooldown_sub = np.empty(shape=cls.n_sub, dtype=dt_int)
-        self.time_next_maintenance = 1 * self.time_before_cooldown_line
-        self.duration_next_maintenance = 1 * self.time_before_cooldown_line
+        self.time_next_maintenance = np.empty(shape=cls.n_line, dtype=dt_int)
+        self.duration_next_maintenance = np.empty(shape=cls.n_line, dtype=dt_int)
 
         # redispatching
         self.target_dispatch = np.empty(shape=cls.n_gen, dtype=dt_float)
@@ -704,7 +789,7 @@ class BaseObservation(GridObjects):
 
         # counter
         self.current_step = dt_int(0)
-        self.max_step = dt_int(np.iinfo(dt_int).max)
+        self.max_step = cls.MAX_INT
         self.delta_time = dt_float(5.0)
 
         # slack (1.11.0)
@@ -723,97 +808,15 @@ class BaseObservation(GridObjects):
         self._prev_conn = None
         
     def _aux_copy(self, other : Self) -> None:
-        attr_simple = [
-            "max_step",
-            "current_step",
-            "support_theta",
-            "day_of_week",
-            "minute_of_hour",
-            "hour_of_day",
-            "day",
-            "month",
-            "year",
-            "delta_time",
-            "_is_done",
-            "_prev_conn"
-        ]
-
-        attr_vect = [
-            "storage_theta",
-            "gen_theta",
-            "load_theta",
-            "theta_ex",
-            "theta_or",
-            "curtailment_limit",
-            "curtailment",
-            "gen_p_before_curtail",
-            "_thermal_limit",
-            "is_alarm_illegal",
-            "time_since_last_alarm",
-            "last_alarm",
-            "attention_budget",
-            "was_alarm_used_after_game_over",
-            # alert (new in 1.9.1)
-            "active_alert",
-            "attack_under_alert",
-            "time_since_last_alert",
-            "alert_duration",
-            "total_number_of_alert",
-            "time_since_last_attack",
-            "was_alert_used_after_attack",
-            # other
-            "storage_power",
-            "storage_power_target",
-            "storage_charge",
-            "actual_dispatch",
-            "target_dispatch",
-            "duration_next_maintenance",
-            "time_next_maintenance",
-            "time_before_cooldown_sub",
-            "time_before_cooldown_line",
-            "rho",
-            "a_ex",
-            "v_ex",
-            "q_ex",
-            "p_ex",
-            "a_or",
-            "v_or",
-            "q_or",
-            "p_or",
-            "load_p",
-            "load_q",
-            "load_v",
-            "gen_p",
-            "gen_q",
-            "gen_v",
-            "topo_vect",
-            "line_status",
-            "timestep_overflow",
-            "gen_margin_up",
-            "gen_margin_down",
-            "curtailment_limit_effective",
-            # slack (>= 1.11.0)
-            "gen_p_delta",
-            # detachment (>= 1.11.0)
-            "load_detached",
-            "gen_detached",
-            "storage_detached",
-            "load_p_detached",
-            "load_q_detached",
-            "gen_p_detached",
-            "storage_p_detached",
-            # soft_overflow_threshold
-            "timestep_protection_engaged"
-        ]
-
-        if type(self).shunts_data_available:
-            attr_vect += ["_shunt_bus", "_shunt_v", "_shunt_q", "_shunt_p"]
-
-        for attr_nm in attr_simple:
+        cls = type(self)
+        for attr_nm in cls.attr_simple_cpy:
             setattr(other, attr_nm, copy.deepcopy(getattr(self, attr_nm)))
 
-        for attr_nm in attr_vect:
-            getattr(other, attr_nm)[:] = getattr(self, attr_nm)
+        for attr_nm in cls.attr_vect_cpy:
+            if hasattr(self, attr_nm):
+                # for old code (eg lightsim2grid legacy)
+                # some attribute did not exist
+                getattr(other, attr_nm)[:] = getattr(self, attr_nm)
 
     def change_reward(self, reward_func: "grid2op.Reward.BaseReward"):
         """Allow to change the reward used when calling :func:`BaseObservation.simulate`
@@ -866,8 +869,12 @@ class BaseObservation(GridObjects):
     def __deepcopy__(self, memodict={}) -> Self:
         res = type(self)(obs_env=self._obs_env,
                          action_helper=self.action_helper,
-                         kwargs_env=self._ptr_kwargs_env)
+                         kwargs_env=self._ptr_kwargs_env,
+                         **self.__kwargs)
 
+        # copy the kwargs (reference)
+        res.__kwargs = self.__kwargs
+        
         # copy regular attributes
         self._aux_copy(other=res)
 
@@ -1097,7 +1104,7 @@ class BaseObservation(GridObjects):
                 "bus": self.topo_vect[self.gen_pos_topo_vect[gen_id]],
                 "sub_id": cls.gen_to_subid[gen_id],
                 "target_dispatch": self.target_dispatch[gen_id],
-                "actual_dispatch": self.target_dispatch[gen_id],
+                "actual_dispatch": self.actual_dispatch[gen_id],
                 "curtailment": self.curtailment[gen_id],
                 "curtailment_limit": self.curtailment_limit[gen_id],
                 "curtailment_limit_effective": self.curtailment_limit_effective[gen_id],
@@ -1207,18 +1214,26 @@ class BaseObservation(GridObjects):
     
     @classmethod
     def process_shunt_static_data(cls) -> None:
+        shunts_attr = ["_shunt_p", "_shunt_q", "_shunt_v", "_shunt_bus"]
         if not cls.shunts_data_available:
+            # shunts are not available
             # this is really important, otherwise things from grid2op base types will be affected
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
             cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
             # remove the shunts from the list to vector
-            for el in ["_shunt_p", "_shunt_q", "_shunt_v", "_shunt_bus"]:
+            for el in shunts_attr:
                 if el in cls.attr_list_vect:
                     try:
                         cls.attr_list_vect.remove(el)
                     except ValueError:
                         pass
             cls.attr_list_set = set(cls.attr_list_vect)
+        else:
+            # shunts are available
+            cls.attr_vect_cpy = copy.deepcopy(cls.attr_vect_cpy)
+            for el in shunts_attr:
+                if el not in cls.attr_vect_cpy:
+                    cls.attr_vect_cpy.append(el)
         return super().process_shunt_static_data()
     
     @classmethod
@@ -3970,20 +3985,20 @@ class BaseObservation(GridObjects):
             ] = self.actual_dispatch
 
             # storage
-            self._dictionnarized["storage_charge"] = 1.0 * self.storage_charge
+            self._dictionnarized["storage_charge"] = self.storage_charge.copy()
             self._dictionnarized["storage_power_target"] = (
-                1.0 * self.storage_power_target
+                self.storage_power_target.copy()
             )
-            self._dictionnarized["storage_power"] = 1.0 * self.storage_power
+            self._dictionnarized["storage_power"] = self.storage_power.copy()
 
             # curtailment
             self._dictionnarized["gen_p_before_curtail"] = (
-                1.0 * self.gen_p_before_curtail
+                self.gen_p_before_curtail.copy()
             )
-            self._dictionnarized["curtailment"] = 1.0 * self.curtailment
-            self._dictionnarized["curtailment_limit"] = 1.0 * self.curtailment_limit
+            self._dictionnarized["curtailment"] = self.curtailment.copy()
+            self._dictionnarized["curtailment_limit"] = self.curtailment_limit.copy()
             self._dictionnarized["curtailment_limit_effective"] = (
-                1.0 * self.curtailment_limit_effective
+                self.curtailment_limit_effective.copy()
             )
 
             # alarm / attention budget
@@ -4312,7 +4327,7 @@ class BaseObservation(GridObjects):
             thermal_limit = obs.thermal_limit
 
         """
-        res = 1.0 * self._thermal_limit
+        res = self._thermal_limit.copy()
         res.flags.writeable = False
         return res
 
@@ -4426,17 +4441,17 @@ class BaseObservation(GridObjects):
         # some parameters used for the "forecast env"
         # but not directly accessible in the observation
         self._env_internal_params = {
-            "_storage_previous_charge": 1.0 * env._storage_previous_charge,
-            "_amount_storage": 1.0 * env._amount_storage,
-            "_amount_storage_prev": 1.0 * env._amount_storage_prev,
-            "_sum_curtailment_mw": 1.0 * env._sum_curtailment_mw,
-            "_sum_curtailment_mw_prev": 1.0 * env._sum_curtailment_mw_prev,
-            "_detached_elements_mw": 1.0 * env._detached_elements_mw,
-            "_detached_elements_mw_prev": 1.0 * env._detached_elements_mw_prev,
+            "_storage_previous_charge": env._storage_previous_charge.copy(),
+            "_amount_storage": env._amount_storage,
+            "_amount_storage_prev": env._amount_storage_prev,
+            "_sum_curtailment_mw": env._sum_curtailment_mw.copy(),
+            "_sum_curtailment_mw_prev": env._sum_curtailment_mw_prev.copy(),
+            "_detached_elements_mw": env._detached_elements_mw.copy(),
+            "_detached_elements_mw_prev": env._detached_elements_mw_prev.copy(),
             "_line_status_env": env.get_current_line_status().astype(dt_int),  # false -> 0 true -> 1
-            "_gen_activeprod_t": 1.0 * env._gen_activeprod_t,
-            "_gen_activeprod_t_redisp": 1.0 * env._gen_activeprod_t_redisp,
-            "_already_modified_gen": copy.deepcopy(env._already_modified_gen),
+            "_gen_activeprod_t": env._gen_activeprod_t.copy(),
+            "_gen_activeprod_t_redisp": env._gen_activeprod_t_redisp.copy(),
+            "_already_modified_gen": env._already_modified_gen.copy(),
         }
         self._env_internal_params["_line_status_env"]  *= 2  # false -> 0 true -> 2
         self._env_internal_params["_line_status_env"] -= 1  # false -> -1; true -> 1
@@ -4516,7 +4531,7 @@ class BaseObservation(GridObjects):
             self.curtailment_limit[:] = 1.0
             self.curtailment_limit_effective[:] = 1.0
 
-        self.delta_time = dt_float(1.0 * env.delta_time_seconds / 60.0)
+        self.delta_time = dt_float(env.delta_time_seconds / 60.0)
 
         # slack (1.11.0)
         self.gen_p_delta[:] = env._delta_gen_p
@@ -4531,8 +4546,10 @@ class BaseObservation(GridObjects):
             self.gen_p_detached[:] = env._gen_p_detached
             self.storage_p_detached[:] = env._storage_p_detached
         
-        # 1.11.0 
-        self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        # 1.11.0        
+        # self._prev_conn = copy.deepcopy(env._previous_conn_state)
+        # self._prev_conn = env._previous_conn_state
+        self._prev_conn = env._previous_conn_state.copy()
         self._prev_conn.prevent_modification()  # I do not want to modify this accidently
         
         # handles forecasts here
@@ -4559,7 +4576,7 @@ class BaseObservation(GridObjects):
     
     @staticmethod
     def _get_array_for_forecast(arr, mask_detached, prev_val) -> np.ndarray:
-        res = (1.0 * prev_val).astype(dt_float)
+        res = prev_val.copy().astype(dt_float)
         is_conn = ~mask_detached
         res[is_conn] = arr[is_conn]
         return res
@@ -4567,6 +4584,7 @@ class BaseObservation(GridObjects):
     def _update_forecast(self, env: "grid2op.Environment.BaseEnv", with_forecast: bool) -> None:
         if not with_forecast:
             return
+        
         cls = type(self)
         inj_action = {}
         dict_ = {}
@@ -4686,11 +4704,11 @@ class BaseObservation(GridObjects):
             dict_ref = self._forecasted_inj[0][1]['injection'] 
         else:
             # case of perfect forecast and do nothing data for example
-            dict_ref = {"prod_p": 1. * self.gen_p,
-                        "load_p": 1. * self.load_p,
-                        "load_q": 1. * self.load_q} 
+            dict_ref = {"prod_p": self.gen_p.copy(),
+                        "load_p": self.load_p.copy(),
+                        "load_q": self.load_q.copy()} 
         nb_el = dict_ref[name].shape[0]
-        prev = 1.0 * dict_ref[name]
+        prev = dict_ref[name].copy()
         res = np.zeros((nb_h, nb_el))
         for h in range(nb_h):
             if "injection" in self._forecasted_inj[h][1]:
@@ -4698,10 +4716,10 @@ class BaseObservation(GridObjects):
             else:
                 dict_tmp = {}
             if name in dict_tmp:
-                this_row = 1.0 * dict_tmp[name]
-                prev = 1.0 * this_row
+                this_row = dict_tmp[name].copy()
+                prev = this_row.copy()
             else:
-                this_row = 1.0 * prev
+                this_row = prev.copy()
             res[h,:] = this_row
         return res
     
@@ -5029,12 +5047,21 @@ class BaseObservation(GridObjects):
                              load_q=load_q,
                              prod_p=prod_p,
                              prod_v=prod_v,
-                             maintenance=maintenance)
+                             maintenance=maintenance,
+                             )
         ch.max_iter = ch.real_data.max_iter
+        
+
+        delta_t_step = datetime.timedelta(minutes=float(self.delta_time))
+        init_dt = self.get_time_stamp() - delta_t_step
+        ch._real_data.start_datetime = init_dt
+        ch._real_data.current_datetime = init_dt
+        ch._real_data.time_interval = delta_t_step
         
         backend = self._obs_env.backend.copy_public()
         backend._is_loaded = True
         nb_highres_called = self._obs_env.highres_sim_counter.nb_highres_called
+        
         res = ForecastEnv(**self._ptr_kwargs_env,
                           backend=backend,
                           chronics_handler=ch,

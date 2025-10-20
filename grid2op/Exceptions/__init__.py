@@ -14,6 +14,7 @@ __all__ = [
     "UnknownEnv",
     "MultiEnvException",
     "IllegalAction",
+    "IllegalRedispatching",
     "OnProduction",
     "VSetpointModified",
     "ActiveSetPointAbovePmax",
@@ -63,7 +64,9 @@ __all__ = [
     "SomeGeneratorAbovePmax",
     "SomeGeneratorBelowPmin",
     "SomeGeneratorAboveRampmax", 
-    "SomeGeneratorBelowRampmin"
+    "SomeGeneratorBelowRampmin",
+    "ImpossibleRedispatching",
+    "InvalidBackendCallback",
 ]
 
 from grid2op.Exceptions.grid2OpException import Grid2OpException
@@ -84,7 +87,8 @@ from grid2op.Exceptions.envExceptions import (EnvError,
                                               SomeGeneratorAbovePmax,
                                               SomeGeneratorBelowPmin,
                                               SomeGeneratorAboveRampmax, 
-                                              SomeGeneratorBelowRampmin)
+                                              SomeGeneratorBelowRampmin,
+                                              ImpossibleRedispatching)
 
 from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         OnProduction,
@@ -95,6 +99,7 @@ from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         OnLines,
                                                         InvalidReconnection,
                                                         UnitCommitorRedispachingNotAvailable,
+                                                        IllegalRedispatching,
                                                         )
 
 from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
@@ -112,7 +117,8 @@ from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
                                                           InvalidStorage,
                                                           AmbiguousAction,
                                                           NonFiniteElement,
-                                                          AmbiguousActionRaiseAlert)
+                                                          AmbiguousActionRaiseAlert,
+                                                          InvalidBackendCallback)
 
 from grid2op.Exceptions.observationExceptions import (BaseObservationError,
                                                       NoForecastAvailable,

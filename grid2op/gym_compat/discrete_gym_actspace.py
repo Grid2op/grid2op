@@ -8,7 +8,9 @@
 
 import copy
 import warnings
-from typing import Literal, Dict, Tuple, Any, Optional
+from typing import Literal, Dict, Tuple, Optional
+
+import numpy as np
 
 from grid2op.Exceptions import Grid2OpException
 from grid2op.Action import ActionSpace, BaseAction
@@ -337,7 +339,16 @@ class __AuxDiscreteActSpace:
             The corresponding grid2op action.
 
         """
-        res = self.converter.all_actions[int(gym_act)]
+        if isinstance(gym_act, np.ndarray):
+            id_ = gym_act.ravel()
+            if len(id_) > 1:
+                raise Grid2OpException(f"dim should be 1, found {gym_act.shape}")
+            if len(id_) == 0:
+                raise Grid2OpException("dim should be 1, found 0")
+            id_ = id_[0]
+        else:
+            id_ = int(gym_act)
+        res = self.converter.all_actions[id_]
         return res
 
     def close(self) -> None:
@@ -349,7 +360,7 @@ class __AuxDiscreteActSpace:
 
 
 if GYM_AVAILABLE:
-    from gym.spaces import Discrete as LegGymDiscrete
+    from gym.spaces import Discrete as LegGymDiscrete # type: ignore
     from grid2op.gym_compat.box_gym_actspace import BoxLegacyGymActSpace
     from grid2op.gym_compat.continuous_to_discrete import ContinuousToDiscreteConverterLegacyGym
     DiscreteActSpaceLegacyGym = type("DiscreteActSpaceLegacyGym",
@@ -365,7 +376,7 @@ if GYM_AVAILABLE:
         
 
 if GYMNASIUM_AVAILABLE:
-    from gymnasium.spaces import Discrete
+    from gymnasium.spaces import Discrete # type: ignore
     from grid2op.gym_compat.box_gym_actspace import BoxGymnasiumActSpace
     from grid2op.gym_compat.continuous_to_discrete import  ContinuousToDiscreteConverterGymnasium
     DiscreteActSpaceGymnasium = type("DiscreteActSpaceGymnasium",

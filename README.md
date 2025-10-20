@@ -115,7 +115,7 @@ Its main features are:
 * can adopt any powergrid modeling, especially Alternating Current (AC) and Direct Current (DC) approximation to
   when performing the compitations
 * supports changes of powerflow solvers, actions, observations to better suit any need in performing power system operations modeling
-* has an RL-focused interface, compatible with [OpenAI-gym](https://gym.openai.com/): same interface for the
+* has an RL-focused interface, compatible with [gymnasium](https://gymnasium.farama.org/index.html): same interface for the
   Environment class.
 * parameters, game rules or type of actions are perfectly parametrizable
 * can adapt to any kind of input data, in various format (might require the rewriting of a class)
@@ -126,6 +126,12 @@ Grid2Op relies on an open source powerflow solver ([PandaPower](https://www.pand
 but is also compatible with other *Backend*. If you have at your disposal another powerflow solver,
 the documentation of [grid2op/Backend](grid2op/Backend/Backend.py) can help you integrate it into a proper "Backend"
 and have Grid2Op using this powerflow instead of PandaPower.
+
+As of writing, the publically availavble solvers are:
+
+- lightsim2grid : https://github.com/Grid2op/lightsim2grid
+- powsybl : https://github.com/Grid2op/pypowsybl2grid
+- powermodels (julia) : https://github.com/MOSSLab-MIT/PandaModelsBackend
 
 ## Getting Started
 
@@ -306,14 +312,14 @@ The unit tests includes testing, on linux machines the correct integration of gr
 * python 3.10
 * python 3.11
 * python 3.12
+* python 3.13
 
-On all of these cases, we tested grid2op on all available numpy versions >= 1.20 (**nb** available numpy versions depend
+On all of these cases, we tested grid2op on all available numpy versions >= 2.0 (**nb** available numpy versions depend
 on python version).
 
-The complete test suit is run on linux with the latest numpy version on python 3.10.
+The complete test suit is run on linux with the latest numpy version on python 3.12.
 
 ### Known issues
-
 
 #### Multi processing
 Due to the underlying behaviour of the "multiprocessing" package on windows based python versions,
@@ -326,6 +332,18 @@ environment with `grid2op.make(..., experimental_read_from_local_dir=True)` (see
 Sometimes, on some configuration (python version) we do not recommend to use grid2op with pandas>=2.2
 If you encounter any trouble, please downgrade to pandas<2.2. This behaviour occured in our continuous 
 integration environment for python >=3.9 but could not be reproduced locally.
+
+#### python 3.8
+
+From grid2op 1.12.1, the python 3.8 install is a bit more complicated. 
+
+If you want to install it from source, you have to delete "pyproject.toml" file. 
+
+Then rename the "pyproject_38.toml" file to (new name) "pyproject.toml".
+
+Finally "pip install grid2op" normally. 
+
+This is due to the "cleaning" of the installation process that now uses only *pyproject.toml*. And because pyproject has changed the way it identifies "licenses" (before it uses "license" with a table, but this way is deprecated, now it uses "license-files", but it is not supported by a setuptools usable in python 3.8)
 
 #### python 3.11
 Some version of grid2op (*eg* 1.6.3) are not compatible with python 3.10 or 3.11.

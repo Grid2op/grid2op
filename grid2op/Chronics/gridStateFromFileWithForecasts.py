@@ -6,17 +6,14 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import os
 import copy
 import numpy as np
-import pandas as pd
 from datetime import timedelta
 
-from grid2op.dtypes import dt_float, dt_bool
+from grid2op.dtypes import dt_float
 from grid2op.Exceptions import (
     EnvError,
     IncorrectNumberOfLoads,
-    IncorrectNumberOfLines,
     IncorrectNumberOfGenerators,
 )
 from grid2op.Exceptions import ChronicsError
@@ -334,27 +331,20 @@ class GridStateFromFileWithForecasts(GridStateFromFile):
                 self._load_next_chunk_in_memory_forecast()
             except StopIteration as exc_:
                 raise exc_
+            
         res = []
         for h_id, h in enumerate(self._h_forecast):
             res_d = {}
             dict_ = {}
             indx_to_look = self._nb_forecast * self.current_index + h_id
             if self.load_p_forecast is not None:
-                dict_["load_p"] = dt_float(
-                    1.0 * self.load_p_forecast[indx_to_look, :]
-                )
+                dict_["load_p"] = self.load_p_forecast[indx_to_look, :].astype(dt_float)
             if self.load_q_forecast is not None:
-                dict_["load_q"] = dt_float(
-                    1.0 * self.load_q_forecast[indx_to_look, :]
-                )
+                dict_["load_q"] = self.load_q_forecast[indx_to_look, :].astype(dt_float)
             if self.prod_p_forecast is not None:
-                dict_["prod_p"] = dt_float(
-                    1.0 * self.prod_p_forecast[indx_to_look, :]
-                )
+                dict_["prod_p"] = self.prod_p_forecast[indx_to_look, :].astype(dt_float)
             if self.prod_v_forecast is not None:
-                dict_["prod_v"] = dt_float(
-                    1.0 * self.prod_v_forecast[indx_to_look, :]
-                )
+                dict_["prod_v"] = self.prod_v_forecast[indx_to_look, :].astype(dt_float)
             if dict_:
                 res_d["injection"] = dict_
 

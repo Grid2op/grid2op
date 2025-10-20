@@ -1234,9 +1234,9 @@ class GridStateFromFile(GridValue):
         if not os.path.exists(maybe_path):
             return None
         if self.action_space is None:
-            raise Grid2OpException(f"We detected an action to set the intial state of the grid "
-                                   f"but we cannot build it because the 'action_space' of the time"
-                                   f"serie is not set.")
+            raise Grid2OpException("We detected an action to set the intial state of the grid "
+                                   "but we cannot build it because the 'action_space' of the time"
+                                   "serie is not set.")
         try:
             with open(maybe_path, "r", encoding="utf-8") as f:
                 maybe_act_dict = json.load(f)
@@ -1245,9 +1245,9 @@ class GridStateFromFile(GridValue):
                                    f"Check file located at {maybe_path}") from exc_
         
         try:
-            act : BaseAction = self.action_space(maybe_act_dict,
+            act : BaseAction = self.action_space(maybe_act_dict,  # pylint: disable=not-callable
                                                  _names_chronics_to_backend=names_chronics_to_backend,
-                                                 check_legal=False)
+                                                 check_legal=False)  # pylint: disable=not-callable
         except Grid2OpException as exc_:
             raise Grid2OpException(f"Impossible to build the action to set the grid. Please fix the "
                                    f"file located at {maybe_path}.") from exc_

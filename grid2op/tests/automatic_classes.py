@@ -8,13 +8,15 @@
 
 import os
 import multiprocessing as mp
-from typing import Optional
+from typing import Optional, Type
 import warnings
 import unittest
 import importlib
 import numpy as np
-from gymnasium.vector import AsyncVectorEnv
-
+from grid2op.Space import GridObjects
+from gymnasium.vector import AsyncVectorEnv # type: ignore
+from packaging import version
+from importlib.metadata import version as version_metadata
 
 import grid2op
 from grid2op._glop_platform_info import _IS_WINDOWS
@@ -28,7 +30,7 @@ from grid2op.Environment import (Environment,
                                  TimedOutEnvironment,
                                  SingleEnvMultiProcess,
                                  MultiMixEnvironment)
-from grid2op.Exceptions import NoForecastAvailable
+from grid2op.Exceptions import NoForecastAvailable, EnvError
 from grid2op.gym_compat import (BoxGymActSpace,
                                 BoxGymObsSpace,
                                 DiscreteActSpace,
@@ -76,7 +78,7 @@ class _ThisAgentTest(BaseAgent):
             this_class_act = getattr(this_module, self._name_cls_act)
         else:
             raise RuntimeError(f"class {self._name_cls_act} not found")
-        res = super().act(observation, reward, done)
+        res = self.action_space()
         assert isinstance(res, this_class_act)
         return res
 
@@ -86,7 +88,9 @@ class AutoClassMakeTester(unittest.TestCase):
     def test_in_make(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            env = grid2op.make("l2rpn_case14_sandbox", test=True, class_in_file=False)
+            env = grid2op.make("l2rpn_case14_sandbox",
+                               test=True,
+                               class_in_file=False)
         assert env._read_from_local_dir is None
         assert not env.classes_are_in_files()
     
@@ -118,8 +122,14 @@ class AutoClassInFileTester(unittest.TestCase):
         if env is None:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
-                env = grid2op.make(self.get_env_name(), test=True, class_in_file=True)
+                env = grid2op.make(self.get_env_name(),
+                                   test=True,
+                                   class_in_file=True)
+            _ = env.reset(seed=0, options={"time serie id": 0})
         assert env.classes_are_in_files()
+        
+        self.this_numpy_version = version.parse(version_metadata("numpy"))
+        self.numpy2_version = version.parse("2.0.0")
         return env
     
     def _aux_get_obs_cls(self):
@@ -170,6 +180,16 @@ class AutoClassInFileTester(unittest.TestCase):
                       None, # VoltageOnlyAction not in env
                       None, # ForecastEnv_ not in env
                       ]
+        try:
+            # does not work well for multi mix apparently
+            obs = env.get_obs()
+        except EnvError:
+            obs = None
+        
+        if obs is not None:
+            # first test: the shunts are properly handled
+            assert  '_shunt_p' in type(obs).attr_vect_cpy
+        
         # NB: these imports needs to be consistent with what is done in
         # base_env.generate_classes() and gridobj.init_grid(...)
         supermodule_nm, module_nm = os.path.split(env._read_from_local_dir)
@@ -177,7 +197,7 @@ class AutoClassInFileTester(unittest.TestCase):
         for name_cls, name_attr in zip(names_cls, names_attr):
             this_module = importlib.import_module(f"{module_nm}.{name_cls}_file", super_module)
             if hasattr(this_module, name_cls):
-                this_class = getattr(this_module, name_cls)
+                this_class : Type[GridObjects]= getattr(this_module, name_cls)
             else:
                 raise RuntimeError(f"class {name_cls} not found")
             if name_attr is not None:
@@ -279,7 +299,7 @@ class AutoClassInFileTester(unittest.TestCase):
     def test_all_classes_from_file_env_after_reset(self, env: Optional[Environment]=None):
         """test classes are still consistent even after a call to env.reset() and obs.simulate()"""
         env = self._aux_make_env(env)
-        obs = env.reset()
+        obs = env.reset(seed=0, options={"time serie id": 0})
         self.test_all_classes_from_file(env=env)
         try:
             obs.simulate(env.action_space())
@@ -301,7 +321,7 @@ class AutoClassInFileTester(unittest.TestCase):
                                         name_observation_cls="CompleteObservation_{}")  
         
         # reset and check the same
-        obs = env.reset()    
+        obs = env.reset(seed=0, options={"time serie id": 0})
         self.test_all_classes_from_file(env=env.observation_space.obs_env,
                                         name_action_cls="CompleteAction_{}",
                                         name_observation_cls="CompleteObservation_{}")  
@@ -329,6 +349,7 @@ class AutoClassInFileTester(unittest.TestCase):
         if not self._do_test_copy():
             self.skipTest("Copy is not tested")
         env = self._aux_make_env(env)
+        _ = env.reset(seed=0, options={"time serie id": 0})
         env_cpy = env.copy()
         self.test_all_classes_from_file(env=env_cpy)
         self.test_all_classes_from_file_env_after_reset(env=env_cpy)
@@ -343,6 +364,7 @@ class AutoClassInFileTester(unittest.TestCase):
         if not self._do_test_runner():
             self.skipTest("Runner not tested")
         env = self._aux_make_env(env)
+        _ = env.reset(seed=0, options={"time serie id": 0})
         runner = Runner(**env.get_params_for_runner())
         env_runner = runner.init_env()     
         self.test_all_classes_from_file(env=env_runner)
@@ -381,9 +403,37 @@ class AutoClassInFileTester(unittest.TestCase):
         runner.run(nb_episode=1,
                    max_iter=self.max_iter,
                    env_seeds=[0],
+                   agent_seeds=[0],
                    episode_id=[0])
     
-    def test_all_classes_from_file_runner_2ep_seq(self, env: Optional[Environment]=None):
+    def _aux_test_rewards(self, res, _mix_id):
+        if issubclass(AutoClassInFileTester, type(self)):
+            ref = [645.702087, 648.907958]
+        elif issubclass(TOEnvAutoClassTester, type(self)):
+            ref = [645.702087, 648.907958]
+        elif issubclass(MaskedEnvAutoClassTester, type(self)):
+            ref = [645.702087, 648.907958]
+        elif issubclass(MultiMixEnvAutoClassTester, type(self)):
+            if _mix_id == 0:
+                ref = [119.103179, 112.700851]
+                if self.this_numpy_version >= self.numpy2_version:
+                    ref = [119.10317993164062, 112.70085144042969]  # numpy 2
+            elif _mix_id == 1:
+                ref = [119.113189, 112.687309]
+                if self.this_numpy_version >= self.numpy2_version:
+                    ref = [119.1132049, 112.6873168]  # numpy 2
+            else:
+                raise RuntimeError("Unknown mix id")
+        elif issubclass(ForEnvAutoClassTester, type(self)):
+            ref = [53.9044303, 53.9044303]
+        else:
+            raise RuntimeError("Unknown test suite")
+        assert abs(res[0][2] - ref[0]) <= 1e-5, f"{res[0][2]} vs {ref[0]}"
+        assert abs(res[1][2] - ref[1]) <= 1e-5, f"{res[1][2]} vs {ref[1]}"
+        
+    def test_all_classes_from_file_runner_2ep_seq(self,
+                                                  env: Optional[Environment]=None,
+                                                  _mix_id=None):
         """this test that the runner is able to "run" (one other type of run), but the tests on the classes 
         are much lighter than in test_all_classes_from_file_env_runner"""
         if not self._do_test_runner():
@@ -397,14 +447,19 @@ class AutoClassInFileTester(unittest.TestCase):
         runner = Runner(**env.get_params_for_runner(),
                         agentClass=None,
                         agentInstance=this_agent)
+        
         res = runner.run(nb_episode=2,
                          max_iter=self.max_iter,
+                         agent_seeds=[2, 3],
                          env_seeds=[0, 0],
                          episode_id=[0, 1])
         assert res[0][4] == self.max_iter
         assert res[1][4] == self.max_iter
-    
-    def test_all_classes_from_file_runner_2ep_par_fork(self, env: Optional[Environment]=None):
+        self._aux_test_rewards(res, _mix_id)
+        
+    def test_all_classes_from_file_runner_2ep_par_fork(self,
+                                                       env: Optional[Environment]=None,
+                                                       _mix_id=None):
         """this test that the runner is able to "run" (one other type of run), but the tests on the classes 
         are much lighter than in test_all_classes_from_file_env_runner"""
         if not self._do_test_runner():
@@ -425,12 +480,16 @@ class AutoClassInFileTester(unittest.TestCase):
         res = runner.run(nb_episode=2,
                          nb_process=2,
                          max_iter=self.max_iter,
+                         agent_seeds=[1,2],
                          env_seeds=[0, 0],
                          episode_id=[0, 1])
         assert res[0][4] == self.max_iter
         assert res[1][4] == self.max_iter
+        self._aux_test_rewards(res, _mix_id)
     
-    def test_all_classes_from_file_runner_2ep_par_spawn(self, env: Optional[Environment]=None):
+    def test_all_classes_from_file_runner_2ep_par_spawn(self,
+                                                        env: Optional[Environment]=None,
+                                                        _mix_id=None):
         """this test that the runner is able to "run" (one other type of run), but the tests on the classes 
         are much lighter than in test_all_classes_from_file_env_runner"""
         if not self._do_test_runner():
@@ -449,10 +508,12 @@ class AutoClassInFileTester(unittest.TestCase):
         res = runner.run(nb_episode=2,
                          nb_process=2,
                          max_iter=self.max_iter,
+                         agent_seeds=[0, 0],
                          env_seeds=[0, 0],
                          episode_id=[0, 1])
         assert res[0][4] == self.max_iter
         assert res[1][4] == self.max_iter
+        self._aux_test_rewards(res, _mix_id)
         
         
 class MaskedEnvAutoClassTester(AutoClassInFileTester):
@@ -487,11 +548,12 @@ class ForEnvAutoClassTester(AutoClassInFileTester):
             # we create the reference environment and prevent grid2op to 
             # to delete it (because it stores the files to the class)
             self.ref_env = super()._aux_make_env()
+            self.ref_env.reset(seed=0, options={"time serie id": 0})
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
                 obs = self.ref_env.get_obs()
                 res = obs.get_forecast_env()
-            self.max_iter = res._max_iter  # otherwise it fails in the runner
+            self.max_iter = min(res._max_iter, self.max_iter)  # otherwise it fails in the runner
         else:
             res = env
         return res
@@ -615,6 +677,7 @@ class GymEnvAutoClassTester(unittest.TestCase):
         
     def test_asynch_spawn(self):
         # test I can reset everything on the same process
+        # python -m unittest grid2op.tests.automatic_classes.GymEnvAutoClassTester.test_asynch_spawn
         env1 = GymEnv(self.env)
         env2 = GymEnv(self.env)
         obs1, info1 = env1.reset()
@@ -656,7 +719,8 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
                                                )
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multi mix
-                for mix in env:
+                for mix_name in sorted(env.all_names):
+                    mix = env[mix_name]
                     super().test_all_classes_from_file(mix,
                                                        classes_name=classes_name,
                                                        name_complete_obs_cls=name_complete_obs_cls,
@@ -675,7 +739,8 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
             super().test_all_classes_from_file_env_after_reset(env)
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
+                for mix_name in sorted(env.all_names):
+                    mix = env[mix_name]
                     super().test_all_classes_from_file_env_after_reset(mix)
         finally:
             if env_orig is None:
@@ -685,11 +750,14 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
     def test_all_classes_from_file_obsenv(self, env: Optional[Environment]=None):
         env_orig = env
         env = self._aux_make_env(env)
+        _ = env.reset(seed=0, options={"time serie id": 0})
         try:
             super().test_all_classes_from_file_obsenv(env)
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
+                for mix_name in sorted(env.all_names):
+                    mix = env[mix_name]
+                    _ = mix.reset(seed=0, options={"time serie id": 0})
                     super().test_all_classes_from_file_obsenv(mix)
         finally:
             if env_orig is None:
@@ -699,11 +767,14 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
     def test_all_classes_from_file_env_cpy(self, env: Optional[Environment]=None):
         env_orig = env
         env = self._aux_make_env(env)
+        _ = env.reset(seed=0, options={"time serie id": 0})
         try:
             super().test_all_classes_from_file_env_cpy(env)
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
+                for mix_name in sorted(env.all_names):
+                    mix = env[mix_name]
+                    _ = mix.reset(seed=0, options={"time serie id": 0})
                     super().test_all_classes_from_file_env_cpy(mix)
         finally:
             if env_orig is None:
@@ -713,10 +784,13 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
     def test_all_classes_from_file_env_runner(self, env: Optional[Environment]=None):
         env_orig = env
         env = self._aux_make_env(env)
+        _ = env.reset(seed=0, options={"time serie id": 0})
         try:
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
+                for mix_name in sorted(env.all_names):
+                    mix = env[mix_name]
+                    _ = mix.reset(seed=0, options={"time serie id": 0})
                     super().test_all_classes_from_file_env_runner(mix)
             else:
                 # runner does not handle multimix
@@ -732,7 +806,8 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
         try:
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
+                for mix_name in sorted(env.all_names):
+                    mix = env[mix_name]
                     super().test_all_classes_from_file_runner_1ep(mix)
             else:
                 # runner does not handle multimix
@@ -748,8 +823,9 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
         try:
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
-                    super().test_all_classes_from_file_runner_2ep_seq(mix)
+                for mix_id, mix_name in enumerate(sorted(env.all_names)):
+                    mix = env[mix_name]
+                    super().test_all_classes_from_file_runner_2ep_seq(mix, mix_id)
             else:
                 # runner does not handle multimix
                 super().test_all_classes_from_file_runner_2ep_seq(env)  
@@ -766,8 +842,9 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
         try:
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
-                    super().test_all_classes_from_file_runner_2ep_par_fork(mix)
+                for mix_id, mix_name in enumerate(sorted(env.all_names)):
+                    mix = env[mix_name]
+                    super().test_all_classes_from_file_runner_2ep_par_fork(mix, mix_id)
             else:
                 # runner does not handle multimix
                 super().test_all_classes_from_file_runner_2ep_par_fork(env)  
@@ -782,8 +859,9 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
         try:
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
-                    super().test_all_classes_from_file_runner_2ep_par_spawn(mix)
+                for mix_id, mix_name in enumerate(sorted(env.all_names)):
+                    mix = env[mix_name]
+                    super().test_all_classes_from_file_runner_2ep_par_spawn(mix, mix_id)
             else:
                 # runner does not handle multimix
                 super().test_all_classes_from_file_runner_2ep_par_spawn(env)  
@@ -798,8 +876,9 @@ class MultiMixEnvAutoClassTester(AutoClassInFileTester):
         try:
             if isinstance(env, MultiMixEnvironment):
                 # test each mix of a multimix
-                for mix in env:
-                    obs = mix.reset()
+                for mix_id, mix_name in enumerate(sorted(env.all_names)):
+                    mix = env[mix_name]
+                    obs = mix.reset(seed=0, options={"time serie id": 0})
                     for_env = obs.get_forecast_env()
                     super().test_all_classes_from_file(for_env)
         finally:

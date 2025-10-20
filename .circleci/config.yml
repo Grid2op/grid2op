@@ -3,7 +3,7 @@ version: 2.1
 executors:
     grid2op-executor:
         docker:
-            - image: python:3.10
+            - image: python:3.12
         working_directory: /Grid2Op
 
     python37:
@@ -14,16 +14,19 @@ executors:
             - image: python:3.8
     python39:
         docker:
-            - image: python:3.9
+            - image: cimg/python:3.9
     python310:
         docker:
-            - image: python:3.10
+            - image: cimg/python:3.10
     python311:
         docker:
-            - image: python:3.11
+            - image: cimg/python:3.11
     python312:
         docker:
             - image: cimg/python:3.12
+    python313:
+        docker:
+            - image: cimg/python:3.13
 
 jobs:
     test:
@@ -174,6 +177,10 @@ jobs:
                    python -m pip install -U numba
             - run:
                command: |
+                   rm pyproject.toml
+                   cp pyproject_38.toml pyproject.toml
+            - run:
+               command: |
                    source venv_test/bin/activate
                    python -m pip install -U "numpy>=1.20,<1.21" "pandas<2.2" "scipy<1.12" numba "pillow<10.4.0" .[test]
                    pip freeze
@@ -203,10 +210,6 @@ jobs:
         resource_class: small
         steps:
             - checkout
-            - run: 
-                command: |
-                    apt-get update
-                    apt-get install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:
@@ -214,6 +217,10 @@ jobs:
                    source venv_test/bin/activate
                    python -m pip install -U pip setuptools wheel
                    python -m pip install -U lightsim2grid==0.5.3 gymnasium "numpy<1.22"
+            - run:
+               command: |
+                   rm pyproject.toml
+                   cp pyproject_38.toml pyproject.toml
             - run:
                command: |
                    source venv_test/bin/activate
@@ -230,10 +237,6 @@ jobs:
         resource_class: small
         steps:
             - checkout
-            - run: 
-                command: |
-                    apt-get update
-                    apt-get install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:
@@ -241,6 +244,10 @@ jobs:
                    source venv_test/bin/activate
                    python -m pip install -U pip setuptools wheel
                    python -m pip install -U lightsim2grid==0.6.0 gymnasium "numpy<1.22"
+            - run:
+               command: |
+                   rm pyproject.toml
+                   cp pyproject_38.toml pyproject.toml
             - run:
                command: |
                    source venv_test/bin/activate
@@ -253,24 +260,22 @@ jobs:
                    python -m unittest grid2op/tests/test_basic_env_ls.py
 
     test_chronix2grid:               
-        executor: python310  # needs to be 38: whl of lightsim were not released for 3.10 at the time
+        executor: python310
         resource_class: small
         steps:
             - checkout
-            - run: 
-                command: |
-                    apt-get update
-                    apt-get install -y coinor-cbc
+            - run: sudo apt update
+            - run: sudo apt install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:
                command: |
                    source venv_test/bin/activate
-                   python -m pip install -U pip setuptools wheel "numpy==1.26.4"
+                   python -m pip install -U pip setuptools wheel
             - run:
                command: |
                    source venv_test/bin/activate
-                   python -m pip install -e .[chronix2grid] "linopy==0.3.8" "scs==3.2.4.post1" "ecos==2.0.13" "pillow==10.3.0" "numpy==1.26.4" "xarray==2024.3.0"
+                   python -m pip install -e .[chronix2grid]
                    pip freeze
             - run:
                 command: |
@@ -283,33 +288,18 @@ jobs:
         resource_class: small
         steps:
             - checkout
-            - run: 
-                command: |
-                    apt-get update
-                    apt-get install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:
                command: |
                    export _GRID2OP_FORCE_TEST=1
                    source venv_test/bin/activate
-                   python -m pip install -U pip setuptools wheel "numpy>=1.20,<1.21" "pandas<2.2" "scipy==1.10.1" "pillow<10.4.0" numba
+                   python -m pip install -U pip setuptools wheel numba
                    python -m pip uninstall -y grid2op
             - run:
-               command: |  # issue with previous more simple install, so I fix some versions
+               command: |  # oldest numpy version (supported by python version) is also newest supported by grid2op
                    source venv_test/bin/activate
-                   python -m pip install "numpy>=1.20,<1.21" "pandas<2.2" "scipy==1.10.1" numba .
-                   pip freeze
-            - run:
-                command: |
-                   source venv_test/bin/activate
-                   export _GRID2OP_FORCE_TEST=1
-                   cd /tmp
-                   grid2op.testinstall
-            - run:
-               command: |
-                   source venv_test/bin/activate
-                   python -m pip install "numpy>=1.26,<1.27" "pandas<2.2" "scipy<1.12" numba "pillow<10.4.0"
+                   python -m pip install "numpy>=2,<2.1" .
                    pip freeze
             - run:
                 command: |
@@ -323,21 +313,16 @@ jobs:
         resource_class: small
         steps:
             - checkout
-            - run: 
-                command: |
-                    apt-get update
-                    apt-get install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:
                command: |
                    source venv_test/bin/activate
                    python -m pip install -U pip setuptools wheel
-                   python -m pip install -U numba
             - run:
-               command: |
+               command: |  # oldest numpy version >= 2 supported by python 3.10
                    source venv_test/bin/activate
-                   python -m pip install -U "numpy>=1.21,<1.22" "pandas<2.2" "scipy<1.12" numba .
+                   python -m pip install -U "numpy>=2,<2.1" numba .
                    pip freeze
             - run:
                 command: |
@@ -346,9 +331,9 @@ jobs:
                    cd /tmp
                    grid2op.testinstall
             - run:
-               command: |
+               command: |  # most recent numpy version
                    source venv_test/bin/activate
-                   python -m pip install -U "numpy>=1.26,<1.27" "pandas<2.2" "scipy<1.12" numba
+                   python -m pip install -U numpy numba .
                    pip freeze
             - run:
                 command: |
@@ -362,10 +347,6 @@ jobs:
         resource_class: small
         steps:
             - checkout
-            - run: 
-                command: |
-                    apt-get update
-                    apt-get install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:
@@ -373,9 +354,9 @@ jobs:
                    source venv_test/bin/activate
                    python -m pip install -U pip setuptools wheel
             - run:
-               command: |
+               command: |  # oldest numpy version >= 2 supported by python 3.11
                    source venv_test/bin/activate
-                   python -m pip install -U "numpy>=1.23,<1.24" "pandas<2.2" "scipy<1.12" numba .
+                   python -m pip install -U "numpy>=2,<2.1" numba .
                    pip freeze
             - run:
                 command: |
@@ -384,9 +365,9 @@ jobs:
                    cd /tmp
                    grid2op.testinstall
             - run:
-               command: |
+               command: |  # most recent numpy version
                    source venv_test/bin/activate
-                   python -m pip install -U "numpy>=1.26,<1.27" "pandas<2.2" "scipy<1.12" numba
+                   python -m pip install -U numpy numba .
                    pip freeze
             - run:
                 command: |
@@ -399,21 +380,60 @@ jobs:
         resource_class: small
         steps:
             - checkout
-            - run: 
-                command: |
-                    sudo  apt-get update
-                    sudo  apt-get install -y coinor-cbc
             - run: python -m pip install virtualenv
             - run: python -m virtualenv venv_test
             - run:
                command: |
                    source venv_test/bin/activate
                    python -m pip install -U pip setuptools wheel
-                #    python -m pip install -U numba  # not on python 3.12 at the moment
+            - run:
+               command: |  # oldest numpy version >= 2 supported by python 3.12
+                   source venv_test/bin/activate
+                   python -m pip install -U "numpy>=2,<2.1" numba .
+                   pip freeze
+            - run:
+                command: |
+                   source venv_test/bin/activate
+                   export _GRID2OP_FORCE_TEST=1
+                   cd /tmp
+                   grid2op.testinstall
+            - run:
+               command: |  # most recent numpy version
+                   source venv_test/bin/activate
+                   python -m pip install -U numpy numba .
+                   pip freeze
+            - run:
+                command: |
+                   source venv_test/bin/activate
+                   export _GRID2OP_FORCE_TEST=1
+                   cd /tmp
+                   grid2op.testinstall
+    install313:
+        executor: python313
+        resource_class: small
+        steps:
+            - checkout
+            - run: python -m pip install virtualenv
+            - run: python -m virtualenv venv_test
             - run:
                command: |
                    source venv_test/bin/activate
-                   python -m pip install -U "numpy>=1.26,<1.27" "pandas<2.2" "scipy<1.12" .
+                   python -m pip install -U pip setuptools wheel
+            - run:
+               command: |  # oldest numpy version >= 2 supported by python 3.13
+                   source venv_test/bin/activate
+                   python -m pip install -U "numpy>=2.1,<2.2" .
+                   pip freeze
+            - run:
+                command: |
+                   source venv_test/bin/activate
+                   export _GRID2OP_FORCE_TEST=1
+                   cd /tmp
+                   grid2op.testinstall
+            - run:
+               command: |  # most recent numpy version
+                   source venv_test/bin/activate
+                   python -m pip install -U numpy .
                    pip freeze
             - run:
                 command: |
@@ -438,6 +458,7 @@ workflows:
           - install310
           - install311
           - install312
+          - install313
 
     # gather_test_report:
     #     requires:

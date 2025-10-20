@@ -70,7 +70,7 @@ if __name__ == "__main__":
     except Exception as exc_:
         raise RuntimeError(
             "script \"update_version\": version should be formated as XX.YY.ZZ (eg 0.3.1). "
-            "Please modify \"--version\" argument")
+            "Please modify \"--version\" argument") from exc_
 
     regex_version = "[0-9]+\.[0-9]+\.[0-9]+(.post[0-9]+){0,1}(.rc[0-9]+){0,1}(.pre[0-9]+){0,1}(.dev[0-9]+){0,1}"
     # TODO use the official regex !
@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 version))
 
     # TODO re.search(reg_, "0.0.4-rc1").group("prerelease") -> rc1 (if regex_version is the official one)
-    if re.search(f".*(\\.|-)(rc|pre|dev)[0-9]+$", version) is not None:
+    if re.search(".*(\\.|-)(rc|pre|dev)[0-9]+$", version) is not None:
         is_prerelease = True
         print("This is a pre release, docker will NOT be pushed, github tag will NOT be made")
         time.sleep(2)
@@ -101,15 +101,25 @@ if __name__ == "__main__":
             old_init = f.read()
             
         if not os.path.exists(setup_path):
-            raise RuntimeError(
-                "script \"update_version\" cannot find the root path of Grid2op. "
-                "Please provide a valid \"--path\" argument.")
-        with open(setup_path, "r") as f:
-            new_setup = f.read()
-        try:
-            old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
-        except Exception as e:
-            raise RuntimeError("Impossible to find the old version number. Stopping here")
+            # no setup.py in new grid2op
+            does_setup_exists = False
+            with open(grid2op_init, "r") as f:
+                new_setup = f.read()
+            try:
+                old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
+            except Exception as e:
+                raise RuntimeError("Impossible to find the old version number. Stopping here") from e
+            # raise RuntimeError(
+            #     "script \"update_version\" cannot find the root path of Grid2op. "
+            #     "Please provide a valid \"--path\" argument.")
+        else:
+            does_setup_exists = True
+            with open(setup_path, "r") as f:
+                new_setup = f.read()
+            try:
+                old_version = re.search("__version__ = {}".format(regex_version_with_str), old_init).group(0)
+            except Exception as e:
+                raise RuntimeError("Impossible to find the old version number. Stopping here") from e
         
         old_version = re.sub("__version__ = ", "", old_version)
         old_version = re.sub("'", "", old_version)
@@ -126,11 +136,13 @@ if __name__ == "__main__":
                            "version='{}'".format(version),
                            new_setup)
         
-        with open(setup_path, "w") as f:
-            f.write(new_setup)
+        if does_setup_exists:
+            # setup.py exists
+            with open(setup_path, "w") as f:
+                f.write(new_setup)
 
-        # Stage in git
-        start_subprocess_print(["git", "add", setup_path])
+            # Stage in git
+            start_subprocess_print(["git", "add", setup_path])
 
         # grid2op/__init__.py
         with open(grid2op_init, "r") as f:
@@ -207,6 +219,8 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         print("Add the proper test in \"grid2op/tests/test_Runner.py\"")
+        print("Modify the grid2op.info files in the Runer generated data ")
+        print("\t /data_test/runner_data/res_agent_x.y.z/{0,1}/grid2op.info \n")
         print("Then commit your change with :")
         print(f"git commit -s -S -m \"ready for version {version}\"")
         print("Then open a PR on Grid2Op/grid2op.git")

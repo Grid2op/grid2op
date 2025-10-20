@@ -23,7 +23,6 @@ import os
 import numpy as np
 import sys
 
-import importlib.metadata
 from packaging import version
 from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
     
@@ -2905,6 +2904,18 @@ class GridObjects:
         cls.env_name = name
 
     @classmethod
+    def _aux_finish_init_grid_from_file(cls):
+        # used in the _aux_init_grid_from_cls
+        # do not forget to create the cls_dict once and for all
+        if cls._CLS_DICT is None:
+            tmp = {}
+            cls._make_cls_dict_extended(cls, tmp, as_list=False)
+
+        cls._compute_pos_big_topo_cls()
+        cls.process_shunt_static_data()
+        cls.process_detachment()
+        
+    @classmethod
     def _aux_init_grid_from_cls(cls, gridobj, name_res):
         import importlib
         # NB: these imports needs to be consistent with what is done in
@@ -2922,11 +2933,9 @@ class GridObjects:
             super_module_nm = super_supermodule
         
         if f"{module_nm}.{name_res}_file" in sys.modules:
-            cls_res = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
+            cls_res : Type[GridObjects]  = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
             # do not forget to create the cls_dict once and for all
-            if cls_res._CLS_DICT is None:
-                tmp = {}
-                cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
+            cls_res._aux_finish_init_grid_from_file()
             return cls_res
         
         super_module = importlib.import_module(module_nm, super_module_nm)  # env/path/_grid2op_classes/
@@ -2938,11 +2947,8 @@ class GridObjects:
             importlib.invalidate_caches()
             importlib.reload(super_module)
             module = importlib.import_module(f".{name_res}_file", package=module_nm)
-        cls_res = getattr(module, name_res)
-        # do not forget to create the cls_dict once and for all
-        if cls_res._CLS_DICT is None:
-            tmp = {}
-            cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
+        cls_res : Type[GridObjects] = getattr(module, name_res)
+        cls_res._aux_finish_init_grid_from_file()
         return cls_res
     
     @classmethod
@@ -3040,9 +3046,9 @@ class GridObjects:
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
-        res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
         res_cls.process_detachment()
+        res_cls.process_shunt_static_data()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case

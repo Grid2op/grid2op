@@ -6,20 +6,20 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import os
 import copy
-import pdb
+import pdb  # noqa: F401
 import warnings
+import numpy as np
 
-from grid2op.tests.helper_path_test import *
+from grid2op.tests.helper_path_test import PATH_DATA_TEST_PP, PATH_CHRONICS
 from grid2op.tests.helper_path_test import MakeBackend
 import grid2op
 
-from grid2op.Exceptions import *
 from grid2op.Environment import Environment
 from grid2op.Parameters import Parameters
 from grid2op.Chronics import ChronicsHandler, GridStateFromFile, ChangeNothing
 from grid2op.Action import BaseAction
-
 
 
 class BaseTestRedispatch(MakeBackend):
@@ -116,7 +116,7 @@ class BaseTestRedispatch(MakeBackend):
 
     def test_negative_dispatch(self):
         self.skip_if_needed()
-        act = self.env.action_space({"redispatch": [(1, -10)]})
+        act = self.env.action_space({"redispatch": [(1, -10)]})  # pylint: disable=not-callable
         obs, reward, done, info = self.env.step(act)
         assert np.all(obs.prod_p - self.env.gen_pmin >= -self.tol_one)
         assert np.all(obs.prod_p <= self.env.gen_pmax + self.tol_one)
@@ -125,7 +125,7 @@ class BaseTestRedispatch(MakeBackend):
     def test_no_impact_env(self):
         # perform a valid redispatching action
         self.skip_if_needed()
-        obs_init = self.env.reset()  # reset the environment
+        _ = self.env.reset()  # reset the environment
         act = self.env.action_space()
         for i in range(
             1
@@ -266,14 +266,14 @@ class BaseTestRedispatch(MakeBackend):
 
         # recoded it: it's the normal behavior to call "env.reset()" to get the first time step
         obs = self.env.reset()
-        assert np.all(self.env._gen_uptime == np.array([0, 1, 1, 0, 1]))
-        assert np.all(self.env._gen_downtime == np.array([1, 0, 0, 1, 0]))
+        assert np.all(self.env._gen_uptime == np.array([-1, 0, 0, -1, 0]))
+        assert np.all(self.env._gen_downtime == np.array([0, -1, -1, 0, -1]))
         assert np.all(obs.prod_p <= self.env.gen_pmax + self.tol_one)
         assert np.all(obs.prod_p - self.env.gen_pmin >= -self.tol_one)
 
         obs, reward, done, info = self.env.step(act)
-        assert np.all(self.env._gen_uptime == np.array([0, 2, 2, 0, 2]))
-        assert np.all(self.env._gen_downtime == np.array([2, 0, 0, 2, 0]))
+        assert np.all(self.env._gen_uptime == np.array([-1, 1, 1, -1, 1]))
+        assert np.all(self.env._gen_downtime == np.array([1, -1, -1, 1, -1]))
         assert np.all(obs.prod_p <= self.env.gen_pmax + self.tol_one)
         assert np.all(obs.prod_p - self.env.gen_pmin >= -self.tol_one)
 
@@ -281,16 +281,19 @@ class BaseTestRedispatch(MakeBackend):
             obs, reward, done, info = self.env.step(act)
             assert np.all(obs.prod_p <= self.env.gen_pmax + self.tol_one)
             assert np.all(obs.prod_p - self.env.gen_pmin >= -self.tol_one)
+            assert np.all(self.env._gen_uptime == np.array([-1, i+2, i+2, -1, i+2]))
+            assert np.all(self.env._gen_downtime == np.array([i+2, -1, -1, i+2, -1]))
 
+        self.env._debug = True
         obs, reward, done, info = self.env.step(act)
-        assert np.all(self.env._gen_uptime == np.array([0, 67, 67, 1, 67]))
-        assert np.all(self.env._gen_downtime == np.array([67, 0, 0, 0, 0]))
+        assert np.all(self.env._gen_uptime == np.array([-1, 66, 66, 0, 66]))
+        assert np.all(self.env._gen_downtime == np.array([66, -1, -1, -1, -1]))
         assert np.all(obs.prod_p <= self.env.gen_pmax + self.tol_one)
         assert np.all(obs.prod_p - self.env.gen_pmin >= -self.tol_one)
 
         obs, reward, done, info = self.env.step(act)
-        assert np.all(self.env._gen_uptime == np.array([1, 68, 68, 2, 68]))
-        assert np.all(self.env._gen_downtime == np.array([0, 0, 0, 0, 0]))
+        assert np.all(self.env._gen_uptime == np.array([0, 67, 67, 1, 67]))
+        assert np.all(self.env._gen_downtime == np.array([-1, -1, -1, -1, -1]))
         assert np.all(obs.prod_p <= self.env.gen_pmax + self.tol_one)
         assert np.all(obs.prod_p - self.env.gen_pmin >= -self.tol_one)
 
@@ -331,7 +334,7 @@ class BaseTestRedispatch(MakeBackend):
 
         act = self.env.action_space({"redispatch": [(2, 40.0)]})
         obs, reward, done, info = self.env.step(act)
-        assert not info["is_dispatching_illegal"]
+        assert not info["failed_redispatching"]
         assert np.all(obs.target_dispatch == np.array([0.0, 0.0, 60.0, 0.0, 0.0]))
         th_disp = np.array([0.0, -23.5, 50.4, 0.0, -26.900002])
         th_disp = np.array([0., -12.977809, 50.40005, 0., -37.42224 ])
@@ -469,7 +472,7 @@ class BaseTestRedispatchChangeNothingEnvironment(MakeBackend):
         redispatch_act = self.env.action_space({"redispatch": [(1, 5.0)]})
         obs, reward, done, info = self.env.step(redispatch_act)
 
-        assert info["is_dispatching_illegal"] == True
+        assert info["failed_redispatching"] == True
 
 
 class BaseTestRedispTooLowHigh(MakeBackend):
@@ -513,12 +516,12 @@ class BaseTestRedispTooLowHigh(MakeBackend):
         act = self.env.action_space({"redispatch": (0, -1)})
         obs, reward, done, info = self.env.step(act)
         assert not done
-        assert not info["is_dispatching_illegal"]
+        assert not info["failed_redispatching"]
         assert np.all(self.env._target_dispatch == [-1.0, 0.0, 0.0, 0.0, 0.0])
         act = self.env.action_space({"redispatch": (0, 0)})
         obs, reward, done, info = self.env.step(act)
         assert not done
-        assert not info["is_dispatching_illegal"]
+        assert not info["failed_redispatching"]
         assert np.all(self.env._target_dispatch == [-1.0, 0.0, 0.0, 0.0, 0.0])
 
         # this one is not correct: too high decrease
@@ -527,7 +530,7 @@ class BaseTestRedispTooLowHigh(MakeBackend):
         )
         obs, reward, done, info = self.env.step(act)
         assert not done
-        assert info["is_dispatching_illegal"]
+        assert info["failed_redispatching"]
         assert np.all(self.env._target_dispatch == [-1.0, 0.0, 0.0, 0.0, 0.0])
 
         # this one is not correct: too high increase
@@ -536,7 +539,7 @@ class BaseTestRedispTooLowHigh(MakeBackend):
         )
         obs, reward, done, info = self.env.step(act)
         assert not done
-        assert info["is_dispatching_illegal"]
+        assert info["failed_redispatching"]
         assert np.all(self.env._target_dispatch == [-1.0, 0.0, 0.0, 0.0, 0.0])
 
     def test_error_message_notzerosum_oneshot(self):
@@ -551,22 +554,22 @@ class BaseTestRedispTooLowHigh(MakeBackend):
             }
         )
         obs, reward, done, info = self.env.step(act)
-        assert info["is_dispatching_illegal"]
+        assert info["failed_redispatching"]
         assert info["exception"][0].__str__()[:140] == self.msg_
 
     def test_error_message_notzerosum_threesteps(self):
         self.skipTest("Ok with new redispatching implementation")
         act = self.env.action_space({"redispatch": [(0, 4.9999784936326535)]})
         obs, reward, done, info = self.env.step(act)
-        assert info["is_dispatching_illegal"] is False
+        assert info["failed_redispatching"] is False
 
         act = self.env.action_space({"redispatch": [(1, 4.78524395611872)]})
         obs, reward, done, info = self.env.step(act)
-        assert info["is_dispatching_illegal"] is False
+        assert info["failed_redispatching"] is False
 
         act = self.env.action_space({"redispatch": [(4, -9.999591852954794)]})
         obs, reward, done, info = self.env.step(act)
-        assert info["is_dispatching_illegal"]
+        assert info["failed_redispatching"]
         assert info["exception"][0].__str__()[:140] == self.msg_
 
 

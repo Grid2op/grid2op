@@ -1213,11 +1213,8 @@ class TestActionBase(ABC):
         self._skipMissingKey("set_line_status")
         self._skipMissingKey("change_line_status")
         self._skipMissingKey("injection")
+        self._skipMissingKey("storage_power")  # you cannot modify the bus of a storage unit in this case
 
-        arr1 = np.array([False, False, False, True, True, True, True], dtype=dt_bool)
-        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
-        id_1 = 1
-        id_2 = 12
         new_vect = np.random.randn(self.helper_action.n_load).astype(dt_int)
         new_vect2 = np.random.randn(self.helper_action.n_load).astype(dt_int)
 
@@ -1740,7 +1737,7 @@ class TestIADD:
                 # i now test all attributes have been modified for attributes in both
                 for attr_nm in act1.attr_list_set & act2.attr_list_set:
                     assert np.any(
-                        act1.__dict__[attr_nm] != act1_init.__dict__[attr_nm]
+                         getattr(act1, attr_nm) != getattr(act1_init, attr_nm)
                     ), "error, attr {} has not been updated".format(attr_nm)
 
                 # for all in act1 not in act2, nothing should have changed
@@ -1757,7 +1754,7 @@ class TestIADD:
                         # TODO improve these tests
                         continue
                     assert np.all(
-                        act1.__dict__[attr_nm] == act1_init.__dict__[attr_nm]
+                        getattr(act1, attr_nm) == getattr(act1_init, attr_nm)
                     ), "error, attr {} has been updated".format(attr_nm)
 
     def test_iadd_change_set_status(self):
@@ -2264,13 +2261,13 @@ class TestTopologicalImpact(unittest.TestCase):
     def test_get_topo_imp_setstatus_down_isup(self):
         l_id = 3
         powerline_status = np.full(self.n_line, fill_value=True, dtype=dt_bool)
-        changelor = self.helper_action({"set_line_status": [(l_id, -1)]})
+        changelor : BaseAction = self.helper_action({"set_line_status": [(l_id, -1)]})
         # this is a real reconnection, is concerns only the powerline
         lines_impacted, subs_impacted = changelor.get_topological_impact(
             powerline_status
         )
-        assert np.sum(lines_impacted) == 1
-        assert np.sum(subs_impacted) == 0
+        assert np.sum(lines_impacted) == 1, f"{lines_impacted.sum()} != 1"
+        assert np.sum(subs_impacted) == 0, f"{subs_impacted.sum()} != 0"
         assert lines_impacted[l_id]
 
 

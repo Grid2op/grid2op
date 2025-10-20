@@ -557,7 +557,7 @@ def make_from_dataset_path(
         voltage_class_cfg = config_data["voltage_class"]
     ### Create controler for voltages
     volagecontroler_class = _get_default_aux(
-        "volagecontroler_class",
+        "voltagecontroler_class",
         kwargs,
         defaultClassApp=voltage_class_cfg,
         defaultClass=ControlVoltageFromFile,
@@ -1066,8 +1066,8 @@ def make_from_dataset_path(
     env = Environment(
         **default_kwargs,
          chronics_handler=data_feeding,
-        _read_from_local_dir=classes_path,
         _allow_loaded_backend=allow_loaded_backend,
+        _read_from_local_dir=classes_path,
         _local_dir_cls=this_local_dir,
     )   
     if do_not_erase_cls is not None:
