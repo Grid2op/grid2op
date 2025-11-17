@@ -137,7 +137,7 @@ class RemoteEnv(Process):
                     # other i consider it's "divergence" so "game over"
                     conv = True
             except Exception as exc_:  # noqa: F841
-                pass
+                self.logger.exception("Error when resetting the environment")
         if self._obs_to_vect:
             res = obs_v
         else:
