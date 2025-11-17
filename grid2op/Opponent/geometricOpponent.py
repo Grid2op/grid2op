@@ -101,9 +101,9 @@ class GeometricOpponent(BaseOpponent):
 
         if len(lines_attacked) == 0:
             warnings.warn(
-                f"The opponent is deactivated as there is no information as to which line to attack. "
-                f'You can set the argument "kwargs_opponent" to the list of the line names you want '
-                f' the opponent to attack in the "make" function.'
+                "The opponent is deactivated as there is no information as to which line to attack. "
+                'You can set the argument "kwargs_opponent" to the list of the line names you want '
+                ' the opponent to attack in the "make" function.'
             )
 
         # Store attackable lines IDs
@@ -279,7 +279,7 @@ class GeometricOpponent(BaseOpponent):
 
         # If all attackable lines are disconnected, abort attack
         status = observation.line_status[self._lines_ids]
-        if np.all(status == False):
+        if ~status.all():
             return None, None
 
         available_attacks = self._attacks[status]

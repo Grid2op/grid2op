@@ -56,7 +56,7 @@ from grid2op.Action import DontAct, BaseAction, ActionSpace
 from grid2op.operator_attention import LinearAttentionBudget
 from grid2op.Action._backendAction import _BackendAction
 from grid2op.Chronics import ChronicsHandler
-from grid2op.Rules import AlwaysLegal, BaseRules, AlwaysLegal
+from grid2op.Rules import AlwaysLegal, BaseRules
 from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
 from grid2op.VoltageControler import ControlVoltageFromFile
 
@@ -4251,7 +4251,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if self.__is_init:
             res = {}
             for el in self.name_sub:
-                if not el in grid_layout:
+                if el not in grid_layout:
                     raise EnvError(
                         'The substation "{}" is not present in grid_layout while in the powergrid.'
                         "".format(el)
@@ -4528,14 +4528,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             env_path, env_nm = os.path.split(sub_repo)
             if env_path not in sys.path:
                 sys.path.append(env_path)
-            if not package_path in sys.path:
+            if package_path not in sys.path:
                 sys.path.append(package_path)
-            super_supermodule = importlib.import_module(env_nm)
+            super_supermodule = importlib.import_module(env_nm)  # noqa: F841
             nm_ = f"{tmp_nm}.{nm_}"
             tmp_nm = env_nm
         super_module = importlib.import_module(tmp_nm, package=sub_repo_mod)
         add_sys_path = os.path.dirname(super_module.__file__)
-        if not add_sys_path in sys.path:
+        if add_sys_path not in sys.path:
             sys.path.append(add_sys_path)
             
         if f"{tmp_nm}.{nm_}" in sys.modules:
@@ -4543,7 +4543,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             return str_import, cls_res
         try:
             module = importlib.import_module(f".{nm_}", package=tmp_nm)
-        except ModuleNotFoundError as exc_:
+        except ModuleNotFoundError:
             # invalidate the cache and reload the package in this case
             importlib.invalidate_caches()
             importlib.reload(super_module)

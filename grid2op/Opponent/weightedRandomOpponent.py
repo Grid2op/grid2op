@@ -5,6 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import warnings
 import numpy as np
 import copy
@@ -65,9 +66,9 @@ class WeightedRandomOpponent(BaseOpponent):
 
         if len(lines_attacked) == 0:
             warnings.warn(
-                f"The opponent is deactivated as there is no information as to which line to attack. "
-                f'You can set the argument "kwargs_opponent" to the list of the line names you want '
-                f' the opponent to attack in the "make" function.'
+                "The opponent is deactivated as there is no information as to which line to attack. "
+                'You can set the argument "kwargs_opponent" to the list of the line names you want '
+                ' the opponent to attack in the "make" function.'
             )
 
         # Store attackable lines IDs
@@ -99,8 +100,8 @@ class WeightedRandomOpponent(BaseOpponent):
             )
         elif len(rho_normalization) != len(lines_attacked):
             raise Warning(
-                f"The usage rate normalization must have the same length as the number "
-                f"of attacked lines. No normalization will be performed."
+                "The usage rate normalization must have the same length as the number "
+                "of attacked lines. No normalization will be performed."
             )
         else:
             self._rho_normalization = np.array(rho_normalization)

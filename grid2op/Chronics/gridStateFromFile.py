@@ -247,7 +247,7 @@ class GridStateFromFile(GridValue):
             )
 
         for el in order_backend:
-            if not el in vals:
+            if el not in vals:
                 raise ChronicsError(
                     'Impossible to find element "{}" in the original converter data'.format(
                         el
@@ -256,7 +256,7 @@ class GridStateFromFile(GridValue):
 
     def _assert_correct_second_stage(self, pandas_name, dict_convert, key, extra=""):
         for i, el in enumerate(pandas_name):
-            if not el in dict_convert[key]:
+            if el not in dict_convert[key]:
                 raise ChronicsError(
                     "Element named {} is found in the data (column {}) but it is not found on the "
                     'powergrid for data of type "{}".\nData in files  are: {}\n'
@@ -520,7 +520,7 @@ class GridStateFromFile(GridValue):
         self.names_chronics_to_backend = copy.deepcopy(names_chronics_to_backend)
         if self.names_chronics_to_backend is None:
             self.names_chronics_to_backend = {}
-        if not "loads" in self.names_chronics_to_backend:
+        if "loads" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["loads"] = {
                 k: k for k in order_backend_loads
             }
@@ -528,7 +528,7 @@ class GridStateFromFile(GridValue):
             self._assert_correct(
                 self.names_chronics_to_backend["loads"], order_backend_loads
             )
-        if not "prods" in self.names_chronics_to_backend:
+        if "prods" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["prods"] = {
                 k: k for k in order_backend_prods
             }
@@ -536,7 +536,7 @@ class GridStateFromFile(GridValue):
             self._assert_correct(
                 self.names_chronics_to_backend["prods"], order_backend_prods
             )
-        if not "lines" in self.names_chronics_to_backend:
+        if "lines" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["lines"] = {
                 k: k for k in order_backend_lines
             }
@@ -544,7 +544,7 @@ class GridStateFromFile(GridValue):
             self._assert_correct(
                 self.names_chronics_to_backend["lines"], order_backend_lines
             )
-        if not "subs" in self.names_chronics_to_backend:
+        if "subs" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["subs"] = {k: k for k in order_backend_subs}
         else:
             self._assert_correct(
@@ -1028,7 +1028,7 @@ class GridStateFromFile(GridValue):
         if not isinstance(datetime_beg, datetime):
             try:
                 res = datetime.strptime(datetime_beg, "%Y-%m-%d %H:%M")
-            except Exception as exc_:
+            except Exception:
                 try:
                     res = datetime.strptime(datetime_beg, "%Y-%m-%d")
                 except Exception as exc_2:

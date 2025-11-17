@@ -29,13 +29,31 @@ from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tu
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
-from grid2op.Exceptions import *
+from grid2op.Exceptions import (
+    Grid2OpException,
+    IncorrectNumberOfElements,
+    AmbiguousAction,
+    EnvError,
+    IncorrectNumberOfGenerators,
+    IncorrectNumberOfStorages,
+    IncorrectNumberOfLoads,
+    IncorrectNumberOfLines,
+    IncorrectNumberOfSubstation,
+    BackendError,
+    InvalidRedispatching,
+    NonFiniteElement,
+    IncorrectPositionOfGenerators,
+    IncorrectPositionOfLines,
+    IncorrectPositionOfLoads,
+    IncorrectPositionOfStorages
+)
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
-from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
-                                       DEFAULT_N_BUSBAR_PER_SUB,
-                                       GRID2OP_CLASSES_ENV_FOLDER,
-                                       GRID2OP_CURRENT_VERSION_STR,
-                                       GRID2OP_CURRENT_VERSION)
+from grid2op.Space.default_var import (
+    DEFAULT_ALLOW_DETACHMENT,
+    DEFAULT_N_BUSBAR_PER_SUB,
+    GRID2OP_CLASSES_ENV_FOLDER,
+    GRID2OP_CURRENT_VERSION_STR,
+)
 
 # TODO tests of these methods and this class in general
 
@@ -1497,10 +1515,10 @@ class GridObjects:
             try:
                 cls.storage_to_subid = np.array(cls.storage_to_subid)
                 cls.storage_to_subid = cls.storage_to_subid.astype(dt_int)
-            except Exception as e:
+            except Exception as exc:
                 raise EnvError(
                     "self.storage_to_subid should be convertible to a numpy array"
-                )
+                ) from exc
 
         # now check the sizes
         if len(cls.load_to_subid) != cls.n_load:
@@ -1663,7 +1681,7 @@ class GridObjects:
                 cls.name_line = cls.name_line.astype(str)
             except Exception as exc_:
                 raise EnvError(
-                    f"self.name_line should be convertible to a numpy array of type str"
+                    "self.name_line should be convertible to a numpy array of type str"
                 ) from exc_
         if not isinstance(cls.name_load, np.ndarray):
             try:
@@ -2626,16 +2644,16 @@ class GridObjects:
             except Exception as exc:
                 raise EnvError(
                     'name_shunt should be convertible to a numpy array with dtype "str".'
-                )
+                ) from exc
 
         if not isinstance(cls.shunt_to_subid, np.ndarray):
             try:
                 cls.shunt_to_subid = np.array(cls.shunt_to_subid)
                 cls.shunt_to_subid = cls.shunt_to_subid.astype(dt_int)
-            except Exception as e:
+            except Exception as exc:
                 raise EnvError(
                     'shunt_to_subid should be convertible to a numpy array with dtype "int".'
-                )
+                ) from exc
 
         if cls.name_shunt.shape[0] != cls.n_shunt:
             raise IncorrectNumberOfElements(
@@ -2793,7 +2811,7 @@ class GridObjects:
             )
 
         for el in cls.gen_type:
-            if not el in ["solar", "wind", "hydro", "thermal", "nuclear"]:
+            if el not in ["solar", "wind", "hydro", "thermal", "nuclear"]:
                 raise InvalidRedispatching("Unknown generator type : {}".format(el))
 
         if (cls.gen_pmin < 0.0).any():
@@ -2939,7 +2957,7 @@ class GridObjects:
             return cls_res
         
         super_module = importlib.import_module(module_nm, super_module_nm)  # env/path/_grid2op_classes/
-        module_all_classes = importlib.import_module(f"{module_nm}")  # module specific to the tmpdir created
+        module_all_classes = importlib.import_module(f"{module_nm}")  # module specific to the tmpdir created  # noqa: F841
         try:
             module = importlib.import_module(f".{name_res}_file", package=module_nm)  # module containing the definition of the class
         except ModuleNotFoundError:
@@ -4567,7 +4585,7 @@ class GridObjects:
             module = importlib.import_module(GRID2OP_CLASSES_ENV_FOLDER)
             if hasattr(module, name_cls):
                 my_class : Type["GridObjects"] = getattr(module, name_cls)
-        except (ModuleNotFoundError, ImportError) as exc_:
+        except (ModuleNotFoundError, ImportError) as exc_:  # noqa: F841
             # normal behaviour i don't do anything there
             # TODO explain why
             pass

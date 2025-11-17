@@ -9,17 +9,14 @@
 import copy
 import datetime
 import numpy as np
-import warnings
-from typing import Dict, Union, Tuple, List, Optional, Any, Literal
+from typing import Tuple
 
 import grid2op
 import grid2op.Action
-from grid2op.Environment._env_prev_state import _EnvPreviousState
 import grid2op.Observation  # for type hints
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import EnvError
-from grid2op.Chronics import ChangeNothing
 from grid2op.Chronics._obs_fake_chronics_handler import _ObsCH
 from grid2op.Rules import RulesChecker
 from grid2op.Space import DEFAULT_ALLOW_DETACHMENT

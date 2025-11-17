@@ -5,6 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import os
 import json
 import warnings
@@ -711,11 +712,11 @@ class Parameters:
         if self.INIT_STORAGE_CAPACITY < 0.0:
             raise RuntimeError(
                 "INIT_STORAGE_CAPACITY < 0., this should be within range [0., 1.]"
-            ) from exc_
+            )
         if self.INIT_STORAGE_CAPACITY > 1.0:
             raise RuntimeError(
                 "INIT_STORAGE_CAPACITY > 1., this should be within range [0., 1.]"
-            ) from exc_
+            )
 
         try:
             if not isinstance(self.ACTIVATE_STORAGE_LOSS, (bool, dt_bool)):

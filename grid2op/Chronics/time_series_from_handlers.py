@@ -543,9 +543,9 @@ class FromHandlers(GridValue):
             return None
         
         if self.action_space is None:
-            raise Grid2OpException(f"We detected an action to set the intial state of the grid "
-                                   f"but we cannot build it because the 'action_space' of the time"
-                                   f"serie is not set.")
+            raise Grid2OpException("We detected an action to set the intial state of the grid "
+                                   "but we cannot build it because the 'action_space' of the time"
+                                   "serie is not set.")
             
         try:
             act : BaseAction = self.action_space(act_as_dict,

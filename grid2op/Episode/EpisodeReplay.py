@@ -8,14 +8,14 @@
 import os
 import warnings
 import time
-import imageio
+import imageio  # type: ignore
 
 import argparse
 
 from grid2op.Exceptions import Grid2OpException
 from grid2op.PlotGrid.PlotMatplot import PlotMatplot
 from grid2op.Episode.EpisodeData import EpisodeData
-from grid2op.Episode.CompactEpisodeData import CompactEpisodeData
+
 
 class EpisodeReplay(object):
     """
@@ -198,7 +198,7 @@ class EpisodeReplay(object):
                     from pygifsicle import optimize
 
                     optimize(gif_path, options=["-w", "--no-conserve-memory"])
-                except Exception as exc_:
+                except Exception as exc_:  # noqa: F841
                     warn_msg = (
                         "Failed to optimize .GIF size, but gif is still saved:\n"
                         "Install dependencies to reduce size by ~3 folds\n"

@@ -8,7 +8,6 @@
 
 import os
 import copy
-import warnings
 
 from datetime import timedelta, datetime
 import numpy as np
@@ -58,7 +57,7 @@ class ReadPypowNetData(GridStateFromFileWithForecasts):
         self.names_chronics_to_backend = copy.deepcopy(names_chronics_to_backend)
         if self.names_chronics_to_backend is None:
             self.names_chronics_to_backend = {}
-        if not "loads" in self.names_chronics_to_backend:
+        if "loads" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["loads"] = {
                 k: k for k in order_backend_loads
             }
@@ -66,7 +65,7 @@ class ReadPypowNetData(GridStateFromFileWithForecasts):
             self._assert_correct(
                 self.names_chronics_to_backend["loads"], order_backend_loads
             )
-        if not "prods" in self.names_chronics_to_backend:
+        if "prods" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["prods"] = {
                 k: k for k in order_backend_prods
             }
@@ -74,7 +73,7 @@ class ReadPypowNetData(GridStateFromFileWithForecasts):
             self._assert_correct(
                 self.names_chronics_to_backend["prods"], order_backend_prods
             )
-        if not "lines" in self.names_chronics_to_backend:
+        if "lines" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["lines"] = {
                 k: k for k in order_backend_lines
             }
@@ -82,7 +81,7 @@ class ReadPypowNetData(GridStateFromFileWithForecasts):
             self._assert_correct(
                 self.names_chronics_to_backend["lines"], order_backend_lines
             )
-        if not "subs" in self.names_chronics_to_backend:
+        if "subs" not in self.names_chronics_to_backend:
             self.names_chronics_to_backend["subs"] = {k: k for k in order_backend_subs}
         else:
             self._assert_correct(

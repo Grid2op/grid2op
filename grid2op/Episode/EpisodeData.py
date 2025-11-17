@@ -12,7 +12,6 @@ import warnings
 import copy
 import numpy as np
 
-import grid2op
 from grid2op.Exceptions import (
     Grid2OpException,
     EnvError,
@@ -519,7 +518,7 @@ class EpisodeData:
             attack = np.load(os.path.join(episode_path, EpisodeData.ATTACK))["data"]
             
         except FileNotFoundError as exc_:
-            raise Grid2OpException(f"EpisodeData failed to load the file. Some data are not found.") from exc_
+            raise Grid2OpException("EpisodeData failed to load the file. Some data are not found.") from exc_
 
         observation_space = ObservationSpace.from_dict(
             os.path.join(agent_path, EpisodeData.OBS_SPACE)
@@ -734,7 +733,7 @@ class EpisodeData:
     def _convert_to_float(self, el):
         try:
             res = float(el)
-        except Exception as exc_:
+        except Exception as exc_:  # noqa: F841
             res = -float("inf")
         return res
 
@@ -992,7 +991,7 @@ class CollectionWrapper:
             except NonFiniteElement:
                 self._game_over = i
                 break
-            except EnvError as exc_:
+            except EnvError as exc_:  # noqa: F841
                 self._game_over = i
                 break
             
