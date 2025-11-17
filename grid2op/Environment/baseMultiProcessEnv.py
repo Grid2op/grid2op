@@ -5,7 +5,8 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
-from multiprocessing import Process, Pipe, Array
+
+from multiprocessing import Process, Pipe
 import numpy as np
 import warnings
 import time
@@ -135,8 +136,8 @@ class RemoteEnv(Process):
                     # i make sure that everything is not Nan
                     # other i consider it's "divergence" so "game over"
                     conv = True
-            except Exception as exc_:
-                pass
+            except Exception as exc_:  # noqa: F841
+                self.logger.exception("Error when resetting the environment")
         if self._obs_to_vect:
             res = obs_v
         else:
@@ -522,11 +523,11 @@ class BaseMultiProcessEnvironment(GridObjects):
             raise EnvError("This environment is closed, you cannot use it.")
         try:
             new_chunk_size = int(new_chunk_size)
-        except Exception as e:
+        except Exception as exc:
             raise Grid2OpException(
                 "Impossible to set the chunk size. It should be convertible a integer, and not"
                 "{}".format(new_chunk_size)
-            )
+            ) from exc
 
         if new_chunk_size <= 0:
             raise Grid2OpException(

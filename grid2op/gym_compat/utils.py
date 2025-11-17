@@ -15,7 +15,7 @@ except ModuleNotFoundError:
     from importlib_metadata import distribution
 
 try:
-    import gym
+    import gym  # noqa: F401
     # the current gym version (we should support most recent, but also 
     # the very old 0.21 because it used by stable baselines3...)
     GYM_VERSION = version.parse(distribution('gym').version)
@@ -25,7 +25,7 @@ except ImportError:
     GYM_VERSION = version.parse("0.17.2") 
     
 try:
-    import gymnasium
+    import gymnasium  # noqa: F401
     GYMNASIUM_AVAILABLE = True
 except ImportError:
     GYMNASIUM_AVAILABLE = False

@@ -230,33 +230,10 @@ class GridStateFromFile(GridValue):
         self._order_backend_loads = None
         self._order_backend_prods = None
         self._order_backend_lines = None
-        
-    def _assert_correct(self, dict_convert, order_backend):
-        len_backend = len(order_backend)
-        len_dict_keys = len(dict_convert)
-        vals = set(dict_convert.values())
-        lend_dict_values = len(vals)
-
-        if len_dict_keys != len_backend:
-            err_msg = "Conversion mismatch between backend data {} elements and converter data {} (keys)"
-            raise IncorrectNumberOfElements(err_msg.format(len_backend, len_dict_keys))
-        if lend_dict_values != len_backend:
-            err_msg = "Conversion mismatch between backend data {} elements and converter data {} (values)"
-            raise IncorrectNumberOfElements(
-                err_msg.format(len_backend, lend_dict_values)
-            )
-
-        for el in order_backend:
-            if not el in vals:
-                raise ChronicsError(
-                    'Impossible to find element "{}" in the original converter data'.format(
-                        el
-                    )
-                )
 
     def _assert_correct_second_stage(self, pandas_name, dict_convert, key, extra=""):
         for i, el in enumerate(pandas_name):
-            if not el in dict_convert[key]:
+            if el not in dict_convert[key]:
                 raise ChronicsError(
                     "Element named {} is found in the data (column {}) but it is not found on the "
                     'powergrid for data of type "{}".\nData in files  are: {}\n'
@@ -268,36 +245,6 @@ class GridStateFromFile(GridValue):
                         sorted(list(dict_convert[key].keys())),
                     )
                 )
-
-    def _init_date_time(self):
-        if os.path.exists(os.path.join(self.path, "start_datetime.info")):
-            with open(os.path.join(self.path, "start_datetime.info"), "r") as f:
-                str_ = f.read().rstrip().lstrip()
-            try:
-                tmp = self._datetime_from_str(str_)
-            except Exception as exc_:
-                raise ChronicsNotFoundError(
-                    'Impossible to understand the content of "start_datetime.info". Make sure '
-                    'it\'s composed of only one line with a datetime in the "%Y-%m-%d %H:%M"'
-                    "format."
-                ) from exc_
-            self.start_datetime = tmp
-            self.current_datetime = tmp
-
-        if os.path.exists(os.path.join(self.path, "time_interval.info")):
-            with open(os.path.join(self.path, "time_interval.info"), "r") as f:
-                a = f.read().rstrip().lstrip()
-            try:
-                tmp = datetime.strptime(a, "%H:%M")
-            except ValueError:
-                tmp = datetime.strptime(a, "%M")
-            except Exception:
-                raise ChronicsNotFoundError(
-                    'Impossible to understand the content of "time_interval.info". Make sure '
-                    'it\'s composed of only one line with a datetime in the "%H:%M"'
-                    "format."
-                )
-            self.time_interval = timedelta(hours=tmp.hour, minutes=tmp.minute)
 
     def _get_fileext(self, data_name):
         read_compressed = ".csv"
@@ -517,41 +464,11 @@ class GridStateFromFile(GridValue):
         self._order_backend_prods = order_backend_prods
         self._order_backend_lines = order_backend_lines
 
-        self.names_chronics_to_backend = copy.deepcopy(names_chronics_to_backend)
-        if self.names_chronics_to_backend is None:
-            self.names_chronics_to_backend = {}
-        if not "loads" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["loads"] = {
-                k: k for k in order_backend_loads
-            }
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["loads"], order_backend_loads
-            )
-        if not "prods" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["prods"] = {
-                k: k for k in order_backend_prods
-            }
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["prods"], order_backend_prods
-            )
-        if not "lines" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["lines"] = {
-                k: k for k in order_backend_lines
-            }
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["lines"], order_backend_lines
-            )
-        if not "subs" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["subs"] = {k: k for k in order_backend_subs}
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["subs"], order_backend_subs
-            )
+        self._handle_names_chronics_to_backend(order_backend_loads, order_backend_prods,
+                                               order_backend_lines, order_backend_subs,
+                                               names_chronics_to_backend)
 
-        self._init_date_time()
+        self._init_date_time(self.path)
 
         # read the data
         load_p_iter = self._get_data("load_p")
@@ -1028,7 +945,7 @@ class GridStateFromFile(GridValue):
         if not isinstance(datetime_beg, datetime):
             try:
                 res = datetime.strptime(datetime_beg, "%Y-%m-%d %H:%M")
-            except Exception as exc_:
+            except Exception:
                 try:
                     res = datetime.strptime(datetime_beg, "%Y-%m-%d")
                 except Exception as exc_2:

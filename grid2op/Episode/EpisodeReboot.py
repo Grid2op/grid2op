@@ -15,7 +15,7 @@ import numpy as np
 
 from datetime import timedelta
 
-from grid2op.dtypes import dt_float, dt_int, dt_bool
+from grid2op.dtypes import dt_float, dt_int
 from grid2op.Exceptions import Grid2OpException
 from grid2op.Chronics import GridValue, ChronicsHandler
 from grid2op.Opponent import BaseOpponent
@@ -201,7 +201,7 @@ class EpisodeReboot:
         if seed is not None:
             self.env.seed(seed)
 
-        tmp = self.env.reset()
+        tmp = self.env.reset()  # noqa: F841
 
         # always have the two bellow synch ! otherwise it messes up the "chronics"
         # in the env, when calling "env.step"

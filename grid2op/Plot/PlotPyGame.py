@@ -26,10 +26,10 @@ from grid2op.Exceptions.plotExceptions import PyGameQuit, PlotError
 
 try:
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
-    import pygame
+    import pygame  # type: ignore
 
     can_plot = True
-except Exception as e:
+except Exception:
     can_plot = False
     pass
 

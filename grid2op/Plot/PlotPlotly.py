@@ -51,11 +51,11 @@ from grid2op.Plot.BasePlot import BasePlot
 from grid2op.Exceptions import PlotError
 
 try:
-    import plotly.graph_objects as go
-    import seaborn as sns
+    import plotly.graph_objects as go # type: ignore
+    import seaborn as sns # type: ignore
 
     can_plot = True
-except Exception as e:
+except ImportError:
     can_plot = False
     pass
 

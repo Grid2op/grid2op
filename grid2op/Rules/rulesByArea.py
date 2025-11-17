@@ -16,7 +16,8 @@ from grid2op.Rules.LookParam import LookParam
 from grid2op.Rules.PreventReconnection import PreventReconnection
 from grid2op.Rules.PreventDiscoStorageModif import PreventDiscoStorageModif
 from grid2op.Exceptions import (
-    IllegalAction, Grid2OpException
+    IllegalAction,
+    Grid2OpException
 )
 
 

@@ -9,7 +9,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 
 from grid2op.dtypes import dt_bool, dt_int

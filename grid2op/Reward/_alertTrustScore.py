@@ -10,6 +10,7 @@ import numpy as np
 from grid2op.Reward import AlertReward
 from grid2op.dtypes import dt_float
 
+
 class _AlertTrustScore(AlertReward):
     """
 

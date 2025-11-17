@@ -7,7 +7,6 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import os
-import time
 import copy
 import importlib.util
 from typing import Dict, Tuple, Type, Union, Optional

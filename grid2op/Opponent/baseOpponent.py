@@ -6,8 +6,12 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from grid2op.Space import RandomObject
+import warnings
 
+import numpy as np
+
+from grid2op.Space import RandomObject
+from grid2op.Exceptions import OpponentError
 
 class BaseOpponent(RandomObject):
     def __init__(self, action_space):
@@ -131,3 +135,35 @@ class BaseOpponent(RandomObject):
         new_obj.action_space = self.action_space  # const
         new_obj._do_nothing = new_obj.action_space()
         new_obj.set_state(self.get_state())
+
+    def _set_line_id(
+        self,
+        lines_attacked
+        ):
+        if len(lines_attacked) == 0:
+            warnings.warn(
+                "The opponent is deactivated as there is no information as to which line to attack. "
+                'You can set the argument "kwargs_opponent" to the list of the line names you want '
+                ' the opponent to attack in the "make" function.'
+            )
+
+        # Store attackable lines IDs
+        self._lines_ids = []
+        for l_name in lines_attacked:
+            l_id = (self.action_space.name_line == l_name).nonzero()
+            if len(l_id) and len(l_id[0]):
+                self._lines_ids.append(l_id[0][0])
+            else:
+                raise OpponentError(
+                    'Unable to find the powerline named "{}" on the grid. For '
+                    "information, powerlines on the grid are : {}"
+                    "".format(l_name, sorted(self.action_space.name_line))
+                )
+                
+    def _prebuild_action(self):
+        self._do_nothing = self.action_space({})
+        self._attacks = []
+        for l_id in self._lines_ids:
+            a = self.action_space({"set_line_status": [(l_id, -1)]})
+            self._attacks.append(a)
+        self._attacks = np.array(self._attacks)

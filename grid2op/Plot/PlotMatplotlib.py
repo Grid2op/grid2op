@@ -38,12 +38,12 @@ from grid2op.Exceptions import PlotError
 from grid2op.Plot.BasePlot import BasePlot
 
 try:
-    import matplotlib
-    import matplotlib.pyplot as plt
-    from matplotlib.lines import Line2D
+    import matplotlib # type: ignore
+    import matplotlib.pyplot as plt  # type: ignore
+    from matplotlib.lines import Line2D  # type: ignore
 
     can_plot = True
-except Exception as e:
+except ImportError as exc_:  # noqa: F841
     can_plot = False
     pass
 
@@ -274,25 +274,3 @@ class PlotMatplotlib(BasePlot):
                     alpha=self.alpha_obj,
                 )
         return []
-
-    def _draw_powerlines____________(self, ax, texts=None, colormap=None):
-        colormap_ = lambda x: self.col_line
-        vals = [0.0 for _ in range(self.n_line)]
-        if texts is not None:
-            vals = [float(text if text is not None else 0.0) for text in texts]
-
-        if colormap is not None:
-            colormap_ = lambda x: "k"
-            if colormap == "line":
-                colormap_ = plt.get_cmap("Reds")
-                vals = self._get_vals(vals)
-
-        for line_id in range(self.n_line):
-            if texts is None:
-                text = "{}\nid: {}".format(self.name_line[line_id], line_id)
-                this_col = colormap_("")
-            else:
-                text = texts[line_id]
-                this_col = colormap_(vals[line_id])
-
-            pos_or, pos_ex, *_ = self._get_line_coord(line_id)

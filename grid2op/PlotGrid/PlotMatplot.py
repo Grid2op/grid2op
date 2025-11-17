@@ -10,7 +10,7 @@ import copy
 import io
 import numpy as np
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # type: ignore
 from matplotlib.path import Path
 
 from grid2op.PlotGrid.BasePlot import BasePlot

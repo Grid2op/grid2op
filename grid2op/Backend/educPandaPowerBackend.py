@@ -6,21 +6,24 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import os  # load the python os default module
-import sys  # laod the python sys default module
+import os
 import copy
 import warnings
 
 import numpy as np
 import pandas as pd
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, TYPE_CHECKING
 
 import pandapower as pp
 import scipy
 
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Backend.backend import Backend
-from grid2op.Exceptions import *
+from grid2op.Exceptions import BackendError
+
+
+if TYPE_CHECKING:
+    from grid2op.Action._backendAction import _BackendAction
 
 
 class EducPandaPowerBackend(Backend):
@@ -153,7 +156,7 @@ class EducPandaPowerBackend(Backend):
                 f'Impossible to load the powergrid located at "{full_path}". Please '
                 f"check the file exist and that the file represent a valid pandapower "
                 f"grid. For your information, the error is:\n{exc_}"
-            )
+            ) from exc_
 
         ######################################################################
         # this part is due to the "modeling" of the topology FOR THIS EXAMPLE
@@ -220,7 +223,7 @@ class EducPandaPowerBackend(Backend):
         # type(self).set_no_storage()
 
     ###### modify the grid
-    def apply_action(self, backend_action: "grid2op.Action._backendAction._BackendAction") -> None:
+    def apply_action(self, backend_action: "_BackendAction") -> None:
         """
         Here the implementation of the "modify the grid" function.
 

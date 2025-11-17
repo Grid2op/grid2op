@@ -11,7 +11,6 @@ from typing import Optional, Type, Union
 import numpy as np
 from grid2op.Space import GridObjects
 import grid2op.Backend
-from grid2op.dtypes import dt_int
 from grid2op.typing_variables import CLS_AS_DICT_TYPING
 from grid2op.Exceptions import Grid2OpException
 
