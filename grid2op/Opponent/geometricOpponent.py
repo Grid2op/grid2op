@@ -98,27 +98,8 @@ class GeometricOpponent(BaseOpponent):
             Ratio between the probability of the most likely line to be disconnected and the least likely one.
         """
         self._env = partial_env
-
-        if len(lines_attacked) == 0:
-            warnings.warn(
-                "The opponent is deactivated as there is no information as to which line to attack. "
-                'You can set the argument "kwargs_opponent" to the list of the line names you want '
-                ' the opponent to attack in the "make" function.'
-            )
-
-        # Store attackable lines IDs
-        self._lines_ids = []
-        for l_name in lines_attacked:
-            l_id = (self.action_space.name_line == l_name).nonzero()
-            if len(l_id) and len(l_id[0]):
-                self._lines_ids.append(l_id[0][0])
-            else:
-                raise OpponentError(
-                    'Unable to find the powerline named "{}" on the grid. For '
-                    "information, powerlines on the grid are : {}"
-                    "".format(l_name, sorted(self.action_space.name_line))
-                )
-
+        self._set_line_id(lines_attacked)
+        
         # Pre-build attacks actions
         self._do_nothing = self.action_space({})
         self._attacks = []
