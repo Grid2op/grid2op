@@ -8,7 +8,6 @@
 
 import os
 import copy
-import warnings
 
 from datetime import timedelta, datetime
 import numpy as np
@@ -55,39 +54,9 @@ class ReadPypowNetData(GridStateFromFileWithForecasts):
         self.n_load = len(order_backend_loads)
         self.n_line = len(order_backend_lines)
 
-        self.names_chronics_to_backend = copy.deepcopy(names_chronics_to_backend)
-        if self.names_chronics_to_backend is None:
-            self.names_chronics_to_backend = {}
-        if not "loads" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["loads"] = {
-                k: k for k in order_backend_loads
-            }
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["loads"], order_backend_loads
-            )
-        if not "prods" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["prods"] = {
-                k: k for k in order_backend_prods
-            }
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["prods"], order_backend_prods
-            )
-        if not "lines" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["lines"] = {
-                k: k for k in order_backend_lines
-            }
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["lines"], order_backend_lines
-            )
-        if not "subs" in self.names_chronics_to_backend:
-            self.names_chronics_to_backend["subs"] = {k: k for k in order_backend_subs}
-        else:
-            self._assert_correct(
-                self.names_chronics_to_backend["subs"], order_backend_subs
-            )
+        self._handle_names_chronics_to_backend(order_backend_loads, order_backend_prods,
+                                               order_backend_lines, order_backend_subs,
+                                               names_chronics_to_backend)
 
         # print(os.listdir(self.path))
         read_compressed = ".csv"

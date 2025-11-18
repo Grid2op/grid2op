@@ -6,17 +6,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import os
-import numpy as np
-import json
-import copy
-import tempfile
 
-from grid2op.dtypes import dt_float
 from grid2op.Reward import L2RPNSandBoxScore, _AlarmScore
 from grid2op.utils.underlying_statistics import EpisodeStatistics
 from grid2op.utils.l2rpn_2020_scores import ScoreL2RPN2020
-from grid2op.Episode import EpisodeData
 
 
 class ScoreICAPS2021(ScoreL2RPN2020):
@@ -165,7 +158,7 @@ class ScoreICAPS2021(ScoreL2RPN2020):
 
 if __name__ == "__main__":
     import grid2op
-    from lightsim2grid import LightSimBackend
+    from lightsim2grid import LightSimBackend # type: ignore
     from grid2op.Agent import RandomAgent, DoNothingAgent
 
     env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())

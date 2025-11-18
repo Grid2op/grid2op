@@ -8,13 +8,12 @@
 
 import os
 import json
-from typing import Optional, Union
+from typing import Optional
 import numpy as np
-import hashlib
 from datetime import datetime, timedelta
 
 import grid2op
-from grid2op.dtypes import dt_bool, dt_int
+from grid2op.dtypes import dt_int
 from grid2op.Chronics import GridValue, ChangeNothing
 from grid2op.Chronics.GSFFWFWM import GridStateFromFileWithForecastsWithMaintenance
 from grid2op.Chronics.fromNPY import FromNPY
@@ -163,9 +162,9 @@ class FromChronix2grid(GridValue):
             from chronix2grid.grid2op_utils import generate_one_episode
         except ImportError as exc_:
             raise ChronicsError(
-                f"Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
-                f"Please visit https://github.com/bdonnot/chronix2grid#installation "
-                f"for further install instructions."
+                "Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
+                "Please visit https://github.com/bdonnot/chronix2grid#installation "
+                "for further install instructions."
             ) from exc_
 
         return generate_one_episode(*args, **kwargs)

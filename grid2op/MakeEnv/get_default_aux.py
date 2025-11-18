@@ -9,7 +9,6 @@
 import numbers
 import copy
 import warnings
-from tarfile import ENCODING
 
 from grid2op.Exceptions import EnvError
 

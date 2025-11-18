@@ -5,6 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import os
 import numpy as np
 import json
@@ -16,8 +17,6 @@ from grid2op.Reward import L2RPNSandBoxScore
 from grid2op.Agent import RecoPowerlineAgent
 from grid2op.utils.underlying_statistics import EpisodeStatistics
 from grid2op.Episode import EpisodeData
-
-import re
 
 
 class ScoreL2RPN2020(object):
@@ -418,7 +417,7 @@ class ScoreL2RPN2020(object):
 
 if __name__ == "__main__":
     import grid2op
-    from lightsim2grid import LightSimBackend
+    from lightsim2grid import LightSimBackend # type: ignore
     from grid2op.Agent import RandomAgent, DoNothingAgent
 
     env = grid2op.make("l2rpn_case14_sandbox", backend=LightSimBackend())

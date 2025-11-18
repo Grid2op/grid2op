@@ -100,6 +100,14 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.2] - 2025-11-18
+----------------------
+- [FIXED] an issue preventing to change the way
+  the voltages are set
+- [FIXED] a test when using gymnasium>= 1.2.1 (AsynchVectEnv)
+- [ADDED] a convenience class to allow agent to override
+  voltage setpoint from provided time seies (`VCFromFileAgentOverrides`)
+
 [1.12.1] - 2025-08-28
 ----------------------
 - [BREAKING] (small impact) action "property" `shunt_p`, `shunt_q` and `shunt_bus`

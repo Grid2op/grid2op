@@ -7,7 +7,6 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import os
-import time
 import copy
 import importlib.util
 from typing import Dict, Tuple, Type, Union, Optional
@@ -557,7 +556,7 @@ def make_from_dataset_path(
         voltage_class_cfg = config_data["voltage_class"]
     ### Create controler for voltages
     volagecontroler_class = _get_default_aux(
-        "volagecontroler_class",
+        "voltagecontroler_class",
         kwargs,
         defaultClassApp=voltage_class_cfg,
         defaultClass=ControlVoltageFromFile,

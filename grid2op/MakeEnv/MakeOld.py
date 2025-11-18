@@ -11,8 +11,10 @@ import warnings
 from grid2op.Environment import Environment
 from grid2op.Backend import Backend, PandaPowerBackend
 from grid2op.Parameters import Parameters
-from grid2op.Chronics import ChronicsHandler, Multifolder, ChangeNothing
 from grid2op.Chronics import (
+    ChronicsHandler,
+    Multifolder,
+    ChangeNothing,
     GridStateFromFileWithForecasts,
     GridValue,
 )
@@ -22,7 +24,10 @@ from grid2op.Action import (
     TopologyAndDispatchAction,
     DontAct,
 )
-from grid2op.Exceptions import *
+from grid2op.Exceptions import (
+    EnvError,
+    UnknownEnv,
+)
 from grid2op.Observation import CompleteObservation, BaseObservation
 from grid2op.Reward import BaseReward, L2RPNReward, RedispReward
 from grid2op.Rules import BaseRules, AlwaysLegal, DefaultRules
@@ -235,7 +240,7 @@ def make_old(name_env="case14_realistic", **kwargs):
 
     warnings.warn("make_old is deprecated. Please consider using make instead")
     for el in kwargs:
-        if not el in ALLOWED_KWARGS_MAKE:
+        if el not in ALLOWED_KWARGS_MAKE:
             raise EnvError(
                 'Unknown keyword argument "{}" used to create an Environement. '
                 "No Environment will be created. "
@@ -489,7 +494,7 @@ def make_old(name_env="case14_realistic", **kwargs):
         msg_error=msg_error,
     )
     for el in defaultinstance_chronics_kwargs:
-        if not el in data_feeding_kwargs:
+        if el not in data_feeding_kwargs:
             data_feeding_kwargs[el] = defaultinstance_chronics_kwargs[el]
 
     ### the chronics generator

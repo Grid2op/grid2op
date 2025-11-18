@@ -1271,7 +1271,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError as exc_:  # noqa: F841
                 # this attribute was not there in the first place
                 pass
 
@@ -1279,7 +1279,7 @@ class BaseObservation(GridObjects):
             # added in grid2op 1.6.0 mainly for the EpisodeReboot
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError as exc_:  # noqa: F841
                 # this attribute was not there in the first place
                 pass
             
@@ -1290,7 +1290,7 @@ class BaseObservation(GridObjects):
         for el in ["max_step", "current_step"]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError as exc_:  # noqa: F841
                 # this attribute was not there in the first place
                 pass
                 
@@ -1301,7 +1301,7 @@ class BaseObservation(GridObjects):
         for el in ["delta_time"]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError as exc_:  # noqa: F841
                 # this attribute was not there in the first place
                 pass
             
@@ -1316,7 +1316,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError as exc_:  # noqa: F841
                 # this attribute was not there in the first place
                 pass 
             
@@ -1335,7 +1335,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError as exc_:  # noqa: F841
                 # this attribute was not there in the first place
                 pass 
             
@@ -1359,7 +1359,7 @@ class BaseObservation(GridObjects):
         ]:
             try:
                 cls.attr_list_vect.remove(el)
-            except ValueError as exc_:
+            except ValueError as exc_:  # noqa: F841
                 # this attribute was not there in the first place
                 pass 
         
@@ -2439,7 +2439,7 @@ class BaseObservation(GridObjects):
                 # see issue https://github.com/Grid2Op/grid2op/issues/433
                 continue
             tup_ = (lor_bus[lid], lex_bus[lid])
-            if not tup_ in dict_:
+            if tup_ not in dict_:
                 # data is not in the graph, I insert it
                 dict_[tup_] = val
             else:

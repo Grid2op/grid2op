@@ -11,7 +11,6 @@ import os
 import warnings
 from typing import Union, Optional
 import logging
-import sys
     
 from grid2op.Environment import Environment
 from grid2op.MakeEnv.MakeFromPath import make_from_dataset_path, ERR_MSG_KWARGS

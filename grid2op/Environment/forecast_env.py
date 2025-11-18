@@ -6,13 +6,15 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 
 from grid2op.typing_variables import STEP_INFO_TYPING
-
-import grid2op.Observation
 from grid2op.Action import BaseAction
 from grid2op.Environment.environment import Environment
+
+
+if TYPE_CHECKING:
+    from grid2op.Observation import BaseObservation
 
 
 class ForecastEnv(Environment):
@@ -26,7 +28,7 @@ class ForecastEnv(Environment):
         super().__init__(**kwargs)
         self._do_not_erase_local_dir_cls = True
         
-    def step(self, action: BaseAction) -> Tuple["grid2op.Observation.BaseObservation",
+    def step(self, action: BaseAction) -> Tuple["BaseObservation",
                                                 float,
                                                 bool,
                                                 STEP_INFO_TYPING]:

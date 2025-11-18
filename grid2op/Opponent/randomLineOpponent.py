@@ -5,12 +5,11 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
-import warnings
+
 import numpy as np
 import copy
 
 from grid2op.Opponent.baseOpponent  import BaseOpponent
-from grid2op.Exceptions import OpponentError
 
 
 class RandomLineOpponent(BaseOpponent):
@@ -46,33 +45,10 @@ class RandomLineOpponent(BaseOpponent):
         # this if the function used to properly set the object.
         # It has the generic signature above,
         # and it's way more flexible that the other one.
-
-        if len(lines_attacked) == 0:
-            warnings.warn(
-                f"The opponent is deactivated as there is no information as to which line to attack. "
-                f'You can set the argument "kwargs_opponent" to the list of the line names you want '
-                f' the opponent to attack in the "make" function.'
-            )
-
-        # Store attackable lines IDs
-        self._lines_ids = []
-        for l_name in lines_attacked:
-            l_id = (self.action_space.name_line == l_name).nonzero()
-            if len(l_id) and len(l_id[0]):
-                self._lines_ids.append(l_id[0][0])
-            else:
-                raise OpponentError(
-                    'Unable to find the powerline named "{}" on the grid. For '
-                    "information, powerlines on the grid are : {}"
-                    "".format(l_name, sorted(self.action_space.name_line))
-                )
+        self._set_line_id(lines_attacked)
 
         # Pre-build attacks actions
-        self._attacks = []
-        for l_id in self._lines_ids:
-            att = self.action_space({"set_line_status": [(l_id, -1)]})
-            self._attacks.append(att)
-        self._attacks = np.array(self._attacks)
+        self._prebuild_action()
 
     def attack(self, observation, agent_action, env_action, budget, previous_fails):
         """

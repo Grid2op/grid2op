@@ -12,12 +12,15 @@ import os
 import numpy as np
 from grid2op.Exceptions.envExceptions import EnvError
 
+from grid2op.Reward import RewardHelper
+from grid2op.dtypes import dt_int
+
+
 from grid2op.Observation.serializableObservationSpace import (
     SerializableObservationSpace,
 )
-from grid2op.Reward import RewardHelper
 from grid2op.Observation.completeObservation import CompleteObservation
-from grid2op.dtypes import dt_int
+
 
 class ObservationSpace(SerializableObservationSpace):
     """
