@@ -100,6 +100,10 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.3]
+-----------------------
+
+
 [1.12.2] - 2025-11-18
 ----------------------
 - [FIXED] an issue preventing to change the way
