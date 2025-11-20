@@ -24,6 +24,7 @@ from abc import ABC, abstractmethod
 
 from grid2op._glop_platform_info import _IS_WINDOWS
 from grid2op.Environment._env_prev_state import _EnvPreviousState
+from grid2op.Environment.EnvInterface import EnvInterface
 from grid2op.Observation import (BaseObservation,
                                  ObservationSpace,
                                  HighResSimCounter)
@@ -99,7 +100,7 @@ BASE_TXT_COPYRIGHT = """# Copyright (c) 2019-2025, RTE (https://www.rte-france.c
 
 """
 
-class BaseEnv(GridObjects, RandomObject, ABC):
+class BaseEnv(GridObjects, EnvInterface, RandomObject, ABC):
     """
     INTERNAL
 
@@ -239,11 +240,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
         Current state of the delayed protection. It is exacly :attr:`BaseEnv._timestep_overflow` unless
-        :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` != 1. 
-        
-        If the soft overflow threshold is different than 1, it counts the number of steps 
+        :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` != 1.
+
+        If the soft overflow threshold is different than 1, it counts the number of steps
         since the soft overflow threshold is "activated" (flow > limits * soft_overflow_threshold)
-        
+
     _nb_ts_max_protection_counter: ``numpy.ndarray``, dtype: int
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
@@ -688,11 +689,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         self._delta_gen_p = None
-        
+
         # required in 1.11.0 : the previous state when the element was last connected
         self._previous_conn_state = None
         self._cst_prev_state_at_init = None
-        
+
         # 1.11: do not check rules if first observation
         self._called_from_reset = True
         
@@ -1024,8 +1025,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # previous connected state
         new_obj._previous_conn_state = copy.deepcopy(self._previous_conn_state)
         new_obj._cst_prev_state_at_init = self._cst_prev_state_at_init  # no need to deep copy this
-        
-        
+
+
         new_obj._called_from_reset = self._called_from_reset
         new_obj._needs_active_bus = self._needs_active_bus
         
@@ -1500,7 +1501,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         # slack (1.11.0)
         self._delta_gen_p =  np.zeros(bk_type.n_gen, dtype=dt_float)
-        
+
         # previous state (complete)
         n_shunt = bk_type.n_shunt if bk_type.shunts_data_available else 0
         self._previous_conn_state = _EnvPreviousState(bk_type,
@@ -1514,7 +1515,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                       np.zeros(n_shunt, dtype=dt_float),
                                                       np.zeros(n_shunt, dtype=dt_int),
                                                       )
-        
+
         if self._init_obs is None:
             # regular environment, initialized from scratch
             try:
@@ -1533,7 +1534,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
             self._cst_prev_state_at_init = copy.deepcopy(self._init_obs._prev_conn)
             self._previous_conn_state.update_from_other(self._init_obs._prev_conn)
-            
+
         self._cst_prev_state_at_init.prevent_modification()
         # update backend_action with the "last known" state
         self._backend_action.last_topo_registered.values[:] = self._previous_conn_state._topo_vect
@@ -1645,7 +1646,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         self._detached_elements_mw = 0.
         self._detached_elements_mw_prev = 0.
-        
+
     def _reset_alert(self):
         self._last_alert[:] = False
         self._is_already_attacked[:] = False
@@ -2257,7 +2258,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._target_dispatch[gen_participating]
             - self._actual_dispatch[gen_participating]
         )
-        
+
         already_modified_gen_me = already_modified_gen[gen_participating]
         target_vals_me = target_vals[already_modified_gen_me]
         nb_dispatchable = gen_participating.sum()
@@ -2299,7 +2300,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             - self._sum_curtailment_mw
             + self._detached_elements_mw
         )
-        
+
         # gen increase in the chronics
         new_p_th = new_p[gen_participating] + self._actual_dispatch[gen_participating]
 
@@ -3330,7 +3331,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # set to 0 the number of timestep for lines that are not on overflow
         self._timestep_overflow[~overflow_lines] = 0
-        
+
         # update protection counter
         engaged_protection = current_flows > self.backend.get_thermal_limit() * self._parameters.SOFT_OVERFLOW_THRESHOLD
         self._protection_counter[engaged_protection] += 1
@@ -3386,8 +3387,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 return SomeGeneratorBelowRampmin(f"Especially generators {gen_ko_nms}")
             
             self._gen_activeprod_t[:] = tmp_gen_p
-        
-        # set the status of the other elements (if the backend 
+
+        # set the status of the other elements (if the backend
         # disconnect them)
         topo_ = self.backend.get_topo_vect()
         if cls.detachment_is_allowed:
@@ -3399,7 +3400,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self.backend.update_bus_target_after_pf(topo_[cls.load_pos_topo_vect],
                                                 topo_[cls.gen_pos_topo_vect],
                                                 topo_[cls.storage_pos_topo_vect])
-            
+
         # problem with the gen_activeprod_t above, is that the slack bus absorbs alone all the losses
         # of the system. So basically, when it's too high (higher than the ramp) it can
         # mess up the rest of the environment
@@ -3407,7 +3408,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # set the line status
         self._line_status[:] = self.backend.get_line_status()
-            
+
         # for detachment remember previous loads and generation
         self._prev_load_p[:], self._prev_load_q[:], *_ = self.backend.loads_info()
         self._delta_gen_p[:] = self._gen_activeprod_t - self._gen_activeprod_t_redisp
@@ -3417,10 +3418,10 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         # finally, build the observation (it's a different one at each step, we cannot reuse the same one)
         # THIS SHOULD BE DONE AFTER EVERYTHING IS INITIALIZED !
         self.current_obs = self.get_obs(_do_copy=False)
-        
+
         # update the previous state
         self._previous_conn_state.update_from_backend(self.backend)
-        
+
         self._time_extract_obs += time.perf_counter() - beg_res
         return None
 
@@ -3470,7 +3471,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     ):
         has_error = True
         detailed_info = None
-            
+
         try:
             # compute the next _grid state
             beg_pf = time.perf_counter()
@@ -3500,20 +3501,20 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     def _aux_apply_detachment(self, new_p, new_p_th):
         gen_detached_user = self._backend_action.get_gen_detached()
         load_detached_user = self._backend_action.get_load_detached()
-        
+
         # handle gen
-        mw_gen_lost_this = new_p[gen_detached_user].sum() 
-        
+        mw_gen_lost_this = new_p[gen_detached_user].sum()
+
         # handle loads
-        mw_load_lost_this = self._prev_load_p[load_detached_user].sum() 
-        
+        mw_load_lost_this = self._prev_load_p[load_detached_user].sum()
+
         # put everything together
         total_power_lost = -mw_gen_lost_this + mw_load_lost_this
-        self._detached_elements_mw = (-total_power_lost + 
-                                      self._actual_dispatch[gen_detached_user].sum() - 
+        self._detached_elements_mw = (-total_power_lost +
+                                      self._actual_dispatch[gen_detached_user].sum() -
                                       self._detached_elements_mw_prev)
         self._detached_elements_mw_prev = -total_power_lost
-        
+
         # and now modifies the vectors
         new_p[gen_detached_user] = 0.
         new_p_th[gen_detached_user] = 0.
@@ -3756,7 +3757,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             # it is feasible)
             self._gen_before_curtailment[cls.gen_renewable] = new_p[cls.gen_renewable]
             gen_curtailed = self._aux_handle_curtailment_without_limit(action, new_p)
-            
+
             # TODO detachment
             self._aux_update_backend_action(action, action_storage_power, init_disp)
             new_p, new_p_th = self._aux_apply_detachment(new_p, new_p_th)
@@ -3787,7 +3788,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             if not is_done:
                 # TODO ?
                 # self._aux_update_backend_action(action, action_storage_power, init_disp)
-                
+
                 # TODO storage: check the original action, even when replaced by do nothing is not modified
                 self._backend_action += self._env_modification
                 self._backend_action.set_redispatch(self._actual_dispatch)
@@ -3976,41 +3977,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._time_next_maintenance[:] = -1
         self._duration_next_maintenance[:] = 0
 
-    def __enter__(self):
-        """
-        Support *with-statement* for the environment.
-
-        Examples
-        --------
-
-        .. code-block:: python
-
-            import grid2op
-            import grid2op.BaseAgent
-            with grid2op.make("l2rpn_case14_sandbox") as env:
-                agent = grid2op.BaseAgent.DoNothingAgent(env.action_space)
-                act = env.action_space()
-                obs, r, done, info = env.step(act)
-                act = agent.act(obs, r, info)
-                obs, r, done, info = env.step(act)
-
-        """
-        return self
-
-    def __exit__(self, *args):
-        """
-        Support *with-statement* for the environment.
-        """
-        self.close()
-        # propagate exception
-        return False
-
     def close(self):
-        """close an environment: this will attempt to free as much memory as possible.
-        Note that after an environment is closed, you will not be able to use anymore.
-
-        Any attempt to use a closed environment might result in non deterministic behaviour.
-        """
         if self.__closed:
             raise EnvError(
                 f"This environment {id(self)} {self} is closed already, you cannot close it a second time."
@@ -4355,7 +4322,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             raise EnvError("This environment is not intialized. "
                            "Have you called `env.reset()` after last game over ?")
         nb_timestep = int(nb_timestep)
-        
+
         # Go to the timestep requested minus one
         nb_timestep = max(1, nb_timestep - 1)
         self.chronics_handler.fast_forward(nb_timestep)
