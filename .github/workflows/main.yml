@@ -55,7 +55,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+          fetch-depth: 0        # needed for setuptools_scm to read tags
 
+      - name: Fix git safe directory
+        run: git config --global --add safe.directory "$(pwd)"
+        
       - name: Setup path
         run: echo "/opt/python/${{ matrix.python.name }}-${{ matrix.python.abi }}/bin/" >> $GITHUB_PATH
 
