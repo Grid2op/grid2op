@@ -593,6 +593,7 @@ class PandaPowerBackend(Backend):
         self._prod_v_col_id = int(((self._grid.gen.columns == "vm_pu").nonzero()[0][0])) 
         self._load_p_col_id = int(((self._grid.load.columns == "p_mw").nonzero()[0][0])) 
         self._load_q_col_id = int(((self._grid.load.columns == "q_mvar").nonzero()[0][0])) 
+        self._stor_p_col_id = int(((self._grid.storage.columns == "p_mw").nonzero()[0][0])) 
         
         # hack for backward compat with oldest lightsim2grid version
         try:
@@ -947,9 +948,11 @@ class PandaPowerBackend(Backend):
 
         if cls.n_storage > 0:
             # active setpoint
-            tmp_stor_p = self._grid.storage["p_mw"]
-            if (storage.changed).any():
-                tmp_stor_p.iloc[storage.changed] = storage.values[storage.changed]
+            # tmp_stor_p = self._grid.storage["p_mw"]
+            # if (storage.changed).any():
+            #     tmp_stor_p.iloc[storage.changed] = storage.values[storage.changed]
+            self._grid.storage.iloc[storage.changed, self._stor_p_col_id] = storage.values[storage.changed]
+            
             # topology of the storage
             stor_bus = backend_action.get_storages_bus()
             new_bus_num = dt_int(1) * self._grid.storage["bus"].values
@@ -1419,6 +1422,7 @@ class PandaPowerBackend(Backend):
         res._prod_v_col_id = self._prod_v_col_id 
         res._load_p_col_id = self._load_p_col_id 
         res._load_q_col_id = self._load_q_col_id 
+        res._stor_p_col_id = self._stor_p_col_id 
         
         return res
 
