@@ -244,6 +244,11 @@ class PandaPowerBackend(Backend):
         self._bus_gen_col_id = None
         self._bus_ext_grid_col_id = None
         self.div_exception = None
+        self._prod_p_col_id = None 
+        self._prod_v_col_id = None 
+        self._load_p_col_id = None 
+        self._load_q_col_id = None 
+        self._stor_p_col_id = None 
 
     def _check_for_non_modeled_elements(self):
         """This function check for elements in the pandapower grid that will have no impact on grid2op.
