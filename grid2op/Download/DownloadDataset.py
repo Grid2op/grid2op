@@ -89,7 +89,7 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
             'Alternatively you can also delete the folder "{final_path}" from your computer and run this command '
             "again.\n"
             "Finally, you can download the data in a different folder by specifying (in a command prompt):\n"
-            '\t grid2op.download --name "{env_name}" --path_save PATH\WHERE\YOU\WANT\TO\DOWNLOAD'
+            '\t grid2op.download --name "{env_name}" --path_save PATH\\WHERE\\YOU\\WANT\\TO\\DOWNLOAD'
             "".format(final_path=final_path, env_name=dataset_name)
         )
         print(str_)
