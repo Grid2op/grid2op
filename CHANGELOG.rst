@@ -101,8 +101,12 @@ Native multi agents support:
 - add change_bus / set_bus
 
 
-[1.12.4] - 2026
-----------------
+[1.12.4] - 2026-xx-yy
+----------------------
+- [FIXED] copy on write issues in PandaPowerBackend
+- [FIXED] a bug causing https://github.com/Grid2op/lightsim2grid/issues/128
+- [FIXED] some warnings in the docstrings (escaped character)
+
 
 [1.12.3] - 2026-02-04
 -----------------------
