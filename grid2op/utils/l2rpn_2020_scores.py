@@ -7,6 +7,7 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import os
+import re
 import numpy as np
 import json
 import copy
@@ -384,6 +385,10 @@ class ScoreL2RPN2020(object):
         total_ts = []
         for ep_id in range(self.nb_scenario):
             this_ep_nm = meta_data_dn[f"{ep_id}"]["scenario_name"]
+            if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, this_ep_nm) is None:
+                raise RuntimeError(
+                    f'The grid2op statistics name should match the regex "{EpisodeStatistics.REGEX_SPLIT}".'
+                )
             with open(
                 os.path.join(path_save, this_ep_nm, EpisodeData.META),
                 "r",

@@ -106,6 +106,8 @@ Native multi agents support:
 - [FIXED] copy on write issues in PandaPowerBackend
 - [FIXED] a bug causing https://github.com/Grid2op/lightsim2grid/issues/128
 - [FIXED] some warnings in the docstrings (escaped character)
+- [IMPROVED] security in the way episode statistics are saved (to prevent malicious 
+  tempering with path)
 
 
 [1.12.3] - 2026-02-04

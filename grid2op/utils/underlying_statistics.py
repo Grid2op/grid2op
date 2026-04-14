@@ -11,8 +11,10 @@ import os
 import json
 import shutil
 import re
+from typing import Dict
 import numpy as np
-
+from hashlib import blake2b
+        
 from grid2op.dtypes import dt_float
 from grid2op.Agent import BaseAgent, DoNothingAgent
 from grid2op.Parameters import Parameters
@@ -109,6 +111,10 @@ class EpisodeStatistics(object):
     STATISTICS_FOLDER = "_statistics"
     STATISTICS_FOOTPRINT = ".statistics"
     METADATA = "metadata.json"
+    
+    # security addition
+    REGEX_SPLIT = r"^[a-zA-Z0-9_\\.]*$"
+    REGEX_SPLIT_COMPILED = re.compile(REGEX_SPLIT)
 
 
     ERROR_MSG_CLEANED = ("This statistics has been removed from the hard drive through a call to "
@@ -124,9 +130,13 @@ class EpisodeStatistics(object):
         self.__cleared = False
 
     @staticmethod
-    def get_name_dir(name_stats):
+    def get_name_dir(name_stats) -> str:
         """return the name of the folder in which the statistics will be computed"""
         if name_stats is not None:
+            if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, name_stats) is None:
+                raise RuntimeError(
+                    f'The suffixes you can use to save a grid2op statistics must match "{EpisodeStatistics.REGEX_SPLIT}"'
+                )
             nm_ = f"{EpisodeStatistics.STATISTICS_FOLDER}_{name_stats}"
         else:
             nm_ = EpisodeStatistics.STATISTICS_FOLDER
@@ -260,6 +270,7 @@ class EpisodeStatistics(object):
                         self._save_numpy(os.path.join(path_total, el), array=scores[el])
                     del scores
                 del ids_
+                dict_metadata[self._get_hash_key_from_path(path_total)] = EpisodeStatistics._get_hash_from_json_metadata(dict_metadata)
                 with open(
                     os.path.join(path_total, EpisodeStatistics.METADATA),
                     "w",
@@ -267,7 +278,19 @@ class EpisodeStatistics(object):
                 ) as f:
                     json.dump(obj=dict_metadata, fp=f)
             first_attr = False
-
+            
+    @staticmethod
+    def _get_hash_from_json_metadata(dict_metadata: Dict) -> str:
+        str_ = json.dumps(dict_metadata, sort_keys=True, indent=4)
+        return blake2b(str_.encode("utf-8")).hexdigest()
+    
+    def _get_hash_key_from_path(self, path_total: str) -> str:
+        # remove the path of the env (if any)
+        if self.env is not None:
+            path_env = self.env.get_path_env()
+            path_total = path_total.replace(path_env, "")
+        return blake2b(path_total.encode("utf-8")).hexdigest()
+        
     @staticmethod
     def list_stats(env):
         """this is a function listing all the stats that have been computed for this environment"""
@@ -588,12 +611,28 @@ class EpisodeStatistics(object):
         """return the metadata as a dictionary"""
         if self.__cleared:
             raise RuntimeError(EpisodeStatistics.ERROR_MSG_CLEANED)
-        
+        # added security: save an hash of the content and of the file of the 
+        # json stats to "make sure" it has not been tempered with
+        key_hash = self._get_hash_key_from_path(self.path_save_stats)
         with open(
             os.path.join(self.path_save_stats, self.METADATA), "r", encoding="utf-8"
         ) as f:
             res = json.load(f)
-        return res
+            
+        # added security: save an hash of the content and of the file of the 
+        # json stats to "make sure" it has not been tempered with
+        if key_hash not in res:
+            raise RuntimeError(
+                "Impossible to check the consistency of the statistics saved. "
+                "Someone probably moodified it outside of grid2op (wrong hash key).")
+        saved_hash = res[key_hash]
+        maybe_res = {k: v for k, v in res.items() if k != key_hash}
+        if saved_hash != self._get_hash_from_json_metadata(maybe_res):
+            raise RuntimeError(
+                "Impossible to check the consistency of the statistics saved."
+                " Someone probably moodified it outside of grid2op (wrong hash value)"
+            )
+        return maybe_res
 
     def compute(
         self,
