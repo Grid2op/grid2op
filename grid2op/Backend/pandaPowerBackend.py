@@ -589,6 +589,11 @@ class PandaPowerBackend(Backend):
         self._bus_ext_grid_col_id = int(((self._grid.ext_grid.columns == "bus").nonzero()[0][0])) 
         self.comp_time = 0.
         
+        self._prod_p_col_id = int(((self._grid.gen.columns == "p_mw").nonzero()[0][0])) 
+        self._prod_v_col_id = int(((self._grid.gen.columns == "vm_pu").nonzero()[0][0])) 
+        self._load_p_col_id = int(((self._grid.load.columns == "p_mw").nonzero()[0][0])) 
+        self._load_q_col_id = int(((self._grid.load.columns == "q_mvar").nonzero()[0][0])) 
+        
         # hack for backward compat with oldest lightsim2grid version
         try:
             import lightsim2grid
@@ -913,27 +918,32 @@ class PandaPowerBackend(Backend):
         # TODO n_busbar what if index is not continuous
         
         # handle generators
-        tmp_prod_p = self._get_vector_inj["prod_p"](self._grid)
-        if (prod_p.changed).any():
-            tmp_prod_p.iloc[prod_p.changed] = prod_p.values[prod_p.changed]
+        self._grid.gen.iloc[prod_p.changed, self._prod_p_col_id] = prod_p.values[prod_p.changed]
+        self._grid.gen.iloc[prod_v.changed, self._prod_v_col_id] = prod_v.values[prod_v.changed] / self.prod_pu_to_kv[prod_v.changed]
+        # tmp_prod_p = self._get_vector_inj["prod_p"](self._grid)
+        # if (prod_p.changed).any():
+            # tmp_prod_p.iloc[prod_p.changed] = prod_p.values[prod_p.changed]
 
-        tmp_prod_v = self._get_vector_inj["prod_v"](self._grid)
-        if (prod_v.changed).any():
-            tmp_prod_v.iloc[prod_v.changed] = (
-                prod_v.values[prod_v.changed] / self.prod_pu_to_kv[prod_v.changed]
-            )
+        # tmp_prod_v = self._get_vector_inj["prod_v"](self._grid)
+        # if (prod_v.changed).any():
+        #     tmp_prod_v.iloc[prod_v.changed] = (
+        #         prod_v.values[prod_v.changed] / self.prod_pu_to_kv[prod_v.changed]
+        #     )
 
         if self._id_bus_added is not None and prod_v.changed[self._id_bus_added]:
             # handling of the slack bus, where "2" generators are present.
-            self._grid["ext_grid"]["vm_pu"] = 1.0 * tmp_prod_v[self._id_bus_added]
+            self._grid["ext_grid"]["vm_pu"] = 1.0 * self.grid.gen.iloc[self._id_bus_added, self._prod_v_col_id]
 
-        tmp_load_p = self._get_vector_inj["load_p"](self._grid)
-        if (load_p.changed).any():
-            tmp_load_p.iloc[load_p.changed] = load_p.values[load_p.changed]
+        # handle loads
+        self._grid.load.iloc[load_p.changed, self._load_p_col_id] = load_p.values[load_p.changed]
+        self._grid.load.iloc[load_q.changed, self._load_q_col_id] = load_q.values[load_q.changed]
+        # tmp_load_p = self._get_vector_inj["load_p"](self._grid)
+        # if (load_p.changed).any():
+        #     tmp_load_p.iloc[load_p.changed] = load_p.values[load_p.changed]
 
-        tmp_load_q = self._get_vector_inj["load_q"](self._grid)
-        if (load_q.changed).any():
-            tmp_load_q.iloc[load_q.changed] = load_q.values[load_q.changed]
+        # tmp_load_q = self._get_vector_inj["load_q"](self._grid)
+        # if (load_q.changed).any():
+        #     tmp_load_q.iloc[load_q.changed] = load_q.values[load_q.changed]
 
         if cls.n_storage > 0:
             # active setpoint
@@ -1405,6 +1415,11 @@ class PandaPowerBackend(Backend):
         res._bus_load_col_id = self._bus_load_col_id
         res._bus_gen_col_id = self._bus_gen_col_id
         res._bus_ext_grid_col_id = self._bus_ext_grid_col_id
+        res._prod_p_col_id = self._prod_p_col_id 
+        res._prod_v_col_id = self._prod_v_col_id 
+        res._load_p_col_id = self._load_p_col_id 
+        res._load_q_col_id = self._load_q_col_id 
+        
         return res
 
     def close(self) -> None:
