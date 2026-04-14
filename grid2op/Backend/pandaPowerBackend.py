@@ -933,7 +933,7 @@ class PandaPowerBackend(Backend):
 
         if self._id_bus_added is not None and prod_v.changed[self._id_bus_added]:
             # handling of the slack bus, where "2" generators are present.
-            self._grid["ext_grid"]["vm_pu"] = 1.0 * self.grid.gen.iloc[self._id_bus_added, self._prod_v_col_id]
+            self._grid["ext_grid"]["vm_pu"] = 1.0 * self._grid.gen.iloc[self._id_bus_added, self._prod_v_col_id]
 
         # handle loads
         self._grid.load.iloc[load_p.changed, self._load_p_col_id] = load_p.values[load_p.changed]
