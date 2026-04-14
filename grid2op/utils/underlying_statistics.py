@@ -180,7 +180,7 @@ class EpisodeStatistics(object):
         all_obs = np.load(full_path)["data"]
         # handle the end of the episode
         with open(
-            os.path.join(path_tmp, episode_name, EpisodeData.META),
+            os.path.join(path_tmp, episode_name, EpisodeData.META_FILE),
             "r",
             encoding="utf-8",
         ) as f:
@@ -514,7 +514,7 @@ class EpisodeStatistics(object):
         return dict_metadata
 
     def _retrieve_scores(self, path_tmp, episode_name):
-        my_path = os.path.join(path_tmp, episode_name, EpisodeData.OTHER_REWARDS)
+        my_path = os.path.join(path_tmp, episode_name, EpisodeData.OTHER_REWARDS_FILE)
         with open(my_path, "r", encoding="utf-8") as f:
             dict_rewards = json.load(f)
 
@@ -759,7 +759,7 @@ class EpisodeStatistics(object):
 
         # now clean a bit the output directory
         os.remove(os.path.join(self.path_save_stats, EpisodeData.ACTION_SPACE))
-        os.remove(os.path.join(self.path_save_stats, EpisodeData.ATTACK_SPACE))
+        os.remove(os.path.join(self.path_save_stats, EpisodeData.ATTACK_SPACE_FILE))
         os.remove(os.path.join(self.path_save_stats, EpisodeData.ENV_MODIF_SPACE))
         os.remove(os.path.join(self.path_save_stats, EpisodeData.OBS_SPACE))
 
@@ -775,9 +775,9 @@ class EpisodeStatistics(object):
                 self._retrieve_scores(path_tmp, episode_name)
             else:
                 self._delete_if_exists(
-                    path_tmp, episode_name, EpisodeData.OTHER_REWARDS
+                    path_tmp, episode_name, EpisodeData.OTHER_REWARDS_FILE
                 )
-            self._delete_if_exists(path_tmp, episode_name, EpisodeData.REWARDS)
+            self._delete_if_exists(path_tmp, episode_name, EpisodeData.REWARDS_FILE)
 
             # reformat the observation into a proper "human readable" format
             self._clean_observations(path_tmp, episode_name)

@@ -390,13 +390,13 @@ class ScoreL2RPN2020(object):
                     f'The grid2op statistics name should match the regex "{EpisodeStatistics.REGEX_SPLIT}", it is currently {this_ep_nm}.'
                 )
             with open(
-                os.path.join(path_save, this_ep_nm, EpisodeData.META),
+                os.path.join(path_save, this_ep_nm, EpisodeData.META_FILE),
                 "r",
                 encoding="utf-8",
             ) as f:
                 this_epi_meta = json.load(f)
             with open(
-                os.path.join(path_save, this_ep_nm, EpisodeData.OTHER_REWARDS),
+                os.path.join(path_save, this_ep_nm, EpisodeData.OTHER_REWARDS_FILE),
                 "r",
                 encoding="utf-8",
             ) as f:

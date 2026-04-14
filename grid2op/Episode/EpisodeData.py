@@ -132,12 +132,12 @@ class EpisodeData:
     ACTION_SPACE = "dict_action_space.json"
     OBS_SPACE = "dict_observation_space.json"
     ENV_MODIF_SPACE = "dict_env_modification_space.json"
-    ATTACK_SPACE = "dict_attack_space.json"  # action space of the attack (this is NOT the OpponentSpace) this is the "opponent action space"
+    ATTACK_SPACE_FILE = "dict_attack_space.json"  # action space of the attack (this is NOT the OpponentSpace) this is the "opponent action space"
 
     PARAMS = "_parameters.json"
-    META = "episode_meta.json"
+    META_FILE = "episode_meta.json"
     TIMES = "episode_times.json"
-    OTHER_REWARDS = "other_rewards.json"
+    OTHER_REWARDS_FILE = "other_rewards.json"
     AG_EXEC_TIMES = "agent_exec_times.npz"
     LEGAL_AMBIGUOUS = "legal_ambiguous.npz"
     ACTIONS_FILE = "actions.npz"
@@ -145,21 +145,21 @@ class EpisodeData:
     OBSERVATIONS_FILE = "observations.npz"
     LINES_FAILURES = "disc_lines_cascading_failure.npz"
     ATTACK = "opponent_attack.npz"
-    REWARDS = "rewards.npz"
+    REWARDS_FILE = "rewards.npz"
     GRID2OPINFO_FILE = "grid2op.info"
 
     ATTR_EPISODE = [
         PARAMS,
-        META,
+        META_FILE,
         TIMES,
-        OTHER_REWARDS,
+        OTHER_REWARDS_FILE,
         AG_EXEC_TIMES,
         ACTIONS_FILE,
         ENV_ACTIONS_FILE,
         OBSERVATIONS_FILE,
         LINES_FAILURES,
         ATTACK,
-        REWARDS,
+        REWARDS_FILE,
     ]
 
     def __init__(
@@ -305,7 +305,7 @@ class EpisodeData:
             env_modif_space_path = os.path.join(
                 self.agent_path, EpisodeData.ENV_MODIF_SPACE
             )
-            attack_space_path = os.path.join(self.agent_path, EpisodeData.ATTACK_SPACE)
+            attack_space_path = os.path.join(self.agent_path, EpisodeData.ATTACK_SPACE_FILE)
 
             if not os.path.exists(act_space_path):
                 dict_action_space = action_space.cls_to_dict()
@@ -484,11 +484,11 @@ class EpisodeData:
             else:
                 with open(os.path.join(episode_path, cls.PARAMS)) as f:
                     _parameters = json.load(fp=f)
-                with open(os.path.join(episode_path, cls.META)) as f:
+                with open(os.path.join(episode_path, cls.META_FILE)) as f:
                     episode_meta = json.load(fp=f)
                 with open(os.path.join(episode_path, cls.TIMES)) as f:
                     episode_times = json.load(fp=f)
-                with open(os.path.join(episode_path, cls.OTHER_REWARDS)) as f:
+                with open(os.path.join(episode_path, cls.OTHER_REWARDS_FILE)) as f:
                     other_rewards = json.load(fp=f)
 
                 times = np.load(os.path.join(episode_path, cls.AG_EXEC_TIMES))[
@@ -500,7 +500,7 @@ class EpisodeData:
                 disc_lines = np.load(
                     os.path.join(episode_path, cls.LINES_FAILURES)
                 )["data"]
-                rewards = np.load(os.path.join(episode_path, cls.REWARDS))["data"]
+                rewards = np.load(os.path.join(episode_path, cls.REWARDS_FILE))["data"]
                 has_legal_ambiguous = False
                 if os.path.exists(path_legal_ambiguous):
                     legal_ambiguous = np.load(path_legal_ambiguous)["data"]
@@ -527,7 +527,7 @@ class EpisodeData:
             os.path.join(agent_path, EpisodeData.ACTION_SPACE)
         )
         attack_space = ActionSpace.from_dict(
-            os.path.join(agent_path, EpisodeData.ATTACK_SPACE)
+            os.path.join(agent_path, EpisodeData.ATTACK_SPACE_FILE)
         )
         if _only_act_obs:
             helper_action_env = None
@@ -792,7 +792,7 @@ class EpisodeData:
             with open(parameters_path, "w", encoding="utf-8") as f:
                 json.dump(obj=self.parameters, fp=f, indent=4, sort_keys=True)
 
-            meta_path = os.path.join(self.episode_path, EpisodeData.META)
+            meta_path = os.path.join(self.episode_path, EpisodeData.META_FILE)
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(obj=self.meta, fp=f, indent=4, sort_keys=True)
 
@@ -801,7 +801,7 @@ class EpisodeData:
                 json.dump(obj=self.episode_times, fp=f, indent=4, sort_keys=True)
 
             episode_other_rewards_path = os.path.join(
-                self.episode_path, EpisodeData.OTHER_REWARDS
+                self.episode_path, EpisodeData.OTHER_REWARDS_FILE
             )
             with open(episode_other_rewards_path, "w", encoding="utf-8") as f:
                 json.dump(obj=self.other_rewards, fp=f, indent=4, sort_keys=True)
@@ -825,7 +825,7 @@ class EpisodeData:
                 data=self.disc_lines,
             )
             np.savez_compressed(
-                os.path.join(self.episode_path, EpisodeData.REWARDS), data=self.rewards
+                os.path.join(self.episode_path, EpisodeData.REWARDS_FILE), data=self.rewards
             )
 
             with open(
