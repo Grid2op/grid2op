@@ -759,7 +759,7 @@ class PandaPowerBackend(Backend):
                 self.shunt_to_subid[i] = bus
             self.name_shunt = np.array(name_shunt).astype(str)
             self._sh_vnkv = self._grid.bus["vn_kv"][self.shunt_to_subid].values.astype(
-                dt_float
+                np.float64
             )
         
         self._compute_pos_big_topo()

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from grid2op.Action._backendAction import _BackendAction
     from grid2op.Environment import BaseEnv  
     from grid2op.Action import CompleteAction
+    from grid2op.Observation import CompleteObservation
     
 try:
     from typing import Self
@@ -2242,14 +2243,15 @@ class Backend(GridObjects, ABC):
         p_s, q_s, sh_v, bus_s = self.shunt_info()
         if (bus_s >= 1).any():
             sh_conn = bus_s > 0
-            p_s[sh_conn] *= (self._sh_vnkv[sh_conn] / sh_v[sh_conn]) ** 2
-            q_s[sh_conn] *= (self._sh_vnkv[sh_conn] / sh_v[sh_conn]) ** 2
+            mults = (self._sh_vnkv[sh_conn].astype(np.float64) / sh_v[sh_conn].astype(np.float64)) ** 2
+            p_s[sh_conn] *= mults
+            q_s[sh_conn] *= mults
         p_s[bus_s == -1] = np.nan
         q_s[bus_s == -1] = np.nan
         return p_s, q_s, bus_s
         
     def update_from_obs(self,
-                        obs: "grid2op.Observation.CompleteObservation",
+                        obs: "CompleteObservation",
                         force_update: Optional[bool]=False) -> "_BackendAction":
         """
         Takes an observation as input and update the internal state of `self` to match the state of the backend
@@ -2305,17 +2307,8 @@ class Backend(GridObjects, ABC):
                     "Impossible to set the backend to the state given by the observation: shunts data "
                     "are not present in the observation."
                 )
-
-            dict_["shunt"] = {"shunt_bus": obs._shunt_bus}
-            shunt_co = obs._shunt_bus >= 1
-            if shunt_co.any():
-                mults = (self._sh_vnkv / obs._shunt_v) ** 2
-                sh_p = obs._shunt_p * mults
-                sh_q = obs._shunt_q * mults
-                sh_p[~shunt_co] = np.nan
-                sh_q[~shunt_co] = np.nan
-                dict_["shunt"]["shunt_p"] = sh_p
-                dict_["shunt"]["shunt_q"] = sh_q
+            res_shunt = self.get_shunt_info_from_obs(obs)
+            dict_["shunt"] = res_shunt
         elif cls.shunts_data_available and not type(obs).shunts_data_available:
             warnings.warn("Backend supports shunt but not the observation. This behaviour is non standard.")
         act.update(dict_)
@@ -2324,6 +2317,31 @@ class Backend(GridObjects, ABC):
         backend_action.reset()  # already processed by the backend
         return backend_action
 
+    def get_shunt_info_from_obs(self,
+                                obs: "CompleteObservation") -> Dict:
+        """
+        INTERNAL
+        
+        Used in update_from_obs and also in simulate
+        
+        Returns the dict to pass to an action space to update the shunts.
+        
+        Supposes that the shunts are available (type(self).shunts_data_available is True)
+        """
+        dict_ = {"shunt_bus": obs._shunt_bus}
+        shunt_co = obs._shunt_bus >= 1
+        if shunt_co.any():
+            # cast in np.float64 is required to make some tests pass at precision 1e-6
+            # otherwise there are rounding errors when dividing
+            mults = (self._sh_vnkv.astype(np.float64) / obs._shunt_v.astype(np.float64)) ** 2
+            sh_p = (obs._shunt_p.astype(np.float64) * mults).astype(dt_float)
+            sh_q = (obs._shunt_q.astype(np.float64) * mults).astype(dt_float)
+            sh_p[~shunt_co] = np.nan
+            sh_q[~shunt_co] = np.nan
+            dict_["shunt_p"] = sh_p
+            dict_["shunt_q"] = sh_q
+        return dict_
+    
     def assert_grid_correct(self, _local_dir_cls=None) -> None:
         """
         INTERNAL
