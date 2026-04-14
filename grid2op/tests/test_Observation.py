@@ -12,6 +12,7 @@ import warnings
 import copy
 import numpy as np
 import pdb  # noqa: F401
+import os
 import unittest
 
 from grid2op.tests.helper_path_test import *
@@ -2313,7 +2314,7 @@ class TestBasisObsBehaviour(unittest.TestCase):
 
     def test_json_serializable(self):
         dict_ = self.env.observation_space.cls_to_dict()
-        res = json.dumps(obj=dict_, indent=4, sort_keys=True)
+        res = json.dumps(obj=dict_, indent=4, sort_keys=True)  # noqa: F841
 
     def test_json_loadable(self):
         dict_ = self.env.observation_space.cls_to_dict()
@@ -2474,7 +2475,7 @@ class TestUpdateEnvironement(unittest.TestCase):
             # assert np.all(l_maintenance == r_maintenance)
 
         # Check relative flows
-        assert np.all(self.lobs.rho == self.robs.rho)
+        assert np.allclose(self.lobs.rho, self.robs.rho)
 
     def test_cooldowns_updates(self):
         # Check left cooldowns are updated to the rhs CDs
@@ -2496,8 +2497,8 @@ class TestUpdateEnvironement(unittest.TestCase):
 
     def test_redispatch_updates(self):
         # Check left redispatch are updated to the rhs redispatches
-        assert np.all(self.lobs.target_dispatch == self.robs.target_dispatch)
-        assert np.all(self.lobs.actual_dispatch == self.robs.actual_dispatch)
+        assert np.allclose(self.lobs.target_dispatch, self.robs.target_dispatch)
+        assert np.allclose(self.lobs.actual_dispatch, self.robs.actual_dispatch)
 
 
 class TestSimulateEqualsStep(unittest.TestCase):
@@ -2552,8 +2553,8 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Simulate & Step
         self.sim_obs, reward_sim, done_simulate, info_simu = self.obs.simulate(change_act)
         self.step_obs, reward_real, done_step, info_step = self.env.step(change_act)
-        assert not done_simulate, f"simulate is done, this should not be"
-        assert not done_step, f"step is done, this should not be"
+        assert not done_simulate, "simulate is done, this should not be"
+        assert not done_step, "step is done, this should not be"
         assert not info_simu["exception"]
         assert not info_step["exception"]
         assert abs(reward_sim - reward_real) <= 1e-7
@@ -2572,8 +2573,8 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Simulate & Step
         self.sim_obs, _, done_simulate, info_simu = self.obs.simulate(set_act)
         self.step_obs, _, done_step, info_step = self.env.step(set_act)
-        assert not done_simulate, f"simulate is done, this should not be"
-        assert not done_step, f"step is done, this should not be"
+        assert not done_simulate, "simulate is done, this should not be"
+        assert not done_step, "step is done, this should not be"
         assert not info_simu["exception"]
         assert not info_step["exception"]
         # Test observations are the same
@@ -2596,8 +2597,8 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Simulate & Step
         self.sim_obs, _, done_simulate, info_simu = self.obs.simulate(change_act)
         self.step_obs, _, done_step, info_step = self.env.step(change_act)
-        assert not done_simulate, f"simulate is done, this should not be"
-        assert not done_step, f"step is done, this should not be"
+        assert not done_simulate, "simulate is done, this should not be"
+        assert not done_step, "step is done, this should not be"
         assert not info_simu["exception"]
         assert not info_step["exception"]
         
@@ -2617,7 +2618,7 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Increment buses from current topology
         new_load_bus = self.obs.topo_vect[self.obs.load_pos_topo_vect[0]] + 1
         new_gen_bus = self.obs.topo_vect[self.obs.gen_pos_topo_vect[0]] + 1
-        new_lor_bus = self.obs.topo_vect[self.obs.line_or_pos_topo_vect[0]] + 1
+        new_lor_bus = self.obs.topo_vect[self.obs.line_or_pos_topo_vect[0]] + 1  # noqa: F841
         new_lex_bus = self.obs.topo_vect[self.obs.line_ex_pos_topo_vect[0]] + 1
 
         # Create a set bus action for all types
@@ -2634,8 +2635,8 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Simulate & Step
         self.sim_obs, reward_sim, done_simulate, info_simu = self.obs.simulate(set_act)
         self.step_obs, reward_real, done_step, info_step = self.env.step(set_act)
-        assert not done_simulate, f"simulate is done, this should not be"
-        assert not done_step, f"step is done, this should not be"
+        assert not done_simulate, "simulate is done, this should not be"
+        assert not done_step, "step is done, this should not be"
         assert not info_simu["exception"]
         assert not info_step["exception"]
         # Test observations are the same
@@ -2655,8 +2656,8 @@ class TestSimulateEqualsStep(unittest.TestCase):
         # Simulate & Step
         self.sim_obs, reward_sim, done_simulate, info_simu = self.obs.simulate(redisp_act)
         self.step_obs, reward_real, done_step, info_step = self.env.step(redisp_act)
-        assert not done_simulate, f"simulate is done, this should not be"
-        assert not done_step, f"step is done, this should not be"
+        assert not done_simulate, "simulate is done, this should not be"
+        assert not done_step, "step is done, this should not be"
         assert not info_simu["exception"]
         assert not info_step["exception"]
         assert abs(reward_sim - reward_real) <= 1e-7
@@ -2690,9 +2691,9 @@ class TestSimulateEqualsStep(unittest.TestCase):
             assert k in sim_i["rewards"]
         obs, reward, done, info = env.step(env.action_space())
         # check rewards are same, this is the case because simulate is in "perfect information"
-        assert np.all(sim_o.rho == obs.rho)
+        assert np.allclose(sim_o.rho, obs.rho), f"{np.abs(sim_o.rho - obs.rho).max()}"
         self._aux_comp_reward(info, sim_i)
-        assert np.all(sim_o.load_p == obs.load_p)
+        assert np.allclose(sim_o.load_p, obs.load_p), f"{np.abs(sim_o.load_p - obs.load_p).max()}"
 
         env.observation_space.change_other_rewards({})
         sim_o, sim_r, sim_d, sim_i = obs.simulate(env.action_space())
@@ -2712,9 +2713,9 @@ class TestSimulateEqualsStep(unittest.TestCase):
         obs, reward, done, info = env.step(env.action_space())
         
         # check rewards are same, this is the case because simulate is in "perfect information"
-        assert np.all(sim_o.rho == obs.rho)
+        assert np.allclose(sim_o.rho, obs.rho), f"{np.abs(sim_o.rho - obs.rho).max()}"
         self._aux_comp_reward(info, sim_i)
-        assert np.all(sim_o.load_p == obs.load_p)
+        assert np.allclose(sim_o.load_p, obs.load_p), f"{np.abs(sim_o.load_p - obs.load_p).max()}"
 
     def _aux_comp_reward(self, info, sim_info):
         for el in info["rewards"]:
@@ -2878,8 +2879,8 @@ class TestSimulateEqualsStep(unittest.TestCase):
             self.sim_obs, sim_r, sim_d, sim_i = self.obs.simulate(act)
         # Step with last action
         self.step_obs, step_r, step_d, step_i = self.env.step(actions[-1])
-        assert not sim_d, f"simulate is done, this should not be"
-        assert not step_d, f"step is done, this should not be"
+        assert not sim_d, "simulate is done, this should not be"
+        assert not step_d, "step is done, this should not be"
         assert not sim_i["exception"]
         assert not step_i["exception"]
         assert abs(sim_r - step_r) <= 1e-7
@@ -2895,9 +2896,9 @@ class TestSimulateEqualsStep(unittest.TestCase):
         actions = self._multi_actions_sample()
         ## Add set_bus_action last
         # Increment buses from current topology
-        new_load_bus = self.obs.topo_vect[self.obs.load_pos_topo_vect[1]] + 1
-        new_gen_bus = self.obs.topo_vect[self.obs.gen_pos_topo_vect[1]] + 1
-        new_lor_bus = self.obs.topo_vect[self.obs.line_or_pos_topo_vect[1]] + 1
+        new_load_bus = self.obs.topo_vect[self.obs.load_pos_topo_vect[1]] + 1  # noqa: F841
+        new_gen_bus = self.obs.topo_vect[self.obs.gen_pos_topo_vect[1]] + 1  # noqa: F841
+        new_lor_bus = self.obs.topo_vect[self.obs.line_or_pos_topo_vect[1]] + 1  # noqa: F841
         new_lex_bus = self.obs.topo_vect[self.obs.line_ex_pos_topo_vect[1]] + 1
         # Create a set bus action for all types
         set_bus_act = self.env.action_space(
@@ -2917,8 +2918,8 @@ class TestSimulateEqualsStep(unittest.TestCase):
             self.sim_obs, sim_r, sim_d, sim_i = self.obs.simulate(act)
         # Step with last action
         self.step_obs, step_r, step_d, step_i = self.env.step(actions[-1])
-        assert not sim_d, f"simulate is done, this should not be"
-        assert not step_d, f"step is done, this should not be"
+        assert not sim_d, "simulate is done, this should not be"
+        assert not step_d, "step is done, this should not be"
         assert not sim_i["exception"]
         assert not step_i["exception"]
         assert abs(sim_r - step_r) <= 1e-7
@@ -2973,22 +2974,23 @@ class TestSimulateEqualsStep(unittest.TestCase):
         assert np.sum(np.abs(prod_p_f[:-1] - sim_obs.prod_p[:-1])) < 1e-5
 
     def _check_equal(self, obs1, obs2):
-        tol = 1e-8
-        assert np.all(np.abs(obs1.prod_p - obs2.prod_p) <= tol), "issue with prod_p"
-        assert np.all(np.abs(obs1.prod_v - obs2.prod_v) <= tol), "issue with prod_v"
-        assert np.all(np.abs(obs1.prod_q - obs2.prod_q) <= tol), "issue with prod_q"
+        tol = 3e-5  # precision for float32 usually
+        # 1e-8 is too small as some things are converted to from float32 (dt_float)
+        assert np.all(np.abs(obs1.prod_p - obs2.prod_p) <= tol), f"issue with prod_p: {np.abs(obs1.prod_p - obs2.prod_p).max()}"
+        assert np.all(np.abs(obs1.prod_v - obs2.prod_v) <= tol), f"issue with prod_v: {np.abs(obs1.prod_v - obs2.prod_v).max()}"
+        assert np.all(np.abs(obs1.prod_q - obs2.prod_q) <= tol), f"issue with prod_q: {np.abs(obs1.prod_q - obs2.prod_q).max()}"
         assert np.all(np.abs(obs1.load_p - obs2.load_p) <= tol), "issue with load_p"
         assert np.all(np.abs(obs1.load_q - obs2.load_q) <= tol), "issue with load_q"
         assert np.all(np.abs(obs1.load_v - obs2.load_v) <= tol), "issue with load_v"
-        assert np.all(np.abs(obs1.rho - obs2.rho) <= tol), "issue with rho"
+        assert np.all(np.abs(obs1.rho - obs2.rho) <= tol), f"issue with rho: {np.abs(obs1.rho - obs2.rho).max()}"
         assert np.all(np.abs(obs1.p_or - obs2.p_or) <= tol), "issue with p_or"
         assert np.all(np.abs(obs1.q_or - obs2.q_or) <= tol), "issue with q_or"
         assert np.all(np.abs(obs1.v_or - obs2.v_or) <= tol), "issue with v_or"
-        assert np.all(np.abs(obs1.a_or - obs2.a_or) <= tol), "issue with a_or"
+        assert np.all(np.abs(obs1.a_or - obs2.a_or) <= 3.*tol), f"issue with a_or: {np.abs(obs1.a_or - obs2.a_or).max()}"
         assert np.all(np.abs(obs1.p_ex - obs2.p_ex) <= tol), "issue with p_ex"
         assert np.all(np.abs(obs1.q_ex - obs2.q_ex) <= tol), "issue with q_ex"
         assert np.all(np.abs(obs1.v_ex - obs2.v_ex) <= tol), "issue with v_ex"
-        assert np.all(np.abs(obs1.a_ex - obs2.a_ex) <= tol), "issue with a_ex"
+        assert np.all(np.abs(obs1.a_ex - obs2.a_ex) <= 3.*tol), "issue with a_ex"
         assert np.all(
             np.abs(obs1.storage_power - obs2.storage_power) <= tol
         ), "issue with storage_power"

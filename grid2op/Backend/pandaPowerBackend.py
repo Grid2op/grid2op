@@ -244,6 +244,11 @@ class PandaPowerBackend(Backend):
         self._bus_gen_col_id = None
         self._bus_ext_grid_col_id = None
         self.div_exception = None
+        self._prod_p_col_id = None 
+        self._prod_v_col_id = None 
+        self._load_p_col_id = None 
+        self._load_q_col_id = None 
+        self._stor_p_col_id = None 
 
     def _check_for_non_modeled_elements(self):
         """This function check for elements in the pandapower grid that will have no impact on grid2op.
@@ -471,7 +476,6 @@ class PandaPowerBackend(Backend):
         # one are connected to the same bus.
         # if not, it must not be done. So basically, i create a vector for which p and q for generator must be multiply
         self._fact_mult_gen = np.ones(self._grid.gen.shape[0])
-        # self._fact_mult_gen[-1] += 1
 
         # now extract the powergrid
         self.n_line = copy.deepcopy(self._grid.line.shape[0]) + copy.deepcopy(
@@ -588,6 +592,12 @@ class PandaPowerBackend(Backend):
         self._bus_gen_col_id = int(((self._grid.gen.columns == "bus").nonzero()[0][0])) 
         self._bus_ext_grid_col_id = int(((self._grid.ext_grid.columns == "bus").nonzero()[0][0])) 
         self.comp_time = 0.
+        
+        self._prod_p_col_id = int(((self._grid.gen.columns == "p_mw").nonzero()[0][0])) 
+        self._prod_v_col_id = int(((self._grid.gen.columns == "vm_pu").nonzero()[0][0])) 
+        self._load_p_col_id = int(((self._grid.load.columns == "p_mw").nonzero()[0][0])) 
+        self._load_q_col_id = int(((self._grid.load.columns == "q_mvar").nonzero()[0][0])) 
+        self._stor_p_col_id = int(((self._grid.storage.columns == "p_mw").nonzero()[0][0])) 
         
         # hack for backward compat with oldest lightsim2grid version
         try:
@@ -753,7 +763,7 @@ class PandaPowerBackend(Backend):
                 self.shunt_to_subid[i] = bus
             self.name_shunt = np.array(name_shunt).astype(str)
             self._sh_vnkv = self._grid.bus["vn_kv"][self.shunt_to_subid].values.astype(
-                dt_float
+                np.float64
             )
         
         self._compute_pos_big_topo()
@@ -913,33 +923,21 @@ class PandaPowerBackend(Backend):
         # TODO n_busbar what if index is not continuous
         
         # handle generators
-        tmp_prod_p = self._get_vector_inj["prod_p"](self._grid)
-        if (prod_p.changed).any():
-            tmp_prod_p.iloc[prod_p.changed] = prod_p.values[prod_p.changed]
-
-        tmp_prod_v = self._get_vector_inj["prod_v"](self._grid)
-        if (prod_v.changed).any():
-            tmp_prod_v.iloc[prod_v.changed] = (
-                prod_v.values[prod_v.changed] / self.prod_pu_to_kv[prod_v.changed]
-            )
+        self._grid.gen.iloc[prod_p.changed, self._prod_p_col_id] = prod_p.values[prod_p.changed]
+        self._grid.gen.iloc[prod_v.changed, self._prod_v_col_id] = prod_v.values[prod_v.changed] / self.prod_pu_to_kv[prod_v.changed]
 
         if self._id_bus_added is not None and prod_v.changed[self._id_bus_added]:
             # handling of the slack bus, where "2" generators are present.
-            self._grid["ext_grid"]["vm_pu"] = 1.0 * tmp_prod_v[self._id_bus_added]
+            self._grid["ext_grid"]["vm_pu"] = 1.0 * self._grid.gen.iloc[self._id_bus_added, self._prod_v_col_id]
 
-        tmp_load_p = self._get_vector_inj["load_p"](self._grid)
-        if (load_p.changed).any():
-            tmp_load_p.iloc[load_p.changed] = load_p.values[load_p.changed]
-
-        tmp_load_q = self._get_vector_inj["load_q"](self._grid)
-        if (load_q.changed).any():
-            tmp_load_q.iloc[load_q.changed] = load_q.values[load_q.changed]
+        # handle loads
+        self._grid.load.iloc[load_p.changed, self._load_p_col_id] = load_p.values[load_p.changed]
+        self._grid.load.iloc[load_q.changed, self._load_q_col_id] = load_q.values[load_q.changed]
 
         if cls.n_storage > 0:
             # active setpoint
-            tmp_stor_p = self._grid.storage["p_mw"]
-            if (storage.changed).any():
-                tmp_stor_p.iloc[storage.changed] = storage.values[storage.changed]
+            self._grid.storage.iloc[storage.changed, self._stor_p_col_id] = storage.values[storage.changed]
+            
             # topology of the storage
             stor_bus = backend_action.get_storages_bus()
             new_bus_num = dt_int(1) * self._grid.storage["bus"].values
@@ -952,7 +950,7 @@ class PandaPowerBackend(Backend):
             self._grid.storage.loc[stor_bus.changed & ~deactivated, "in_service"] = True
             self._grid.storage["bus"] = new_bus_num
         
-        if type(backend_action).shunts_data_available:
+        if cls.shunts_data_available:
             shunt_p, shunt_q, shunt_bus = shunts__
 
             if (shunt_p.changed).any():
@@ -975,9 +973,6 @@ class PandaPowerBackend(Backend):
             if type_obj is not None:
                 # storage unit are handled elsewhere
                 self._type_to_bus_set[type_obj](new_bus, id_el_backend, id_topo)
-        # self._topo_vect.flags.writeable = True
-        # self._topo_vect[topo__.changed] = topo__.values[topo__.changed]
-        # self._topo_vect.flags.writeable = False
 
     def _apply_load_bus(self, new_bus, id_el_backend, id_topo):
         new_bus_backend = type(self).local_bus_to_global_int(
@@ -1405,6 +1400,12 @@ class PandaPowerBackend(Backend):
         res._bus_load_col_id = self._bus_load_col_id
         res._bus_gen_col_id = self._bus_gen_col_id
         res._bus_ext_grid_col_id = self._bus_ext_grid_col_id
+        res._prod_p_col_id = self._prod_p_col_id 
+        res._prod_v_col_id = self._prod_v_col_id 
+        res._load_p_col_id = self._load_p_col_id 
+        res._load_q_col_id = self._load_q_col_id 
+        res._stor_p_col_id = self._stor_p_col_id 
+        
         return res
 
     def close(self) -> None:
@@ -1523,16 +1524,15 @@ class PandaPowerBackend(Backend):
         return self._topo_vect
 
     def _gens_info(self):
-        prod_p = self.cst_1 * self._grid.res_gen["p_mw"].values.astype(dt_float)
-        prod_q = self.cst_1 * self._grid.res_gen["q_mvar"].values.astype(dt_float)
+        prod_p = self._grid.res_gen["p_mw"].values.astype(dt_float).copy()
+        prod_q = self._grid.res_gen["q_mvar"].values.astype(dt_float).copy()
         prod_v = (
-            self.cst_1
-            * self._grid.res_gen["vm_pu"].values.astype(dt_float)
+            self._grid.res_gen["vm_pu"].values.astype(dt_float)
             * self.prod_pu_to_kv
         )
-        prod_theta = self.cst_1 * self._grid.res_gen["va_degree"].values.astype(
+        prod_theta = self._grid.res_gen["va_degree"].values.astype(
             dt_float
-        )
+        ).copy()
         if self._iref_slack is not None:
             # slack bus and added generator are on same bus. I need to add power of slack bus to this one.
 
@@ -1547,8 +1547,8 @@ class PandaPowerBackend(Backend):
         return prod_p, prod_q, prod_v, prod_theta
 
     def _loads_info(self):
-        load_p = self.cst_1 * self._grid.res_load["p_mw"].values.astype(dt_float)
-        load_q = self.cst_1 * self._grid.res_load["q_mvar"].values.astype(dt_float)
+        load_p = self._grid.res_load["p_mw"].values.astype(dt_float).copy()
+        load_q = self._grid.res_load["q_mvar"].values.astype(dt_float).copy()
         load_v = (
             self._grid.res_bus.loc[self._grid.load["bus"].values][
                 "vm_pu"
@@ -1565,37 +1565,37 @@ class PandaPowerBackend(Backend):
 
     def generators_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         return (
-            self.cst_1 * self.prod_p,
-            self.cst_1 * self.prod_q,
-            self.cst_1 * self.prod_v,
+            self.prod_p.copy(),
+            self.prod_q.copy(),
+            self.prod_v.copy(),
         )
 
     def loads_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         return (
-            self.cst_1 * self.load_p,
-            self.cst_1 * self.load_q,
-            self.cst_1 * self.load_v,
+            self.load_p.copy(),
+            self.load_q.copy(),
+            self.load_v.copy(),
         )
 
     def lines_or_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return (
-            self.cst_1 * self.p_or,
-            self.cst_1 * self.q_or,
-            self.cst_1 * self.v_or,
-            self.cst_1 * self.a_or,
+            self.p_or.copy(),
+            self.q_or.copy(),
+            self.v_or.copy(),
+            self.a_or.copy(),
         )
 
     def lines_ex_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return (
-            self.cst_1 * self.p_ex,
-            self.cst_1 * self.q_ex,
-            self.cst_1 * self.v_ex,
-            self.cst_1 * self.a_ex,
+            self.p_ex.copy(),
+            self.q_ex.copy(),
+            self.v_ex.copy(),
+            self.a_ex.copy(),
         )
 
     def shunt_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        shunt_p = self.cst_1 * self._grid.res_shunt["p_mw"].values.astype(dt_float)
-        shunt_q = self.cst_1 * self._grid.res_shunt["q_mvar"].values.astype(dt_float)
+        shunt_p = self._grid.res_shunt["p_mw"].values.astype(dt_float).copy()
+        shunt_q = self._grid.res_shunt["q_mvar"].values.astype(dt_float).copy()
         shunt_v = (
             self._grid.res_bus["vm_pu"]
             .loc[self._grid.shunt["bus"].values]
@@ -1613,13 +1613,13 @@ class PandaPowerBackend(Backend):
 
     def storages_info(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         return (
-            self.cst_1 * self.storage_p,
-            self.cst_1 * self.storage_q,
-            self.cst_1 * self.storage_v,
+            self.storage_p.copy(),
+            self.storage_q.copy(),
+            self.storage_v.copy(),
         )
 
     def _storages_info(self):
-        if self.n_storage > 0:
+        if type(self).n_storage > 0:
             # this is because we support "backward comaptibility" feature. So the storage can be
             # deactivated from the Environment...
             # p_storage = self._grid.res_storage["p_mw"].values.astype(dt_float)

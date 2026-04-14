@@ -6,7 +6,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from grid2op.tests.helper_path_test import *
+import os
+import numpy as np
+
+from grid2op.tests.helper_path_test import HelperTests, PATH_CHRONICS, data_test_dir, PATH_DATA_TEST
 import unittest
 
 PATH_ADN_CHRONICS_FOLDER = os.path.abspath(

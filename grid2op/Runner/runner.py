@@ -624,7 +624,7 @@ class Runner(object):
         self._observation_bk_class = observation_bk_class
         self._observation_bk_kwargs = observation_bk_kwargs
 
-        self.logger = ConsoleLog(DoNothingLog.INFO if verbose else DoNothingLog.ERROR)
+        self.logger = ConsoleLog(DoNothingLog.INFO_LEVEL if verbose else DoNothingLog.ERROR_LEVEL)
         if logger is None:
             import logging
 

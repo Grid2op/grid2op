@@ -185,7 +185,7 @@ class EpisodeReboot:
             del env_kwargs["name"]
 
         seed = None
-        with open(os.path.join(agent_path, name, "episode_meta.json")) as f:
+        with open(os.path.join(agent_path, name, EpisodeData.META_FILE)) as f:
             dict_ = json.load(f)
             nm = re.sub("Environment_", "", dict_["env_type"])
             if dict_["env_seed"] is not None:

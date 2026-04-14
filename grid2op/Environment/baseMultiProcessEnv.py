@@ -664,7 +664,7 @@ class BaseMultiProcessEnvironment(GridObjects):
         Note that setting attributes or information to the sub_env this way will not work. This method only allows
         to get the value of some attributes, NOT to modify them.
 
-        /!\ **DANGER** /!\ is you use this function, you are entering the danger zone. This might not work and
+        /!\\\\ **DANGER** /!\\\\ is you use this function, you are entering the danger zone. This might not work and
         make your all python session dies without any notice. You've been warned.
 
         Parameters
