@@ -113,7 +113,7 @@ class EpisodeStatistics(object):
     METADATA = "metadata.json"
     
     # security addition
-    REGEX_SPLIT = r"^[@%a-zA-Z0-9_\\.\\-]*$"
+    REGEX_SPLIT = r"^[@%a-zA-Z0-9_.\-]*$"
     REGEX_SPLIT_COMPILED = re.compile(REGEX_SPLIT)
 
 
