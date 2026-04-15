@@ -33,6 +33,10 @@ DICT_URL_GRID2OP_DL = {
 }
 LI_VALID_ENV = sorted(['"{}"'.format(el) for el in DICT_URL_GRID2OP_DL.keys()])
 
+# Archive extraction safety limits (S5042)
+_MAX_UNCOMPRESSED_SIZE = 30 * 1024 * 1024 * 1024  # 30 GB
+_MAX_COMPRESSION_RATIO = 100  # reject archives that expand more than 100×
+
 
 class DownloadProgressBar(tqdm):
     """
@@ -119,6 +123,20 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
     download_url(url, output_path)
 
     tar = tarfile.open(output_path, "r:bz2")
+    compressed_size = os.path.getsize(output_path)
+    total_uncompressed = sum(m.size for m in tar.getmembers())
+    if total_uncompressed > _MAX_UNCOMPRESSED_SIZE:
+        tar.close()
+        raise Grid2OpException(
+            f"Refusing to extract archive: uncompressed size ({total_uncompressed} bytes) "
+            f"exceeds the limit of {_MAX_UNCOMPRESSED_SIZE} bytes."
+        )
+    if compressed_size > 0 and total_uncompressed / compressed_size > _MAX_COMPRESSION_RATIO:
+        tar.close()
+        raise Grid2OpException(
+            f"Refusing to extract archive: compression ratio "
+            f"({total_uncompressed / compressed_size:.1f}x) exceeds {_MAX_COMPRESSION_RATIO}x."
+        )
     print('Extract the tar archive in "{}"'.format(os.path.abspath(path_data)))
     tar.extractall(path_data)
     tar.close()
