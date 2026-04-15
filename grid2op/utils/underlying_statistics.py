@@ -404,6 +404,13 @@ class EpisodeStatistics(object):
                     'No score have been computed for this statistics. Please re run "stats.compute" '
                     'by setting the "scores_func" argument.'
                 )
+            # validate the score name extracted from attribute_name to prevent path traversal
+            nm_stat = EpisodeStatistics._nm_score_from_attr_name(attribute_name)
+            if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, nm_stat) is None:
+                raise RuntimeError(
+                    f'Invalid score attribute name "{attribute_name}": the score name part '
+                    f'must match "{EpisodeStatistics.REGEX_SPLIT}".'
+                )
             # TODO here for multiple score
             path_th = os.path.join(self.path_save_stats, score_name)
             ids_ = np.concatenate((ids[:, 0], (-1,)))
@@ -746,6 +753,11 @@ class EpisodeStatistics(object):
                         raise Grid2OpException(
                             'if using "score_fun" as a dictionary, each value need to be a '
                             "BaseReward"
+                        )
+                    if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, nm) is None:
+                        raise Grid2OpException(
+                            f'Score name "{nm}" contains invalid characters. '
+                            f'Score names must match "{EpisodeStatistics.REGEX_SPLIT}".'
                         )
                     dict_metadata[f"score_class_{nm}"] = f"{score_fun}"
                     score_names.append(f"{nm}_{self.SCORES}")
