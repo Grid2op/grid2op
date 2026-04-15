@@ -1113,15 +1113,34 @@ class AAATestBackendAPI(MakeBackend):
         """
         self.skip_if_needed()
         backend = self.aux_make_backend()
+        cls = type(backend)
         # a non connected grid
-        action = type(backend)._complete_action_class()
-        action.update({"set_bus": {"lines_or_id": [(17, 2)],
-                                   "lines_ex_id": [(7, 2), (14, 2)]}})
-        bk_act = type(backend).my_bk_act_class()
+        action = cls._complete_action_class()
+        # action.update({"set_bus": {"lines_or_id": [(17, 2)],
+        #                            "lines_ex_id": [(7, 2), (14, 2)]}})
+        # build an action such that a line is alone (bus 2) at both its ends
+        # so that it creates a isolated grid (this line and the 2 buses)
+        # but for that we need to find a line with both ends connected to other powerlines
+        found_l_id = None
+        for l_id in range(cls.n_line):        
+            companion_or = self._aux_get_lines(cls, l_id, cls.line_or_to_subid)
+            if companion_or is None:
+                continue   
+            companion_ex = self._aux_get_lines(cls, l_id, cls.line_ex_to_subid)
+            if companion_ex is None:
+                continue
+            found_l_id = l_id
+            break
+        if found_l_id is None:
+            warnings.warn("Impossible to build a non connected subgraph consisting of a powerline isolated at both its ends "
+                          "without disconnected a generator or a load. This test cannot continue.")
+            return
+        action.update({"set_bus": {"lines_or_id": [(found_l_id, 2)], "lines_ex_id": [(found_l_id, 2)]}})
+        bk_act = cls.my_bk_act_class()
         bk_act += action
         backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
         res = backend.runpf(is_dc=False)  
-        assert not res[0], "It is expected that your backend return `(False, _)` in case of non connected grid in AC."                 
+        assert not res[0], "It is expected that your backend return `(False, _)` ('diverges') in case of non connected grid in AC."                 
         error = res[1]
         assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
         if not isinstance(error, BackendError):
