@@ -6,7 +6,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import copy
+import json
 import os
+from unittest.mock import patch
 import numpy as np
 
 from grid2op.tests.helper_path_test import HelperTests, PATH_CHRONICS, data_test_dir, PATH_DATA_TEST
@@ -521,6 +524,57 @@ class TestICAPSSCORE(HelperTests, unittest.TestCase):
                         ),
                     )
                 )
+
+
+class TestScoreL2RPN2020SecurityDefenses(HelperTests, unittest.TestCase):
+    """Test the two path-injection defenses in ScoreL2RPN2020.get (S2083)."""
+
+    def test_hash_tamper_raises(self):
+        """Layer 1: modifying metadata.json without updating the hash is detected."""
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            with grid2op.make(
+                "rte_case5_example", test=True, _add_to_name=type(self).__name__
+            ) as env:
+                scores = ScoreL2RPN2020(env, nb_scenario=2, verbose=0, max_step=10)
+                metadata_path = os.path.join(
+                    scores.stat_dn.path_save_stats, EpisodeStatistics.METADATA
+                )
+                # read, inject a path traversal, write back — without touching the hash
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    raw = json.load(f)
+                raw["0"]["scenario_name"] = "../../etc/passwd"
+                with open(metadata_path, "w", encoding="utf-8") as f:
+                    json.dump(raw, f)
+
+                with self.assertRaises(RuntimeError):
+                    scores.stat_dn.get_metadata()
+
+                scores.clear_all()
+
+    def test_regex_rejects_path_traversal(self):
+        """Layer 2: scenario names containing '/' are rejected by the regex allowlist."""
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            with grid2op.make(
+                "rte_case5_example", test=True, _add_to_name=type(self).__name__
+            ) as env:
+                scores = ScoreL2RPN2020(env, nb_scenario=2, verbose=0, max_step=10)
+                my_agent = DoNothingAgent(env.action_space)
+
+                # build a metadata dict that bypasses the hash check but carries a
+                # malicious scenario name — this is what an attacker could achieve if the
+                # hash were absent or compromised
+                malicious_meta = copy.deepcopy(scores.stat_dn.get_metadata())
+                malicious_meta["0"]["scenario_name"] = "../../etc/passwd"
+
+                with patch.object(
+                    scores.stat_dn, "get_metadata", return_value=malicious_meta
+                ):
+                    with self.assertRaises(RuntimeError):
+                        scores.get(my_agent)
+
+                scores.clear_all()
 
 
 if __name__ == "__main__":
