@@ -145,7 +145,7 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
     if ds_name_dl != dataset_name:
         try:
             os.rename(final_path, os.path.join(path_data, dataset_name))
-        except FileNotFoundError as exc_:
+        except FileNotFoundError as exc_:  # noqa: F841
             # the try catch is added because for some environments, the
             # archive name does not match the env name.
             # so the folder cannot be deleted properly.

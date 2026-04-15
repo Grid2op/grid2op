@@ -627,26 +627,26 @@ class GridStateFromFile(GridValue):
 
         if load_p is not None:
             self.load_p = copy.deepcopy(
-                load_p.values[:, self._order_load_p].astype(dt_float)
+                load_p.to_numpy()[:, self._order_load_p].astype(dt_float)
             )
         if load_q is not None:
             self.load_q = copy.deepcopy(
-                load_q.values[:, self._order_load_q].astype(dt_float)
+                load_q.to_numpy()[:, self._order_load_q].astype(dt_float)
             )
         if prod_p is not None:
             self.prod_p = copy.deepcopy(
-                prod_p.values[:, self._order_prod_p].astype(dt_float)
+                prod_p.to_numpy()[:, self._order_prod_p].astype(dt_float)
             )
         if prod_v is not None:
             self.prod_v = copy.deepcopy(
-                prod_v.values[:, self._order_prod_v].astype(dt_float)
+                prod_v.to_numpy()[:, self._order_prod_v].astype(dt_float)
             )
 
         # TODO optimize this piece of code, and the whole laoding process if hazards.csv and maintenance.csv are
         # provided in the proper format.
         if hazards is not None:
             # hazards and maintenance cannot be computed by chunk. So we need to differenciate their behaviour
-            self.hazards = copy.deepcopy(hazards.values[:, self._order_hazards])
+            self.hazards = copy.deepcopy(hazards.to_numpy()[:, self._order_hazards])
             self.hazard_duration = np.zeros(
                 shape=(self.hazards.shape[0], self.n_line), dtype=dt_int
             )
@@ -658,7 +658,7 @@ class GridStateFromFile(GridValue):
             self.hazards = np.abs(self.hazards) >= 1e-7
         if maintenance is not None:
             self.maintenance = copy.deepcopy(
-                maintenance.values[:, self._order_maintenance]
+                maintenance.to_numpy()[:, self._order_maintenance]
             )
             self.maintenance_time = (
                 np.zeros(shape=(self.maintenance.shape[0], self.n_line), dtype=dt_int)

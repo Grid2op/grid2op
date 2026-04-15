@@ -9,10 +9,9 @@
 import os
 import numpy as np
 import warnings
-import grid2op
 from grid2op.Backend import Backend
 from grid2op.dtypes import dt_int
-from grid2op.tests.helper_path_test import HelperTests, MakeBackend, PATH_DATA
+from grid2op.tests.helper_path_test import MakeBackend, PATH_DATA
 from grid2op.Exceptions import BackendError, Grid2OpException
 from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
 
@@ -62,7 +61,7 @@ class AAATestBackendAPI(MakeBackend):
             backend.update_bus_target_after_pf(topo_[cls.load_pos_topo_vect],
                                                topo_[cls.gen_pos_topo_vect],
                                                topo_[cls.storage_pos_topo_vect])
-        except Grid2OpException as exc_:
+        except Grid2OpException as exc_:  # noqa: F841
             # impossible to retrieve the topology without running a powerflow
             backend.update_bus_target_after_pf(1, 1, 1)
         return backend
@@ -109,7 +108,7 @@ class AAATestBackendAPI(MakeBackend):
             assert cls.n_shunt == 1, f"there should be 1 shunt on the grid (if you used the pandapower default grid), found {cls.n_shunt}"
         if cls.n_storage > 0:
             assert cls.n_storage == 2, f"there should be 2 storage units on this grid (if you used the pandapower default grid), found {cls.n_storage}"
-        assert env_name in cls.env_name, f"you probably should not have overidden the assert_grid_correct function !"
+        assert env_name in cls.env_name, "you probably should not have overidden the assert_grid_correct function !"
         backend.close()
         
         backend = self.make_backend()
@@ -144,8 +143,8 @@ class AAATestBackendAPI(MakeBackend):
             # object does support shunts
             assert cls.shunts_data_available
             assert isinstance(cls.n_shunt, (int, dt_int)), f"Your backend does not support shunt, the class should define `n_shunt`as an int, found {cls.n_shunt} ({type(cls.n_shunt)})"
-            assert cls.name_shunt is not None, f"Your backend does not support shunt, the class should define `name_shunt` (cls.name_shunt should not be None)"
-            assert cls.shunt_to_subid is not None, f"Your backend does not support shunt, the class should define `shunt_to_subid` (cls.shunt_to_subid should not be None)"
+            assert cls.name_shunt is not None, "Your backend does not support shunt, the class should define `name_shunt` (cls.name_shunt should not be None)"
+            assert cls.shunt_to_subid is not None, "Your backend does not support shunt, the class should define `shunt_to_subid` (cls.shunt_to_subid should not be None)"
             # these attributes are "deleted" from the backend instance 
             # and only stored in the class
             # assert isinstance(backend.n_shunt, (int, dt_int)), f"Your backend does support shunt, `backend.n_shunt` should be an int, found {backend.n_shunt} ({type(backend.n_shunt)})"
@@ -401,6 +400,8 @@ class AAATestBackendAPI(MakeBackend):
         
         res = backend.runpf(is_dc=False)
         assert len(res) == 2, "runpf should return tuple of size 2"
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
         
         init_gen_p, *_ = backend.generators_info() 
         init_load_p, *_ = backend.loads_info()
@@ -445,6 +446,10 @@ class AAATestBackendAPI(MakeBackend):
         backend = self.aux_make_backend()
         
         res = backend.runpf(is_dc=False)
+        assert len(res) == 2, "runpf should return tuple of size 2"
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
+        
         tmp = backend.loads_info()
         assert len(tmp) == 3, "loads_info() should return 3 elements: load_p, load_q, load_v (see doc)"
         load_p_init, load_q_init, load_v_init = tmp 
@@ -464,8 +469,8 @@ class AAATestBackendAPI(MakeBackend):
         tmp2 = backend.loads_info()
         assert len(tmp) == 3, "loads_info() should return 3 elements: load_p, load_q, load_v (see doc)"
         load_p_after, load_q_after, load_v_after = tmp2 
-        assert not np.allclose(load_p_after, load_p_init), f"load_p does not seemed to be modified by apply_action when loads are impacted (active value): check `apply_action` for load_p"
-        assert not np.allclose(load_q_after, load_q_init), f"load_q does not seemed to be modified by apply_action when loads are impacted (reactive value): check `apply_action` for load_q"
+        assert not np.allclose(load_p_after, load_p_init), "load_p does not seemed to be modified by apply_action when loads are impacted (active value): check `apply_action` for load_p"
+        assert not np.allclose(load_q_after, load_q_init), "load_q does not seemed to be modified by apply_action when loads are impacted (reactive value): check `apply_action` for load_q"
         
         # now a basic check for "one load at a time"
         delta_mw = 1.
@@ -504,6 +509,8 @@ class AAATestBackendAPI(MakeBackend):
         self.skip_if_needed()
         backend = self.aux_make_backend()        
         res = backend.runpf(is_dc=False)
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
         tmp = backend.generators_info()
         assert len(tmp) == 3, "generators_info() should return 3 elements: gen_p, gen_q, gen_v (see doc)"
         gen_p_init, gen_q_init, gen_v_init = tmp 
@@ -523,10 +530,10 @@ class AAATestBackendAPI(MakeBackend):
         tmp2 = backend.generators_info()
         assert len(tmp) == 3, "generators_info() should return 3 elements: gen_p, gen_q, gen_v (see doc)"
         gen_p_after, gen_q_after, gen_v_after = tmp2 
-        assert not np.allclose(gen_p_after, gen_p_init), (f"gen_p does not seemed to be modified by apply_action when "
+        assert not np.allclose(gen_p_after, gen_p_init), ("gen_p does not seemed to be modified by apply_action when "
                                                           "generators are impacted (active value): check `apply_action` "
                                                           "for gen_p / prod_p")
-        assert not np.allclose(gen_v_after, gen_v_init), (f"gen_v does not seemed to be modified by apply_action when "
+        assert not np.allclose(gen_v_after, gen_v_init), ("gen_v does not seemed to be modified by apply_action when "
                                                           "generators are impacted (voltage setpoint value): check `apply_action` "
                                                           "for gen_v / prod_v")
 
@@ -534,7 +541,6 @@ class AAATestBackendAPI(MakeBackend):
         # NB this test cannot be done like this for "prod_v" / gen_v because two generators might be connected to the same
         # bus, and changing only one would cause an issue !
         delta_mw = 1.
-        nb_error = 0
         prev_exc = None
         for gen_id in range(backend.n_gen):
             this_gen_p = 1. * gen_p_init
@@ -578,6 +584,8 @@ class AAATestBackendAPI(MakeBackend):
         cls = type(backend)
         
         res = backend.runpf(is_dc=False)
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
         tmp_or = backend.lines_or_info()
         assert len(tmp_or) == 4, "lines_or_info() should return 4 elements: p, q, v, a (see doc)"
         p_or, q_or, v_or, a_or = tmp_or 
@@ -602,14 +610,13 @@ class AAATestBackendAPI(MakeBackend):
         bk_act += action1
         backend.apply_action(bk_act)  # disconnection of line 0 only
         res_disco = backend.runpf(is_dc=False)
-        #  backend._grid.tell_solver_need_reset() 
         assert res_disco[0], f"your backend diverges after disconnection of line {line_id}, which should not be the case"
         tmp_or_disco = backend.lines_or_info()
         tmp_ex_disco = backend.lines_ex_info()
-        assert not np.allclose(tmp_or_disco[0], p_or), f"p_or does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
-        assert not np.allclose(tmp_or_disco[1], p_or), f"q_or does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
-        assert not np.allclose(tmp_ex_disco[0], p_ex), f"p_ex does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
-        assert not np.allclose(tmp_ex_disco[1], p_ex), f"q_ex does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
+        assert not np.allclose(tmp_or_disco[0], p_or), "p_or does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
+        assert not np.allclose(tmp_or_disco[1], p_or), "q_or does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
+        assert not np.allclose(tmp_ex_disco[0], p_ex), "p_ex does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
+        assert not np.allclose(tmp_ex_disco[1], p_ex), "q_ex does not seemed to be modified by apply_action when a powerline is disconnected (active value): check `apply_action` for line connection disconnection"
         assert np.allclose(tmp_or_disco[0][line_id], 0.), f"origin flow (active) on disconnected line {line_id} is > 0."
         assert np.allclose(tmp_or_disco[1][line_id], 0.), f"origin flow (reactive) on disconnected line {line_id} is > 0."
         assert np.allclose(tmp_or_disco[2][line_id], 0.), f"origin voltage on disconnected line {line_id} is > 0."
@@ -630,10 +637,10 @@ class AAATestBackendAPI(MakeBackend):
         assert res_disco[0], f"your backend diverges after disconnection of line {line_id}, which should not be the case"
         tmp_or_reco = backend.lines_or_info()
         tmp_ex_reco = backend.lines_ex_info()
-        assert not np.allclose(tmp_or_disco[0], tmp_or_reco[0]), f"p_or does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
-        assert not np.allclose(tmp_or_disco[1], tmp_or_reco[1]), f"q_or does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
-        assert not np.allclose(tmp_ex_disco[0], tmp_ex_reco[0]), f"p_ex does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
-        assert not np.allclose(tmp_ex_disco[1], tmp_ex_reco[0]), f"q_ex does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
+        assert not np.allclose(tmp_or_disco[0], tmp_or_reco[0]), "p_or does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
+        assert not np.allclose(tmp_or_disco[1], tmp_or_reco[1]), "q_or does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
+        assert not np.allclose(tmp_ex_disco[0], tmp_ex_reco[0]), "p_ex does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
+        assert not np.allclose(tmp_ex_disco[1], tmp_ex_reco[0]), "q_ex does not seemed to be modified by apply_action when a powerline is reconnected (active value): check `apply_action` for line connection reconnection"
         assert not np.allclose(tmp_or_reco[0][line_id], 0.), f"origin flow (active) on connected line {line_id} is 0."
         assert not np.allclose(tmp_or_reco[1][line_id], 0.), f"origin flow (reactive) on connected line {line_id} is 0."
         assert not np.allclose(tmp_or_reco[2][line_id], 0.), f"origin voltage on connected line {line_id} is > 0."
@@ -656,13 +663,13 @@ class AAATestBackendAPI(MakeBackend):
                                         f"at least a substation can be split into (strictly) "
                                         f"more than 2 independant buses.")
         
-        assert np.all(topo_vect >= -1), (f"All element of topo_vect should be >= -1 (-1 meaning disconnected), "
-                                         f" or if it's a number >= 1 it's the id of the busbar")
+        assert np.all(topo_vect >= -1), ("All element of topo_vect should be >= -1 (-1 meaning disconnected), "
+                                         " or if it's a number >= 1 it's the id of the busbar")
         
-        assert np.all(topo_vect != 0), (f"To avoid mixing the 'do not move an element' action and the "
-                                        f"id of a busbar, we decided that busbars labelling should start at 1 "
-                                        f"and not at 0. So there should not be any component of topo_vect that "
-                                        f"equals to 0.")
+        assert np.all(topo_vect != 0), ("To avoid mixing the 'do not move an element' action and the "
+                                        "id of a busbar, we decided that busbars labelling should start at 1 "
+                                        "and not at 0. So there should not be any component of topo_vect that "
+                                        "equals to 0.")
         return topo_vect
     
     def test_14change_topology(self):
@@ -687,6 +694,8 @@ class AAATestBackendAPI(MakeBackend):
         cls = type(backend)
         
         res = backend.runpf(is_dc=False)
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
         
         _ = self._aux_check_topo_vect(backend)
         
@@ -769,7 +778,6 @@ class AAATestBackendAPI(MakeBackend):
         """
         self.skip_if_needed()
         backend = self.aux_make_backend()
-        cls = type(backend)
         backend2 = self.aux_make_backend()
         res = backend.runpf(is_dc=False)
         assert len(res) == 2, "runpf should return tuple of size 2"
@@ -809,10 +817,10 @@ class AAATestBackendAPI(MakeBackend):
         assert res_ref[0], "your backend has diverged after just loading the grid"
         p_or, q_or, v_or, a_or = backend.lines_or_info()
         p2_or, q2_or, v2_or, a2_or = backend2.lines_or_info()
-        assert np.allclose(p2_or, p_or), f"The p_or flow differ between its original value and after a reset. Check backend.reset()"
-        assert np.allclose(q2_or, q_or), f"The q_or flow differ between its original value and after a reset. Check backend.reset()"
-        assert np.allclose(v2_or, v_or), f"The v_or differ between its original value and after a reset. Check backend.reset()"
-        assert np.allclose(a2_or, a_or), f"The a_or flow differ between its original value and after a reset. Check backend.reset()"
+        assert np.allclose(p2_or, p_or), "The p_or flow differ between its original value and after a reset. Check backend.reset()"
+        assert np.allclose(q2_or, q_or), "The q_or flow differ between its original value and after a reset. Check backend.reset()"
+        assert np.allclose(v2_or, v_or), "The v_or differ between its original value and after a reset. Check backend.reset()"
+        assert np.allclose(a2_or, a_or), "The a_or flow differ between its original value and after a reset. Check backend.reset()"
     
     def _aux_aux_test_detachment_should_fail(self, maybe_exc):
         assert maybe_exc is not None, "When your backend diverges, we expect it throws an exception (second return value)"  
@@ -844,7 +852,7 @@ class AAATestBackendAPI(MakeBackend):
             self._aux_aux_test_detachment_should_fail(maybe_exc)
         else:
             # detachment should not make things diverge
-            assert maybe_exc is None, f"Your backend supports detachment of loads or generator, yet it diverges when some loads / generators are disconnected."
+            assert maybe_exc is None, "Your backend supports detachment of loads or generator, yet it diverges when some loads / generators are disconnected."
             
     def test_16_isolated_load_stops_computation(self, allow_detachment=DEFAULT_ALLOW_DETACHMENT):
         """Tests that an isolated load will be spotted by the `run_pf` method and forwarded to grid2op by returining `False, an_exception` (in AC and DC)
@@ -904,7 +912,6 @@ class AAATestBackendAPI(MakeBackend):
         """
         self.skip_if_needed()
         backend = self.aux_make_backend(allow_detachment=allow_detachment)
-        cls = type(backend)
         
         # disconnect a gen
         action = type(backend)._complete_action_class()
@@ -1114,7 +1121,7 @@ class AAATestBackendAPI(MakeBackend):
         bk_act += action
         backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
         res = backend.runpf(is_dc=False)  
-        assert not res[0], f"It is expected that your backend return `(False, _)` in case of non connected grid in AC."                 
+        assert not res[0], "It is expected that your backend return `(False, _)` in case of non connected grid in AC."                 
         error = res[1]
         assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
         if not isinstance(error, BackendError):
@@ -1130,7 +1137,7 @@ class AAATestBackendAPI(MakeBackend):
         bk_act += action
         backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
         res = backend.runpf(is_dc=True)  
-        assert not res[0], f"It is expected that your backend return `(False, _)` in case of non connected grid in DC."                    
+        assert not res[0], "It is expected that your backend return `(False, _)` in case of non connected grid in DC."                    
         error = res[1]
         assert isinstance(error, Grid2OpException), f"When your backend return `False`, we expect it throws an exception inheriting from Grid2OpException (second return value), backend returned {type(error)}"  
         if not isinstance(error, BackendError):
@@ -1300,7 +1307,7 @@ class AAATestBackendAPI(MakeBackend):
         
         # backend can be copied
         backend_cpy = backend.copy_public()
-        assert isinstance(backend_cpy, type(backend)), f"backend.copy() is supposed to return an object of the same type as your backend. Check backend.copy()"
+        assert isinstance(backend_cpy, type(backend)), "backend.copy() is supposed to return an object of the same type as your backend. Check backend.copy()"
         res = backend.runpf(is_dc=False)
         assert res[0],  f"Your backend diverged in AC after a copy, error was {res[1]}"    
         # now modify original one
@@ -1319,8 +1326,8 @@ class AAATestBackendAPI(MakeBackend):
         
         p_or, *_ = backend.lines_or_info()
         p_or_cpy, *_ = backend_cpy.lines_or_info()
-        assert not np.allclose(p_or, p_or_cpy), (f"The p_or for your backend and its copy are identical though one has been modify and not the other. "
-                                                  "It is likely that backend.copy implementation does not perform a deep copy")            
+        assert not np.allclose(p_or, p_or_cpy), ("The p_or for your backend and its copy are identical though one has been modify and not the other. "
+                                                 "It is likely that backend.copy implementation does not perform a deep copy")            
 
     def test_27_topo_vect_disconnect(self):    
         """Tests that the topo_vect vector is properly computed in some
@@ -1400,8 +1407,8 @@ class AAATestBackendAPI(MakeBackend):
             res = backend.runpf(is_dc=False)  
             assert res[0],  f"Your backend diverged in AC after a shunt disconnection, error was {res[1]}"    
             topo_vect = self._aux_check_topo_vect(backend)
-            error_msg = (f"Disconnecting a shunt should have no impact on the topo_vect vector "
-                         f"as shunt are not taken into account in this")
+            error_msg = ("Disconnecting a shunt should have no impact on the topo_vect vector "
+                         "as shunt are not taken into account in this")
             assert (topo_vect == topo_vect_orig).all(), error_msg
     
     def _aux_aux_get_line(self, el_id, el_to_subid, line_xx_to_subid):
@@ -1512,7 +1519,7 @@ class AAATestBackendAPI(MakeBackend):
         
         res = backend.runpf(is_dc=False)
         assert res[0],  f"Your backend diverged in AC after loading the grid state, error was {res[1]}"    
-        topo_vect_orig = self._aux_check_topo_vect(backend)
+        topo_vect_orig = self._aux_check_topo_vect(backend)  # noqa: F841
         
         # line or
         line_id = 0
@@ -1626,8 +1633,10 @@ class AAATestBackendAPI(MakeBackend):
             self.skipTest("Your backend does not support more than 2 busbars.")
         
         res = backend.runpf(is_dc=False)
-        assert res[0],  f"Your backend diverged in AC after loading the grid state, error was {res[1]}"    
-        topo_vect_orig = self._aux_check_topo_vect(backend)
+        assert len(res) == 2, "runpf should return tuple of size 2"
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}" 
+        topo_vect_orig = self._aux_check_topo_vect(backend)  # noqa: F841
         
         # line or
         line_id = 0
@@ -1923,5 +1932,251 @@ class AAATestBackendAPI(MakeBackend):
         assert sh_vnkv is not None, "If your backend supports shunts, then you need to implement `_sh_vnkv` attribute in the load_grid method of the backend"
         assert isinstance(sh_vnkv, np.ndarray), "`_sh_vnkv` attribute should be a numpy array"
         assert sh_vnkv.shape[0] == cls.n_shunt, f"_sh_vnkv has len {sh_vnkv.shape[0]} but there are {cls.n_shunt} n shunts on the grid"
+
+    def test_37_change_unary_load_p(self):
+        """Tests that modifying load_p for a single load only affects that load's active power,
+        and does not affect load_q of any load.
+
+        This test catches bugs where applying a load_p change to load i accidentally modifies
+        the wrong load or corrupts load_q values.
+
+        This test supposes that :
+
+        - backend.load_grid(...) is implemented
+        - backend.runpf() (AC mode) is implemented
+        - backend.apply_action() for load_p modification is implemented
+        - backend.loads_info() is implemented
+
+        .. versionadded:: 1.12.4
+
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend()
+
+        res = backend.runpf(is_dc=False)
+        assert len(res) == 2, "runpf should return a tuple of size 2"
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
+
+        tmp = backend.loads_info()
+        assert len(tmp) == 3, "loads_info() should return 3 elements: load_p, load_q, load_v (see doc)"
+        load_p_init, load_q_init, load_v_init = tmp
+        init_gen_p, *_ = backend.generators_info()
+
+        delta_mw = 1.  # add 1 MW to a single load
+        tol_unchanged = 3e-5  # loads that were NOT modified must stay this close to their initial value
+        cls = type(backend)
+        for load_id in range(cls.n_load):
+            # modify only load_p for load_id, keep load_q unchanged
+            this_load_p = 1. * load_p_init
+            this_load_p[load_id] += delta_mw
+            action = cls._complete_action_class()
+            action.update({"injection": {"load_p": this_load_p,
+                                         "load_q": load_q_init,
+                                         "prod_p": init_gen_p}})
+            bk_act = cls.my_bk_act_class()
+            bk_act += action
+            backend.apply_action(bk_act)
+            res_tmp = backend.runpf(is_dc=False)
+            assert res_tmp[0], (f"backend should not have diverged after adding {delta_mw} MW to load {load_id}. "
+                                f"It diverges with error {res_tmp[1]}")
+            after_p, after_q, after_v = backend.loads_info()
+
+            # 1) the targeted load_p must have changed
+            assert np.abs(after_p[load_id] - load_p_init[load_id]) >= delta_mw / 2., (
+                f"load_p[{load_id}] should have increased by ~{delta_mw} MW but went from "
+                f"{load_p_init[load_id]:.4f} to {after_p[load_id]:.4f}: check apply_action for load_p"
+            )
+
+            # 2) all other loads' active power must remain unchanged
+            for other_id in range(cls.n_load):
+                if other_id == load_id:
+                    continue
+                assert np.abs(after_p[other_id] - load_p_init[other_id]) <= tol_unchanged, (
+                    f"load_p[{other_id}] should not have changed when only load_p[{load_id}] was modified, "
+                    f"but went from {load_p_init[other_id]:.4f} to {after_p[other_id]:.4f}: "
+                    f"check apply_action for load_p (wrong load index?)"
+                )
+
+            # 3) no load's reactive power must be affected
+            for other_id in range(cls.n_load):
+                assert np.abs(after_q[other_id] - load_q_init[other_id]) <= tol_unchanged, (
+                    f"load_q[{other_id}] should not have changed when only load_p[{load_id}] was modified, "
+                    f"but went from {load_q_init[other_id]:.4f} to {after_q[other_id]:.4f}: "
+                    f"check apply_action for load_p (load_q must not be affected when only load_p changes)"
+                )
+
+    def test_38_change_unary_load_q(self):
+        """Tests that modifying load_q for a single load only affects that load's reactive power,
+        and does not affect load_p of any load.
+
+        This test catches bugs where applying a load_q change to load i accidentally modifies
+        the wrong load or corrupts load_p values.
+
+        This test supposes that :
+
+        - backend.load_grid(...) is implemented
+        - backend.runpf() (AC mode) is implemented
+        - backend.apply_action() for load_q modification is implemented
+        - backend.loads_info() is implemented
+
+        .. versionadded:: 1.12.4
+
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend()
+
+        res = backend.runpf(is_dc=False)
+        assert len(res) == 2, "runpf should return a tuple of size 2"
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
+
+        tmp = backend.loads_info()
+        assert len(tmp) == 3, "loads_info() should return 3 elements: load_p, load_q, load_v (see doc)"
+        load_p_init, load_q_init, load_v_init = tmp
+        init_gen_p, *_ = backend.generators_info()
+
+        delta_mvar = 1.  # add 1 MVAr to a single load
+        tol_unchanged = 3e-5  # loads that were NOT modified must stay this close to their initial value
+        cls = type(backend)
+        for load_id in range(cls.n_load):
+            # modify only load_q for load_id, keep load_p unchanged
+            this_load_q = 1. * load_q_init
+            this_load_q[load_id] += delta_mvar
+            action = cls._complete_action_class()
+            action.update({"injection": {"load_p": load_p_init,
+                                         "load_q": this_load_q,
+                                         "prod_p": init_gen_p}})
+            bk_act = cls.my_bk_act_class()
+            bk_act += action
+            backend.apply_action(bk_act)
+            res_tmp = backend.runpf(is_dc=False)
+            assert res_tmp[0], (f"backend should not have diverged after adding {delta_mvar} MVAr to load {load_id}. "
+                                f"It diverges with error {res_tmp[1]}")
+            after_p, after_q, after_v = backend.loads_info()
+
+            # 1) the targeted load_q must have changed
+            assert np.abs(after_q[load_id] - load_q_init[load_id]) >= delta_mvar / 2., (
+                f"load_q[{load_id}] should have increased by ~{delta_mvar} MVAr but went from "
+                f"{load_q_init[load_id]:.4f} to {after_q[load_id]:.4f}: check apply_action for load_q"
+            )
+
+            # 2) all other loads' reactive power must remain unchanged
+            for other_id in range(cls.n_load):
+                if other_id == load_id:
+                    continue
+                assert np.abs(after_q[other_id] - load_q_init[other_id]) <= tol_unchanged, (
+                    f"load_q[{other_id}] should not have changed when only load_q[{load_id}] was modified, "
+                    f"but went from {load_q_init[other_id]:.4f} to {after_q[other_id]:.4f}: "
+                    f"check apply_action for load_q (wrong load index?)"
+                )
+
+            # 3) no load's active power must be affected
+            for other_id in range(cls.n_load):
+                assert np.abs(after_p[other_id] - load_p_init[other_id]) <= tol_unchanged, (
+                    f"load_p[{other_id}] should not have changed when only load_q[{load_id}] was modified, "
+                    f"but went from {load_p_init[other_id]:.4f} to {after_p[other_id]:.4f}: "
+                    f"check apply_action for load_q (load_p must not be affected when only load_q changes)"
+                )
+
+    def test_39_change_unary_gen_v(self):
+        """Tests that modifying gen_v (prod_v) for one bus only affects the generators on
+        that bus, and does not corrupt gen_p for any generator.
+
+        This test catches bugs where applying a gen_v change to gen i accidentally modifies
+        the wrong generator or corrupts gen_p values.
+
+        Because there is only one voltage setpoint per bus, all generators connected to the
+        same substation (same entry in type(backend).gen_to_subid) share a single voltage
+        setpoint.  The test therefore iterates over groups of generators sharing a substation
+        and updates all of them together in each iteration.
+
+        Note: checking gen_v of generators on *other* buses is intentionally skipped because
+        voltage propagates through the network (changing one PV-bus setpoint shifts
+        neighbouring bus voltages), so their gen_v values will legitimately shift.  The key
+        invariant is that gen_p must not be corrupted.  One generator (the slack) is exempt
+        from the gen_p check, following the same convention as test_12_modify_gen_pf_getter.
+
+        This test supposes that :
+
+        - backend.load_grid(...) is implemented
+        - backend.runpf() (AC mode) is implemented
+        - backend.apply_action() for gen_v / prod_v modification is implemented
+        - backend.generators_info() is implemented
+
+        .. versionadded:: 1.12.4
+
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend()
+
+        res = backend.runpf(is_dc=False)
+        assert len(res) == 2, "runpf should return a tuple of size 2"
+        converged, exc_ = res
+        assert converged, f"This test can only run if a powerflow converges. Error was {exc_}"
+
+        tmp = backend.generators_info()
+        assert len(tmp) == 3, "generators_info() should return 3 elements: gen_p, gen_q, gen_v (see doc)"
+        gen_p_init, gen_q_init, gen_v_init = tmp
+        load_p_init, load_q_init, *_ = backend.loads_info()
+
+        delta_kv = 1.0    # add 1 kV to the voltage setpoint of one bus at a time
+        tol_unchanged = 3e-5  # gen_p values must stay this close to their set value (slack excepted)
+        cls = type(backend)
+
+        # Build a mapping sub_id -> list of gen indices sharing that substation.
+        # All generators on the same substation share the same bus voltage setpoint,
+        # so they must all be updated together.
+        sub_to_gens = {}
+        for gen_id, sub_id in enumerate(cls.gen_to_subid):
+            sub_to_gens.setdefault(int(sub_id), []).append(gen_id)
+
+        for sub_id, group in sub_to_gens.items():
+            # Increase gen_v for every generator in this group by delta_kv.
+            # All other generators keep their initial voltage setpoint.
+            this_gen_v = 1. * gen_v_init
+            for gid in group:
+                this_gen_v[gid] += delta_kv
+            action = cls._complete_action_class()
+            action.update({"injection": {"prod_p": gen_p_init,
+                                         "prod_v": this_gen_v,
+                                         "load_p": load_p_init,
+                                         "load_q": load_q_init}})
+            bk_act = cls.my_bk_act_class()
+            bk_act += action
+            backend.apply_action(bk_act)
+            res_tmp = backend.runpf(is_dc=False)
+            assert res_tmp[0], (
+                f"backend should not have diverged after adding {delta_kv} kV to gen_v "
+                f"for generators {group} (substation {sub_id}). "
+                f"It diverges with error {res_tmp[1]}"
+            )
+            after_p, after_q, after_v = backend.generators_info()
+
+            # 1) every generator in the group must report the updated voltage
+            for gid in group:
+                assert np.abs(after_v[gid] - gen_v_init[gid]) >= delta_kv / 2., (
+                    f"gen_v[{gid}] (substation {sub_id}) should have increased by ~{delta_kv} kV "
+                    f"but went from {gen_v_init[gid]:.4f} to {after_v[gid]:.4f}: "
+                    f"check apply_action for gen_v / prod_v"
+                )
+
+            # 2) gen_p must not be corrupted for any generator.
+            #    The slack generator absorbs network-loss changes, so at most one failure is
+            #    allowed (same convention as test_12_modify_gen_pf_getter).
+            prev_exc = None
+            for other_id in range(cls.n_gen):
+                if np.abs(after_p[other_id] - gen_p_init[other_id]) > tol_unchanged:
+                    msg = (
+                        f"gen_p[{other_id}] should not have changed when only gen_v for "
+                        f"generators {group} (substation {sub_id}) was modified, "
+                        f"but went from {gen_p_init[other_id]:.4f} to {after_p[other_id]:.4f}: "
+                        f"check apply_action for gen_v / prod_v "
+                        f"(gen_p must not be affected when only gen_v changes)"
+                    )
+                    if prev_exc is None:
+                        prev_exc = AssertionError(msg)  # tolerate the slack once
+                    else:
+                        raise AssertionError(msg) from prev_exc
 
     # TODO test: disconnect a gen a load a conso and then connect it again and see what you end up with.

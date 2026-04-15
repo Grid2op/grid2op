@@ -282,12 +282,12 @@ class FromChronix2grid(GridValue):
                                              with_loss=self._with_loss,
                                              nb_steps=self._max_iter)
         
-        self._load_p = res_gen[0].values
-        self._load_p_forecasted = res_gen[1].values
-        self._load_q = res_gen[2].values
-        self._load_q_forecasted = res_gen[3].values
-        self._gen_p = res_gen[4].values
-        self._gen_p_forecasted = res_gen[5].values
+        self._load_p = res_gen[0].to_numpy()
+        self._load_p_forecasted = res_gen[1].to_numpy()
+        self._load_q = res_gen[2].to_numpy()
+        self._load_q_forecasted = res_gen[3].to_numpy()
+        self._gen_p = res_gen[4].to_numpy()
+        self._gen_p_forecasted = res_gen[5].to_numpy()
         
         if self.has_maintenance:
             self.maintenance = GridStateFromFileWithForecastsWithMaintenance._generate_matenance_static(

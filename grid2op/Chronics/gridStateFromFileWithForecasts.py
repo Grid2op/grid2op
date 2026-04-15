@@ -226,19 +226,19 @@ class GridStateFromFileWithForecasts(GridStateFromFile):
 
         if load_p is not None:
             self.load_p_forecast = copy.deepcopy(
-                load_p.values[:, self._order_load_p_forecasted].astype(dt_float)
+                load_p.to_numpy()[:, self._order_load_p_forecasted].astype(dt_float)
             )
         if load_q is not None:
             self.load_q_forecast = copy.deepcopy(
-                load_q.values[:, self._order_load_q_forecasted].astype(dt_float)
+                load_q.to_numpy()[:, self._order_load_q_forecasted].astype(dt_float)
             )
         if prod_p is not None:
             self.prod_p_forecast = copy.deepcopy(
-                prod_p.values[:, self._order_prod_p_forecasted].astype(dt_float)
+                prod_p.to_numpy()[:, self._order_prod_p_forecasted].astype(dt_float)
             )
         if prod_v is not None:
             self.prod_v_forecast = copy.deepcopy(
-                prod_v.values[:, self._order_prod_v_forecasted].astype(dt_float)
+                prod_v.to_numpy()[:, self._order_prod_v_forecasted].astype(dt_float)
             )
 
     def check_validity(self, backend):

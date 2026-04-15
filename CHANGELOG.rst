@@ -109,7 +109,9 @@ Native multi agents support:
 - [FIXED] some issues spotted by sonarcloud (especially attribute names)
 - [IMPROVED] security in the way episode statistics are saved (to prevent malicious 
   tempering with path)
-
+- [IMPROVED] use df.to_numpy() instead of df.values when df is a pandas dataframe
+- [ADDED] some tests that modification of load_p (for one load) only change this load
+  (same for load_q and gen_v)
 
 [1.12.3] - 2026-02-04
 -----------------------
