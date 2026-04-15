@@ -9,6 +9,7 @@
 import copy
 import json
 import os
+from hashlib import blake2b
 from unittest.mock import patch
 import numpy as np
 
@@ -547,6 +548,43 @@ class TestScoreL2RPN2020SecurityDefenses(HelperTests, unittest.TestCase):
                 with open(metadata_path, "w", encoding="utf-8") as f:
                     json.dump(raw, f)
 
+                with self.assertRaises(RuntimeError):
+                    scores.stat_dn.get_metadata()
+
+                scores.clear_all()
+
+    def test_mac_cannot_be_reforged(self):
+        """Layer 1 (stronger): updating the hash field with a plain blake2b of the
+        tampered content is still detected because the stored MAC requires the
+        secret key derived from the environment grid files."""
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            with grid2op.make(
+                "rte_case5_example", test=True, _add_to_name=type(self).__name__
+            ) as env:
+                scores = ScoreL2RPN2020(env, nb_scenario=2, verbose=0, max_step=10)
+                metadata_path = os.path.join(
+                    scores.stat_dn.path_save_stats, EpisodeStatistics.METADATA
+                )
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    raw = json.load(f)
+
+                # inject a path traversal
+                raw["0"]["scenario_name"] = "../../etc/passwd"
+                # also refresh the hash field using a plain blake2b (no key) —
+                # this is what an attacker would do to fool the old scheme
+                hash_key = scores.stat_dn._get_hash_key_from_path(
+                    scores.stat_dn.path_save_stats
+                )
+                raw_without_hash = {k: v for k, v in raw.items() if k != hash_key}
+                forged_hash = blake2b(
+                    json.dumps(raw_without_hash, sort_keys=True, indent=4).encode("utf-8")
+                ).hexdigest()
+                raw[hash_key] = forged_hash
+                with open(metadata_path, "w", encoding="utf-8") as f:
+                    json.dump(raw, f)
+
+                # the keyed MAC check must still catch the tampered file
                 with self.assertRaises(RuntimeError):
                     scores.stat_dn.get_metadata()
 
