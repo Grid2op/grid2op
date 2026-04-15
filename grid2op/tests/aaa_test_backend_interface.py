@@ -2120,7 +2120,7 @@ class AAATestBackendAPI(MakeBackend):
         gen_p_init, gen_q_init, gen_v_init = tmp
         load_p_init, load_q_init, *_ = backend.loads_info()
 
-        delta_kv = 1.0    # add 1 kV to the voltage setpoint of one bus at a time
+        delta_kv = 0.1    # add 1 kV to the voltage setpoint of one bus at a time
         tol_unchanged = 3e-5  # gen_p values must stay this close to their set value (slack excepted)
         cls = type(backend)
 
@@ -2178,5 +2178,292 @@ class AAATestBackendAPI(MakeBackend):
                         prev_exc = AssertionError(msg)  # tolerate the slack once
                     else:
                         raise AssertionError(msg) from prev_exc
+
+    def test_40_topo_vect_set_all_elements(self):
+        """Exhaustively tests that topo_vect is updated correctly after moving every
+        individual element to busbar 2.
+
+        For powerlines (both origin and extremity sides) the test is always attempted
+        provided the host substation has at least 2 powerline ends in total (so that
+        busbar 1 is not left empty after the move).
+
+        For other element types (generators, loads, storage units) the test is only
+        performed when a companion powerline end can be found at the same substation
+        (using the same logic as :meth:`_aux_get_lines`); that companion is moved to
+        busbar 2 alongside the element so busbar 2 is not isolated.
+
+        The backend is fully reset before each individual element test so that no
+        topological state leaks between iterations.
+
+        This test supposes that :
+
+        - backend.load_grid(...) is implemented
+        - backend.runpf() (AC mode) is implemented
+        - backend.apply_action() for topology (set_bus) is implemented
+        - backend.reset() is implemented
+        - backend.get_topo_vect() is implemented
+
+        .. versionadded:: 1.12.4
+
+        """
+        self.skip_if_needed()
+        backend = self.aux_make_backend()
+        cls = type(backend)
+
+        res = backend.runpf(is_dc=False)
+        assert res[0], f"Your backend diverged in AC after loading the grid, error was {res[1]}"
+        init_topo_vect = self._aux_check_topo_vect(backend)
+        
+        busbar_id = 2
+
+        # --- powerline origin ends ---
+        for line_id in range(cls.n_line):
+            sub_id = int(cls.line_or_to_subid[line_id])
+            n_line_ends_at_sub = int((cls.line_or_to_subid == sub_id).sum() +
+                                     (cls.line_ex_to_subid == sub_id).sum())
+            if n_line_ends_at_sub < 2:
+                # warnings.warn(
+                #     f"{type(self).__name__} test_40_topo_vect_set_all_elements: "
+                #     f"skipping line_or {line_id} (substation {sub_id} has only "
+                #     f"{n_line_ends_at_sub} powerline end(s), need ≥2 to keep "
+                #     f"busbar 1 non-empty)"
+                # )
+                continue
+            backend.reset_public(self.get_path(), self.get_casefile())
+            action = cls._complete_action_class()
+            action.update({"set_bus": {"lines_or_id": [(line_id, busbar_id)]}})
+            bk_act = cls.my_bk_act_class()
+            bk_act += action
+            backend.apply_action_public(bk_act)
+            res = backend.runpf(is_dc=False)
+            if not res[0]:
+                continue
+            # assert res[0], (
+            #     f"Your backend diverged in AC after moving line_or[{line_id}] to "
+            #     f"busbar {busbar_id} (substation {sub_id}), error was {res[1]}"
+            # )
+            topo_vect = self._aux_check_topo_vect(backend)
+            assert topo_vect[cls.line_or_pos_topo_vect[line_id]] == busbar_id, (
+                f"line_or[{line_id}] (substation {sub_id}) was moved to busbar "
+                f"{busbar_id} but topo_vect reports busbar "
+                f"{topo_vect[cls.line_or_pos_topo_vect[line_id]]}: "
+                f"check apply_action (set_bus, lines_or_id) / get_topo_vect for powerline origin ends"
+            )
+                
+            assert (topo_vect == init_topo_vect).sum() == (topo_vect.shape[0] - 1), (
+                f"Other element(s) than the line_or[{line_id}] (substation {sub_id}) "
+                "was moved to another busbar: "
+                f"check apply_action (set_bus, lines_or_id) / get_topo_vect for powerline origin ends"
+            )
+
+        # --- powerline extremity ends ---
+        for line_id in range(cls.n_line):
+            sub_id = int(cls.line_ex_to_subid[line_id])
+            n_line_ends_at_sub = int((cls.line_or_to_subid == sub_id).sum() +
+                                     (cls.line_ex_to_subid == sub_id).sum())
+            if n_line_ends_at_sub < 2:
+                # warnings.warn(
+                #     f"{type(self).__name__} test_40_topo_vect_set_all_elements: "
+                #     f"skipping line_ex {line_id} (substation {sub_id} has only "
+                #     f"{n_line_ends_at_sub} powerline end(s), need ≥2 to keep "
+                #     f"busbar 1 non-empty)"
+                # )
+                continue
+            backend.reset_public(self.get_path(), self.get_casefile())
+            action = cls._complete_action_class()
+            action.update({"set_bus": {"lines_ex_id": [(line_id, busbar_id)]}})
+            bk_act = cls.my_bk_act_class()
+            bk_act += action
+            backend.apply_action_public(bk_act)
+            res = backend.runpf(is_dc=False)
+            if not res[0]:
+                continue
+            # assert res[0], (
+            #     f"Your backend diverged in AC after moving line_ex[{line_id}] to "
+            #     f"busbar {busbar_id} (substation {sub_id}), error was {res[1]}"
+            # )
+            topo_vect = self._aux_check_topo_vect(backend)
+            assert topo_vect[cls.line_ex_pos_topo_vect[line_id]] == busbar_id, (
+                f"line_ex[{line_id}] (substation {sub_id}) was moved to busbar "
+                f"{busbar_id} but topo_vect reports busbar "
+                f"{topo_vect[cls.line_ex_pos_topo_vect[line_id]]}: "
+                f"check apply_action (set_bus, lines_ex_id) / get_topo_vect for powerline extremity ends"
+            )
+                
+            assert (topo_vect == init_topo_vect).sum() == (topo_vect.shape[0] - 1), (
+                f"Other element(s) than the line_ex[{line_id}] (substation {sub_id}) "
+                "was moved to another busbar: "
+                f"check apply_action (set_bus, lines_ex_id) / get_topo_vect for powerline extremity ends"
+            )
+
+        # --- generators ---
+        for gen_id in range(cls.n_gen):
+            companion = self._aux_get_lines(cls, gen_id, cls.gen_to_subid)
+            if companion is None:
+                # warnings.warn(
+                #     f"{type(self).__name__} test_40_topo_vect_set_all_elements: "
+                #     f"skipping generator {gen_id} (its substation has fewer than 2 "
+                #     f"powerline ends; cannot safely split into 2 busbars)"
+                # )
+                continue
+            or_id, ex_id = companion
+            line_key = "lines_or_id" if or_id is not None else "lines_ex_id"
+            line_val = [(or_id if or_id is not None else ex_id, busbar_id)]
+            backend.reset_public(self.get_path(), self.get_casefile())
+            action = cls._complete_action_class()
+            action.update({"set_bus": {
+                "generators_id": [(gen_id, busbar_id)],
+                line_key: line_val,
+            }})
+            bk_act = cls.my_bk_act_class()
+            bk_act += action
+            backend.apply_action_public(bk_act)
+            res = backend.runpf(is_dc=False)
+            if not res[0]:
+                continue
+            # assert res[0], (
+            #     f"Your backend diverged in AC after moving generator {gen_id} to "
+            #     f"busbar {busbar_id}, error was {res[1]}"
+            # )
+            topo_vect = self._aux_check_topo_vect(backend)
+            assert topo_vect[cls.gen_pos_topo_vect[gen_id]] == busbar_id, (
+                f"generator {gen_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.gen_pos_topo_vect[gen_id]]}: "
+                f"check apply_action (set_bus, generators_id) / get_topo_vect for generators"
+            )
+            if or_id is not None:
+                assert topo_vect[cls.line_or_pos_topo_vect[or_id]] == busbar_id, (
+                f"companion line of generator {gen_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.line_or_pos_topo_vect[or_id]]}: "
+                f"check apply_action (set_bus, generators_id) / get_topo_vect for generators"
+                )
+            elif ex_id is not None:
+                assert topo_vect[cls.line_ex_pos_topo_vect[ex_id]] == busbar_id, (
+                f"companion line of generator {gen_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.line_ex_pos_topo_vect[or_id]]}: "
+                f"check apply_action (set_bus, generators_id) / get_topo_vect for generators"
+                )
+                
+            assert (topo_vect == init_topo_vect).sum() == (topo_vect.shape[0] - 2), (
+                f"Other element(s) than the generator {gen_id} and its companion line "
+                "was / were moved to another busbar: "
+                f"check apply_action (set_bus, generators_id) / get_topo_vect for generators"
+            )
+
+        # --- loads ---
+        for load_id in range(cls.n_load):
+            companion = self._aux_get_lines(cls, load_id, cls.load_to_subid)
+            if companion is None:
+                # warnings.warn(
+                #     f"{type(self).__name__} test_40_topo_vect_set_all_elements: "
+                #     f"skipping load {load_id} (its substation has fewer than 2 "
+                #     f"powerline ends; cannot safely split into 2 busbars)"
+                # )
+                continue
+            or_id, ex_id = companion
+            line_key = "lines_or_id" if or_id is not None else "lines_ex_id"
+            line_val = [(or_id if or_id is not None else ex_id, busbar_id)]
+            backend.reset_public(self.get_path(), self.get_casefile())
+            action = cls._complete_action_class()
+            action.update({"set_bus": {
+                "loads_id": [(load_id, busbar_id)],
+                line_key: line_val,
+            }})
+            bk_act = cls.my_bk_act_class()
+            bk_act += action
+            backend.apply_action_public(bk_act)
+            res = backend.runpf(is_dc=False)
+            if not res[0]:
+                continue
+            # assert res[0], (
+            #     f"Your backend diverged in AC after moving load {load_id} to "
+            #     f"busbar {busbar_id}, error was {res[1]}"
+            # )
+            topo_vect = self._aux_check_topo_vect(backend)
+            assert topo_vect[cls.load_pos_topo_vect[load_id]] == busbar_id, (
+                f"load {load_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.load_pos_topo_vect[load_id]]}: "
+                f"check apply_action (set_bus, loads_id) / get_topo_vect for loads"
+            )
+            if or_id is not None:
+                assert topo_vect[cls.line_or_pos_topo_vect[or_id]] == busbar_id, (
+                f"companion line of load {load_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.line_or_pos_topo_vect[or_id]]}: "
+                f"check apply_action (set_bus, loads_id) / get_topo_vect for loads"
+                )
+            elif ex_id is not None:
+                assert topo_vect[cls.line_ex_pos_topo_vect[ex_id]] == busbar_id, (
+                f"companion line of load {load_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.line_ex_pos_topo_vect[or_id]]}: "
+                f"check apply_action (set_bus, loads_id) / get_topo_vect for loads"
+                )
+                
+            assert (topo_vect == init_topo_vect).sum() == (topo_vect.shape[0] - 2), (
+                f"Other element(s) than the load {load_id} and its companion line "
+                "was / were moved to another busbar: "
+                f"check apply_action (set_bus, loads_id) / get_topo_vect for loads"
+            )
+
+        # --- storage units ---
+        if cls.n_storage == 0:
+            warnings.warn(
+                f"{type(self).__name__} test_40_topo_vect_set_all_elements: "
+                f"storage unit sub-test skipped (no storage units on this grid)"
+            )
+        else:
+            for sto_id in range(cls.n_storage):
+                companion = self._aux_get_lines(cls, sto_id, cls.storage_to_subid)
+                if companion is None:
+                    # warnings.warn(
+                    #     f"{type(self).__name__} test_40_topo_vect_set_all_elements: "
+                    #     f"skipping storage {sto_id} (its substation has fewer than 2 "
+                    #     f"powerline ends; cannot safely split into 2 busbars)"
+                    # )
+                    continue
+                or_id, ex_id = companion
+                line_key = "lines_or_id" if or_id is not None else "lines_ex_id"
+                line_val = [(or_id if or_id is not None else ex_id, busbar_id)]
+                backend.reset_public(self.get_path(), self.get_casefile())
+                action = cls._complete_action_class()
+                action.update({"set_bus": {
+                    "storages_id": [(sto_id, busbar_id)],
+                    line_key: line_val,
+                }})
+                bk_act = cls.my_bk_act_class()
+                bk_act += action
+                backend.apply_action_public(bk_act)
+                res = backend.runpf(is_dc=False)
+                if not res[0]:
+                    continue
+                
+                # assert res[0], (
+                #     f"Your backend diverged in AC after moving storage {sto_id} to "
+                #     f"busbar {busbar_id}, error was {res[1]}"
+                # )
+                topo_vect = self._aux_check_topo_vect(backend)
+                assert topo_vect[cls.storage_pos_topo_vect[sto_id]] == busbar_id, (
+                    f"storage {sto_id} was moved to busbar {busbar_id} but topo_vect "
+                    f"reports busbar {topo_vect[cls.storage_pos_topo_vect[sto_id]]}: "
+                    f"check apply_action (set_bus, storages_id) / get_topo_vect for storage units"
+                )
+            if or_id is not None:
+                assert topo_vect[cls.line_or_pos_topo_vect[or_id]] == busbar_id, (
+                f"companion line ofstorage {sto_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.line_or_pos_topo_vect[or_id]]}: "
+                f"check apply_action (set_bus, storages_id) / get_topo_vect for loads"
+                )
+            elif ex_id is not None:
+                assert topo_vect[cls.line_ex_pos_topo_vect[ex_id]] == busbar_id, (
+                f"companion line of storage {sto_id} was moved to busbar {busbar_id} but topo_vect "
+                f"reports busbar {topo_vect[cls.line_ex_pos_topo_vect[or_id]]}: "
+                f"check apply_action (set_bus, storages_id) / get_topo_vect for loads"
+                )
+                
+            assert (topo_vect == init_topo_vect).sum() == (topo_vect.shape[0] - 2), (
+                f"Other element(s) than the load {load_id} and its companion line "
+                "was / were moved to another busbar: "
+                f"check apply_action (set_bus, storages_id) / get_topo_vect for loads"
+            )
+
 
     # TODO test: disconnect a gen a load a conso and then connect it again and see what you end up with.

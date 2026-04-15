@@ -1484,7 +1484,7 @@ class PandaPowerBackend(Backend):
         self.line_status.flags.writeable = False
 
     def get_topo_vect(self) -> np.ndarray:
-        return self._topo_vect
+        return self._topo_vect.copy()
 
     def _get_topo_vect(self):
         """
