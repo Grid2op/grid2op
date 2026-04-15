@@ -204,7 +204,7 @@ class EpisodeStatistics(object):
         ids_ = np.zeros(shape=(0, 1))
         scores = None
         if score_names:
-            scores = {el: None for el in score_names}
+            scores = dict.fromkeys(score_names)
 
         first_attr = True
         for obs_nm in self.li_attributes:
