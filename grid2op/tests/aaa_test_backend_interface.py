@@ -1115,7 +1115,6 @@ class AAATestBackendAPI(MakeBackend):
         backend = self.aux_make_backend()
         cls = type(backend)
         # a non connected grid
-        action = cls._complete_action_class()
         # action.update({"set_bus": {"lines_or_id": [(17, 2)],
         #                            "lines_ex_id": [(7, 2), (14, 2)]}})
         # build an action such that a line is alone (bus 2) at both its ends
@@ -1135,7 +1134,10 @@ class AAATestBackendAPI(MakeBackend):
             warnings.warn("Impossible to build a non connected subgraph consisting of a powerline isolated at both its ends "
                           "without disconnected a generator or a load. This test cannot continue.")
             return
-        action.update({"set_bus": {"lines_or_id": [(found_l_id, 2)], "lines_ex_id": [(found_l_id, 2)]}})
+        act_dict = {"set_bus": {"lines_or_id": [(found_l_id, 2)], "lines_ex_id": [(found_l_id, 2)]}}
+        
+        action = cls._complete_action_class()
+        action.update(act_dict)
         bk_act = cls.my_bk_act_class()
         bk_act += action
         backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
@@ -1149,9 +1151,8 @@ class AAATestBackendAPI(MakeBackend):
         
         # a non connected grid
         backend.reset_public(self.get_path(), self.get_casefile())
-        action = type(backend)._complete_action_class()
-        action.update({"set_bus": {"lines_or_id": [(17, 2)],
-                                   "lines_ex_id": [(7, 2), (14, 2)]}})
+        action = cls._complete_action_class()
+        action.update(act_dict)
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
         backend.apply_action_public(bk_act)  # mix of bus 1 and 2 on substation 1
@@ -1906,22 +1907,34 @@ class AAATestBackendAPI(MakeBackend):
             self.skipTest("Cannot perform this test as your backend does not appear "
                           "to support the `detachment` information: a disconnect load "
                           "or generator is necessarily causing a game over.")
-            
-        # a load is disconnected
+        
+        res = backend.runpf(is_dc=True)  
+        assert len(res) == 2
+        assert res[0], "your backend should have converged (DC)"
+        assert res[1] is None, "your backend should have converged (DC)"
+        
+        # find an id of a generator to disconnect
+        # here I take tha smallest connected one
+        gen_p, gen_q, gen_v = backend.generators_info()
+        gen_p_modif = np.abs(gen_p)
+        gen_p_modif[gen_p_modif <= 1e-5] = np.max(gen_p_modif) + 1.
+        gen_id = int(gen_p_modif.argmin())
+        
+        # a generator is disconnected
         action = type(backend)._complete_action_class()
-        action.update({"set_bus": {"generators_id": [(0, -1)]}})
+        action.update({"set_bus": {"generators_id": [(gen_id, -1)]}})
         bk_act = type(backend).my_bk_act_class()
         bk_act += action
         backend.apply_action_public(bk_act)
         # DC
         res = backend.runpf(is_dc=True)  
         assert len(res) == 2
-        assert res[0], "your backend should have converged with disconnect of gen 0 (DC)"
-        assert res[1] is None, "your backend should have converged with disconnect of gen 0 (DC)"
+        assert res[0], f"your backend should have converged with disconnect of gen {gen_id} (DC)"
+        assert res[1] is None, "your backend should have converged with disconnect of gen {gen_id} (DC)"
         gen_p, gen_q, gen_v = backend.generators_info()
-        assert np.abs(gen_p[0]) <= 1e-8, f"disconnected gen should have a p of 0, found {gen_p[0]} (DC)"
-        assert np.abs(gen_q[0]) <= 1e-8, f"disconnected gen should have a q of 0, found {gen_q[0]} (DC)"
-        assert np.abs(gen_v[0]) <= 1e-8, f"disconnected gen should have a v of 0, found {gen_v[0]} (DC)"
+        assert np.abs(gen_p[gen_id]) <= 1e-8, f"disconnected gen {gen_id} should have a p of 0, found {gen_p[gen_id]} (DC)"
+        assert np.abs(gen_q[gen_id]) <= 1e-8, f"disconnected gen {gen_id} should have a q of 0, found {gen_q[gen_id]} (DC)"
+        assert np.abs(gen_v[gen_id]) <= 1e-8, f"disconnected gen {gen_id} should have a v of 0, found {gen_v[gen_id]} (DC)"
         
         # AC
         res = backend.runpf(is_dc=False)  
@@ -1929,9 +1942,9 @@ class AAATestBackendAPI(MakeBackend):
         assert res[0], "your backend should have converged with disconnect of gen 0 (AC)"
         assert res[1] is None, "your backend should have converged with disconnect of gen 0 (AC)"
         gen_p, gen_q, gen_v = backend.generators_info()
-        assert np.abs(gen_p[0]) <= 1e-8, f"disconnected gen should have a p of 0, found {gen_p[0]} (AC)"
-        assert np.abs(gen_q[0]) <= 1e-8, f"disconnected gen should have a q of 0, found {gen_q[0]} (AC)"
-        assert np.abs(gen_v[0]) <= 1e-8, f"disconnected gen should have a voltage set to 0, found {gen_v[0]} (AC)"
+        assert np.abs(gen_p[gen_id]) <= 1e-8, f"disconnected gen should have a p of 0, found {gen_p[gen_id]} (AC)"
+        assert np.abs(gen_q[gen_id]) <= 1e-8, f"disconnected gen should have a q of 0, found {gen_q[gen_id]} (AC)"
+        assert np.abs(gen_v[gen_id]) <= 1e-8, f"disconnected gen should have a voltage set to 0, found {gen_v[gen_id]} (AC)"
         
     def test_36_shvnkv_present_if_shunt_supported(self):
         """
