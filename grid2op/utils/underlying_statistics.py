@@ -113,7 +113,7 @@ class EpisodeStatistics(object):
     METADATA = "metadata.json"
     
     # security addition
-    REGEX_SPLIT = r"^[@%a-zA-Z0-9_\\.\\-]*$"
+    REGEX_SPLIT = r"^[@%a-zA-Z0-9_.\-]*$"
     REGEX_SPLIT_COMPILED = re.compile(REGEX_SPLIT)
 
 
@@ -204,7 +204,7 @@ class EpisodeStatistics(object):
         ids_ = np.zeros(shape=(0, 1))
         scores = None
         if score_names:
-            scores = {el: None for el in score_names}
+            scores = dict.fromkeys(score_names)
 
         first_attr = True
         for obs_nm in self.li_attributes:
@@ -270,7 +270,7 @@ class EpisodeStatistics(object):
                         self._save_numpy(os.path.join(path_total, el), array=scores[el])
                     del scores
                 del ids_
-                dict_metadata[self._get_hash_key_from_path(path_total)] = EpisodeStatistics._get_hash_from_json_metadata(dict_metadata)
+                dict_metadata[self._get_hash_key_from_path(path_total)] = self._get_hash_from_json_metadata(dict_metadata)
                 with open(
                     os.path.join(path_total, EpisodeStatistics.METADATA),
                     "w",
@@ -279,11 +279,27 @@ class EpisodeStatistics(object):
                     json.dump(obj=dict_metadata, fp=f)
             first_attr = False
             
-    @staticmethod
-    def _get_hash_from_json_metadata(dict_metadata: Dict) -> str:
+    def _get_mac_key(self) -> bytes:
+        """Derive a MAC key from the environment's own data files.
+
+        Delegates to :func:`grid2op.MakeEnv.UpdateEnv._hash_env`, which is the
+        canonical function grid2op already uses to detect environment updates.
+        It covers the meaningful files (grid topology, config, chronics names,
+        …), handles multi-mix environments, and normalises line endings so the
+        key is stable across platforms.
+
+        An attacker who can only write to the statistics folder cannot recompute
+        a valid MAC because they do not have access to the environment data used
+        to build the key.
+        """
+        from grid2op.MakeEnv.UpdateEnv import _hash_env
+        return _hash_env(self.env.get_path_env()).digest()
+
+    def _get_hash_from_json_metadata(self, dict_metadata: Dict) -> str:
         str_ = json.dumps(dict_metadata, sort_keys=True, indent=4)
-        return blake2b(str_.encode("utf-8")).hexdigest()
-    
+        key = self._get_mac_key()
+        return blake2b(str_.encode("utf-8"), key=key).hexdigest()
+
     def _get_hash_key_from_path(self, path_total: str) -> str:
         # remove the path of the env (if any)
         if self.env is not None:
@@ -387,6 +403,13 @@ class EpisodeStatistics(object):
                 raise RuntimeError(
                     'No score have been computed for this statistics. Please re run "stats.compute" '
                     'by setting the "scores_func" argument.'
+                )
+            # validate the score name extracted from attribute_name to prevent path traversal
+            nm_stat = EpisodeStatistics._nm_score_from_attr_name(attribute_name)
+            if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, nm_stat) is None:
+                raise RuntimeError(
+                    f'Invalid score attribute name "{attribute_name}": the score name part '
+                    f'must match "{EpisodeStatistics.REGEX_SPLIT}".'
                 )
             # TODO here for multiple score
             path_th = os.path.join(self.path_save_stats, score_name)
@@ -730,6 +753,11 @@ class EpisodeStatistics(object):
                         raise Grid2OpException(
                             'if using "score_fun" as a dictionary, each value need to be a '
                             "BaseReward"
+                        )
+                    if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, nm) is None:
+                        raise Grid2OpException(
+                            f'Score name "{nm}" contains invalid characters. '
+                            f'Score names must match "{EpisodeStatistics.REGEX_SPLIT}".'
                         )
                     dict_metadata[f"score_class_{nm}"] = f"{score_fun}"
                     score_names.append(f"{nm}_{self.SCORES}")

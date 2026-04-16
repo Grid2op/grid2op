@@ -9,7 +9,7 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 
-if [ $# -eq 0 ]
+if [[ $# -eq 0 ]]
   then
     echo "No arguments supplied, please specified the grid2op version to push to docker"
     exit 1

@@ -134,9 +134,9 @@ class EpisodeData:
     ENV_MODIF_SPACE = "dict_env_modification_space.json"
     ATTACK_SPACE_FILE = "dict_attack_space.json"  # action space of the attack (this is NOT the OpponentSpace) this is the "opponent action space"
 
-    PARAMS = "_parameters.json"
+    PARAMS_FILE = "_parameters.json"
     META_FILE = "episode_meta.json"
-    TIMES = "episode_times.json"
+    TIMES_FILE = "episode_times.json"
     OTHER_REWARDS_FILE = "other_rewards.json"
     AG_EXEC_TIMES = "agent_exec_times.npz"
     LEGAL_AMBIGUOUS = "legal_ambiguous.npz"
@@ -149,9 +149,9 @@ class EpisodeData:
     GRID2OPINFO_FILE = "grid2op.info"
 
     ATTR_EPISODE = [
-        PARAMS,
+        PARAMS_FILE,
         META_FILE,
-        TIMES,
+        TIMES_FILE,
         OTHER_REWARDS_FILE,
         AG_EXEC_TIMES,
         ACTIONS_FILE,
@@ -482,11 +482,11 @@ class EpisodeData:
                 legal = None
                 ambiguous = None
             else:
-                with open(os.path.join(episode_path, cls.PARAMS)) as f:
+                with open(os.path.join(episode_path, cls.PARAMS_FILE)) as f:
                     _parameters = json.load(fp=f)
                 with open(os.path.join(episode_path, cls.META_FILE)) as f:
                     episode_meta = json.load(fp=f)
-                with open(os.path.join(episode_path, cls.TIMES)) as f:
+                with open(os.path.join(episode_path, cls.TIMES_FILE)) as f:
                     episode_times = json.load(fp=f)
                 with open(os.path.join(episode_path, cls.OTHER_REWARDS_FILE)) as f:
                     other_rewards = json.load(fp=f)
@@ -788,7 +788,7 @@ class EpisodeData:
 
         """
         if self.serialize:
-            parameters_path = os.path.join(self.episode_path, EpisodeData.PARAMS)
+            parameters_path = os.path.join(self.episode_path, EpisodeData.PARAMS_FILE)
             with open(parameters_path, "w", encoding="utf-8") as f:
                 json.dump(obj=self.parameters, fp=f, indent=4, sort_keys=True)
 
@@ -796,7 +796,7 @@ class EpisodeData:
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(obj=self.meta, fp=f, indent=4, sort_keys=True)
 
-            episode_times_path = os.path.join(self.episode_path, EpisodeData.TIMES)
+            episode_times_path = os.path.join(self.episode_path, EpisodeData.TIMES_FILE)
             with open(episode_times_path, "w", encoding="utf-8") as f:
                 json.dump(obj=self.episode_times, fp=f, indent=4, sort_keys=True)
 
