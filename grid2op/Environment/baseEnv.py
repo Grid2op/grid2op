@@ -2189,6 +2189,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """this computes the redispaching vector, taking into account the storage units"""
         except_ = None
         valid = True
+        if not self._parameters.ENV_DOES_REDISPATCHING:
+            # env redispatching routine is asked not 
+            # to work
+            self._actual_dispatch[:] = self._target_dispatch.copy()
+            return valid, except_
+        
         mismatch = self._actual_dispatch - self._target_dispatch
         mismatch = np.abs(mismatch)
         if (
@@ -3793,7 +3799,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             new_p, new_p_th = self._aux_apply_detachment(new_p, new_p_th)
 
             beg__redisp = time.perf_counter()
-            if (cls.redispatching_unit_commitment_availble or cls.n_storage > 0) and self._parameters.ENV_DOES_REDISPATCHING:
+            if (cls.redispatching_unit_commitment_availble or cls.n_storage > 0):
                 # this computes the "optimal" redispatching
                 # and it is also in this function that the limiting of the curtailment / storage actions
                 # is perform to make the state "feasible"
@@ -4051,10 +4057,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         if hasattr(self, "_viewer") and self._viewer is not None:
             self._viewer = None
             self.viewer_fig = None
-
         if hasattr(self, "backend") and self.backend is not None:
             self.backend.close()
-            del self.backend
         self.backend :Backend = None
 
         if hasattr(self, "_observation_space") and self._observation_space is not None:

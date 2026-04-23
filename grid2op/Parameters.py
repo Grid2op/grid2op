@@ -168,6 +168,13 @@ class Parameters:
         
         It is ``True`` by default and for all grid2op environment before version 1.11.0
         
+        .. danger::
+            TL;DR
+            
+            Keep it the default (True) if you want your agent to be able to do redispatching
+            correctly, unless you have specific reason not to let the environment
+            adjust the offer / demand balance.
+        
         .. versionadded: 1.11.0
         
         .. note::
@@ -175,10 +182,11 @@ class Parameters:
             will be highly dependant on the backend (for example results might differ
             between using lightsim2grid or pypowsybl2grid) and more importantly between the
             parameters of the backend
-            
-        Setting this parameter to `False` is not advised if your agent really depends on redispatching, curtailment
-        or actions on storage units OR if your backend does not have a distributed slack (at least). (note
-        that we do not recommend to use it even if your backend has a distributed slack).
+        
+        .. warning::
+            Setting this parameter to `False` is not advised if your agent really depends on redispatching, curtailment
+            or actions on storage units OR if your backend does not have a distributed slack (at least). (note
+            that we do not recommend to use it even if your backend has a distributed slack).
         
         Furthermore, if you consider doing a lot of "detachment" / "shedding" / "curtailment"
         on the loads or generator, it's best to avoid setting this flag to `False`.
