@@ -339,7 +339,10 @@ def make_from_dataset_path(
     _check_kwargs(kwargs)
 
     # Compute and find config file
-    config_path_abs = os.path.abspath(os.path.join(dataset_path_abs, NAME_CONFIG_FILE))
+    if "_config_path" in kwargs:
+        config_path_abs = os.path.abspath(kwargs["_config_path"])
+    else:
+        config_path_abs = os.path.abspath(os.path.join(dataset_path_abs, NAME_CONFIG_FILE))
     _check_path(config_path_abs, "Dataset environment configuration")
 
     # Read config file
