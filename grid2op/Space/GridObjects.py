@@ -2346,7 +2346,6 @@ class GridObjects:
                 "Mismatch between storage_to_subid, "
                 "storage_to_sub_pos and storage_pos_topo_vect"
             )
-
         # no empty bus: at least one element should be present on each bus
         if (cls.sub_info < 1).any():
             if not grid2op.Space.space_utils._WARNING_ISSUED_FOR_SUB_NO_ELEM:

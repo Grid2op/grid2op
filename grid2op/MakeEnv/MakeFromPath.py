@@ -417,7 +417,7 @@ def make_from_dataset_path(
             try:
                 _check_path(grid_path_abs, "Dataset power flow solver configuration")
                 break
-            except EnvError as exc_:
+            except EnvError as exc_:  # noqa: F841
                 pass
         if grid_path_abs is None:
             raise EnvError(f"Impossible to find a grid file format supported by your backend. Your backend said it supports "
@@ -492,7 +492,7 @@ def make_from_dataset_path(
                         try:
                             int_ = int(el)
                             available_parameters_int[int_] = el
-                        except Exception as exc_:
+                        except Exception as exc_:  # noqa: F841
                             pass
                     max_ = np.max(list(available_parameters_int.keys()))
                     keys_ = available_parameters_int[max_]
@@ -552,8 +552,8 @@ def make_from_dataset_path(
 
     # Get default Voltage class
     voltage_class_cfg = ControlVoltageFromFile
-    if "voltage_class" in config_data and config_data["voltage_class"] is not None:
-        voltage_class_cfg = config_data["voltage_class"]
+    if "voltagecontroler_class" in config_data and config_data["voltagecontroler_class"] is not None:
+        voltage_class_cfg = config_data["voltagecontroler_class"]
     ### Create controler for voltages
     volagecontroler_class = _get_default_aux(
         "voltagecontroler_class",
@@ -645,7 +645,7 @@ def make_from_dataset_path(
                 # if it's in the config but is not supported by the 
                 # user, then we ignore it
                 # see https://github.com/Grid2Op/grid2op/issues/593
-                if el in dfkwargs_cfg and not el in data_feeding_kwargs_user_prov:
+                if el in dfkwargs_cfg and el not in data_feeding_kwargs_user_prov:
                     del data_feeding_kwargs_res[el]
         data_feeding_kwargs = data_feeding_kwargs_res
     # now build the chronics handler
