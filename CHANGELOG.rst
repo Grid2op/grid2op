@@ -113,13 +113,13 @@ Native multi agents support:
 - [FIXED] some issues spotted by sonarcloud (especially attribute names)
 - [FIXED] doc about the ENV_DOES_REDISPATCHING parameters. see issue 
   https://github.com/grid2op/grid2op/issues/752 
+- [ADDED] some tests that modification of load_p (for one load) only change this load
+  (same for load_q and gen_v)
 - [IMPROVED] security in the way episode statistics are saved (to prevent malicious 
   tempering with path)
 - [IMPROVED] use df.to_numpy() instead of df.values when df is a pandas dataframe
 - [IMPROVED] grid2op parameters now uses "slots" to avoid setting incorrect values
   not used by grid2op.
-- [ADDED] some tests that modification of load_p (for one load) only change this load
-  (same for load_q and gen_v)
 
 [1.12.3] - 2026-02-04
 -----------------------

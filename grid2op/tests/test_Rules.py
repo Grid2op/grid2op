@@ -6,21 +6,35 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import pdb
+import pdb  # noqa: F401
+import os
+import numpy as np
 import warnings
 import unittest
 
 from grid2op.Observation.baseObservation import BaseObservation
-from grid2op.tests.helper_path_test import *
+from grid2op.tests.helper_path_test import (
+    PATH_DATA_TEST_PP,
+    PATH_CHRONICS,
+    
+)
 
 import grid2op
-from grid2op.dtypes import dt_int, dt_bool, dt_float
-from grid2op.Exceptions import *
+from grid2op.dtypes import dt_int, dt_bool
+from grid2op.Exceptions import (
+    IllegalAction,
+)
 from grid2op.Environment import Environment
 from grid2op.Backend import PandaPowerBackend
 from grid2op.Parameters import Parameters
 from grid2op.Chronics import ChronicsHandler, GridStateFromFile
-from grid2op.Rules import *
+from grid2op.Rules import (
+    RulesChecker,
+    LookParam,
+    PreventReconnection,
+    DefaultRules,
+    AlwaysLegal
+)
 
 
 class TestLoadingBackendFunc(unittest.TestCase):
@@ -302,13 +316,13 @@ class TestLoadingBackendFunc(unittest.TestCase):
         )
 
     def test_linereactionnable_throw(self):
-        id_1 = 1
-        id_2 = 12
+        id_1 = 1  # noqa: F841
+        id_2 = 12  # noqa: F841
         id_line = 17
         id_line2 = 15
 
-        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)
-        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
+        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)  # noqa: F841
+        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)  # noqa: F841
         arr_line1 = np.full(self.helper_action.n_line, fill_value=False, dtype=dt_bool)
         arr_line1[id_line] = True
 
@@ -335,13 +349,13 @@ class TestLoadingBackendFunc(unittest.TestCase):
             pass
 
     def test_linereactionnable_nothrow(self):
-        id_1 = 1
-        id_2 = 12
+        id_1 = 1  # noqa: F841
+        id_2 = 12  # noqa: F841
         id_line = 17
         id_line2 = 15
 
-        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)
-        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
+        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)  # noqa: F841
+        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)  # noqa: F841
         arr_line1 = np.full(self.helper_action.n_line, fill_value=False, dtype=dt_bool)
         arr_line1[id_line] = True
 
@@ -367,13 +381,13 @@ class TestLoadingBackendFunc(unittest.TestCase):
         )
 
     def test_linereactionnable_throw_longerperiod(self):
-        id_1 = 1
-        id_2 = 12
+        id_1 = 1  # noqa: F841
+        id_2 = 12  # noqa: F841
         id_line = 17
         id_line2 = 15
 
-        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)
-        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
+        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)  # noqa: F841
+        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)  # noqa: F841
         arr_line1 = np.full(self.helper_action.n_line, fill_value=False, dtype=dt_bool)
         arr_line1[id_line] = True
 
@@ -381,7 +395,7 @@ class TestLoadingBackendFunc(unittest.TestCase):
         arr_line2[id_line2] = -1
 
         self.env._max_timestep_line_status_deactivated = 2
-        self.env._parameters.NB_TIMESTEP_LINE_STATUS_REMODIF = 2
+        self.env._parameters.NB_TIMESTEP_COOLDOWN_LINE = 2
 
         self.helper_action.legal_action = RulesChecker(
             legalActClass=PreventReconnection
@@ -407,12 +421,12 @@ class TestLoadingBackendFunc(unittest.TestCase):
             pass
 
     def test_toporeactionnable_throw(self):
-        id_1 = 1
+        id_1 = 1  # noqa: F841
         id_2 = 12
         id_line = 17
         id_line2 = 15
 
-        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)
+        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)  # noqa: F841
         arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
         arr_line1 = np.full(self.helper_action.n_line, fill_value=False, dtype=dt_bool)
         arr_line1[id_line] = True
@@ -444,12 +458,12 @@ class TestLoadingBackendFunc(unittest.TestCase):
             pass
 
     def test_toporeactionnable_nothrow(self):
-        id_1 = 1
+        id_1 = 1  # noqa: F841
         id_2 = 12
         id_line = 17
         id_line2 = 15
 
-        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)
+        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)  # noqa: F841
         arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
         arr_line1 = np.full(self.helper_action.n_line, fill_value=False, dtype=dt_bool)
         arr_line1[id_line] = True
@@ -480,12 +494,12 @@ class TestLoadingBackendFunc(unittest.TestCase):
         )
 
     def test_toporeactionnable_throw_longerperiod(self):
-        id_1 = 1
+        id_1 = 1  # noqa: F841
         id_2 = 12
         id_line = 17
         id_line2 = 15
 
-        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)
+        arr1 = np.array([False, False, False, True, True, True], dtype=dt_bool)  # noqa: F841
         arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
         arr_line1 = np.full(self.helper_action.n_line, fill_value=False, dtype=dt_bool)
         arr_line1[id_line] = True
@@ -606,8 +620,8 @@ class TestReconnectionsLegality(unittest.TestCase):
         disco_act = env_case2.action_space.disconnect_powerline(line_id=line_id)
         obs, reward, done, info = env_case2.step(disco_act)
         # Line has been disconnected
-        assert info["is_illegal"] == False
-        assert done == False
+        assert not info["is_illegal"]
+        assert not done
         assert np.sum(obs.line_status) == (env_case2.n_line - 1)
 
         # Reconnect the line
@@ -616,8 +630,8 @@ class TestReconnectionsLegality(unittest.TestCase):
         )
         obs, reward, done, info = env_case2.step(reco_act)
         # Check reconnecting is legal
-        assert info["is_illegal"] == False
-        assert done == False
+        assert not info["is_illegal"]
+        assert not done
         # Check line has been reconnected
         assert np.sum(obs.line_status) == (env_case2.n_line)
 
@@ -644,7 +658,7 @@ class TestReconnectionsLegality(unittest.TestCase):
         obs, reward, done, info = env.step(disco_act)
         assert obs.rho[l_id] == 0.0
         assert obs.time_before_cooldown_line[l_id] == 3
-        assert env.backend._grid.line.iloc[l_id]["in_service"] == False
+        assert not env.backend._grid.line.iloc[l_id]["in_service"]
 
         # i have a cooldown to 2 so i cannot reconnect it
         assert obs.time_before_cooldown_line[l_id] == 3
@@ -652,29 +666,29 @@ class TestReconnectionsLegality(unittest.TestCase):
         assert obs.rho[l_id] == 0.0
         assert info["is_illegal"]
         assert obs.time_before_cooldown_line[l_id] == 2
-        assert env.backend._grid.line.iloc[l_id]["in_service"] == False
+        assert not env.backend._grid.line.iloc[l_id]["in_service"]
 
         # this is not supposed to reconnect it either (cooldown)
         assert obs.time_before_cooldown_line[l_id] == 2
         obs, reward, done, info = env.step(set_or_1_act)
         # assert info["is_illegal"]
-        assert env.backend._grid.line.iloc[l_id]["in_service"] == False
+        assert not env.backend._grid.line.iloc[l_id]["in_service"]
         assert obs.rho[l_id] == 0.0
         assert obs.time_before_cooldown_line[l_id] == 1
-        assert env.backend._grid.line.iloc[l_id]["in_service"] == False
+        assert not env.backend._grid.line.iloc[l_id]["in_service"]
 
         # and neither is that (cooldown)
         assert obs.time_before_cooldown_line[l_id] == 1
         obs, reward, done, info = env.step(set_ex_1_act)
         assert obs.rho[l_id] == 0.0
         assert obs.time_before_cooldown_line[l_id] == 0
-        assert env.backend._grid.line.iloc[l_id]["in_service"] == False
+        assert not env.backend._grid.line.iloc[l_id]["in_service"]
 
         # and now i can reconnect
         obs, reward, done, info = env.step(reco_act)
         assert obs.rho[l_id] != 0.0
         assert obs.time_before_cooldown_line[l_id] == 3
-        assert env.backend._grid.line.iloc[l_id]["in_service"] == True
+        assert env.backend._grid.line.iloc[l_id]["in_service"]
 
 
 class TestSubstationImpactLegality(unittest.TestCase):
@@ -714,7 +728,7 @@ class TestSubstationImpactLegality(unittest.TestCase):
         bus_action = self.env.action_space({"set_bus": {"lines_ex_id": [(LINE_ID, 2)]}})
         # Make sure its illegal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == True
+        assert info["is_illegal"]
 
     def test_two_setbus_line_one_sub_allowed_is_illegal(self):
         # Set 1 allowed substation changes
@@ -727,7 +741,7 @@ class TestSubstationImpactLegality(unittest.TestCase):
         )
         # Make sure its illegal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == True
+        assert info["is_illegal"]
 
     def test_one_setbus_line_one_sub_allowed_is_legal(self):
         # Set 1 allowed substation changes
@@ -739,7 +753,7 @@ class TestSubstationImpactLegality(unittest.TestCase):
         )
         # Make sure its legal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == False
+        assert not info["is_illegal"]
 
     def test_two_setbus_line_two_sub_allowed_is_legal(self):
         # Set 2 allowed substation changes
@@ -750,9 +764,9 @@ class TestSubstationImpactLegality(unittest.TestCase):
         bus_action = self.env.action_space(
             {"set_bus": {"lines_ex_id": [(LINE1_ID, 2), (LINE2_ID, 2)]}}
         )
-        # Make sure its legal
+        # Make sure its illegal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == False
+        assert not info["is_illegal"]
 
     def test_changebus_line_no_sub_allowed_is_illegal(self):
         # Set 0 allowed substation changes
@@ -762,7 +776,7 @@ class TestSubstationImpactLegality(unittest.TestCase):
         bus_action = self.env.action_space({"change_bus": {"lines_ex_id": [LINE_ID]}})
         # Make sure its illegal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == True
+        assert info["is_illegal"]
 
     def test_changebus_line_one_sub_allowed_is_legal(self):
         # Set 1 allowed substation changes
@@ -772,7 +786,7 @@ class TestSubstationImpactLegality(unittest.TestCase):
         bus_action = self.env.action_space({"change_bus": {"lines_ex_id": [LINE_ID]}})
         # Make sure its legal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == False
+        assert not info["is_illegal"]
 
     def test_changebus_two_line_one_sub_allowed_is_illegal(self):
         # Set 1 allowed substation changes
@@ -785,7 +799,7 @@ class TestSubstationImpactLegality(unittest.TestCase):
         )
         # Make sure its illegal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == True
+        assert info["is_illegal"]
 
     def test_changebus_two_line_two_sub_allowed_is_legal(self):
         # Set 2 allowed substation changes
@@ -798,7 +812,7 @@ class TestSubstationImpactLegality(unittest.TestCase):
         )
         # Make sure its legal
         info = self._aux_do_act(bus_action)
-        assert info["is_illegal"] == False
+        assert not info["is_illegal"]
 
 
 class TestSubstationImpactLegalitySimulate(TestSubstationImpactLegality):
