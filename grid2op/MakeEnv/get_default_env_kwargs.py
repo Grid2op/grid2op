@@ -400,7 +400,9 @@ def get_default_env_kwargs(
                         try:
                             int_ = int(el)
                             available_parameters_int[int_] = el
-                        except Exception as exc_:  # noqa: F841
+                        except ValueError as exc_:  # noqa: F841
+                            # parameter key is not an int
+                            # it is not considered
                             pass
                     max_ = np.max(list(available_parameters_int.keys()))
                     keys_ = available_parameters_int[max_]
