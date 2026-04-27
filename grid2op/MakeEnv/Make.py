@@ -13,7 +13,11 @@ from typing import Union, Optional
 import logging
     
 from grid2op.Environment import Environment
-from grid2op.MakeEnv.MakeFromPath import make_from_dataset_path
+from grid2op.MakeEnv.MakeFromPath import (
+    make_from_dataset_path,   
+    MakeKwargsTypeHints,
+    Unpack
+)
 from grid2op.MakeEnv.get_default_env_kwargs import ERR_MSG_KWARGS
 from grid2op.Exceptions import Grid2OpException, UnknownEnv
 import grid2op.MakeEnv.PathUtils
@@ -261,13 +265,13 @@ def make(
     test : bool=False,
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
-    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
-    _add_cls_nm_bk=True,
+    n_busbar: int=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment: bool=DEFAULT_ALLOW_DETACHMENT,
+    _add_cls_nm_bk: bool=True,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
     _overload_name_multimix : Optional[str]=None,  # do not use !
-    **kwargs
+    **kwargs: Unpack[MakeKwargsTypeHints]
 ) -> Environment:
     """
     This function is a shortcut to rapidly create some (pre defined) environments within the grid2op framework.

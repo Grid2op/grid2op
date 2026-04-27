@@ -8,22 +8,24 @@
 
 import numbers
 import copy
+from typing import Any, Dict, Optional, Type, TypeVar, Union
 import warnings
 
 from grid2op.Exceptions import EnvError
 
+T = TypeVar("T")
 
 def _get_default_aux(
-    name,
-    kwargs,
-    defaultClassApp,
-    _sentinel=None,
-    msg_error="Error when building the default parameter",
-    defaultinstance=None,
-    defaultClass=None,
-    build_kwargs={},
-    isclass=False,
-):
+    name: str,
+    kwargs: Dict[str, Any],
+    defaultClassApp: Type[T],
+    *,
+    msg_error: str="Error when building the default parameter",
+    defaultinstance: Optional[T]=None,
+    defaultClass: Optional[Type[T]]=None,
+    build_kwargs: Dict[str, Any]={},
+    isclass: Optional[bool]=False,
+) -> Any:  # Union[T, Type[T], Dict[str, Any], None]:
     """
     INTERNAL
 
@@ -79,10 +81,6 @@ def _get_default_aux(
 
     """
     err_msg = 'Impossible to create the parameter "{}": '
-    if _sentinel is not None:
-        err_msg += "Impossible to get default parameters for building the environment. Please use keywords arguments."
-        raise RuntimeError(err_msg)
-
     res = None
     # first seek for the parameter in the kwargs, and check it's valid
     if name in kwargs:
@@ -104,7 +102,6 @@ def _get_default_aux(
                     name,
                     kwargs=kwargs,
                     defaultClassApp=defaultClassApp,
-                    _sentinel=_sentinel,
                     msg_error=msg_error,
                     defaultinstance=defaultinstance,
                     defaultClass=defaultClass,
@@ -118,7 +115,6 @@ def _get_default_aux(
                         name,
                         kwargs=kwargs,
                         defaultClassApp=defaultClassApp,
-                        _sentinel=_sentinel,
                         msg_error=msg_error,
                         defaultinstance=defaultinstance,
                         defaultClass=defaultClass,

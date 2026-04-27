@@ -6,8 +6,10 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+from optparse import Option
 import os
 import copy
+from typing import Optional
 import warnings
 
 from grid2op.Environment import Environment
@@ -17,23 +19,26 @@ from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
 
 from grid2op.MakeEnv.PathUtils import _aux_fix_backend_internal_classes
 
+
 from .get_default_env_kwargs import (
     get_default_env_kwargs,
-    _check_path
+    _check_path,
+    MakeKwargsTypeHints,
+    Unpack
 )
 
 
 def make_from_dataset_path(
-    dataset_path="/",
+    dataset_path: str="/",
     logger=None,
-    experimental_read_from_local_dir=False,
-    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
-    _add_cls_nm_bk=True,
-    _add_to_name="",
-    _compat_glop_version=None,
-    _overload_name_multimix=None,
-    **kwargs,
+    experimental_read_from_local_dir: bool=False,
+    n_busbar: int=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment: bool=DEFAULT_ALLOW_DETACHMENT,
+    _add_cls_nm_bk: bool=True,
+    _add_to_name: str="",
+    _compat_glop_version: Optional[str]=None,
+    _overload_name_multimix: Optional[str]=None,
+    **kwargs: Unpack[MakeKwargsTypeHints],
 ) -> Environment:
     """
     INTERNAL USE ONLY

@@ -9,7 +9,7 @@
 import copy
 import importlib
 import os
-from typing import Dict, Tuple, Type, Union, Optional
+from typing import Any, Dict, Literal, Tuple, Type, Union, Optional
 import numpy as np
 import json
 import warnings
@@ -38,7 +38,46 @@ from grid2op.typing_variables import DICT_CONFIG_TYPING
 from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 from grid2op.MakeEnv.get_default_aux import _get_default_aux
 
+try:
+    from typing import Unpack, TypedDict
+except ImportError:
+    from typing_extensions import Unpack, TypedDict
 
+
+class MakeKwargsTypeHints(TypedDict, total=False):
+    backend: Backend
+    observation_class: Type[BaseObservation]
+    param: Union[Parameters, Dict[str, Any]]
+    gamerules_class: Type[BaseRules]
+    reward_class: Union[BaseReward, Type[BaseReward]]
+    action_class: Type[BaseAction] 
+    data_feeding_kwargs: Dict[str, Any]
+    chronics_class: Type[GridValue]
+    chronics_handler: ChronicsHandler
+    voltagecontroler_class: Type[ControlVoltageFromFile]
+    names_chronics_to_grid: Dict[Literal["loads", "prods", "lines", "subs"], Dict[str, str]]
+    other_rewards: Dict[str, Union[BaseReward, Type[BaseReward]]]
+    chronics_path: str
+    grid_path: str
+    opponent_space_type: Type[OpponentSpace]
+    opponent_action_class: Type[BaseAction]
+    opponent_class: Type[BaseOpponent]
+    opponent_attack_duration: int
+    opponent_attack_cooldown: int
+    opponent_init_budget: float
+    opponent_budget_class: Type[BaseActionBudget]
+    opponent_budget_per_ts: float
+    kwargs_opponent: Dict[str, Any]
+    has_attention_budget: bool
+    attention_budget_class: Type[LinearAttentionBudget]
+    kwargs_attention_budget: Dict[str, Any]
+    difficulty: str
+    kwargs_observation: Dict[str, Any]
+    observation_backend_class: Optional[Type[Backend]]
+    observation_backend_kwargs: Optional[Dict[str, Any]]
+    class_in_file: bool
+    
+    
 DIFFICULTY_NAME = "difficulty"
 CHALLENGE_NAME = "competition"
 ERR_MSG_KWARGS = {
@@ -121,8 +160,7 @@ def _check_kwargs(kwargs):
 def _check_path(path, info):
     if path is None or os.path.exists(path) is False:
         raise EnvError("Cannot find {}. {}".format(path, info))
-    
-
+        
 def get_default_env_kwargs(
     *,
     dataset_path,
@@ -134,7 +172,8 @@ def get_default_env_kwargs(
     _compat_glop_version,
     _overload_name_multimix,
     _warn_layout_missing=True,
-    **kwargs):
+    **kwargs: Unpack[MakeKwargsTypeHints]
+    ):
     
     # full dataset path
     dataset_path_abs : str = os.path.abspath(dataset_path)
@@ -201,10 +240,10 @@ def get_default_env_kwargs(
         exc_chronics = exc_
         
     # Get graph layout
-    graph_layout = None
+    graph_layout : Optional[Dict[str, Tuple[float, float]]] = None
     try:
         with open(grid_layout_path_abs) as layout_fp:
-            graph_layout : Dict[str, Tuple[float, float]]= json.load(layout_fp)
+            graph_layout = json.load(layout_fp)
     except Exception as exc_:
         if _warn_layout_missing:
             warnings.warn(
@@ -213,9 +252,9 @@ def get_default_env_kwargs(
             )
 
     # Get thermal limits
-    thermal_limits = None
+    thermal_limits : Optional[Union[np.ndarray, Dict[str, float]]] = None
     if "thermal_limits" in config_data:
-        thermal_limits : Union[np.ndarray, Dict[str, float]]= config_data["thermal_limits"]
+        thermal_limits = config_data["thermal_limits"]
 
     # Get chronics_to_backend
     name_converter = None
@@ -237,20 +276,20 @@ def get_default_env_kwargs(
         names_chronics_to_backend = None
     
     # Get default backend class
-    backend_inst_cfg = None
-    backend_class_cfg = PandaPowerBackend
+    backend_inst_cfg : Optional[Backend] = None
+    backend_class_cfg : Optional[Type[Backend]]= PandaPowerBackend
     # new in 1.12.4 allow usage of backend directly in the config
     if "backend" in config_data and config_data["backend"] is not None:
         if isinstance(config_data["backend"], type):
             # legacy behaviour... default backend is given with a class
             # but named "backend"...
-            backend_class_cfg : Type[Backend] = config_data["backend"]
+            backend_class_cfg = config_data["backend"]
         else:
             # user provided a valid backend instance
             backend_inst_cfg = config_data["backend"].copy()
             backend_class_cfg = None
     elif "backend_class" in config_data and config_data["backend_class"] is not None:
-        backend_class_cfg : Type[Backend] = config_data["backend_class"]
+        backend_class_cfg= config_data["backend_class"]
         
     ## Create the backend, to compute the powerflow
     backend : Backend = _get_default_aux(
@@ -281,7 +320,8 @@ def get_default_env_kwargs(
                 _check_path(grid_path_abs, "Dataset power flow solver configuration")
                 break
             except EnvError as exc_:  # noqa: F841
-                pass
+                grid_path_abs = None
+                
         if grid_path_abs is None:
             raise EnvError(f"Impossible to find a grid file format supported by your backend. Your backend said it supports "
                            f"the file with extension {backend.supported_grid_format}, "
