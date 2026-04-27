@@ -168,7 +168,7 @@ jobs:
                    source venv_test/bin/activate
                    export _GRID2OP_FORCE_TEST=1
                    cd grid2op/tests/
-                   python -m unittest -v test_attached_envs test_attached_envs_compat test_l2rpn_idf_2023 test_MultiMix test_timeOutEnvironment test_MaskedEnvironment test_MakeEnv test_multi_steps_env test_simenv_blackout
+                   python -m unittest -v test_attached_envs test_attached_envs_compat test_l2rpn_idf_2023 test_MultiMix test_timeOutEnvironment test_MaskedEnvironment test_MakeEnv test_multi_steps_env test_simenv_blackout test_get_default_env_kwargs
 
     test_alert_alarm:
         executor: grid2op-executor
