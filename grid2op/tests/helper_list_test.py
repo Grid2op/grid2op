@@ -30,6 +30,7 @@ li_tested_elsewhere = [
     "test_MakeEnv",
     "test_multi_steps_env",
     "test_simenv_blackout",
+    "test_get_default_env_kwargs",
     # alert / alarm ( 1min)
     "test_AlarmFeature",
     "test_alert_gym_compat",

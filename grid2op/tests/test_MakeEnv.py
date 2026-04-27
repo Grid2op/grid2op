@@ -10,7 +10,7 @@ import os
 import unittest
 import warnings
 import numpy as np
-import pdb
+import pdb  # noqa: F401
 
 from grid2op.tests.helper_path_test import PATH_CHRONICS_Make2, PATH_DATA_TEST
 from grid2op.tests.helper_path_test import EXAMPLE_CHRONICSPATH, EXAMPLE_CASEFILE
@@ -21,7 +21,7 @@ from grid2op.tests.helper_data_test import (
 )
 from grid2op.tests.helper_path_test import PATH_DATA_MULTIMIX
 
-from grid2op.Exceptions import *
+from grid2op.Exceptions import EnvError
 from grid2op.MakeEnv import make_from_dataset_path
 from grid2op.MakeEnv.get_default_aux import _get_default_aux
 from grid2op.MakeEnv import make
@@ -42,8 +42,7 @@ from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.Opponent import BaseOpponent
 from grid2op.Environment import MultiMixEnvironment, Environment
 
-import warnings
-
+import warnings  # noqa: F811
 warnings.simplefilter("error")
 
 
@@ -51,7 +50,7 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
     def test_blank(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            env = make(
+            make(
                 "blank",
                 test=True,
                 grid_path=EXAMPLE_CASEFILE,
@@ -63,7 +62,7 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
         with self.assertRaises(UserWarning):
             with warnings.catch_warnings():
                 warnings.filterwarnings("error")
-                env = make(
+                make(
                     "blank",
                     test=True,
                     grid_path=EXAMPLE_CASEFILE,
@@ -76,27 +75,27 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("rte_case14_fromfile", test=True)
-            obs = env.reset()
+            _ = env.reset()
 
     def test_l2rpn_case14_sandbox_fromfile(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("l2rpn_case14_sandbox", test=True)
-            obs = env.reset()
+            _ = env.reset()
             assert env.grid_layout, "env.grid_layout is empty but should not be"
 
     def test_case5_example(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("rte_case5_example", test=True)
-            obs = env.reset()
+            _ = env.reset()
 
     def test_case5_redispatch_available(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case5_example", test=True) as env:
-                obs = env.reset()
-                assert env.redispatching_unit_commitment_availble == True
+                _ = env.reset()
+                assert env.redispatching_unit_commitment_availble
 
     def test_case5_can_simulate(self):
         with warnings.catch_warnings():
@@ -110,14 +109,14 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("rte_case14_redisp", test=True)
-            obs = env.reset()
+            _ = env.reset()
 
     def test_case14redisp_redispatch_available(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case14_redisp", test=True) as env:
-                obs = env.reset()
-                assert env.redispatching_unit_commitment_availble == True
+                _ = env.reset()
+                assert env.redispatching_unit_commitment_availble
 
     def test_case14redisp_can_simulate(self):
         with warnings.catch_warnings():
@@ -131,7 +130,7 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case14_redisp", test=True) as env:
-                obs = env.reset()
+                _ = env.reset()
                 assert np.all(env._thermal_limit_a == case14_redisp_TH_LIM)
 
                 env.set_thermal_limit({k: 200000.0 for k in env.name_line})
@@ -152,7 +151,7 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
             with make(
                 os.path.join(PATH_DATA_TEST, "5bus_example_th_lim_dict"), test=True
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
                 assert np.all(
                     env._thermal_limit_a
                     == [200.0, 300.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0]
@@ -162,14 +161,14 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("rte_case14_realistic", test=True)
-            obs = env.reset()
+            _ = env.reset()
 
     def test_case14realistic_redispatch_available(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case14_realistic", test=True) as env:
-                obs = env.reset()
-                assert env.redispatching_unit_commitment_availble == True
+                _ = env.reset()
+                assert env.redispatching_unit_commitment_availble
 
     def test_case14realistic_can_simulate(self):
         with warnings.catch_warnings():
@@ -183,21 +182,21 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case14_realistic", test=True) as env:
-                obs = env.reset()
+                _ = env.reset()
                 assert np.all(env._thermal_limit_a == case14_real_TH_LIM)
 
     def test_case14_test(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("rte_case14_test", test=True)
-            obs = env.reset()
+            _ = env.reset()
 
     def test_case14test_redispatch_available(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case14_test", test=True) as env:
-                obs = env.reset()
-                assert env.redispatching_unit_commitment_availble == True
+                _ = env.reset()
+                assert env.redispatching_unit_commitment_availble
 
     def test_case14test_can_simulate(self):
         with warnings.catch_warnings():
@@ -211,7 +210,7 @@ class TestLoadingPredefinedEnv(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case14_test", test=True) as env:
-                obs = env.reset()
+                _ = env.reset()
                 assert np.all(env._thermal_limit_a == case14_test_TH_LIM)
 
 
@@ -250,7 +249,7 @@ class TestGetDefault(unittest.TestCase):
             msg_error="bad stuff",
             isclass=True,
         )
-        assert param == str, "This should have returned the empty string"
+        assert param is str, "This should have returned the empty string"
 
     def test_give_class_nodefault(self):
         kwargs = {"param": str}
@@ -262,11 +261,11 @@ class TestGetDefault(unittest.TestCase):
             msg_error="bad stuff",
             isclass=True,
         )
-        assert param == str, 'This should have returned "toto"'
+        assert param is str, 'This should have returned "toto"'
 
     def test_use_sentinel_arg_raises(self):
-        with self.assertRaises(RuntimeError):
-            _get_default_aux("param", {}, str, _sentinel=True)
+        with self.assertRaises(TypeError):
+            _get_default_aux("param", {}, str, 1)
 
     def test_class_not_instance_of_defaultClassApp_raises(self):
         with self.assertRaises(EnvError):
@@ -339,7 +338,7 @@ class TestkwargsName(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case5_example", test=True, param=Parameters()) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_backend(self):
         with warnings.catch_warnings():
@@ -347,7 +346,7 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, backend=PandaPowerBackend()
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_obsclass(self):
         with warnings.catch_warnings():
@@ -355,7 +354,7 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, observation_class=CompleteObservation
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_gamerules(self):
         with warnings.catch_warnings():
@@ -363,7 +362,7 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, gamerules_class=AlwaysLegal
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_chronics_path(self):
         with warnings.catch_warnings():
@@ -371,19 +370,19 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, chronics_path=EXAMPLE_CHRONICSPATH
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_reward_class(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case5_example", test=True, reward_class=FlatReward) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_action_class(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case5_example", test=True, action_class=BaseAction) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_grid_path(self):
         with warnings.catch_warnings():
@@ -391,7 +390,7 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, grid_path=EXAMPLE_CASEFILE
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_names_chronics_to_backend(self):
         self.skipTest("deprecated test for now")
@@ -400,7 +399,7 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, names_chronics_to_backend={}
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_data_feeding_kwargs(self):
         with warnings.catch_warnings():
@@ -411,14 +410,14 @@ class TestkwargsName(unittest.TestCase):
                 "gridvalueClass": GridStateFromFileWithForecasts,
             }
             with make("rte_case5_example", test=True, data_feeding_kwargs=dict_) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_chronics_class(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make(
                 "rte_case5_example", test=True, chronics_class=Multifolder
-            ) as env:
+            ) as _:
                 pass
 
     def test_voltagecontroler_class(self):
@@ -429,7 +428,7 @@ class TestkwargsName(unittest.TestCase):
                 test=True,
                 voltagecontroler_class=ControlVoltageFromFile,
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_other_rewards(self):
         with warnings.catch_warnings():
@@ -437,7 +436,7 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, other_rewards={"test": L2RPNReward}
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_opponent_action_class(self):
         with warnings.catch_warnings():
@@ -445,7 +444,7 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, opponent_action_class=BaseAction
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_opponent_class(self):
         with warnings.catch_warnings():
@@ -453,13 +452,13 @@ class TestkwargsName(unittest.TestCase):
             with make(
                 "rte_case5_example", test=True, opponent_class=BaseOpponent
             ) as env:
-                obs = env.reset()
+                _ = env.reset()
 
     def test_opponent_init_budget(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make("rte_case5_example", test=True, opponent_init_budget=10) as env:
-                obs = env.reset()
+                _ = env.reset()
 
 
 class TestMakeFromPathConfig(unittest.TestCase):
@@ -476,14 +475,14 @@ class TestMakeFromPathConfig(unittest.TestCase):
                 assert env._legalActClass == DefaultRules
                 assert isinstance(env._voltage_controler, ControlVoltageFromFile)
                 assert isinstance(env.chronics_handler.real_data, Multifolder)
-                assert env.action_space.grid_layout != None
+                assert env.action_space.grid_layout is not None
 
     def test_case5_runs(self):
         dataset_path = os.path.join(PATH_CHRONICS_Make2, "rte_case5_example")
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make_from_dataset_path(dataset_path) as env:
-                assert env.redispatching_unit_commitment_availble == True
+                assert env.redispatching_unit_commitment_availble
                 obs = env.reset()
                 sim_obs, reward, done, info = obs.simulate(env.action_space())
                 assert sim_obs != obs
@@ -501,14 +500,14 @@ class TestMakeFromPathConfig(unittest.TestCase):
                 assert env._legalActClass == DefaultRules
                 assert isinstance(env._voltage_controler, ControlVoltageFromFile)
                 assert isinstance(env.chronics_handler.real_data, Multifolder)
-                assert env.action_space.grid_layout != None
-
+                assert env.action_space.grid_layout is not None
+                
     def test_case14_test_runs(self):
         dataset_path = os.path.join(PATH_CHRONICS_Make2, "rte_case14_test")
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make_from_dataset_path(dataset_path) as env:
-                assert env.redispatching_unit_commitment_availble == True
+                assert env.redispatching_unit_commitment_availble
                 obs = env.reset()
                 sim_obs, reward, done, info = obs.simulate(env.action_space())
                 assert sim_obs != obs
@@ -534,7 +533,7 @@ class TestMakeFromPathConfig(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with make_from_dataset_path(dataset_path) as env:
-                assert env.redispatching_unit_commitment_availble == True
+                assert env.redispatching_unit_commitment_availble
                 obs = env.reset()
                 sim_obs, reward, done, info = obs.simulate(env.action_space())
                 assert sim_obs != obs
@@ -554,7 +553,7 @@ class TestMakeFromPathConfig(unittest.TestCase):
                 assert env._legalActClass == DefaultRules
                 assert isinstance(env._voltage_controler, ControlVoltageFromFile)
                 assert isinstance(env.chronics_handler.real_data, Multifolder)
-                assert env.action_space.grid_layout != None
+                assert env.action_space.grid_layout is not None
 
 
 class TestMakeFromPathConfigOverride(unittest.TestCase):
@@ -713,7 +712,7 @@ class TestMakeFromPathParameters(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             with self.assertRaises(EnvError):
-                with make_from_dataset_path(dataset_path, difficulty="3") as env:
+                with make_from_dataset_path(dataset_path, difficulty="3"):
                     assert False, "this should have raised an exception"
 
 
@@ -722,14 +721,14 @@ class TestMakeMultiMix(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("l2rpn_neurips_2020_track2", test=True)
-        assert env != None
+        assert env is not None
         assert isinstance(env, MultiMixEnvironment)
 
     def test_create_dev_iterable(self):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make("l2rpn_neurips_2020_track2", test=True)
-        assert env != None
+        assert env is not None
         assert isinstance(env, MultiMixEnvironment)
         for mix in env:
             assert isinstance(mix, Environment)
@@ -738,7 +737,7 @@ class TestMakeMultiMix(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = make(PATH_DATA_MULTIMIX, test=True)
-        assert env != None
+        assert env is not None
         assert isinstance(env, MultiMixEnvironment)
 
 
