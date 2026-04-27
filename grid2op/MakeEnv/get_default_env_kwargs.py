@@ -133,6 +133,7 @@ def get_default_env_kwargs(
     _add_to_name,
     _compat_glop_version,
     _overload_name_multimix,
+    _warn_layout_missing=True,
     **kwargs):
     
     # full dataset path
@@ -148,10 +149,11 @@ def get_default_env_kwargs(
     try:
         _check_path(grid_layout_path_abs, "Dataset grid layout")
     except EnvError as exc_:
-        warnings.warn(
-            f'Impossible to load the coordinate of the substation with error: "{exc_}". Expect some issue '
-            f"if you attempt to plot the grid."
-        )
+        if _warn_layout_missing:
+            warnings.warn(
+                f'Impossible to load the coordinate of the substation with error: "{exc_}". Expect some issue '
+                f"if you attempt to plot the grid."
+            )
 
     # Check provided config overrides are valid
     _check_kwargs(kwargs)
@@ -169,7 +171,7 @@ def get_default_env_kwargs(
     except Exception as exc_:
         print(exc_)
         raise EnvError(
-            "Invalid dataset config file: {}".format(config_path_abs)
+            f"Invalid dataset config file\n{exc_}: {config_path_abs}"
         ) from exc_
 
 
@@ -204,10 +206,11 @@ def get_default_env_kwargs(
         with open(grid_layout_path_abs) as layout_fp:
             graph_layout : Dict[str, Tuple[float, float]]= json.load(layout_fp)
     except Exception as exc_:
-        warnings.warn(
-            "Dataset {} doesn't have a valid graph layout. Expect some failures when attempting "
-            "to plot the grid. Error was: {}".format(config_path_abs, exc_)
-        )
+        if _warn_layout_missing:
+            warnings.warn(
+                "Dataset {} doesn't have a valid graph layout. Expect some failures when attempting "
+                "to plot the grid. Error was: {}".format(config_path_abs, exc_)
+            )
 
     # Get thermal limits
     thermal_limits = None
@@ -423,8 +426,8 @@ def get_default_env_kwargs(
     volagecontroler_class = _get_default_aux(
         "voltagecontroler_class",
         kwargs,
-        defaultClassApp=voltage_class_cfg,
-        defaultClass=ControlVoltageFromFile,
+        defaultClassApp=ControlVoltageFromFile,
+        defaultClass=voltage_class_cfg,
         msg_error=ERR_MSG_KWARGS["voltagecontroler_class"],
         isclass=True,
     )
