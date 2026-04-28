@@ -11,8 +11,10 @@ import os
 import json
 import shutil
 import re
+from typing import Dict
 import numpy as np
-
+from hashlib import blake2b
+        
 from grid2op.dtypes import dt_float
 from grid2op.Agent import BaseAgent, DoNothingAgent
 from grid2op.Parameters import Parameters
@@ -109,6 +111,10 @@ class EpisodeStatistics(object):
     STATISTICS_FOLDER = "_statistics"
     STATISTICS_FOOTPRINT = ".statistics"
     METADATA = "metadata.json"
+    
+    # security addition
+    REGEX_SPLIT = r"^[@%a-zA-Z0-9_.\-]*$"
+    REGEX_SPLIT_COMPILED = re.compile(REGEX_SPLIT)
 
 
     ERROR_MSG_CLEANED = ("This statistics has been removed from the hard drive through a call to "
@@ -124,9 +130,13 @@ class EpisodeStatistics(object):
         self.__cleared = False
 
     @staticmethod
-    def get_name_dir(name_stats):
+    def get_name_dir(name_stats) -> str:
         """return the name of the folder in which the statistics will be computed"""
         if name_stats is not None:
+            if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, name_stats) is None:
+                raise RuntimeError(
+                    f'The suffixes you can use to save a grid2op statistics must match "{EpisodeStatistics.REGEX_SPLIT}"'
+                )
             nm_ = f"{EpisodeStatistics.STATISTICS_FOLDER}_{name_stats}"
         else:
             nm_ = EpisodeStatistics.STATISTICS_FOLDER
@@ -170,7 +180,7 @@ class EpisodeStatistics(object):
         all_obs = np.load(full_path)["data"]
         # handle the end of the episode
         with open(
-            os.path.join(path_tmp, episode_name, EpisodeData.META),
+            os.path.join(path_tmp, episode_name, EpisodeData.META_FILE),
             "r",
             encoding="utf-8",
         ) as f:
@@ -194,7 +204,7 @@ class EpisodeStatistics(object):
         ids_ = np.zeros(shape=(0, 1))
         scores = None
         if score_names:
-            scores = {el: None for el in score_names}
+            scores = dict.fromkeys(score_names)
 
         first_attr = True
         for obs_nm in self.li_attributes:
@@ -260,6 +270,7 @@ class EpisodeStatistics(object):
                         self._save_numpy(os.path.join(path_total, el), array=scores[el])
                     del scores
                 del ids_
+                dict_metadata[self._get_hash_key_from_path(path_total)] = self._get_hash_from_json_metadata(dict_metadata)
                 with open(
                     os.path.join(path_total, EpisodeStatistics.METADATA),
                     "w",
@@ -267,7 +278,35 @@ class EpisodeStatistics(object):
                 ) as f:
                     json.dump(obj=dict_metadata, fp=f)
             first_attr = False
+            
+    def _get_mac_key(self) -> bytes:
+        """Derive a MAC key from the environment's own data files.
 
+        Delegates to :func:`grid2op.MakeEnv.UpdateEnv._hash_env`, which is the
+        canonical function grid2op already uses to detect environment updates.
+        It covers the meaningful files (grid topology, config, chronics names,
+        …), handles multi-mix environments, and normalises line endings so the
+        key is stable across platforms.
+
+        An attacker who can only write to the statistics folder cannot recompute
+        a valid MAC because they do not have access to the environment data used
+        to build the key.
+        """
+        from grid2op.MakeEnv.UpdateEnv import _hash_env
+        return _hash_env(self.env.get_path_env()).digest()
+
+    def _get_hash_from_json_metadata(self, dict_metadata: Dict) -> str:
+        str_ = json.dumps(dict_metadata, sort_keys=True, indent=4)
+        key = self._get_mac_key()
+        return blake2b(str_.encode("utf-8"), key=key).hexdigest()
+
+    def _get_hash_key_from_path(self, path_total: str) -> str:
+        # remove the path of the env (if any)
+        if self.env is not None:
+            path_env = self.env.get_path_env()
+            path_total = path_total.replace(path_env, "")
+        return blake2b(path_total.encode("utf-8")).hexdigest()
+        
     @staticmethod
     def list_stats(env):
         """this is a function listing all the stats that have been computed for this environment"""
@@ -364,6 +403,13 @@ class EpisodeStatistics(object):
                 raise RuntimeError(
                     'No score have been computed for this statistics. Please re run "stats.compute" '
                     'by setting the "scores_func" argument.'
+                )
+            # validate the score name extracted from attribute_name to prevent path traversal
+            nm_stat = EpisodeStatistics._nm_score_from_attr_name(attribute_name)
+            if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, nm_stat) is None:
+                raise RuntimeError(
+                    f'Invalid score attribute name "{attribute_name}": the score name part '
+                    f'must match "{EpisodeStatistics.REGEX_SPLIT}".'
                 )
             # TODO here for multiple score
             path_th = os.path.join(self.path_save_stats, score_name)
@@ -491,7 +537,7 @@ class EpisodeStatistics(object):
         return dict_metadata
 
     def _retrieve_scores(self, path_tmp, episode_name):
-        my_path = os.path.join(path_tmp, episode_name, EpisodeData.OTHER_REWARDS)
+        my_path = os.path.join(path_tmp, episode_name, EpisodeData.OTHER_REWARDS_FILE)
         with open(my_path, "r", encoding="utf-8") as f:
             dict_rewards = json.load(f)
 
@@ -588,12 +634,28 @@ class EpisodeStatistics(object):
         """return the metadata as a dictionary"""
         if self.__cleared:
             raise RuntimeError(EpisodeStatistics.ERROR_MSG_CLEANED)
-        
+        # added security: save an hash of the content and of the file of the 
+        # json stats to "make sure" it has not been tempered with
+        key_hash = self._get_hash_key_from_path(self.path_save_stats)
         with open(
             os.path.join(self.path_save_stats, self.METADATA), "r", encoding="utf-8"
         ) as f:
             res = json.load(f)
-        return res
+            
+        # added security: save an hash of the content and of the file of the 
+        # json stats to "make sure" it has not been tempered with
+        if key_hash not in res:
+            raise RuntimeError(
+                "Impossible to check the consistency of the statistics saved. "
+                "Someone probably moodified it outside of grid2op (wrong hash key).")
+        saved_hash = res[key_hash]
+        maybe_res = {k: v for k, v in res.items() if k != key_hash}
+        if saved_hash != self._get_hash_from_json_metadata(maybe_res):
+            raise RuntimeError(
+                "Impossible to check the consistency of the statistics saved."
+                " Someone probably moodified it outside of grid2op (wrong hash value)"
+            )
+        return maybe_res
 
     def compute(
         self,
@@ -692,6 +754,11 @@ class EpisodeStatistics(object):
                             'if using "score_fun" as a dictionary, each value need to be a '
                             "BaseReward"
                         )
+                    if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, nm) is None:
+                        raise Grid2OpException(
+                            f'Score name "{nm}" contains invalid characters. '
+                            f'Score names must match "{EpisodeStatistics.REGEX_SPLIT}".'
+                        )
                     dict_metadata[f"score_class_{nm}"] = f"{score_fun}"
                     score_names.append(f"{nm}_{self.SCORES}")
             else:
@@ -720,7 +787,7 @@ class EpisodeStatistics(object):
 
         # now clean a bit the output directory
         os.remove(os.path.join(self.path_save_stats, EpisodeData.ACTION_SPACE))
-        os.remove(os.path.join(self.path_save_stats, EpisodeData.ATTACK_SPACE))
+        os.remove(os.path.join(self.path_save_stats, EpisodeData.ATTACK_SPACE_FILE))
         os.remove(os.path.join(self.path_save_stats, EpisodeData.ENV_MODIF_SPACE))
         os.remove(os.path.join(self.path_save_stats, EpisodeData.OBS_SPACE))
 
@@ -736,9 +803,9 @@ class EpisodeStatistics(object):
                 self._retrieve_scores(path_tmp, episode_name)
             else:
                 self._delete_if_exists(
-                    path_tmp, episode_name, EpisodeData.OTHER_REWARDS
+                    path_tmp, episode_name, EpisodeData.OTHER_REWARDS_FILE
                 )
-            self._delete_if_exists(path_tmp, episode_name, EpisodeData.REWARDS)
+            self._delete_if_exists(path_tmp, episode_name, EpisodeData.REWARDS_FILE)
 
             # reformat the observation into a proper "human readable" format
             self._clean_observations(path_tmp, episode_name)

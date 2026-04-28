@@ -49,12 +49,22 @@ jobs:
             version: '3.13',
           }
 
+          - {
+            name: cp314,
+            abi: cp314,
+            version: '3.14',
+          }
+
     steps:
 
       - name: Checkout sources
         uses: actions/checkout@v4
         with:
           submodules: true
+          fetch-depth: 0        # needed for setuptools_scm to read tags
+
+      - name: Fix git safe directory
+        run: git config --global --add safe.directory "$(pwd)"
 
       - name: Setup path
         run: echo "/opt/python/${{ matrix.python.name }}-${{ matrix.python.abi }}/bin/" >> $GITHUB_PATH
@@ -148,6 +158,10 @@ jobs:
           - {
             name: cp313,
             version: '3.13',
+          }
+          - {
+            name: cp314,
+            version: '3.14',
           }
 
     steps:
@@ -275,12 +289,12 @@ jobs:
           }
         python:
           - {
-            name: cp39,
-            version: '3.9',
+            name: cp310,
+            version: '3.10',
           }  
           - {
-            name: cp313,
-            version: '3.13',
+            name: cp314,
+            version: '3.14',
           }  
 
     steps:

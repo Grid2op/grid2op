@@ -33,6 +33,10 @@ DICT_URL_GRID2OP_DL = {
 }
 LI_VALID_ENV = sorted(['"{}"'.format(el) for el in DICT_URL_GRID2OP_DL.keys()])
 
+# Archive extraction safety limits (S5042)
+_MAX_UNCOMPRESSED_SIZE = 30 * 1024 * 1024 * 1024  # 30 GB
+_MAX_COMPRESSION_RATIO = 100  # reject archives that expand more than 100×
+
 
 class DownloadProgressBar(tqdm):
     """
@@ -89,7 +93,7 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
             'Alternatively you can also delete the folder "{final_path}" from your computer and run this command '
             "again.\n"
             "Finally, you can download the data in a different folder by specifying (in a command prompt):\n"
-            '\t grid2op.download --name "{env_name}" --path_save PATH\WHERE\YOU\WANT\TO\DOWNLOAD'
+            '\t grid2op.download --name "{env_name}" --path_save PATH\\WHERE\\YOU\\WANT\\TO\\DOWNLOAD'
             "".format(final_path=final_path, env_name=dataset_name)
         )
         print(str_)
@@ -119,6 +123,20 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
     download_url(url, output_path)
 
     tar = tarfile.open(output_path, "r:bz2")
+    compressed_size = os.path.getsize(output_path)
+    total_uncompressed = sum(m.size for m in tar.getmembers())
+    if total_uncompressed > _MAX_UNCOMPRESSED_SIZE:
+        tar.close()
+        raise Grid2OpException(
+            f"Refusing to extract archive: uncompressed size ({total_uncompressed} bytes) "
+            f"exceeds the limit of {_MAX_UNCOMPRESSED_SIZE} bytes."
+        )
+    if compressed_size > 0 and total_uncompressed / compressed_size > _MAX_COMPRESSION_RATIO:
+        tar.close()
+        raise Grid2OpException(
+            f"Refusing to extract archive: compression ratio "
+            f"({total_uncompressed / compressed_size:.1f}x) exceeds {_MAX_COMPRESSION_RATIO}x."
+        )
     print('Extract the tar archive in "{}"'.format(os.path.abspath(path_data)))
     tar.extractall(path_data)
     tar.close()
@@ -127,7 +145,7 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
     if ds_name_dl != dataset_name:
         try:
             os.rename(final_path, os.path.join(path_data, dataset_name))
-        except FileNotFoundError as exc_:
+        except FileNotFoundError as exc_:  # noqa: F841
             # the try catch is added because for some environments, the
             # archive name does not match the env name.
             # so the folder cannot be deleted properly.

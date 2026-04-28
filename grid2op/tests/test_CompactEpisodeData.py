@@ -217,7 +217,7 @@ class TestCompactEpisodeData(unittest.TestCase):
         for i, episode_name, cum_reward, timestep, total_ts in res:
             episode_data = CompactEpisodeData.from_disk(path=f, ep_id=episode_name)
             assert int(episode_data.meta["chronics_max_timestep"]) == self.max_iter
-            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one, f"{episode_data.meta["cumulative_reward"]} vs {self.real_reward}"
+            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one, f"{episode_data.meta['cumulative_reward']} vs {self.real_reward}"
 
     def test_3_episode_3process_with_saving(self):
         f = tempfile.mkdtemp()
@@ -229,7 +229,7 @@ class TestCompactEpisodeData(unittest.TestCase):
         for i, episode_name, cum_reward, timestep, total_ts in res:
             episode_data = CompactEpisodeData.from_disk(path=f, ep_id=episode_name)
             assert int(episode_data.meta["chronics_max_timestep"]) == self.max_iter
-            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one, f"{episode_data.meta["cumulative_reward"]} vs {self.real_reward}"
+            assert np.abs(episode_data.meta["cumulative_reward"] - self.real_reward) <= self.tol_one, f"{episode_data.meta['cumulative_reward']} vs {self.real_reward}"
 
     def test_with_opponent(self):
         init_budget = 1000

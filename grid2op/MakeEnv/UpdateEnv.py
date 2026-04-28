@@ -175,7 +175,7 @@ def _aux_get_hash_if_none(hash_=None):
 
 def _aux_update_hash_text(text_, hash_=None):
     hash_ = _aux_get_hash_if_none(hash_)
-    text_ = re.sub("\s", "", text_)
+    text_ = re.sub(r"\s", "", text_)
     hash_.update(text_.encode("utf-8"))
     return hash_
     

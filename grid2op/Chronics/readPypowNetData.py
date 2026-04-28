@@ -141,15 +141,15 @@ class ReadPypowNetData(GridStateFromFileWithForecasts):
             ]
         ).astype(dt_int)
 
-        self.load_p = copy.deepcopy(load_p.values[:, np.argsort(order_chronics_load_p)])
-        self.load_q = copy.deepcopy(load_q.values[:, np.argsort(order_backend_load_q)])
-        self.prod_p = copy.deepcopy(prod_p.values[:, np.argsort(order_backend_prod_p)])
-        self.prod_v = copy.deepcopy(prod_v.values[:, np.argsort(order_backend_prod_v)])
+        self.load_p = copy.deepcopy(load_p.to_numpy()[:, np.argsort(order_chronics_load_p)])
+        self.load_q = copy.deepcopy(load_q.to_numpy()[:, np.argsort(order_backend_load_q)])
+        self.prod_p = copy.deepcopy(prod_p.to_numpy()[:, np.argsort(order_backend_prod_p)])
+        self.prod_v = copy.deepcopy(prod_v.to_numpy()[:, np.argsort(order_backend_prod_v)])
         self.hazards = copy.deepcopy(
-            hazards.values[:, np.argsort(order_backend_hazards)]
+            hazards.to_numpy()[:, np.argsort(order_backend_hazards)]
         )
         self.maintenance = copy.deepcopy(
-            maintenance.values[:, np.argsort(order_backend_maintenance)]
+            maintenance.to_numpy()[:, np.argsort(order_backend_maintenance)]
         )
 
         # date and time
@@ -228,19 +228,19 @@ class ReadPypowNetData(GridStateFromFileWithForecasts):
         ).astype(dt_int)
 
         self.load_p_forecast = copy.deepcopy(
-            load_p.values[:, np.argsort(order_chronics_load_p)]
+            load_p.to_numpy()[:, np.argsort(order_chronics_load_p)]
         )
         self.load_q_forecast = copy.deepcopy(
-            load_q.values[:, np.argsort(order_backend_load_q)]
+            load_q.to_numpy()[:, np.argsort(order_backend_load_q)]
         )
         self.prod_p_forecast = copy.deepcopy(
-            prod_p.values[:, np.argsort(order_backend_prod_p)]
+            prod_p.to_numpy()[:, np.argsort(order_backend_prod_p)]
         )
         self.prod_v_forecast = copy.deepcopy(
-            prod_v.values[:, np.argsort(order_backend_prod_v)]
+            prod_v.to_numpy()[:, np.argsort(order_backend_prod_v)]
         )
         self.maintenance_forecast = copy.deepcopy(
-            maintenance.values[:, np.argsort(order_backend_maintenance)]
+            maintenance.to_numpy()[:, np.argsort(order_backend_maintenance)]
         )
 
         # there are maintenance and hazards only if the value in the file is not 0.

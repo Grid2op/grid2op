@@ -168,6 +168,13 @@ class Parameters:
         
         It is ``True`` by default and for all grid2op environment before version 1.11.0
         
+        .. danger::
+            TL;DR
+            
+            Keep it the default (True) if you want your agent to be able to do redispatching
+            correctly, unless you have specific reason not to let the environment
+            adjust the offer / demand balance.
+        
         .. versionadded: 1.11.0
         
         .. note::
@@ -175,10 +182,11 @@ class Parameters:
             will be highly dependant on the backend (for example results might differ
             between using lightsim2grid or pypowsybl2grid) and more importantly between the
             parameters of the backend
-            
-        Setting this parameter to `False` is not advised if your agent really depends on redispatching, curtailment
-        or actions on storage units OR if your backend does not have a distributed slack (at least). (note
-        that we do not recommend to use it even if your backend has a distributed slack).
+        
+        .. warning::
+            Setting this parameter to `False` is not advised if your agent really depends on redispatching, curtailment
+            or actions on storage units OR if your backend does not have a distributed slack (at least). (note
+            that we do not recommend to use it even if your backend has a distributed slack).
         
         Furthermore, if you consider doing a lot of "detachment" / "shedding" / "curtailment"
         on the loads or generator, it's best to avoid setting this flag to `False`.
@@ -201,7 +209,35 @@ class Parameters:
         It defaults to ``False``.
         
     """
-
+    
+    # added in 1.12.4 to avoid 
+    __slots__ = (
+        "NO_OVERFLOW_DISCONNECTION",
+        "NB_TIMESTEP_OVERFLOW_ALLOWED",
+        "NB_TIMESTEP_RECONNECTION",
+        "NB_TIMESTEP_COOLDOWN_LINE",
+        "NB_TIMESTEP_COOLDOWN_SUB",
+        "HARD_OVERFLOW_THRESHOLD",
+        "SOFT_OVERFLOW_THRESHOLD",
+        "ENV_DC",
+        "FORECAST_DC",
+        "MAX_SUB_CHANGED",
+        "MAX_LINE_STATUS_CHANGED",
+        "IGNORE_MIN_UP_DOWN_TIME",
+        "ALLOW_DISPATCH_GEN_SWITCH_OFF",
+        "LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION",
+        "INIT_STORAGE_CAPACITY",
+        "ACTIVATE_STORAGE_LOSS",
+        "ALARM_BEST_TIME",
+        "ALARM_WINDOW_SIZE",
+        "ALERT_TIME_WINDOW",
+        "MAX_SIMULATE_PER_STEP",
+        "MAX_SIMULATE_PER_EPISODE",
+        "IGNORE_INITIAL_STATE_TIME_SERIE",
+        "ENV_DOES_REDISPATCHING",
+        "STOP_EP_IF_GEN_BREAK_CONSTRAINTS"
+    )
+    
     def __init__(self, parameters_path=None):
         """
         Build an object representing the _parameters of the game.
@@ -272,6 +308,12 @@ class Parameters:
         # number of simulate
         self.MAX_SIMULATE_PER_STEP = dt_int(-1)
         self.MAX_SIMULATE_PER_EPISODE = dt_int(-1)
+                
+        self.IGNORE_INITIAL_STATE_TIME_SERIE = False
+        
+        # Added in 1.11.0 with detachement
+        self.ENV_DOES_REDISPATCHING = True
+        self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS = False
 
         if parameters_path is not None:
             if os.path.isfile(parameters_path):
@@ -279,12 +321,6 @@ class Parameters:
             else:
                 warn_msg = "Parameters: the file {} is not found. Continuing with default parameters."
                 warnings.warn(warn_msg.format(parameters_path))
-                
-        self.IGNORE_INITIAL_STATE_TIME_SERIE = False
-        
-        # Added in 1.11.0 with detachement
-        self.ENV_DOES_REDISPATCHING = True
-        self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS = False
 
     @staticmethod
     def _isok_txt(arg):
@@ -436,7 +472,7 @@ class Parameters:
         if "STOP_EP_IF_GEN_BREAK_CONSTRAINTS" in dict_:
             self.STOP_EP_IF_GEN_BREAK_CONSTRAINTS = Parameters._isok_txt(dict_["STOP_EP_IF_GEN_BREAK_CONSTRAINTS"])
         
-        authorized_keys = set(self.__dict__.keys())
+        authorized_keys = set(type(self).__slots__)
         authorized_keys = authorized_keys | {
             "NB_TIMESTEP_POWERFLOW_ALLOWED",
             "NB_TIMESTEP_TOPOLOGY_REMODIF",

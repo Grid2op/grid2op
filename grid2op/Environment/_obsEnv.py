@@ -396,8 +396,7 @@ class _ObsEnv(BaseEnv):
         gen_v = obs._get_gen_v_for_forecasts()
         load_p = obs._get_load_p_for_forecasts()
         load_q = obs._get_load_q_for_forecasts()
-        self._backend_action_set += self._helper_action_env(
-            {
+        dict_ = {
                 "set_line_status": set_status,
                 "set_bus": topo_vect,
                 "injection": {
@@ -407,7 +406,13 @@ class _ObsEnv(BaseEnv):
                     "load_q": load_q,
                 },
             }
-        )
+        
+        if type(self).shunts_data_available:
+            # fix for https://github.com/Grid2op/lightsim2grid/issues/128
+            dict_shunt = self.backend.get_shunt_info_from_obs(obs)
+            dict_["shunt"] = dict_shunt
+        
+        self._backend_action_set += self._helper_action_env(dict_)
         self._backend_action_set += new_state_action
         # for storage unit
         if time_step > 0:

@@ -1,0 +1,6 @@
+---
+exclude_paths:
+  - 'grid2op/tests/**'
+  - '*.md'
+  - "examples/**"
+  - "getting_started/**"

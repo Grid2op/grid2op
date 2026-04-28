@@ -13,7 +13,12 @@ from typing import Union, Optional
 import logging
     
 from grid2op.Environment import Environment
-from grid2op.MakeEnv.MakeFromPath import make_from_dataset_path, ERR_MSG_KWARGS
+from grid2op.MakeEnv.MakeFromPath import (
+    make_from_dataset_path,   
+    MakeKwargsTypeHints,
+    Unpack
+)
+from grid2op.MakeEnv.get_default_env_kwargs import ERR_MSG_KWARGS
 from grid2op.Exceptions import Grid2OpException, UnknownEnv
 import grid2op.MakeEnv.PathUtils
 from grid2op.MakeEnv.PathUtils import _create_path_folder
@@ -129,7 +134,7 @@ def _send_request_retry(url, nb_retry=10, gh_session=None):
         raise
     except KeyboardInterrupt:
         raise
-    except Exception as exc_:
+    except Exception as exc_:  # noqa: F841
         warnings.warn(_REQUEST_EXCEPT_RETRY_ERR.format(url, nb_retry - 1))
         time.sleep(1)
         return _send_request_retry(url, nb_retry=nb_retry - 1, gh_session=gh_session)
@@ -162,7 +167,7 @@ def _list_available_remote_env_aux():
 
 def _fecth_environments(dataset_name):
     avail_datasets_json = _list_available_remote_env_aux()
-    if not dataset_name in avail_datasets_json:
+    if dataset_name not in avail_datasets_json:
         known_ds = sorted(avail_datasets_json.keys())
         raise UnknownEnv(_FETCH_ENV_UNKNOWN_ERR.format(dataset_name, known_ds))
     # url = _FETCH_ENV_TAR_URL.format(avail_datasets_json[dataset_name], dataset_name)
@@ -260,13 +265,13 @@ def make(
     test : bool=False,
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
-    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
-    _add_cls_nm_bk=True,
+    n_busbar: int=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment: bool=DEFAULT_ALLOW_DETACHMENT,
+    _add_cls_nm_bk: bool=True,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
     _overload_name_multimix : Optional[str]=None,  # do not use !
-    **kwargs
+    **kwargs: Unpack[MakeKwargsTypeHints]
 ) -> Environment:
     """
     This function is a shortcut to rapidly create some (pre defined) environments within the grid2op framework.
@@ -409,9 +414,9 @@ def make(
         elif _aux_is_multimix(dataset) and test_tmp:
 
             def make_from_path_fn_(*args, **kwargs):
-                if not "logger" in kwargs:
+                if "logger" not in kwargs:
                     kwargs["logger"] = logger
-                if not "experimental_read_from_local_dir" in kwargs:
+                if "experimental_read_from_local_dir" not in kwargs:
                     kwargs[
                         "experimental_read_from_local_dir"
                     ] = experimental_read_from_local_dir
@@ -419,9 +424,9 @@ def make(
 
             make_from_path_fn = make_from_path_fn_
         
-        if not "logger" in kwargs:
+        if "logger" not in kwargs:
             kwargs["logger"] = logger
-        if not "experimental_read_from_local_dir" in kwargs:
+        if "experimental_read_from_local_dir" not in kwargs:
             kwargs[
                 "experimental_read_from_local_dir"
             ] = experimental_read_from_local_dir

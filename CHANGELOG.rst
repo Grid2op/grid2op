@@ -100,6 +100,27 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+
+[1.12.4] - 2026-04-28
+----------------------
+- [BREAKING] the behaviour of grid2op environment when ENV_DOES_REDISPATCHING
+  flag is turned on is changed and is now exactly the one 
+  described in the doc (before it completly skipped the redispathcing / curtailment 
+  storage)
+- [FIXED] copy on write issues in PandaPowerBackend
+- [FIXED] a bug causing https://github.com/Grid2op/lightsim2grid/issues/128
+- [FIXED] some warnings in the docstrings (escaped character)
+- [FIXED] some issues spotted by sonarcloud (especially attribute names)
+- [FIXED] doc about the ENV_DOES_REDISPATCHING parameters. see issue 
+  https://github.com/grid2op/grid2op/issues/752 
+- [ADDED] some tests that modification of load_p (for one load) only change this load
+  (same for load_q and gen_v)
+- [IMPROVED] security in the way episode statistics are saved (to prevent malicious 
+  tempering with path)
+- [IMPROVED] use df.to_numpy() instead of df.values when df is a pandas dataframe
+- [IMPROVED] grid2op parameters now uses "slots" to avoid setting incorrect values
+  not used by grid2op.
+
 [1.12.3] - 2026-02-04
 -----------------------
 - [FIXED] the warnings when building the documentation.
