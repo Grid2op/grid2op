@@ -100,6 +100,10 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.5] 2026-xx-yy
+--------------------
+- [FIXED] license issues in the documentation
+- [IMPROVED] tests splitting to reduce the duration on circle ci
 
 [1.12.4] - 2026-04-28
 ----------------------
