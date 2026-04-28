@@ -280,7 +280,8 @@ class IdToAct(Converter):
                 nb = len(all_actions)  # assert I can compute the "len"
                 for i in range(nb):
                     act = all_actions[i]  # assert I can use the `[]` operator
-                    assert isinstance(act, BaseAction)  # assert what's in there is a BaseAction
+                    if not isinstance(act, BaseAction):
+                        raise RuntimeError("The action provided is not a valid grid2op action")
             except Exception as exc_:
                 raise RuntimeError("Impossible to load the action provided.") from exc_
             # does not copy here (to save memory in case of shared memory setting)

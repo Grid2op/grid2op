@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-from typing import Optional, Union, Dict, Literal
+from typing import Optional, Union, Dict, Literal, TYPE_CHECKING
 import numpy as np
 import hashlib
 from datetime import datetime, timedelta
@@ -16,6 +16,10 @@ from grid2op.dtypes import dt_int
 from grid2op.Chronics.gridValue import GridValue
 from grid2op.Exceptions import ChronicsError
 
+if TYPE_CHECKING:
+    from grid2op.Backend import Backend   
+    from grid2op.Action import PlayableAction 
+    
 
 class FromNPY(GridValue):
     """
@@ -169,7 +173,9 @@ class FromNPY(GridValue):
         if maintenance is not None:
             self.has_maintenance = True
             self.n_line = maintenance.shape[1]
-            assert load_p.shape[0] == maintenance.shape[0]
+            if load_p.shape[0] != maintenance.shape[0]:
+                raise ChronicsError("The maintenance file does not have the same number "
+                                    "of time step at the load file")
             self.maintenance = maintenance  # TODO copy
 
             self.maintenance_time = (
@@ -198,8 +204,11 @@ class FromNPY(GridValue):
 
         self._forecasts = None
         if load_p_forecast is not None:
-            assert load_q_forecast is not None
-            assert prod_p_forecast is not None
+            if load_q_forecast is None:
+                raise ChronicsError("If you provide load_p_forecast you should provide load_q_forecast.")
+            if prod_p_forecast is None:
+                raise ChronicsError("If you provide load_p_forecast you should provide prod_p_forecast.")
+                
             self._forecasts = FromNPY(
                 load_p=load_p_forecast,
                 load_q=load_q_forecast,
@@ -232,12 +241,17 @@ class FromNPY(GridValue):
         order_backend_subs,
         names_chronics_to_backend=None,
     ):
-        assert len(order_backend_prods) == self.n_gen, f"len(order_backend_prods)={len(order_backend_prods)} vs self.n_gen={self.n_gen}"
-        assert len(order_backend_loads) == self.n_load, f"len(order_backend_loads)={len(order_backend_loads)} vs self.n_load={self.n_load}"
+        if len(order_backend_prods) != self.n_gen:
+            raise ChronicsError(f"len(order_backend_prods)={len(order_backend_prods)} vs self.n_gen={self.n_gen}")
+        
+        if len(order_backend_loads) != self.n_load:
+            raise ChronicsError(f"len(order_backend_loads)={len(order_backend_loads)} vs self.n_load={self.n_load}")
+        
         if self.n_line is None:
             self.n_line = len(order_backend_lines)
         else:
-            assert len(order_backend_lines) == self.n_line, f"len(order_backend_lines)={len(order_backend_lines)} vs self.n_line={self.n_line}"
+            if len(order_backend_lines) != self.n_line:
+                raise ChronicsError(f"len(order_backend_lines)={len(order_backend_lines)} vs self.n_line={self.n_line}")
 
         if self._forecasts is not None:
             self._forecasts.initialize(
@@ -255,7 +269,7 @@ class FromNPY(GridValue):
         self.current_index = self._i_start - 1
         self._max_iter = self._i_end - self._i_start
 
-    def _get_long_hash(self, hash_: hashlib.blake2b = None):
+    def _get_long_hash(self, hash_: Optional[hashlib.blake2b] = None):
         # get the "long hash" from blake2b
         if hash_ is None:
             hash_ = (
@@ -361,33 +375,50 @@ class FromNPY(GridValue):
         )
 
     def check_validity(
-        self, backend: Optional["grid2op.Backend.backend.Backend"]
+        self, backend: Optional["Backend"]
     ) -> None:
-        # TODO raise the proper errors from ChronicsError here rather than AssertError
-        assert self._load_p.shape[0] == self._load_q.shape[0]
-        assert self._load_p.shape[0] == self._prod_p.shape[0]
+        if self._load_p.shape[0] != self._load_q.shape[0]:
+            raise ChronicsError("Loads P and Q must have the same number of timesteps / rows")
+        if self._load_p.shape[0] != self._prod_p.shape[0]:
+            raise ChronicsError("Loads P and gen p must have the same number of timesteps / rows")
         if self._prod_v is not None:
-            assert self._load_p.shape[0] == self._prod_v.shape[0]
+            if self._load_p.shape[0] != self._prod_v.shape[0]:
+                raise ChronicsError("Loads P and gen v (as it is provided) must have the same number of timesteps / rows")
 
         if self.hazards is not None:
-            assert self.hazards.shape[1] == self.n_line
+            if self.hazards.shape[1] != self.n_line:
+                raise ChronicsError("Loads P and hazards (as it is provided) must have the same number of timesteps / rows")
+                
         if self.maintenance is not None:
-            assert self.maintenance.shape[1] == self.n_line
+            if self.maintenance.shape[1] != self.n_line:
+                raise ChronicsError("Maintenance file (as it is provided) should have the "
+                                    "same number of columns as the number of powerlines on the grid")
         if self.maintenance_duration is not None:
-            assert self.n_line == self.maintenance_duration.shape[1]
+            if self.n_line != self.maintenance_duration.shape[1]:
+                raise ChronicsError("maintenance_duration file (as it is provided) should have the same "
+                                    "number of columns as the number of powerlines on the grid")
         if self.maintenance_time is not None:
-            assert self.n_line == self.maintenance_time.shape[1]
+            if self.n_line != self.maintenance_time.shape[1]:
+                raise ChronicsError("maintenance_time file (as it is provided) should have the same "
+                                    "number of columns as the number of powerlines on the grid")
 
         # TODO forecast
         if self._forecasts is not None:
-            assert self._forecasts.n_line == self.n_line
-            assert self._forecasts.n_gen == self.n_gen
-            assert self._forecasts.n_load == self.n_load
-            assert self._load_p.shape[0] == self._forecasts._load_p.shape[0]
-            assert self._load_q.shape[0] == self._forecasts._load_q.shape[0]
-            assert self._prod_p.shape[0] == self._forecasts._prod_p.shape[0]
+            if self._forecasts.n_line != self.n_line:
+                raise ChronicsError("self._forecasts.n_line != self.n_line")
+            if self._forecasts.n_gen != self.n_gen:
+                raise ChronicsError("self._forecasts.n_gen != self.n_gen")
+            if self._forecasts.n_load != self.n_load:
+                raise ChronicsError("self._forecasts.n_load != self.n_load")
+            if self._load_p.shape[0] != self._forecasts._load_p.shape[0]:
+                raise ChronicsError("self._load_p.shape[0] != self._forecasts._load_p.shape[0]")
+            if self._load_q.shape[0] != self._forecasts._load_q.shape[0]:
+                raise ChronicsError("self._load_q.shape[0] != self._forecasts._load_q.shape[0]")
+            if self._prod_p.shape[0] != self._forecasts._prod_p.shape[0]:
+                raise ChronicsError("self._prod_p.shape[0] != self._forecasts._prod_p.shape[0]")
             if self._prod_v is not None and self._forecasts._prod_v is not None:
-                assert self._prod_v.shape[0] == self._forecasts._prod_v.shape[0]
+                if self._prod_v.shape[0] == self._forecasts._prod_v.shape[0]:
+                    raise ChronicsError("self._prod_v.shape[0] != self._forecasts._prod_v.shape[0]")
             self._forecasts.check_validity(backend=backend)
 
     def next_chronics(self):
@@ -698,7 +729,9 @@ class FromNPY(GridValue):
         else:
             self.__new_iend = None
 
-    def get_init_action(self, names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None) -> Union["grid2op.Action.playableAction.PlayableAction", None]:
+    def get_init_action(self,
+                        names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"],
+                                                                 Dict[str, str]]]=None) -> Union["PlayableAction", None]:
         # names_chronics_to_backend is ignored, names should be consistent between the environment 
         # and the initial state
         

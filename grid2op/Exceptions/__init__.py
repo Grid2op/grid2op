@@ -67,6 +67,7 @@ __all__ = [
     "SomeGeneratorBelowRampmin",
     "ImpossibleRedispatching",
     "InvalidBackendCallback",
+    "RewardException",
 ]
 
 from grid2op.Exceptions.grid2OpException import Grid2OpException
@@ -156,3 +157,6 @@ from grid2op.Exceptions.attentionBudgetExceptions import NotEnoughAttentionBudge
 from grid2op.Exceptions.agentError import AgentError
 
 from grid2op.Exceptions.simulatorExceptions import SimulatorError
+
+from grid2op.Exceptions.rewardExceptions import RewardException
+
