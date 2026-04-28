@@ -101,7 +101,7 @@ Native multi agents support:
 - add change_bus / set_bus
 
 
-[1.12.4] - 2026-xx-yy
+[1.12.4] - 2026-04-28
 ----------------------
 - [BREAKING] the behaviour of grid2op environment when ENV_DOES_REDISPATCHING
   flag is turned on is changed and is now exactly the one 
