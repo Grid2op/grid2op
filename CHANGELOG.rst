@@ -104,7 +104,9 @@ Native multi agents support:
 --------------------
 - [FIXED] license issues in the documentation
 - [IMPROVED] tests splitting to reduce the duration on circle ci
-
+- [IMPROVED] handling of redispatching as a separate module now 
+  (grid2op/Environment/dispatch)
+  
 [1.12.4] - 2026-04-28
 ----------------------
 - [BREAKING] the behaviour of grid2op environment when ENV_DOES_REDISPATCHING
