@@ -106,7 +106,8 @@ Native multi agents support:
 - [IMPROVED] tests splitting to reduce the duration on circle ci
 - [IMPROVED] handling of redispatching as a separate module now 
   (grid2op/Environment/dispatch)
-  
+- [IMPROVED] remove the use of "assert" block in the main codebase
+
 [1.12.4] - 2026-04-28
 ----------------------
 - [BREAKING] the behaviour of grid2op environment when ENV_DOES_REDISPATCHING
