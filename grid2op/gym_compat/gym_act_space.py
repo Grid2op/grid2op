@@ -15,6 +15,7 @@ from grid2op.Environment import (
     BaseMultiProcessEnvironment,
 )
 from grid2op.Action import BaseAction, ActionSpace
+from grid2op.Exceptions.grid2OpException import Grid2OpException
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.Converter.Converters import Converter
 from grid2op.gym_compat.utils import GYM_AVAILABLE, GYMNASIUM_AVAILABLE, DictType
@@ -368,9 +369,8 @@ class __AuxGymActionSpace:
             gym_action = self._converter.convert_action_to_gym(action)
         else:
             # in that case action should be an instance of grid2op BaseAction
-            assert isinstance(
-                action, BaseAction
-            ), "impossible to convert an action not coming from grid2op"
+            if not isinstance(action, BaseAction):
+                raise Grid2OpException("impossible to convert an action not coming from grid2op")
             # TODO this do not work in case of multiple converter,
             #  TODO this should somehow call tmp = self._keys_encoding[internal_k].g2op_to_gym(v)
             gym_action = self._base_to_gym(

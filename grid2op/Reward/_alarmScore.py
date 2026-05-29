@@ -9,7 +9,7 @@
 import numpy as np
 import copy
 
-from grid2op.Exceptions import Grid2OpException
+from grid2op.Exceptions import RewardException
 from grid2op.Reward import AlarmReward
 from grid2op.dtypes import dt_float
 
@@ -69,7 +69,7 @@ class _AlarmScore(AlarmReward):
 
     def initialize(self, env):
         if not env._has_attention_budget:
-            raise Grid2OpException(
+            raise RewardException(
                 'Impossible to use the "_AlarmScore" with an environment for which this feature '
                 'is disabled. Please make sure "env._has_attention_budget" is set to ``True`` or '
                 "change the reward class with `grid2op.make(..., reward_class=AnyOtherReward)`"
@@ -105,7 +105,8 @@ class _AlarmScore(AlarmReward):
             disc_lines_to_consider_for_score = disc_lines_at_cascading_time == 0
 
         # if we are there, it is because we have identified before that the failure is due to disconnected powerlines
-        assert (disc_lines_to_consider_for_score).any()
+        if (disc_lines_to_consider_for_score).all():
+            raise RewardException("This reward should be called only if a line has been disconnected.")
 
         # we transform the vector so that disconnected lines have a zero, to be coherent with env._disc_lines
         return 1 - disc_lines_to_consider_for_score

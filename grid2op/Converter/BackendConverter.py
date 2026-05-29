@@ -539,14 +539,16 @@ class BackendConverter(Backend):
 
         if self.sub_source_target is None:
             # automatic mode for substations, names must match
-            assert np.all(
+            if (
                 self.target_backend.name_sub[self._sub_tg2sr]
-                == self.source_backend.name_sub
-            )
-            assert np.all(
+                != self.source_backend.name_sub
+            ).any():
+                raise BackendError("The names of the substations do not match")
+            if (
                 self.source_backend.name_sub[self._sub_sr2tg]
-                == self.target_backend.name_sub
-            )
+                != self.target_backend.name_sub
+            ).any():
+                raise BackendError("The names of the substations do not match")
 
         # check that all corresponding vectors are valid (and properly initialized, like every component above 0 etc.)
         self._check_both_consistent(self._line_tg2sr, self._line_sr2tg)
@@ -561,15 +563,22 @@ class BackendConverter(Backend):
             # n_storage == 0 and there are storage units on the source backend
             # this means that the target_backend supports storage but not
             # the source one
-            assert np.all(self._topo_sr2tg[self._topo_tg2sr] >= 0)
-            assert np.all(sorted(self._topo_sr2tg[self._topo_tg2sr]) == np.arange(self.dim_topo))
+            if (self._topo_sr2tg[self._topo_tg2sr] < 0).any():
+                raise BackendError("every topo element should be mapped some (self._topo_sr2tg[self._topo_tg2sr] < 0)")
+            if (sorted(self._topo_sr2tg[self._topo_tg2sr]) != np.arange(self.dim_topo)).any():
+                raise BackendError("Some element of topology are not mapped")
+                
             
             topo_sr2tg_without_storage = self._topo_sr2tg[self._topo_sr2tg >= 0]
-            assert (self._topo_sr2tg == -1).sum() == tg_cls.n_storage
-            assert np.all(self._topo_tg2sr[topo_sr2tg_without_storage] >= 0)
+            if (self._topo_sr2tg == -1).sum() != tg_cls.n_storage:
+                raise BackendError("(self._topo_sr2tg == -1).sum() != tg_cls.n_storage")
+                
+            if (self._topo_tg2sr[topo_sr2tg_without_storage] < 0).any():
+                raise BackendError("(self._topo_tg2sr[topo_sr2tg_without_storage] >= 0).any()")
             target_without_storage = np.array([i for i in range(tg_cls.dim_topo) 
                                                if i not in tg_cls.storage_pos_topo_vect])
-            assert np.all(sorted(self._topo_tg2sr[topo_sr2tg_without_storage]) == target_without_storage)
+            if (sorted(self._topo_tg2sr[topo_sr2tg_without_storage]) != target_without_storage).any():
+                raise BackendError("(sorted(self._topo_tg2sr[topo_sr2tg_without_storage]) != target_without_storage).any()")
             self._topo_sr2tg = topo_sr2tg_without_storage
 
         if type(self).shunts_data_available:
@@ -591,23 +600,22 @@ class BackendConverter(Backend):
         self.names_target_to_source = dict_
 
     def _check_vect_valid(self, vect):
-        assert np.all(
-            vect >= 0
-        ), ERROR_INVALID_VECTOR
-        assert sorted(np.unique(vect)) == sorted(
-            vect
-        ), ERROR_INVALID_VECTOR
+        if np.any(vect < 0):
+            raise BackendError(ERROR_INVALID_VECTOR)
+        if sorted(np.unique(vect)) != sorted(vect):
+            raise BackendError(ERROR_INVALID_VECTOR)
         if vect.shape[0] > 0:
-            assert (
-                np.max(vect) == vect.shape[0] - 1
-            ), ERROR_INVALID_VECTOR
+            if np.max(vect) != vect.shape[0] - 1:
+                raise BackendError(ERROR_INVALID_VECTOR)
 
     def _check_both_consistent(self, tg2sr, sr2tg):
         self._check_vect_valid(tg2sr)
         self._check_vect_valid(sr2tg)
         res = np.arange(tg2sr.shape[0])
-        assert np.all(tg2sr[sr2tg] == res)
-        assert np.all(sr2tg[tg2sr] == res)
+        if np.any(tg2sr[sr2tg] != res):
+            raise BackendError("np.any(tg2sr[sr2tg] != res)")
+        if np.any(sr2tg[tg2sr] != res):
+            raise BackendError("np.any(sr2tg[tg2sr] != res)")
 
     def assert_grid_correct_after_powerflow(self):
         # we don't assert that `self.source_backend.assert_grid_correct_after_powerflow()`

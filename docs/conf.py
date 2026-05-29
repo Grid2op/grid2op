@@ -22,7 +22,7 @@ copyright = 'Grid2Op a Series of LF Projects, LLC,\nFor website terms of use, tr
 author = 'Benjamin Donnot'
 
 # The full version, including alpha/beta/rc tags
-release = '1.12.4'
+release = '1.12.5.dev0'
 version = '1.12'
 
 
@@ -76,7 +76,7 @@ highlight_language = 'python3'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-html_css_files = ['hacks.css']
+html_css_files = ['colors.css']
 
 # for pdf
 pdf_documents = [('index', u'rst2pdf', u'Grid2op documentation', u'B. DONNOT'),]
