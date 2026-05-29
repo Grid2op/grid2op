@@ -417,7 +417,7 @@ class FromNPY(GridValue):
             if self._prod_p.shape[0] != self._forecasts._prod_p.shape[0]:
                 raise ChronicsError("self._prod_p.shape[0] != self._forecasts._prod_p.shape[0]")
             if self._prod_v is not None and self._forecasts._prod_v is not None:
-                if self._prod_v.shape[0] == self._forecasts._prod_v.shape[0]:
+                if self._prod_v.shape[0] != self._forecasts._prod_v.shape[0]:
                     raise ChronicsError("self._prod_v.shape[0] != self._forecasts._prod_v.shape[0]")
             self._forecasts.check_validity(backend=backend)
 
