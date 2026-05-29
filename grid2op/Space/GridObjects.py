@@ -2377,35 +2377,37 @@ class GridObjects:
     def _check_validity_alarm_data(cls):
         if cls.dim_alarms == 0:
             # no alarm data
-            assert (
-                cls.alarms_area_names == []
-            ), "No alarm data is provided, yet cls.alarms_area_names != []"
-            assert (
-                cls.alarms_lines_area == {}
-            ), "No alarm data is provided, yet cls.alarms_lines_area != {}"
-            assert (
-                cls.alarms_area_lines == []
-            ), "No alarm data is provided, yet cls.alarms_area_lines != []"
+            if cls.alarms_area_names != []:
+                raise Grid2OpException("No alarm data is provided, yet cls.alarms_area_names != []")
+            if cls.alarms_lines_area != {}:
+                raise Grid2OpException("No alarm data is provided, yet cls.alarms_lines_area != {}")
+            if cls.alarms_area_lines != []:
+                raise Grid2OpException("No alarm data is provided, yet cls.alarms_area_lines != []")
         elif cls.dim_alarms < 0:
             raise EnvError(
                 f"The number of areas for the alarm feature should be >= 0. It currently is {cls.dim_alarms}"
             )
         else:
-            assert cls.assistant_warning_type == "zonal"
+            if cls.assistant_warning_type != "zonal":
+                raise Grid2OpException("cls.assistant_warning_type shoud be 'zonal'")
             
             # the "alarm" feature is supported
-            assert isinstance(
+            if not isinstance(
                 cls.alarms_area_names, (list, tuple)
-            ), "cls.alarms_area_names should be a list or a tuple"
-            assert isinstance(
+            ):
+                raise Grid2OpException("cls.alarms_area_names should be a list or a tuple")
+            if not isinstance(
                 cls.alarms_lines_area, dict
-            ), "cls.alarms_lines_area should be a dict"
-            assert isinstance(
+            ):
+                raise Grid2OpException("cls.alarms_lines_area should be a dict")
+            if not isinstance(
                 cls.alarms_area_lines, (list, tuple)
-            ), "cls.alarms_area_lines should be a list or a tuple"
-            assert (
+            ):
+                raise Grid2OpException("cls.alarms_area_lines should be a list or a tuple")
+            if (
                 len(cls.alarms_area_names) == cls.dim_alarms
-            ), "len(cls.alarms_area_names) != cls.dim_alarms"
+            ):
+                raise Grid2OpException("len(cls.alarms_area_names) != cls.dim_alarms")
             names_to_id = {nm: id_ for id_, nm in enumerate(cls.alarms_area_names)}
 
             # check that information in alarms_lines_area and alarms_area_lines match
@@ -2413,24 +2415,26 @@ class GridObjects:
                 for area_nm in li_area:
                     area_id = names_to_id[area_nm]
                     all_lines_this_area = cls.alarms_area_lines[area_id]
-                    assert l_nm in all_lines_this_area, (
-                        f'line "{l_nm}" is said to belong to area "{area_nm}" '
-                        f"in cls.alarms_lines_area yet when looking for the lines in "
-                        f"this "
-                        f"area in cls.alarms_area_lines, this line is not in there"
-                    )
+                    if l_nm not in all_lines_this_area:
+                        raise Grid2OpException(
+                            f'line "{l_nm}" is said to belong to area "{area_nm}" '
+                            f"in cls.alarms_lines_area yet when looking for the lines in "
+                            f"this "
+                            f"area in cls.alarms_area_lines, this line is not in there"
+                        )
 
             for area_id, all_lines_this_area in enumerate(cls.alarms_area_lines):
                 area_nm = cls.alarms_area_names[area_id]
                 for l_nm in all_lines_this_area:
-                    assert area_nm in cls.alarms_lines_area[l_nm], (
-                        f'line "{l_nm}" is said to belong to area '
-                        f'"{area_nm}" '
-                        f"in cls.alarms_area_lines yet when looking for "
-                        f"the areas where this line belong in "
-                        f"cls.alarms_lines_area it appears it does not "
-                        f"belong there."
-                    )
+                    if area_nm not in cls.alarms_lines_area[l_nm]:
+                        raise Grid2OpException(
+                            f'line "{l_nm}" is said to belong to area '
+                            f'"{area_nm}" '
+                            f"in cls.alarms_area_lines yet when looking for "
+                            f"the areas where this line belong in "
+                            f"cls.alarms_lines_area it appears it does not "
+                            f"belong there."
+                        )
 
             # now check that all lines are in at least one area
             for line, li_area in cls.alarms_lines_area.items():
@@ -2449,28 +2453,32 @@ class GridObjects:
 
     @classmethod
     def _check_validity_alert_data(cls):
-        # TODO remove assert and raise Grid2opExcpetion instead
         if cls.dim_alerts == 0:
             # no alert data
-            assert (
-                cls.alertable_line_names == []
-            ), "No alert data is provided, yet cls.alertable_line_names != []"
-            assert (
-               len(cls.alertable_line_ids) == 0
-            ), "No alert data is provided, yet len(cls.alertable_line_ids) != 0"
+            if (
+                cls.alertable_line_names != []
+            ):
+                raise Grid2OpException("No alert data is provided, yet cls.alertable_line_names != []")
+            if (
+               len(cls.alertable_line_ids) != 0
+            ):
+                raise Grid2OpException("No alert data is provided, yet len(cls.alertable_line_ids) != 0")
         elif cls.dim_alerts < 0:
             raise EnvError(
                 f"The number of lines for the alert feature should be >= 0. It currently is {cls.dim_alerts}"
             )
         else:
-            assert cls.assistant_warning_type == "by_line"
+            if cls.assistant_warning_type != "by_line":
+                raise Grid2OpException("cls.assistant_warning_type should be 'by_line'")
             # the "alert" feature is supported
-            assert isinstance(
+            if isinstance(
                 cls.alertable_line_names, list
-            ), "cls.alertable_line_names should be a list"
-            assert (
+            ):
+                raise Grid2OpException("cls.alertable_line_names should be a list")
+            if (
                 len(cls.alertable_line_names) == cls.dim_alerts
-            ), "len(cls.alertable_line_names) != cls.dim_alerts"
+            ):
+                raise Grid2OpException("len(cls.alertable_line_names) != cls.dim_alerts")
             
             try:
                 cls.alertable_line_ids = np.array(cls.alertable_line_ids).astype(dt_int)

@@ -103,6 +103,7 @@ Native multi agents support:
 [1.12.5] 2026-xx-yy
 --------------------
 - [FIXED] license issues in the documentation
+- [FIXED] remove the "assert" outside of the tests
 - [IMPROVED] tests splitting to reduce the duration on circle ci
 
 [1.12.4] - 2026-04-28
