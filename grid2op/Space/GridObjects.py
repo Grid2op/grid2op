@@ -2405,7 +2405,7 @@ class GridObjects:
             ):
                 raise Grid2OpException("cls.alarms_area_lines should be a list or a tuple")
             if (
-                len(cls.alarms_area_names) == cls.dim_alarms
+                len(cls.alarms_area_names) != cls.dim_alarms
             ):
                 raise Grid2OpException("len(cls.alarms_area_names) != cls.dim_alarms")
             names_to_id = {nm: id_ for id_, nm in enumerate(cls.alarms_area_names)}
@@ -2471,12 +2471,12 @@ class GridObjects:
             if cls.assistant_warning_type != "by_line":
                 raise Grid2OpException("cls.assistant_warning_type should be 'by_line'")
             # the "alert" feature is supported
-            if isinstance(
+            if not isinstance(
                 cls.alertable_line_names, list
             ):
                 raise Grid2OpException("cls.alertable_line_names should be a list")
             if (
-                len(cls.alertable_line_names) == cls.dim_alerts
+                len(cls.alertable_line_names) != cls.dim_alerts
             ):
                 raise Grid2OpException("len(cls.alertable_line_names) != cls.dim_alerts")
             
