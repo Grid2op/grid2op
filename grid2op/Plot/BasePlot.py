@@ -24,7 +24,7 @@ from grid2op.Space import GridObjects
 from grid2op.Exceptions import PlotError
 
 
-class BasePlot(GridObjects):
+class BasePlot(GridObjects):    # pragma: no cover
     """
     INTERNAL
 

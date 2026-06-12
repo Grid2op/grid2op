@@ -7,9 +7,13 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions: {}  # deny all by default
+
 jobs:
   manylinux_build:
     name: Build linux ${{ matrix.python.name }} wheel
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux_2_28_x86_64
     env:
@@ -18,11 +22,11 @@ jobs:
     strategy:
       matrix:
         python:
-          - {
-            name: cp38,
-            abi: cp38,
-            version: '3.8',
-          }
+          # - {
+          #   name: cp38,
+          #   abi: cp38,
+          #   version: '3.8',
+          # }
           - {
             name: cp39,
             abi: cp39,
@@ -122,6 +126,8 @@ jobs:
 
   macos_windows_build:
     name: Build ${{ matrix.config.name }} ${{ matrix.python.name }} wheel
+    permissions:
+      contents: read
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
@@ -135,10 +141,10 @@ jobs:
             os: windows-2022,
           }
         python:
-          - {
-            name: cp38,
-            version: '3.8',
-          }
+          # - {
+          #   name: cp38,
+          #   version: '3.8',
+          # }
           - {
             name: cp39,
             version: '3.9',
@@ -215,6 +221,8 @@ jobs:
 
   source_build:
     name: Build tar.gz grid2op file on ${{ matrix.config.name}}
+    permissions:
+      contents: read
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
@@ -271,6 +279,8 @@ jobs:
           
   auto_class_in_file:
     name: Test ${{ matrix.config.name }} OS can handle automatic class generation for python ${{matrix.python.version}}
+    permissions:
+      contents: read
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:

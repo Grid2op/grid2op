@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 try:
     from typing import Self
-except ImportError:
+except ImportError:  # pragma: no cover
     from typing_extensions import Self # type: ignore
     
 from packaging import version
@@ -24,6 +24,7 @@ from packaging import version
 from grid2op.typing_variables import DICT_ACT_TYPING, BACKEND_TYPE
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.Exceptions import (Grid2OpException,
+                                InvalidAction,
                                 AmbiguousAction,
                                 InvalidNumberOfLines,
                                 IllegalAction,
@@ -827,9 +828,10 @@ class BaseAction(GridObjects):
         
         # shunts
         if cls.shunts_data_available:
-            cls.DICT_ATTR_["_shunt_p"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
-            cls.DICT_ATTR_["_shunt_q"] = np.full(shape=cls.n_shunt, fill_value=np.nan, dtype=dt_float)
-            cls.DICT_ATTR_["_shunt_bus"] = np.full(shape=cls.n_shunt, fill_value=0, dtype=dt_int)
+            n_shunt : int = cls.n_shunt # type: ignore n_shunt is set here
+            cls.DICT_ATTR_["_shunt_p"] = np.full(shape=n_shunt, fill_value=np.nan, dtype=dt_float)
+            cls.DICT_ATTR_["_shunt_q"] = np.full(shape=n_shunt, fill_value=np.nan, dtype=dt_float)
+            cls.DICT_ATTR_["_shunt_bus"] = np.full(shape=n_shunt, fill_value=0, dtype=dt_int)
 
         if cls.detachment_is_allowed:
             cls.DICT_ATTR_["_detach_load"] = np.full(cls.n_load, dtype=dt_bool, fill_value=False)
@@ -841,8 +843,7 @@ class BaseAction(GridObjects):
         # False(line is disconnected) / True(line is connected)
         cls._build_dict_attr_if_needed()
         if attr_nm not in cls.DICT_ATTR_:
-            # TODO raise ActionException
-            raise Grid2OpException(
+            raise InvalidAction(
                 'Impossible to find the attribute "{}" '
                 'into the BaseAction of type "{}"'.format(attr_nm, cls)
             )
@@ -857,9 +858,9 @@ class BaseAction(GridObjects):
             cls.attr_list_set = copy.deepcopy(cls.attr_list_set)
             # remove the shunts from the list to vector
             for el in ["_shunt_p", "_shunt_q", "_shunt_bus"]:
-                if el in cls.attr_list_vect:
-                    try:
-                        cls.attr_list_vect.remove(el)
+                if el in cls.attr_list_vect: # type: ignore
+                    try:  # pragma: no cover
+                        cls.attr_list_vect.remove(el) # type: ignore
                     except ValueError:
                         pass
             cls._update_value_set()
@@ -888,12 +889,6 @@ class BaseAction(GridObjects):
     def copy(self) -> "BaseAction":
         # sometimes this method is used...
         return self.__deepcopy__()
-
-    def shape(self):
-        return type(self).shapes()
-    
-    def dtype(self):
-        return type(self).dtypes()
     
     def _aux_copy(self, other: Self) -> None:
         attr_simple = [
@@ -944,7 +939,7 @@ class BaseAction(GridObjects):
             if arr is not None:
                 arr_oth = getattr(other, attr_nm)
                 if arr_oth is not None:
-                    arr_oth[:] = getattr(self, attr_nm)
+                    arr_oth[:] = getattr(self, attr_nm)  # pragma: no cover
                 else:
                     setattr(other, attr_nm, copy.deepcopy(arr))
             else:
@@ -958,7 +953,7 @@ class BaseAction(GridObjects):
         self._aux_copy(other=res)
 
         # handle dict_inj
-        for k, el in self._dict_inj.items():
+        for k, el in self._dict_inj.items():  # pragma: no cover
             res._dict_inj[k] = copy.copy(el)
 
         # just copy
@@ -1032,17 +1027,21 @@ class BaseAction(GridObjects):
         cls = type(self)
         # bool elements
         if self._modif_alert:
+            if self._private_raise_alert is None:  # pragma: no cover
+                raise InvalidAction("_modif_alert is True but _private_raise_alert is None.")
             res["raise_alert"] = [
                 int(id_) for id_, val in enumerate(self._private_raise_alert) if val
             ]
-            if not res["raise_alert"]:
+            if not res["raise_alert"]:  # pragma: no cover
                 del res["raise_alert"]
                 
         if self._modif_alarm:
+            if self._private_raise_alarm is None:  # pragma: no cover
+                raise InvalidAction("_modif_alarm is True but _private_raise_alarm is None.")
             res["raise_alarm"] = [
                 int(id_) for id_, val in enumerate(self._private_raise_alarm) if val
             ]
-            if not res["raise_alarm"]:
+            if not res["raise_alarm"]:  # pragma: no cover
                 del res["raise_alarm"]
                 
         if self._modif_change_bus:
@@ -1053,14 +1052,16 @@ class BaseAction(GridObjects):
             self._aux_serialize_add_key_change("line_ex_change_bus", "lines_ex_id", res["change_bus"], cls.name_line)
             if hasattr(cls, "n_storage") and cls.n_storage:
                 self._aux_serialize_add_key_change("storage_change_bus", "storages_id", res["change_bus"], cls.name_storage)
-            if not res["change_bus"]:
+            if not res["change_bus"]:  # pragma: no cover
                 del res["change_bus"]
             
         if self._modif_change_status:
+            if self._private_switch_line_status is None:  # pragma: no cover
+                raise InvalidAction("_modif_change_status is True but _private_switch_line_status is None.")
             res["change_line_status"] = [
                 str(cls.name_line[id_]) for id_, val in enumerate(self._private_switch_line_status) if val
             ]
-            if not res["change_line_status"]:
+            if not res["change_line_status"]:  # pragma: no cover
                 del res["change_line_status"]
             
         # int elements
@@ -1072,44 +1073,52 @@ class BaseAction(GridObjects):
             self._aux_serialize_add_key_set("line_ex_set_bus", "lines_ex_id", res["set_bus"], cls.name_line)
             if hasattr(cls, "n_storage") and cls.n_storage:
                 self._aux_serialize_add_key_set("storage_set_bus", "storages_id", res["set_bus"], cls.name_storage)
-            if not res["set_bus"]:
+            if not res["set_bus"]:  # pragma: no cover
                 del res["set_bus"]
             
         if self._modif_set_status:
+            if self._private_set_line_status is None:  # pragma: no cover
+                raise InvalidAction("_modif_set_status is True but _private_set_line_status is None.")
             res["set_line_status"] = [
                 (str(cls.name_line[id_]), int(val))
                 for id_, val in enumerate(self._private_set_line_status)
                 if val != 0
             ]
-            if not res["set_line_status"]:
+            if not res["set_line_status"]:  # pragma: no cover
                 del res["set_line_status"]
             
         # float elements
         if self._modif_redispatch:
+            if self._private_redispatch is None:  # pragma: no cover
+                raise InvalidAction("_modif_redispatch is True but _private_redispatch is None.")
             res["redispatch"] = [
                 (str(cls.name_gen[id_]), float(val))
                 for id_, val in enumerate(self._private_redispatch)
                 if np.abs(val) >= 1e-7
             ]
-            if not res["redispatch"]:
+            if not res["redispatch"]:  # pragma: no cover
                 del res["redispatch"]
                 
         if self._modif_storage:
+            if self._private_storage_power is None:  # pragma: no cover
+                raise InvalidAction("_modif_storage is True but _private_storage_power is None.")
             res["set_storage"] = [
                 (str(cls.name_storage[id_]), float(val))
                 for id_, val in enumerate(self._private_storage_power)
                 if np.abs(val) >= 1e-7
             ]
-            if not res["set_storage"]:
+            if not res["set_storage"]:  # pragma: no cover
                 del res["set_storage"]
                 
         if self._modif_curtailment:
+            if self._private_curtail is None:  # pragma: no cover
+                raise InvalidAction("_modif_curtailment is True but _private_curtail is None.")
             res["curtail"] = [
                 (str(cls.name_gen[id_]), float(val))
                 for id_, val in enumerate(self._private_curtail)
                 if np.abs(val + 1.) >= 1e-7
             ]
-            if not res["curtail"]:
+            if not res["curtail"]:  # pragma: no cover
                 del res["curtail"]
 
         # more advanced options
@@ -1119,26 +1128,26 @@ class BaseAction(GridObjects):
                                    [cls.name_gen, cls.name_gen, cls.name_load, cls.name_load]):
                 if ky in self._dict_inj:
                     res["injection"][ky] = {str(vect_nm[i]): float(val) for i, val in enumerate(self._dict_inj[ky])}
-            if not res["injection"]:
+            if not res["injection"]:  # pragma: no cover
                 del res["injection"]
 
         if cls.shunts_data_available:
             res["shunt"] = {}
             if self._private_shunt_p is not None and np.isfinite(self._private_shunt_p).any():
                 res["shunt"]["shunt_p"] = [
-                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self._private_shunt_p) if np.isfinite(val)
+                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self._private_shunt_p) if np.isfinite(val) # type: ignore
                 ]
             if self._private_shunt_q is not None and np.isfinite(self._private_shunt_q).any():
                 res["shunt"]["shunt_q"] = [
-                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self._private_shunt_q) if np.isfinite(val)
+                    (str(cls.name_shunt[sh_id]), float(val)) for sh_id, val in enumerate(self._private_shunt_q) if np.isfinite(val) # type: ignore
                 ]
             if self._private_shunt_bus is not None and (self._private_shunt_bus != 0).any():
                 res["shunt"]["shunt_bus"] = [
-                    (str(cls.name_shunt[sh_id]), int(val))
+                    (str(cls.name_shunt[sh_id]), int(val)) # type: ignore
                     for sh_id, val in enumerate(self._private_shunt_bus)
                     if val != 0
                 ]
-            if not res["shunt"]:
+            if not res["shunt"]:  # pragma: no cover
                 del res["shunt"]
             
         if cls.detachment_is_allowed:
@@ -1152,7 +1161,7 @@ class BaseAction(GridObjects):
                     continue
                 if vect_.any():
                     res[attr_key] = [str(xxx_name[el]) for el in vect_.nonzero()[0]]
-                if not res[attr_key]:
+                if not res[attr_key]:  # pragma: no cover
                     del res[attr_key]
                     
         return res
@@ -1163,7 +1172,7 @@ class BaseAction(GridObjects):
             cls.shunt_added = True
 
             cls.attr_list_vect = copy.deepcopy(cls.attr_list_vect)
-            cls.attr_list_vect += ["_shunt_p", "_shunt_q", "_shunt_bus"]
+            cls.attr_list_vect += ["_shunt_p", "_shunt_q", "_shunt_bus"] # type: ignore
 
             cls.authorized_keys = copy.deepcopy(cls.authorized_keys)
             cls.authorized_keys.add("shunt")
@@ -1204,7 +1213,7 @@ class BaseAction(GridObjects):
 
         """
         if self._modif_alert:
-            return (self._private_raise_alert).nonzero[0]
+            return (self._private_raise_alert).nonzero()[0]
         else:
             return np.zeros(0, dtype=int)
 
@@ -1385,7 +1394,7 @@ class BaseAction(GridObjects):
         raise Grid2OpException(
             'Impossible to find the attribute "{}" '
             'into the BaseAction of type "{}"'.format(key, type(self))
-        )
+        )  # pragma: no cover
 
     def _post_process_from_vect_injflags(self):
         modif_inj = False
@@ -2254,28 +2263,39 @@ class BaseAction(GridObjects):
 
         """
         # False(line is disconnected) / True(line is connected)
-        self._private_set_line_status[:] = 0
-        self._private_switch_line_status[:] = False
+        if self._private_set_line_status is not None:
+            self._private_set_line_status[:] = 0
+        
+        if self._private_switch_line_status is not None:
+            self._private_switch_line_status[:] = False
 
         # injection change
         self._dict_inj = {}
+        self._modif_inj = False
 
         # topology changed
-        self._private_set_topo_vect[:] = 0
-        self._private_change_bus_vect[:] = False
+        if self._private_set_topo_vect is not None:
+            self._private_set_topo_vect[:] = 0
+        if self._private_change_bus_vect is not None:
+            self._private_change_bus_vect[:] = False
 
         # add the hazards and maintenance usefull for saving.
-        self._private_hazards[:] = False
-        self._private_maintenance[:] = False
+        if self._private_hazards is not None:
+            self._private_hazards[:] = False
+        if self._private_maintenance is not None:
+            self._private_maintenance[:] = False
 
         # redispatching vector
-        self._private_redispatch[:] = 0.0
+        if self._private_redispatch is not None:
+            self._private_redispatch[:] = 0.0
 
         # storage
-        self._private_storage_power[:] = 0.0
+        if self._private_storage_power is not None:
+            self._private_storage_power[:] = 0.0
 
         # storage
-        self._private_curtail[:] = -1.0
+        if self._private_curtail is not None:
+            self._private_curtail[:] = -1.0
 
         self._vectorized = None
         self._lines_impacted = None
@@ -2283,16 +2303,31 @@ class BaseAction(GridObjects):
 
         # shunts
         if type(self).shunts_data_available:
-            self._private_shunt_p[:] = np.nan
-            self._private_shunt_q[:] = np.nan
-            self._private_shunt_bus[:] = 0
+            if self._private_shunt_p is not None:
+                self._private_shunt_p[:] = np.nan
+            if self._private_shunt_q is not None:
+                self._private_shunt_q[:] = np.nan
+            if self._private_shunt_bus is not None:
+                self._private_shunt_bus[:] = 0
 
         # alarm
-        self._private_raise_alarm[:] = False        
+        if self._private_raise_alarm is not None:
+            self._private_raise_alarm[:] = False        
         
         # alert
-        self._private_raise_alert[:] = False
+        if self._private_raise_alert is not None:
+            self._private_raise_alert[:] = False
+            
+        # detachment
+        if type(self).detachment_is_allowed:
+            for el in ["load", "gen", "storage"]:
+                if getattr(self, el) is not None:
+                    getattr(self, el)[:] = False
 
+        # backend dependant callback
+        self.backend_dependant_callback = None
+        
+        # and now the flags
         self._reset_modified_flags()
 
     def _assign_iadd_or_warn(self, attr_name, new_value):
@@ -2342,7 +2377,7 @@ class BaseAction(GridObjects):
         curtailment = other._curtail
         ok_ind = np.isfinite(curtailment) & (np.abs(curtailment + 1.0) >= 1e-7)
         if ok_ind.any():
-            if "_curtail" not in self.attr_list_set:
+            if "_curtail" not in self.attr_list_set:  # pragma: no cover
                 warnings.warn(
                     type(self).ERR_ACTION_CUT.format("_curtail")
                 )
@@ -2358,7 +2393,7 @@ class BaseAction(GridObjects):
         set_storage = other._private_storage_power
         ok_ind = np.isfinite(set_storage) & (np.abs(set_storage) >= 1e-7).any()
         if ok_ind.any():
-            if "_storage_power" not in self.attr_list_set:
+            if "_storage_power" not in self.attr_list_set:  # pragma: no cover
                 warnings.warn(
                     type(self).ERR_ACTION_CUT.format("_storage_power")
                 )
@@ -2384,7 +2419,7 @@ class BaseAction(GridObjects):
         self._modif_detach_storage = self._modif_detach_storage or other._modif_detach_storage
 
     def _aux_iadd_shunt(self, other: "BaseAction"):
-        if not type(other).shunts_data_available:
+        if not type(other).shunts_data_available:  # pragma: no cover
             warnings.warn("Trying to add an action that does not support "
                           "shunt with an action that does.")
             return
@@ -2656,7 +2691,7 @@ class BaseAction(GridObjects):
         storage_power = self._private_storage_power
         # remark: curtailment is handled by an algorithm in the environment, so don't need to be returned here
         shunts = {}
-        if type(self).shunts_data_available:
+        if type(self).shunts_data_available:  
             shunts["_private_shunt_p"] = self._private_shunt_p
             shunts["_private_shunt_q"] = self._private_shunt_q
             shunts["_private_shunt_bus"] = self._private_shunt_bus
@@ -2675,7 +2710,7 @@ class BaseAction(GridObjects):
     def _aux_digest_shunt_issue_warning_if_needed(self, ddict_):
         cls = type(self)
         for k in ddict_:
-            if k not in cls.key_shunt_reco:
+            if k not in cls.key_shunt_reco:  # pragma: no cover
                 warn = "The key {} is not recognized by BaseAction when trying to modify the shunt.".format(
                     k
                 )
@@ -2773,7 +2808,7 @@ class BaseAction(GridObjects):
                     self._dict_inj[k] = np.array(tmp_d[k]).astype(dt_float)
                     self._cached_is_not_ambiguous = False  # invalidate cache for ambiguous action
                 # TODO check the size based on the input data !
-            else:
+            else:  # pragma: no cover
                 warn = (
                     "The key {} is not recognized by BaseAction when trying to modify the injections."
                     "".format(k)
@@ -3058,14 +3093,14 @@ class BaseAction(GridObjects):
             act_dict (str:Any): Dictionary representation of an action
         """
         for kk in act_dict.keys():
-            if kk not in action_cls.authorized_keys:
+            if kk not in action_cls.authorized_keys:  # pragma: no cover
                 if kk == "shunt" and not action_cls.shunts_data_available:
                     # no warnings are raised in this case because if a warning
                     # were raised it could crash some environment
                     # with shunt in "init_state.json" with a backend that does not
                     # handle shunt
                     continue
-                if kk == "set_storage" and action_cls.n_storage == 0:
+                if kk == "set_storage" and action_cls.n_storage == 0:  # pragma: no cover
                     # no warnings are raised in this case because if a warning
                     # were raised it could crash some environment
                     # with storage in "init_state.json" but if the backend did not
@@ -4525,20 +4560,24 @@ class BaseAction(GridObjects):
         # saving the injections
         for k in ["load_p", "prod_p", "load_q", "prod_v"]:
             if k in self._dict_inj:
-                res[k] = 1.0 * self._dict_inj[k]
+                res[k] = self._dict_inj[k].copy()
 
         self._aux_as_dict_line_status(res)
         self._aux_as_dict_topo(res)
         self._aux_as_dict_hazards_maintenance(res)
 
         if self._private_redispatch is not None and (np.abs(self._private_redispatch) >= 1e-7).any():
-            res["redispatch"] = 1.0 * self._private_redispatch
+            res["redispatch"] = self._private_redispatch.copy()
 
         if self._modif_storage:
-            res["storage_power"] = 1.0 * self._private_storage_power
+            if self._private_storage_power is None:
+                raise InvalidAction("self._private_storage_power is None yet self._modif_storage flag is True")
+            res["storage_power"] = self._private_storage_power.copy()
 
         if self._modif_curtailment:
-            res["curtailment"] = 1.0 * self._private_curtail
+            if self._private_curtail is None:
+                raise InvalidAction("self._private_curtail is None yet self._modif_curtailment flag is True")
+            res["curtailment"] = self._private_curtail.copy()
             
         if type(self).shunts_data_available:
             self._aux_as_dict_shunt(res)

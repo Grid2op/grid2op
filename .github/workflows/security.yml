@@ -1,0 +1,16 @@
+name: Security checks
+
+on: [push, pull_request]
+
+jobs:
+  detect-secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install detect-secrets
+      - run: detect-secrets scan --baseline .secrets.baseline

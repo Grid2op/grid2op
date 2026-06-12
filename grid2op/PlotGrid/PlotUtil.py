@@ -9,7 +9,7 @@
 import numpy as np
 
 
-class PlotUtil:
+class PlotUtil:  # pragma: no cover
     """
     INTERNAL
 

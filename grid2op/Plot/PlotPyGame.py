@@ -34,7 +34,7 @@ except Exception:
     pass
 
 
-class Point:
+class Point:  # pragma: no cover
     # https://codereview.stackexchange.com/questions/70143/drawing-a-dashed-line-with-pygame
     # constructed using a normal tupple
     def __init__(self, point_t=(0, 0)):
@@ -75,7 +75,7 @@ class Point:
         return Point((cplx.real, cplx.imag))
 
 
-def _draw_dashed_line(surf, color, start_pos, end_pos, width=1, dash_length=10):
+def _draw_dashed_line(surf, color, start_pos, end_pos, width=1, dash_length=10):  # pragma: no cover
     # https://codereview.stackexchange.com/questions/70143/drawing-a-dashed-line-with-pygame
     origin = Point(start_pos)
     target = Point(end_pos)
@@ -99,7 +99,7 @@ def _draw_arrow(
     num_arrows=10,
     length_arrow=10,
     angle_arrow=30,
-):
+):  # pragma: no cover
     if positive_flow:
         origin = Point(start_pos)
         target = Point(end_pos)
@@ -132,7 +132,7 @@ def _draw_arrow(
         )
 
 
-class PlotPyGame(BasePlot):
+class PlotPyGame(BasePlot):  # pragma: no cover
     """
     INTERNAL
 

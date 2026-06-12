@@ -8,7 +8,7 @@
 
 import warnings
 import copy
-from typing import Dict, Literal, Optional
+from typing import Dict, Literal, Optional, Type
 
 import grid2op
 from grid2op.typing_variables import DICT_ACT_TYPING
@@ -43,7 +43,7 @@ class ActionSpace(SerializableActionSpace):
         self,
         gridobj,
         legal_action,
-        actionClass=BaseAction,  # need to be a base grid2op type (and not a type generated on the fly)
+        actionClass: Type[BaseAction]=BaseAction,  # need to be a base grid2op type (and not a type generated on the fly)
         _local_dir_cls=None,
     ):
         """

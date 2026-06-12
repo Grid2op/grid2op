@@ -21,7 +21,7 @@ from matplotlib.lines import Line2D
 from grid2op.PlotGrid.config import *  # all colors
 
 
-class GenDraw(patches.CirclePolygon):
+class GenDraw(patches.CirclePolygon):  # pragma: no cover
     """
     INTERNAL
 
@@ -34,7 +34,7 @@ class GenDraw(patches.CirclePolygon):
         patches.CirclePolygon.__init__(self, *args, resolution=resolution, **kwargs)
 
 
-class LoadDraw(patches.CirclePolygon):
+class LoadDraw(patches.CirclePolygon):  # pragma: no cover
     """
     INTERNAL
 
@@ -47,7 +47,7 @@ class LoadDraw(patches.CirclePolygon):
         patches.CirclePolygon.__init__(self, *args, resolution=resolution, **kwargs)
 
 
-class StorageDraw(patches.CirclePolygon):
+class StorageDraw(patches.CirclePolygon):  # pragma: no cover
     """
     INTERNAL
 
@@ -67,7 +67,7 @@ class StorageDraw(patches.CirclePolygon):
 # TODO code the load part in the plot_info
 
 
-class PlotMatplot(BasePlot):
+class PlotMatplot(BasePlot):  # pragma: no cover
     """
     This class uses the python library "matplotlib" to draw the powergrid.
 

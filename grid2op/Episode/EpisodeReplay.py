@@ -17,7 +17,7 @@ from grid2op.PlotGrid.PlotMatplot import PlotMatplot
 from grid2op.Episode.EpisodeData import EpisodeData
 
 
-class EpisodeReplay(object):
+class EpisodeReplay(object):  # pragma: no cover
     """
     This class allows to see visually what an agent has done during an episode. It uses for now the "PlotMatplot" as the
     method to plot the different states of the system. It reads directly data from the runner.

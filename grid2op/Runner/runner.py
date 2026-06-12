@@ -11,7 +11,7 @@ import warnings
 import copy
 import numpy as np
 from multiprocessing import get_start_method, get_context, Pool
-from typing import Tuple, List, Union
+from typing import Any, Optional, Tuple, List, Type, Union
 
 from grid2op.Environment import BaseEnv
 from grid2op.Action import BaseAction, TopologyAction, DontAct
@@ -369,7 +369,7 @@ class Runner(object):
         # or GridStateFromFileWithForecasts otherwise
         backendClass=PandaPowerBackend,
         backend_kwargs=None,
-        agentClass=DoNothingAgent,  # class used to build the agent
+        agentClass: Type[BaseAgent]=DoNothingAgent,  # class used to build the agent
         agentInstance=None,
         verbose=False,
         gridStateclass_kwargs={},
@@ -1323,12 +1323,12 @@ class Runner(object):
 
     def run(
         self,
-        nb_episode,
+        nb_episode: int,
         *,  # force kwargs
-        nb_process=1,
-        path_save=None,
-        max_iter=None,
-        pbar=False,
+        nb_process: int =1,
+        path_save: Optional[Union[os.PathLike, str]]=None,
+        max_iter:Optional[int]=None,
+        pbar: Any=False,
         env_seeds=None,
         agent_seeds=None,
         episode_id=None,

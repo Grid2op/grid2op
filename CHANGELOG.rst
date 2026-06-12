@@ -100,10 +100,18 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
-[1.12.5] 2026-xx-yy
---------------------
+[1.12.5] - 2026-05-xx
+-------------------------
 - [FIXED] license issues in the documentation
 - [FIXED] remove the "assert" outside of the tests
+- [FIXED] some security quality issue spotted by codeQL (I/O function call with non totally checked user input)
+- [FIXED] license issues in the documentation
+- [FIXED] remove the "assert" outside of the tests
+- [ADDED] automatic release on pypi
+- [IMPROVED] clarifying the CONTRIBUTING.md document
+- [IMPROVED] added pre commit hooks to detect potential secret push on github
+- [IMPROVED] add a SECRETS_MANAGEMENTS.md file to explicitely detail how secret should be
+  handled by commiters
 - [IMPROVED] tests splitting to reduce the duration on circle ci
 
 [1.12.4] - 2026-04-28
