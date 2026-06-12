@@ -9,7 +9,7 @@
 import warnings
 import numpy as np
 import itertools
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Type
 try:
     from typing import Self
 except ImportError:
@@ -79,7 +79,7 @@ class SerializableActionSpace(SerializableSpace):
             _init_grid=_init_grid,
             _local_dir_cls=_local_dir_cls
         )
-        self.actionClass = self.subtype
+        self.actionClass: Type[BaseAction] = self.subtype
         self._template_act = self.actionClass()
 
     @staticmethod
@@ -189,10 +189,11 @@ class SerializableActionSpace(SerializableSpace):
             "detach_gen",  # new in 1.11.0
             "detach_storage",  # new in 1.11.0
         ]
-        assert action_type in name_action_types, (
-            f"The action type provided should be in {name_action_types}. "
-            f"You provided {action_type} which is not supported."
-        )
+        if action_type not in name_action_types:
+            raise AmbiguousAction(
+                f"The action type provided should be in {name_action_types}. "
+                f"You provided {action_type} which is not supported."
+            )
         cls = type(self)
         if action_type == "storage_power" or action_type == "set_storage":
             return (cls.n_storage > 0) and (

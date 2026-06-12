@@ -11,6 +11,7 @@ import os
 import re
 import json
 import copy
+from typing import Type
 
 from grid2op.Exceptions import Grid2OpException
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict
@@ -62,7 +63,11 @@ class SerializableSpace(GridObjects, RandomObject):
 
     """
 
-    def __init__(self, gridobj, subtype=object, _init_grid=True, _local_dir_cls=None):
+    def __init__(self,
+                 gridobj: GridObjects,
+                 subtype: Type[GridObjects],
+                 _init_grid=True,
+                 _local_dir_cls=None):
         """
 
         subtype: ``type``

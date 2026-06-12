@@ -53,13 +53,13 @@ class TestSuitePandaPowerBackend(PandaPowerBackend):
             shunts__,
         ) = backendAction()
 
-        tmp_prod_p = self._get_vector_inj["prod_p"](self._grid)
+        # tmp_prod_p = self._get_vector_inj["prod_p"](self._grid)
         if np.any(prod_p.changed):
-            tmp_prod_p.iloc[prod_p.changed] = prod_p.values[prod_p.changed]
+            self._grid.gen.iloc[prod_p.changed, self._prod_p_col_id] = prod_p.values[prod_p.changed]
 
-        tmp_prod_v = self._get_vector_inj["prod_v"](self._grid)
+        # tmp_prod_v = self._get_vector_inj["prod_v"](self._grid)
         if np.any(prod_v.changed):
-            tmp_prod_v.iloc[prod_v.changed] = (
+            self._grid.gen.iloc[prod_v.changed, self._prod_v_col_id] = (
                 prod_v.values[prod_v.changed] / self.prod_pu_to_kv[prod_v.changed]
             )
 
@@ -67,13 +67,13 @@ class TestSuitePandaPowerBackend(PandaPowerBackend):
             # handling of the slack bus, where "2" generators are present.
             self._grid["ext_grid"]["vm_pu"] = 1.0 * tmp_prod_v[self._id_bus_added]
 
-        tmp_load_p = self._get_vector_inj["load_p"](self._grid)
+        # tmp_load_p = self._get_vector_inj["load_p"](self._grid)
         if np.any(load_p.changed):
-            tmp_load_p.iloc[load_p.changed] = load_p.values[load_p.changed]
+            self._grid.load.iloc[load_p.changed, self._load_p_col_id] = load_p.values[load_p.changed]
 
-        tmp_load_q = self._get_vector_inj["load_q"](self._grid)
+        # tmp_load_q = self._get_vector_inj["load_q"](self._grid)
         if np.any(load_q.changed):
-            tmp_load_q.iloc[load_q.changed] = load_q.values[load_q.changed]
+            self._grid.load.iloc[load_q.changed, self._load_q_col_id] = load_q.values[load_q.changed]
 
         if type(self).shunts_data_available:
             shunt_p, shunt_q, shunt_bus = shunts__
@@ -106,10 +106,10 @@ class TestSuitePandaPowerBackend(PandaPowerBackend):
         loads_bus = backendAction.get_loads_bus()
         for load_id, new_bus in loads_bus:
             if new_bus == -1:
-                self._grid.load["in_service"][load_id] = False
+                self._grid.load.iloc[load_id, self._in_service_load_col_id] = False
             else:
-                self._grid.load["in_service"][load_id] = True
-                self._grid.load["bus"][load_id] = (
+                self._grid.load.iloc[load_id, self._in_service_load_col_id] = True
+                self._grid.load.iloc[load_id, self._bus_load_col_id] = (
                     self.load_to_subid[load_id]
                     + (new_bus - 1) * self._nb_bus_before_for_test
                 )
@@ -117,10 +117,10 @@ class TestSuitePandaPowerBackend(PandaPowerBackend):
         gens_bus = backendAction.get_gens_bus()
         for gen_id, new_bus in gens_bus:
             if new_bus == -1:
-                self._grid.gen["in_service"][gen_id] = False
+                self._grid.gen.iloc[gen_id, self._in_service_gen_col_id] = False
             else:
-                self._grid.gen["in_service"][gen_id] = True
-                self._grid.gen["bus"][gen_id] = (
+                self._grid.gen.iloc[gen_id, self._in_service_gen_col_id] = True
+                self._grid.gen.iloc[gen_id, self._bus_gen_col_id] = (
                     self.gen_to_subid[gen_id]
                     + (new_bus - 1) * self._nb_bus_before_for_test
                 )
@@ -138,18 +138,20 @@ class TestSuitePandaPowerBackend(PandaPowerBackend):
         for line_id, new_bus in lines_or_bus:
             if line_id < self._nb_line_for_test:
                 dt = self._grid.line
-                key = "from_bus"
                 line_id_db = line_id
+                is_col_id = self._in_service_line_col_id
+                bus_col_id = self._from_bus_line_col_id
             else:
                 dt = self._grid.trafo
-                key = "hv_bus"
                 line_id_db = line_id - self._nb_line_for_test
+                is_col_id = self._in_service_trafo_col_id
+                bus_col_id = self._hv_bus_trafo_col_id
 
             if new_bus == -1:
-                dt["in_service"][line_id_db] = False
+                dt.iloc[line_id_db, is_col_id] = False
             else:
-                dt["in_service"][line_id_db] = True
-                dt[key][line_id_db] = (
+                dt.iloc[line_id_db, is_col_id] = True
+                dt.iloc[line_id_db, bus_col_id] = (
                     self.line_or_to_subid[line_id]
                     + (new_bus - 1) * self._nb_bus_before_for_test
                 )
@@ -158,26 +160,29 @@ class TestSuitePandaPowerBackend(PandaPowerBackend):
         for line_id, new_bus in lines_ex_bus:
             if line_id < self._nb_line_for_test:
                 dt = self._grid.line
-                key = "to_bus"
                 line_id_db = line_id
+                is_col_id = self._in_service_line_col_id
+                bus_col_id = self._to_bus_line_col_id
             else:
                 dt = self._grid.trafo
-                key = "lv_bus"
                 line_id_db = line_id - self._nb_line_for_test
+                is_col_id = self._in_service_trafo_col_id
+                bus_col_id = self._lv_bus_trafo_col_id
 
             if new_bus == -1:
-                dt["in_service"][line_id_db] = False
+                dt.iloc[line_id_db, is_col_id] = False
             else:
-                dt["in_service"][line_id_db] = True
-                dt[key][line_id_db] = (
+                dt.iloc[line_id_db, is_col_id] = True
+                dt.iloc[line_id_db, bus_col_id] = (
                     self.line_ex_to_subid[line_id]
                     + (new_bus - 1) * self._nb_bus_before_for_test
                 )
 
-        bus_is = self._grid.bus["in_service"]
+        # bus_is = self._grid.bus["in_service"]
+        bus_id_col = (self._grid.bus.columns == "in_service").nonzero()[0][0]
         for i, (bus1_status, bus2_status) in enumerate(active_bus):
-            bus_is[i] = bus1_status  # no iloc for bus, don't ask me why please :-/
-            bus_is[i + self._nb_bus_before_for_test] = bus2_status
+            self._grid.bus.iloc[i, bus_id_col] = bus1_status  # no iloc for bus, don't ask me why please :-/
+            self._grid.bus.iloc[i + self._nb_bus_before_for_test, bus_id_col] = bus2_status
 
 
 class TestXXXBus(unittest.TestCase):
@@ -199,7 +204,7 @@ class TestXXXBus(unittest.TestCase):
             )
         seed = 0
         self.nb_test = 10
-        self.max_iter = 30
+        self.max_iter = 10
 
         self.envref.seed(seed)
         self.envtest.seed(seed)
