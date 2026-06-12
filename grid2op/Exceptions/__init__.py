@@ -36,6 +36,7 @@ __all__ = [
     "InvalidLineStatus",
     "InvalidStorage",
     "InvalidCurtailment",
+    "InvalidAction",
     "AmbiguousAction",
     "NonFiniteElement",
     "AmbiguousActionRaiseAlert",
@@ -67,6 +68,7 @@ __all__ = [
     "SomeGeneratorBelowRampmin",
     "ImpossibleRedispatching",
     "InvalidBackendCallback",
+    "RewardException",
 ]
 
 from grid2op.Exceptions.grid2OpException import Grid2OpException
@@ -102,7 +104,8 @@ from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         IllegalRedispatching,
                                                         )
 
-from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
+from grid2op.Exceptions.ambiguousActionExceptions import (InvalidAction,
+                                                          NotEnoughGenerators,
                                                           GeneratorTurnedOffTooSoon,
                                                           GeneratorTurnedOnTooSoon,
                                                           InvalidRedispatching,
@@ -156,3 +159,6 @@ from grid2op.Exceptions.attentionBudgetExceptions import NotEnoughAttentionBudge
 from grid2op.Exceptions.agentError import AgentError
 
 from grid2op.Exceptions.simulatorExceptions import SimulatorError
+
+from grid2op.Exceptions.rewardExceptions import RewardException
+

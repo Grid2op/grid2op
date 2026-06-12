@@ -27,6 +27,9 @@ executors:
     python313:
         docker:
             - image: cimg/python:3.13
+    python314:
+        docker:
+            - image: cimg/python:3.14
 
 jobs:
     test_generic:
@@ -56,20 +59,21 @@ jobs:
                   source venv_test/bin/activate
                   pip freeze
             - run: cat /tmp/tests_run
+
             - run:
                 command: |
                   source venv_test/bin/activate
                   cd grid2op/tests/
                   export _GRID2OP_FORCE_TEST=1
+                  export COVERAGE_FILE=/tmp/coverage_shards/.coverage.shard_test_generic_$CIRCLE_NODE_INDEX
                   coverage run -m unittest -v $(cat /tmp/tests_run)
-                #   ls -lah | grep .coverage
-            # - run:
-            #     command: |
-            #       ls -lah /Grid2Op/grid2op/tests/.coverage.*
+                  ls -lah | grep .coverage
 
-            # - store_artifacts:
-            #     path: "/Grid2Op/grid2op/tests/test_Action.py"
-            #     destination: coverage_artifacts/
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
     test_agent:
         executor: grid2op-executor
         resource_class: small
@@ -82,9 +86,9 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   pip install -U pip setuptools wheel
+                   pip install -U pip setuptools wheel coverage
             - run:
-                command: |
+               command: |
                   source venv_test/bin/activate
                   pip install -e .[test]
                   pip freeze
@@ -92,8 +96,24 @@ jobs:
                command: |
                    source venv_test/bin/activate
                    export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_agent_$CIRCLE_NODE_INDEX
                    cd grid2op/tests/
-                   python -m unittest -v test_Agent test_AgentsFast test_recopowerlineperarea
+                   coverage run -m unittest -v \
+                        test_Agent \
+                        test_AgentsFast \
+                        test_recopowerlineperarea \
+                        test_Opponent \
+                        test_baseline_alert
+                   ls -lah | grep .coverage
+
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
 
     test_converter:
         executor: grid2op-executor
@@ -107,7 +127,7 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   pip install -U pip setuptools wheel
+                   pip install -U pip setuptools wheel coverage
             - run:
                 command: |
                   source venv_test/bin/activate
@@ -117,8 +137,18 @@ jobs:
                command: |
                    source venv_test/bin/activate
                    export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_converter_$CIRCLE_NODE_INDEX
                    cd grid2op/tests/
-                   python -m unittest -v test_AgentConverter test_Converter test_BackendConverter
+                   coverage run  -m unittest -v test_AgentConverter test_Converter test_BackendConverter
+
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
 
     test_runner_epdata_score:
         executor: grid2op-executor
@@ -128,11 +158,11 @@ jobs:
             - run: apt-get update -y
             - run: apt-get install -y coinor-cbc
             - run: python -m pip install virtualenv
-            - run: python -m virtualenv venv_test
+            - run: python -m virtualenv venv_test 
             - run:
                command: |
                    source venv_test/bin/activate
-                   pip install -U pip setuptools wheel
+                   pip install -U pip setuptools wheel coverage
             - run:
                 command: |
                   source venv_test/bin/activate
@@ -142,8 +172,32 @@ jobs:
                command: |
                    source venv_test/bin/activate
                    export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_runner_epdata_score_$CIRCLE_NODE_INDEX
                    cd grid2op/tests/
-                   python -m unittest -v test_EpisodeData test_runner_kwargs_backend test_Runner test_RunnerFast test_score_idf_2023_assistant test_score_idf_2023_nres test_score_idf_2023 test_score_wcci_2022 test_AlarmScore test_RewardAlertCostScore  test_RewardNewRenewableSourcesUsageScore test_utils test_CompactEpisodeData test_reset_options_runner
+                   coverage run -m unittest -v \
+                        test_EpisodeData \
+                        test_runner_kwargs_backend \
+                        test_Runner \
+                        test_RunnerFast \
+                        test_score_idf_2023_assistant \
+                        test_score_idf_2023_nres \
+                        test_score_idf_2023 \
+                        test_score_wcci_2022 \
+                        test_AlarmScore \
+                        test_RewardAlertCostScore \
+                        test_RewardNewRenewableSourcesUsageScore \
+                        test_utils \
+                        test_CompactEpisodeData \
+                        test_reset_options_runner
+
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
 
     test_env_general:
         executor: grid2op-executor
@@ -157,7 +211,7 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   pip install -U pip setuptools wheel
+                   pip install -U pip setuptools wheel coverage
             - run:
                 command: |
                   source venv_test/bin/activate
@@ -167,8 +221,32 @@ jobs:
                command: |
                    source venv_test/bin/activate
                    export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_env_general_$CIRCLE_NODE_INDEX
                    cd grid2op/tests/
-                   python -m unittest -v test_attached_envs test_attached_envs_compat test_l2rpn_idf_2023 test_MultiMix test_timeOutEnvironment test_MaskedEnvironment test_MakeEnv test_multi_steps_env test_simenv_blackout test_get_default_env_kwargs
+                   coverage run -m unittest -v \
+                        test_attached_envs \
+                        test_attached_envs_compat \
+                        test_l2rpn_idf_2023 \
+                        test_MultiMix \
+                        test_timeOutEnvironment \
+                        test_MaskedEnvironment \
+                        test_MakeEnv \
+                        test_multi_steps_env \
+                        test_simenv_blackout \
+                        test_get_default_env_kwargs \
+                        test_Environment \
+                        test_EnvironmentCpy \
+                        test_generate_classes \
+                        test_basic_env_ls
+
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
 
     test_alert_alarm:
         executor: grid2op-executor
@@ -182,7 +260,7 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   pip install -U pip setuptools wheel
+                   pip install -U pip setuptools wheel coverage
             - run:
                 command: |
                   source venv_test/bin/activate
@@ -192,8 +270,99 @@ jobs:
                command: |
                    source venv_test/bin/activate
                    export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_alert_alarm_$CIRCLE_NODE_INDEX
                    cd grid2op/tests/
-                   python -m unittest -v test_AlarmFeature test_alert_gym_compat test_alert_obs_act test_alert_trust_score test_AlertReward
+                   coverage run -m unittest -v \
+                        test_AlarmFeature \
+                        test_alert_gym_compat \
+                        test_alert_obs_act \
+                        test_alert_trust_score \
+                        test_AlertReward
+
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
+    
+    test_time_series:
+        executor: grid2op-executor
+        resource_class: small
+        steps:
+            - checkout
+            - run: apt-get update -y
+            - run: python -m pip install virtualenv
+            - run: python -m virtualenv venv_test
+            - run:
+               command: |
+                   source venv_test/bin/activate
+                   pip install -U pip setuptools wheel coverage
+            - run:
+                command: |
+                  source venv_test/bin/activate
+                  pip install -e .[test]
+                  pip freeze
+            - run:
+               command: |
+                   source venv_test/bin/activate
+                   export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_alert_alarm_$CIRCLE_NODE_INDEX
+                   cd grid2op/tests/
+                   coverage run -m unittest -v \
+                        test_ts_handlers \
+                        test_ChronicsHandler \
+                        test_env_from_episode
+
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
+
+    test_backend:
+        executor: grid2op-executor
+        resource_class: small
+        steps:
+            - checkout
+            - run: apt-get update -y
+            - run: python -m pip install virtualenv
+            - run: python -m virtualenv venv_test
+            - run:
+               command: |
+                   source venv_test/bin/activate
+                   pip install -U pip setuptools wheel coverage
+            - run:
+                command: |
+                  source venv_test/bin/activate
+                  pip install -e .[test]
+                  pip freeze
+            - run:
+               command: |
+                   source venv_test/bin/activate
+                   export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_alert_alarm_$CIRCLE_NODE_INDEX
+                   cd grid2op/tests/
+                   coverage run -m unittest -v \
+                        test_basicBackendInterface \
+                        test_action_set_orig_state \
+                        test_PandaPowerBackendDefaultFunc \
+                        test_PandaPowerBackend \
+                        test_BackendAction
+
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
     
     test_issue:
         executor: grid2op-executor
@@ -207,7 +376,7 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   pip install -U pip setuptools wheel
+                   pip install -U pip setuptools wheel coverage
             - run:
                 command: |
                   source venv_test/bin/activate
@@ -217,34 +386,72 @@ jobs:
                command: |
                    source venv_test/bin/activate
                    export _GRID2OP_FORCE_TEST=1
+                   export COVERAGE_FILE=/tmp/coverage_shards/.coverage.test_issue_$CIRCLE_NODE_INDEX
                    cd grid2op/tests/
-                   python -m unittest -v test_issue_*
+                   coverage run -m unittest -v test_issue_*
 
-    gen_coverage:
+            - persist_to_workspace:
+                root: /tmp/coverage_shards
+                paths:
+                    - .coverage.*
+
+            - store_artifacts:
+                path: /tmp/coverage_shards
+                destination: coverage_artifacts/
+
+    upload_coverage:
         executor: grid2op-executor
-        resource_class: small
         steps:
             - checkout
+            - run:
+                name: Fetch full git history for SonarScanner SCM blame
+                command: git fetch --unshallow || true
+            - attach_workspace:
+                at: /tmp/coverage_shards
             - run: python -m pip install virtualenv
-            - run: python -m virtualenv venv_test
+            - run: python -m virtualenv venv_coverage
             - run:
-               command: |
-                   source venv_test/bin/activate
-                   pip install -U pip setuptools wheel coverage
+                command: |
+                    source venv_coverage/bin/activate
+                    pip install coverage
+
             - run:
-               command: |
-                   source venv_test/bin/activate
-                   cd grid2op/tests/
-                   coverage combine ../../coverage_artifacts/ --keep
-                   coverage report -m -i
-                   coverage html -i
-                   coverage xml -i
+                name: Debug env vars
+                command: |
+                    echo "CODACY_PROJECT_TOKEN is set: $([ -n "$CODACY_PROJECT_TOKEN" ] && echo YES || echo NO)"
+
+            - run:
+                name: Combine and convert coverage
+                command: |
+                    source venv_coverage/bin/activate
+                    cd /tmp/coverage_shards
+                    coverage combine --keep
+                    coverage xml --ignore-errors -o /tmp/coverage.xml
+
             - store_artifacts:
-                path: grid2op/tests/htmlcov
-                destination: htmlcov
-            - store_artifacts:
-                path: grid2op/tests/coverage.xml
-                destination: coverage.xml
+                path: /tmp/coverage.xml
+                destination: coverage_artifacts/
+                
+            - run:
+                name: Upload to Codacy
+                command: |
+                    bash <(curl -Ls https://coverage.codacy.com/get.sh) report \
+                        -r /tmp/coverage.xml \
+                        --project-token "$CODACY_PROJECT_TOKEN"
+            
+            - run:
+                name: Upload to SonarQube Cloud
+                command: |
+                    curl -Ls https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-8.1.0.6389-linux-x64.zip \
+                        -o sonar-scanner.zip
+                    unzip -q sonar-scanner.zip
+                    ./sonar-scanner-8.1.0.6389-linux-x64/bin/sonar-scanner \
+                        -Dsonar.token="$SONAR_TOKEN" \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.organization=grid2op \
+                        -Dsonar.projectKey=Grid2op_grid2op \
+                        -Dsonar.scm.disabled=true \
+                        -Dsonar.python.coverage.reportPaths=/tmp/coverage.xml
             
     install36:
         executor: python36
@@ -308,7 +515,7 @@ jobs:
                    export _GRID2OP_FORCE_TEST=1
                    grid2op.testinstall
 
-    install38:               
+    install38:           
         executor: python38
         resource_class: small
         steps:
@@ -354,7 +561,7 @@ jobs:
                    cd /tmp
                    grid2op.testinstall
 
-    legacy_lightsim_old_pp:               
+    legacy_lightsim_old_pp:            
         executor: python38  # needs to be 38: whl of lightsim were not released for 3.10 at the time
         resource_class: small
         steps:
@@ -381,7 +588,7 @@ jobs:
                    export _GRID2OP_FORCE_TEST=1
                    python -m unittest grid2op/tests/test_basic_env_ls.py
 
-    legacy_lightsim:               
+    legacy_lightsim:            
         executor: python38  # needs to be 38: whl of lightsim were not released for 3.10 at the time
         resource_class: small
         steps:
@@ -408,7 +615,7 @@ jobs:
                    export _GRID2OP_FORCE_TEST=1
                    python -m unittest grid2op/tests/test_basic_env_ls.py
 
-    test_chronix2grid:               
+    test_chronix2grid:            
         executor: python310
         resource_class: small
         steps:
@@ -524,6 +731,7 @@ jobs:
                    export _GRID2OP_FORCE_TEST=1
                    cd /tmp
                    grid2op.testinstall
+    
     install312:
         executor: python312
         resource_class: small
@@ -557,6 +765,7 @@ jobs:
                    export _GRID2OP_FORCE_TEST=1
                    cd /tmp
                    grid2op.testinstall
+    
     install313:
         executor: python313
         resource_class: small
@@ -591,6 +800,40 @@ jobs:
                    cd /tmp
                    grid2op.testinstall
 
+    install314:
+        executor: python314
+        resource_class: small
+        steps:
+            - checkout
+            - run: python -m pip install virtualenv
+            - run: python -m virtualenv venv_test
+            - run:
+               command: |
+                   source venv_test/bin/activate
+                   python -m pip install -U pip setuptools wheel
+            - run:
+               command: |  # oldest numpy version >= 2 supported by python 3.14
+                   source venv_test/bin/activate
+                   python -m pip install -U "numpy>=2.3,<2.4" .
+                   pip freeze
+            - run:
+                command: |
+                   source venv_test/bin/activate
+                   export _GRID2OP_FORCE_TEST=1
+                   cd /tmp
+                   grid2op.testinstall
+            - run:
+               command: |  # most recent numpy version
+                   source venv_test/bin/activate
+                   python -m pip install -U numpy .
+                   pip freeze
+            - run:
+                command: |
+                   source venv_test/bin/activate
+                   export _GRID2OP_FORCE_TEST=1
+                   cd /tmp
+                   grid2op.testinstall
+
 workflows:
     version: 2.1
     test:
@@ -602,10 +845,22 @@ workflows:
           - test_env_general
           - test_alert_alarm
           - test_issue
+          - test_time_series
           - legacy_lightsim_old_pp
           - legacy_lightsim
           - test_chronix2grid
-
+          - upload_coverage:
+                context:
+                    - coverage_codacy
+                    - coverage_sonarqube
+                requires:
+                    - test_generic
+                    - test_agent
+                    - test_converter
+                    - test_runner_epdata_score
+                    - test_env_general
+                    - test_alert_alarm
+                    - test_issue
     install:
         jobs:
           - install38
@@ -614,19 +869,4 @@ workflows:
           - install311
           - install312
           - install313
-
-    # gather_test_report:
-    #     requires:
-    #         - test
-    #     jobs:
-    #         - gen_coverage
-
-    # send_tests_report:
-    #     requires:
-    #         - gather_test_report
-    #     orbs:
-    #         coverage-reporter: codacy/coverage-reporter@14.1.0
-    #     jobs:
-    #         coverage-reporter/send_report:
-    #             coverage-reports: coverage.xml
-    #             project-token: $CODACY_PROJECT_TOKEN
+        #   - install314

@@ -1,0 +1,98 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"          # triggers on v1.12.3, v2.0.0, etc.
+
+# Least privilege by default: every job gets read-only contents and nothing
+# else. The publish job re-declares the extra scopes it actually needs.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # 6.2.0
+        with:
+          python-version: "3.12"
+      - name: Install build
+        run: pip install build
+      - name: Build sdist and wheel
+        run: python -m build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # 7.0.1
+        with:
+          name: dist
+          path: dist/
+
+  sbom:
+    name: Generate SBOM
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # 6.2.0
+        with:
+          python-version: "3.12"
+      - name: Download build artifacts
+        uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b  # 8.0.1
+        with:
+          name: dist
+          path: dist/
+      - name: Generate SBOM (Python dependencies)
+        run: |
+          # Install the freshly built wheel into an ISOLATED venv so the SBOM
+          # captures only the package's own resolved dependencies, and not the
+          # SBOM tool itself or anything else present on the runner.
+          python -m venv .sbom-venv
+          .sbom-venv/bin/pip install --upgrade pip
+          .sbom-venv/bin/pip install dist/*.whl
+
+          # Install cyclonedx-bom in the runner's default environment and point
+          # it at the isolated venv's interpreter. Because the tool lives in a
+          # different environment than the one being scanned, it never appears
+          # as a component in the generated bill of materials.
+          pip install cyclonedx-bom
+
+          TAG="${GITHUB_REF_NAME}"        # e.g. v1.12.3
+          PKG="${GITHUB_REPOSITORY##*/}"  # e.g. grid2op
+          cyclonedx-py environment .sbom-venv/bin/python \
+            --output-format json \
+            --outfile "${PKG}-${TAG}-sbom.cdx.json"
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # 7.0.1
+        with:
+          name: sbom
+          path: "*-sbom.cdx.json"
+
+  publish:
+    name: Publish to PyPI
+    needs: [build, sbom]
+    runs-on: ubuntu-latest
+    environment: pypi   # must match the environment name from the Trusted Publisher config
+    permissions:
+      contents: write   # needed to attach assets to the GitHub Release
+      id-token: write   # needed for OIDC trusted publishing + Sigstore
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b  # 8.0.1
+        with:
+          name: dist
+          path: dist/
+      - name: Download SBOM
+        uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b  # 8.0.1
+        with:
+          name: sbom
+          path: sbom/
+      - name: Publish to PyPI (with Sigstore attestations)
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+        with:
+          attestations: true    # this is what triggers Sigstore signing
+      - name: Attach SBOM to GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+        with:
+          files: sbom/*-sbom.cdx.json
