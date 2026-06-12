@@ -100,7 +100,7 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
-[1.12.5] - 2026-05-xx
+[1.12.5] - 2026-06-12
 -------------------------
 - [FIXED] license issues in the documentation
 - [FIXED] remove the "assert" outside of the tests
