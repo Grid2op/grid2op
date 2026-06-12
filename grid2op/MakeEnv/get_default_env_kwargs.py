@@ -567,7 +567,6 @@ def get_default_env_kwargs(
         build_kwargs=data_feeding_kwargs,
         msg_error=ERR_MSG_KWARGS["chronics_handler"],
     )
-
     ### other rewards
     other_rewards_cfg = {}
     if "other_rewards" in config_data and config_data["other_rewards"] is not None:

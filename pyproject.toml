@@ -117,12 +117,16 @@ chronix2grid = [
     "ChroniX2Grid>=1.2.0.post1",
     "pypsa<0.25"  # otherwise does not work (need fix in chronix2grid)
     ]
+dev = [
+    "pre-commit"
+]
 
 [project.scripts]
 "grid2op.main" = "grid2op.command_line:main"
 "grid2op.download" = "grid2op.command_line:download"
 "grid2op.replay" = "grid2op.command_line:replay"
 "grid2op.testinstall" = "grid2op.command_line:testinstall"
+"grid2op.check_release" = "grid2op.command_line:check_release"
 
 [tool.setuptools]
 include-package-data = false
@@ -131,6 +135,7 @@ include-package-data = false
 grid2op = [
     "data/**/*",
     "data/**/.multimix",
+    "data/release_digest.json"
 ]
 
 [tool.setuptools.exclude-package-data]

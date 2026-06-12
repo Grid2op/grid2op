@@ -19,7 +19,7 @@ from grid2op.PlotGrid.PlotUtil import PlotUtil as pltu
 from grid2op.dtypes import dt_float, dt_int
 
 
-class BasePlot(ABC):
+class BasePlot(ABC):  # pragma: no cover
     """
     INTERNAL
 

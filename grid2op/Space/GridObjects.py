@@ -25,6 +25,10 @@ import sys
 
 from packaging import version
 from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
     
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
@@ -2977,7 +2981,7 @@ class GridObjects:
         return cls_res
     
     @classmethod
-    def init_grid(cls, gridobj, force=False, extra_name=None, force_module=None, _local_dir_cls=None):
+    def init_grid(cls, gridobj, force=False, extra_name=None, force_module=None, _local_dir_cls=None) -> Type[Self]:
         """
         INTERNAL
 

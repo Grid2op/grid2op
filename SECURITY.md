@@ -28,3 +28,8 @@ relase is 1.11.1 (major release 1, minor release 11, patch release 1) then versi
 For critical, important and moderate patches will be applied for the last patch release of grid2op.
 
 Security patches of all level of severity will be implemented in the current "release train", available in the next release.
+
+## Release integrity
+
+See [docs/release-verification.md](./docs/release-verification.rst) for 
+instructions on verifying the authenticity and integrity of release assets.

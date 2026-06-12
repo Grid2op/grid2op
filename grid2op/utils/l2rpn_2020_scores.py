@@ -383,20 +383,35 @@ class ScoreL2RPN2020(object):
         all_scores = []
         ts_survived = []
         total_ts = []
+        path_save_real = os.path.realpath(path_save)
+        # Build a map from name → absolute path using the real filesystem so
+        # that the tainted scenario_name from the metadata JSON is never used
+        # directly as a path component (satisfies CodeQL py/path-injection).
+        available_ep_dirs = {
+            entry: os.path.join(path_save_real, entry)
+            for entry in os.listdir(path_save_real)
+            if os.path.isdir(os.path.join(path_save_real, entry))
+        }
         for ep_id in range(self.nb_scenario):
             this_ep_nm = meta_data_dn[f"{ep_id}"]["scenario_name"]
             if re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, this_ep_nm) is None:
                 raise RuntimeError(
                     f'The grid2op statistics name should match the regex "{EpisodeStatistics.REGEX_SPLIT}", it is currently {this_ep_nm}.'
                 )
+            if this_ep_nm not in available_ep_dirs:
+                raise RuntimeError(
+                    f"Episode directory for scenario '{this_ep_nm}' was not found under {path_save}."
+                )
+            # ep_dir comes from os.listdir (filesystem), not from the tainted metadata value.
+            ep_dir = available_ep_dirs[this_ep_nm]
             with open(
-                os.path.join(path_save, this_ep_nm, EpisodeData.META_FILE),
+                os.path.join(ep_dir, EpisodeData.META_FILE),
                 "r",
                 encoding="utf-8",
             ) as f:
                 this_epi_meta = json.load(f)
             with open(
-                os.path.join(path_save, this_ep_nm, EpisodeData.OTHER_REWARDS_FILE),
+                os.path.join(ep_dir, EpisodeData.OTHER_REWARDS_FILE),
                 "r",
                 encoding="utf-8",
             ) as f:

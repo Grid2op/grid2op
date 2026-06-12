@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: 68e8b45440415753fff70a312ece8da92ba85b4a  # v1.5.0   # latest stable on 2026-05-20
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+        stages: [pre-commit]
+
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      - id: check-mailmap
+        stages: [pre-commit]
+  
+  - repo: local
+    hooks:
+      - id: dco-signoff
+        name: DCO Signed-off-by check
+        language: python
+        entry: python scripts/check_dco_msg.py
+        stages: [commit-msg]

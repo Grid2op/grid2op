@@ -9,8 +9,10 @@
 import copy
 import json
 import re
+from typing import Type
 import warnings
 import unittest
+import os
 import numpy as np
 from abc import ABC, abstractmethod
 
@@ -18,8 +20,29 @@ import grid2op
 from grid2op.tests.helper_path_test import *
 
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Exceptions import *
-from grid2op.Action import *
+from grid2op.Exceptions import (
+    Grid2OpException,
+    InvalidLineStatus,
+    InvalidBusStatus,
+    NonFiniteElement,
+    AmbiguousAction,
+)
+from grid2op.Action import (
+    ActionSpace,
+    TopologySetAndDispatchAction,
+    TopologySetAction,
+    TopologyChangeAndDispatchAction,
+    TopologyChangeAction,
+    BaseAction,
+    DispatchAction,
+    DontAct,
+    PowerlineChangeAndDispatchAction,
+    PowerlineChangeAction,
+    PowerlineSetAction,
+    PowerlineSetAndDispatchAction,
+    TopologyAndDispatchAction,
+    TopologyAction,
+)
 from grid2op.Rules import RulesChecker, DefaultRules
 from grid2op.Space import GridObjects
 from grid2op.Space.space_utils import save_to_dict
@@ -27,9 +50,11 @@ from grid2op.Space.space_utils import save_to_dict
 # TODO check that if i set the element of a powerline to -1, then it's working as intended (disconnect both ends)
 
 
-def _get_action_grid_class():
+def _get_action_grid_class(nm_to_add: str=""):
     GridObjects._clear_class_attribute()
-    GridObjects.env_name = "test_action_env"
+    if nm_to_add == "":
+        nm_to_add = os.path.splitext(os.path.split(__file__)[-1])[0]
+    GridObjects.env_name = f"test_act_{nm_to_add}"
     GridObjects.n_busbar_per_sub = 2
     GridObjects.detachment_is_allowed = False
     GridObjects.n_gen = 5
@@ -162,7 +187,7 @@ def _get_action_grid_class():
             "sub_13",
         ],
         "name_storage": ["storage_0", "storage_1"],
-        "env_name": "test_action_env",
+        "env_name": "test_act_test_Action",
         "sub_info": [3, 7, 5, 6, 5, 6, 3, 2, 5, 3, 3, 3, 4, 3],
         "load_to_subid": [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13],
         "gen_to_subid": [0, 1, 2, 5, 7],
@@ -347,7 +372,7 @@ def _get_action_grid_class():
 
 class TestActionBase(ABC):
     @abstractmethod
-    def _action_setup(self):
+    def _action_setup(self) -> Type[BaseAction]:
         pass
 
     def _skipMissingKey(self, key):
@@ -421,10 +446,14 @@ class TestActionBase(ABC):
             act._assign_attr_from_name(
                 "_set_line_status", np.zeros(self.helper_action.n_line)
             )
+    
+    def test_reset_is_do_nothing(self):
+        act = self.helper_action.sample()
+        act.reset()
 
     def test_eq_none(self):
         act = self.helper_action.sample()
-        assert not (act == None)
+        assert act is not None
 
     def test_eq_diff_grid(self):
         act = self.helper_action.sample()

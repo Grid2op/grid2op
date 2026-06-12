@@ -123,8 +123,13 @@ celerybeat-schedule
 # pipenv
 Pipfile.lock
 
-# dotenv
+# dotenv, secrets etc.
 .env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
 
 # virtualenv
 venv/
@@ -437,6 +442,12 @@ saved_setup.cfg
 saved_setup.py
 requirements_pp2.txt
 requirements_pp3.txt
+Grid2Op-*.tar.gz
+*-py3-none-any.whl
+grid2op/data/**/__init__.py
+grid2op/tests/aux_test_baseAction_extended.py
+release_digests.json
+
 
 # profiling files
 **.prof

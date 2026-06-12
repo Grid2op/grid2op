@@ -19,7 +19,7 @@ from grid2op.PlotGrid.BasePlot import BasePlot
 from grid2op.PlotGrid.PlotUtil import PlotUtil as pltu
 
 
-class PlotPlotly(BasePlot):
+class PlotPlotly(BasePlot):  # pragma: no cover
     """
 
     This class uses the python library "plotly" to draw the powergrid. Plotly has the ability to generate
