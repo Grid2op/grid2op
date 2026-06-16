@@ -130,6 +130,7 @@ class Environment(BaseEnv):
         _allow_loaded_backend=False,
         _local_dir_cls=None,  # only set at the first call to `make(...)` after should be false
         _overload_name_multimix=None,
+        redispatch_solver=None,
     ):
         if other_rewards is None:
             other_rewards = {}
@@ -179,6 +180,7 @@ class Environment(BaseEnv):
             _is_test=_is_test,  # is this created with "test=True" # TODO not implemented !!
             _local_dir_cls=_local_dir_cls,
             _read_from_local_dir=_read_from_local_dir,
+            redispatch_solver=redispatch_solver,
         )
         
         if name == "unknown":

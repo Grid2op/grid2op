@@ -113,6 +113,9 @@ Native multi agents support:
 - [IMPROVED] add a SECRETS_MANAGEMENTS.md file to explicitely detail how secret should be
   handled by commiters
 - [IMPROVED] tests splitting to reduce the duration on circle ci
+- [IMPROVED] handling of redispatching as a separate module now 
+  (grid2op/Environment/dispatch)
+- [IMPROVED] remove the use of "assert" block in the main codebase
 
 [1.12.4] - 2026-04-28
 ----------------------
