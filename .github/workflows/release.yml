@@ -35,6 +35,8 @@ jobs:
     name: Generate SBOM
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      actions: read     # needed to read artifact from above
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # 6.2.0
@@ -45,8 +47,6 @@ jobs:
         with:
           name: dist
           path: dist/
-          run-id: ${{ github.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate SBOM (Python dependencies)
         run: |
           # Install the freshly built wheel into an ISOLATED venv so the SBOM
@@ -81,14 +81,13 @@ jobs:
     permissions:
       contents: write   # needed to attach assets to the GitHub Release
       id-token: write   # needed for OIDC trusted publishing + Sigstore
+      actions: read     # needed to read artifact from above
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b  # 8.0.1
         with:
           name: dist
           path: dist/
-          run-id: ${{ github.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Download SBOM
         uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b  # 8.0.1
         with:
