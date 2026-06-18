@@ -64,7 +64,7 @@ jobs:
           PKG="${GITHUB_REPOSITORY##*/}"  # e.g. grid2op
           cyclonedx-py environment .sbom-venv/bin/python \
             --output-format json \
-            --outfile "${PKG}-${TAG}-sbom.cdx.json"
+            --output-file "${PKG}-${TAG}-sbom.cdx.json"
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
