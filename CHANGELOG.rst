@@ -3,6 +3,7 @@ Work "in progress"
 
 General grid2op improvments:
 
+- fix docstring in MultiMixEnv: "step" should be "reset" (#734)
 - ill formed docstring in the BaseAction module
 - remove pandapower dependency (have a way to install grid2op without pandapower)
 - better logging
