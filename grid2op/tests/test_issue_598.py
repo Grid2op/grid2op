@@ -38,6 +38,7 @@ class Issue598Tester(unittest.TestCase):
         self.env.change_forecast_parameters(params)
         self.env.reset(seed=0, options={"time serie id": 0})
         self.dn = self.env.action_space()
+        self.tol = 5e-5  # precision for float32
         return super().setUp()
     
     def test_issue_598_dn_same_res(self):
@@ -45,7 +46,7 @@ class Issue598Tester(unittest.TestCase):
         obs, *_ = self.env.step(self.dn)
         obs_simulate, *_ = obs.simulate(self.dn, time_step=0)
         #no redispatch action yet, the productions are the same after simulation on the same state
-        assert (np.abs(obs_simulate.prod_p - obs.prod_p) <= 1e-6).all()
+        assert (np.abs(obs_simulate.prod_p - obs.prod_p) <= self.tol).all()
         
     def test_issue_598_dn_redisp(self, redisp_amout=2., storage_amount=None):
         """one small redispatch action before simulation and then a single simulation of do nothing
@@ -65,10 +66,10 @@ class Issue598Tester(unittest.TestCase):
         print("here here here")
         obs_simulate, *_ = obs.simulate(self.dn, time_step=0)
         # obs.gen_p.sum() no redisp: 262.86395
-        assert (np.abs(obs_simulate.prod_p - obs.prod_p) <= 1e-6).all(), f"{obs_simulate.prod_p} vs {obs.prod_p}"
-        assert (np.abs(obs_simulate.storage_charge - obs.storage_charge) <= 1e-6).all()
-        assert (np.abs(obs_simulate.storage_power - obs.storage_power) <= 1e-6).all()
-        assert (np.abs(obs_simulate.storage_power_target - obs.storage_power_target) <= 1e-6).all()
+        assert (np.abs(obs_simulate.prod_p - obs.prod_p) <= self.tol).all(), f"{obs_simulate.prod_p} vs {obs.prod_p}"
+        assert (np.abs(obs_simulate.storage_charge - obs.storage_charge) <= self.tol).all()
+        assert (np.abs(obs_simulate.storage_power - obs.storage_power) <= self.tol).all()
+        assert (np.abs(obs_simulate.storage_power_target - obs.storage_power_target) <= self.tol).all()
 
     def test_simulate_ok_current_step_redisp_large(self):
         self.skipTest("Does not pass: redisp is not 'limited' by the simulate in this case")
@@ -92,10 +93,10 @@ class Issue598Tester(unittest.TestCase):
         for time_step in [1, 2, 3, 4, 5, 6]:
             obs_simulate, *_ = next_obs.simulate(self.dn, time_step=1)
             next_obs, *_ = self.env.step(self.dn)
-            assert (np.abs(obs_simulate.prod_p - next_obs.prod_p) <= 1e-6).all(), f"for h={time_step}: {obs_simulate.prod_p} vs {next_obs.prod_p}"
-            assert (np.abs(obs_simulate.storage_charge - next_obs.storage_charge) <= 1e-6).all()
-            assert (np.abs(obs_simulate.storage_power - next_obs.storage_power) <= 1e-6).all()
-            assert (np.abs(obs_simulate.storage_power_target - next_obs.storage_power_target) <= 1e-6).all()
+            assert (np.abs(obs_simulate.prod_p - next_obs.prod_p) <= self.tol).all(), f"for h={time_step}: {obs_simulate.prod_p} vs {next_obs.prod_p}"
+            assert (np.abs(obs_simulate.storage_charge - next_obs.storage_charge) <= self.tol).all()
+            assert (np.abs(obs_simulate.storage_power - next_obs.storage_power) <= self.tol).all()
+            assert (np.abs(obs_simulate.storage_power_target - next_obs.storage_power_target) <= self.tol).all()
         
     def test_simulate_step_redisp_before_from_init(self, redisp_amout=2., storage_amount=None):
         """one small redispatch and then lots of simulation of do nothing (increasing the forecast horizon)
@@ -110,10 +111,10 @@ class Issue598Tester(unittest.TestCase):
         for time_step in [1, 2, 3, 4, 5, 6]:
             obs_simulate, *_ = obs.simulate(self.dn, time_step=time_step)
             next_obs, *_ = self.env.step(self.dn)
-            assert (np.abs(obs_simulate.prod_p - next_obs.prod_p) <= 1e-6).all(), f"for h={time_step}: {obs_simulate.prod_p} vs {next_obs.prod_p}"
-            assert (np.abs(obs_simulate.storage_charge - next_obs.storage_charge) <= 1e-6).all()
-            assert (np.abs(obs_simulate.storage_power - next_obs.storage_power) <= 1e-6).all()
-            assert (np.abs(obs_simulate.storage_power_target - next_obs.storage_power_target) <= 1e-6).all()
+            assert (np.abs(obs_simulate.prod_p - next_obs.prod_p) <= self.tol).all(), f"for h={time_step}: {obs_simulate.prod_p} vs {next_obs.prod_p}"
+            assert (np.abs(obs_simulate.storage_charge - next_obs.storage_charge) <= self.tol).all()
+            assert (np.abs(obs_simulate.storage_power - next_obs.storage_power) <= self.tol).all()
+            assert (np.abs(obs_simulate.storage_power_target - next_obs.storage_power_target) <= self.tol).all()
                         
     def test_simulate_step_redisp_before_chain(self, redisp_amout=2., storage_amount=None):
         """one small redispatch and then lots of simulation of do nothing (chaining simulate on the forecasts)
@@ -128,10 +129,10 @@ class Issue598Tester(unittest.TestCase):
         for time_step in [1, 2, 3, 4, 5, 6]:
             obs_simulate, *_ = obs_simulate.simulate(self.dn, time_step=1)
             next_obs, *_ = self.env.step(self.dn)
-            assert (np.abs(obs_simulate.prod_p - next_obs.prod_p) <= 1e-6).all(), f"for h={time_step}: {obs_simulate.prod_p} vs {next_obs.prod_p}"
-            assert (np.abs(obs_simulate.storage_charge - next_obs.storage_charge) <= 1e-6).all()
-            assert (np.abs(obs_simulate.storage_power - next_obs.storage_power) <= 1e-6).all()
-            assert (np.abs(obs_simulate.storage_power_target - next_obs.storage_power_target) <= 1e-6).all()
+            assert (np.abs(obs_simulate.prod_p - next_obs.prod_p) <= self.tol).all(), f"for h={time_step}: {obs_simulate.prod_p} vs {next_obs.prod_p}"
+            assert (np.abs(obs_simulate.storage_charge - next_obs.storage_charge) <= self.tol).all()
+            assert (np.abs(obs_simulate.storage_power - next_obs.storage_power) <= self.tol).all()
+            assert (np.abs(obs_simulate.storage_power_target - next_obs.storage_power_target) <= self.tol).all()
                         
     def test_simulate_step_redisp_before_large(self):
         """one large redispatch before simulation and then lots of simulation of do nothing"""

@@ -9,10 +9,10 @@
 import copy
 import warnings
 import numpy as np
-from typing import Literal, Dict, Tuple, Any, Optional
+from typing import Literal, Dict, Tuple, Optional
 
 from grid2op.Action import ActionSpace
-from grid2op.dtypes import dt_int, dt_bool, dt_float
+from grid2op.dtypes import dt_bool, dt_float
 from grid2op.Exceptions import Grid2OpException
 
 from grid2op.gym_compat.utils import (ALL_ATTR,
@@ -367,7 +367,13 @@ class __AuxMultiDiscreteActSpace:
         """
         Used for "one_sub_set" and "one_sub_change"
         """
-        orig_act += self._sub_modifiers[attr_nm][int(vect)]
+        id_ = vect.ravel()
+        if len(id_) > 1:
+            raise Grid2OpException(f"dim should be 1, found {vect.shape}")
+        if len(id_) == 0:
+            raise Grid2OpException("dim should be 1, found 0")
+        id_ = id_[0]
+        orig_act += self._sub_modifiers[attr_nm][id_]
 
     def _get_info(self):
         nvec = None
@@ -527,7 +533,6 @@ class __AuxMultiDiscreteActSpace:
         -------
 
         """
-        # TODO code that !
         vect = 1 * gym_act_this
         if type_ == type(self).ATTR_NEEDBUILD:
             funct(res, attr_nm, vect)

@@ -42,9 +42,11 @@ class L2RPNSandBoxScore(BaseReward):
         self.alpha_loss = dt_float(alpha_loss)
         self.alpha_storage = dt_float(alpha_storage)
         self.alpha_curtailment = dt_float(alpha_curtailment)
+        self.env_dt_over_3600  = None
 
     def initialize(self, env):
         # TODO compute reward max! 
+        self.env_dt_over_3600 = dt_float(env.delta_time_seconds / 3600.0)
         return super().initialize(env)
     
     def _get_load_p(self, env):
@@ -56,7 +58,7 @@ class L2RPNSandBoxScore(BaseReward):
         return gen_p
     
     def _get_losses(self, env, gen_p, load_p):
-        return (gen_p.sum(dtype=dt_float) - load_p.sum(dtype=dt_float)) * env.delta_time_seconds / 3600.0
+        return (gen_p.sum(dtype=dt_float) - load_p.sum(dtype=dt_float)) * self.env_dt_over_3600
     
     def _get_marginal_cost(self, env):
         gen_activeprod_t = env._gen_activeprod_t
@@ -67,14 +69,14 @@ class L2RPNSandBoxScore(BaseReward):
     def _get_redisp_cost(self, env, p_t):
         actual_dispatch = env._actual_dispatch
         c_redispatching = (
-            np.abs(actual_dispatch).sum() * p_t * env.delta_time_seconds / 3600.0
+            np.abs(actual_dispatch).sum() * p_t * self.env_dt_over_3600
         )
         return c_redispatching
     
     def _get_curtail_cost(self, env, p_t):
         curtailment_mw = -env._sum_curtailment_mw  # curtailment is always negative in the env 
         c_curtailment = (
-            curtailment_mw * p_t * env.delta_time_seconds / 3600.0
+            curtailment_mw * p_t * self.env_dt_over_3600
         )
         return c_curtailment
 
@@ -86,7 +88,7 @@ class L2RPNSandBoxScore(BaseReward):
         return c_loss
         
     def _get_storage_cost(self, env, p_t):
-        c_storage = np.abs(env._storage_power).sum() * p_t * env.delta_time_seconds / 3600.0
+        c_storage = np.abs(env._storage_power).sum() * p_t * self.env_dt_over_3600
         return c_storage
     
     def __call__(self, action, env, has_error, is_done, is_illegal, is_ambiguous):

@@ -100,6 +100,114 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.5] - 2026-06-12
+-------------------------
+- [FIXED] license issues in the documentation
+- [FIXED] remove the "assert" outside of the tests
+- [FIXED] some security quality issue spotted by codeQL (I/O function call with non totally checked user input)
+- [FIXED] license issues in the documentation
+- [FIXED] remove the "assert" outside of the tests
+- [ADDED] automatic release on pypi
+- [IMPROVED] clarifying the CONTRIBUTING.md document
+- [IMPROVED] added pre commit hooks to detect potential secret push on github
+- [IMPROVED] add a SECRETS_MANAGEMENTS.md file to explicitely detail how secret should be
+  handled by commiters
+- [IMPROVED] tests splitting to reduce the duration on circle ci
+
+[1.12.4] - 2026-04-28
+----------------------
+- [BREAKING] the behaviour of grid2op environment when ENV_DOES_REDISPATCHING
+  flag is turned on is changed and is now exactly the one 
+  described in the doc (before it completly skipped the redispathcing / curtailment 
+  storage)
+- [FIXED] copy on write issues in PandaPowerBackend
+- [FIXED] a bug causing https://github.com/Grid2op/lightsim2grid/issues/128
+- [FIXED] some warnings in the docstrings (escaped character)
+- [FIXED] some issues spotted by sonarcloud (especially attribute names)
+- [FIXED] doc about the ENV_DOES_REDISPATCHING parameters. see issue 
+  https://github.com/grid2op/grid2op/issues/752 
+- [ADDED] some tests that modification of load_p (for one load) only change this load
+  (same for load_q and gen_v)
+- [IMPROVED] security in the way episode statistics are saved (to prevent malicious 
+  tempering with path)
+- [IMPROVED] use df.to_numpy() instead of df.values when df is a pandas dataframe
+- [IMPROVED] grid2op parameters now uses "slots" to avoid setting incorrect values
+  not used by grid2op.
+
+[1.12.3] - 2026-02-04
+-----------------------
+- [FIXED] the warnings when building the documentation.
+- [FIXED] the deprecation warnings when importing grid2op 
+  with recent python versions (due to presence of math equation 
+  in some docstring)
+- [FIXED] issues when loading a grid with disconnected elements: grid2op
+  did not know on which bus to reconnect them when only the "reconnect" bus was given.
+- [FIXED] an issue leading to wrong setpoint values for shunt_p and shunt_q in the previous
+  stored state (EnvPreviousState)
+- [FIXED] a wrong type hints in `_aux_check_finite_float` of Backend (in Backend.py)
+- [ADDED] a test (in the AAA test) to assess that the backend._sh_vnkv is properly set if the shunts are
+  handled by the backend.
+- [IMPROVED] code for AAA backend tests (avoid equality check for float)
+- [IMPROVED] doc when loading grid with disconnected elements
+
+[1.12.2] - 2025-11-18
+----------------------
+- [FIXED] an issue preventing to change the way
+  the voltages are set
+- [FIXED] a test when using gymnasium>= 1.2.1 (AsynchVectEnv)
+- [ADDED] a convenience class to allow agent to override
+  voltage setpoint from provided time seies (`VCFromFileAgentOverrides`)
+
+[1.12.1] - 2025-08-28
+----------------------
+- [BREAKING] (small impact) action "property" `shunt_p`, `shunt_q` and `shunt_bus`
+  are now named `_shunt_p`, `_shunt_q` and `_shunt_bus`.
+- [BREAKING] (small impact): new convention for `env._gen_uptime` and 
+  `env._gen_downtime`: if a generator `gen_id` is disconnected, then 
+  `env._gen_uptime[gen_id] = -1` and if it is connected, then 
+  `env._gen_downtime[gen_id] = -1`
+- [BREAKING] (small impact): new convention for `env._gen_uptime` and 
+  `env._gen_downtime`: they are 0 (and not 1) at the initial observation
+  (`env._gen_uptime` is 0 after the env.reset for connected generator and
+  still -1 - see point above- for disconnected ones)
+- [FIXED] when using the default action converter from gym_compat module,
+  it only generates actions that can be performed by the user (authorized by 
+  the rules and the action class)
+- [FIXED] `env._gen_uptime` and `env._gen_downtime` are now properly updated
+  after a generator has been detached from the grid.
+- [ADDED] the possibility to act on the backend directly from the action
+  with the "act."
+- [ADDED] set `pandas<3` in the dependencies, to make sure PandapowerBackend
+  still work (ChainedAssignmentError still occur)
+- [IMPROVED] some pandas `ChainedAssignmentError` warning in pandapower backend
+  (more work is required in this direction)
+- [IMPROVED] consistency between AmbiguousAction and IllegalAction exceptions:
+  when an action cannot be built, it is ambiguous now and not illegal.
+- [IMPROVED] cleaner installation, relying only on "pyproject.toml"
+- [IMPROVED] documentation of "how to create a new grid2op observation"
+  having different attributes.
+- [IMPROVED] documentation of the "action" class 
+- [IMPROVED] computation speed, especially in cases of "do nothing"
+- [IMPROVED] if the same action is used multiple times, the "is_ambiguous()"
+  method will be computed only once (results will be cached).
+- [IMPROVED] computation times at various places (*eg* by avoiding unnecessary copies)
+
+[1.12.0] - 2025-07-24
+--------------------------
+- [BREAKING] the `info` returned argument of `env.step(...)` function
+  does not have the unclear `is_redispatching_illegal` key. This key has been
+  replaced (without any change to its signification) with `failed_redispatching`
+- [FIXED] issue 713
+- [FIXED] pandapower 3 compatibility
+- [ADDED] compatibility with numpy 2, scipy >= 1.14 and python 3.13
+- [ADDED] some examples showing how grid2op can be use to solve some specific 
+  kind of problem (related to N-1 safety and phase shift transformer).
+- [IMPROVED] clarity of the `failed_redispatching` key of the `info` returned value
+  of the `env.step` function (previously called `is_redispatching_illegal` which 
+  was not clear)
+- [IMPROVED] way to load back class stored in json format
+- [IMPROVED] the way the Observation class can be overriden
+
 [1.11.0] - 2025-04-14
 -----------------------
 - [BREAKING] Change for `FromMultiEpisodeData` that disables the caching by default
@@ -1111,8 +1219,8 @@ Native multi agents support:
 - [ADDED]: a new kind of opponent that is able to attack at "more random" times with "more random" duration.
   See the `GeometricOpponent`.
 - [IMPROVED]: on windows at least, grid2op does not work with gym < 0.17.2 Checks are performed in order to make sure
-  the installed open ai gym package meets this requirement (see issue
-  `Issue#185 <https://github.com/Grid2Op/grid2op/issues/185>`_ )
+  the installed open ai gym package meets this requirement 
+  (see issue `Issue#185 <https://github.com/Grid2Op/grid2op/issues/185>`_ )
 - [IMPROVED] the seed of openAI gym for composed action space (see issue `https://github.com/openai/gym/issues/2166`):
   in waiting for an official fix, grid2op will use the solution proposed there
   https://github.com/openai/gym/issues/2166#issuecomment-803984619

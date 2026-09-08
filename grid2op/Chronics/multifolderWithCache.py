@@ -5,6 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import numpy as np
 from datetime import timedelta, datetime
 import warnings
@@ -189,7 +190,7 @@ class MultifolderWithCache(Multifolder):
         # select the right paths, and store their id in "_order"
         super().reset()
         self.cache_size = 0
-        max_int = np.iinfo(dt_int).max
+        # max_int = np.iinfo(dt_int).max
         for i in self._order:
             # everything in "_order" need to be put in cache
             path = self.subpaths[i]

@@ -10,17 +10,11 @@ import warnings
 import numpy as np
 import unittest
 import os
-import tempfile
-from grid2op.tests.helper_path_test import *
+from grid2op.tests.helper_path_test import PATH_DATA_TEST
 
 from grid2op.Parameters import Parameters
-from grid2op.operator_attention import LinearAttentionBudget
 from grid2op import make
-from grid2op.Reward import RedispReward, _AlarmScore
-from grid2op.Exceptions import Grid2OpException
-from grid2op.Runner import Runner
-from grid2op.Environment import Environment
-from grid2op.Episode import EpisodeData
+from grid2op.Reward import _AlarmScore
 
 
 class TestAlarmScore(unittest.TestCase):
@@ -310,7 +304,7 @@ class TestAlarmScore(unittest.TestCase):
         assert reward == 1 / 1.5  # get the max time points but not geo points
         assert obs.was_alarm_used_after_game_over
 
-    def test_alarm_reward_linedisconnection_in_window_right_time_bad_zone(self):
+    def test_alarm_reward_linedisconnection_in_window_right_time_bad_zone_2(self):
         """test that the geo points are not taken, when an alarm is send at the right time, and lines get
         diconnected in the disconnection window before the time of cascading failure, but in a bad zone"""
 

@@ -14,15 +14,12 @@ from grid2op.tests.helper_path_test import *
 
 import grid2op
 from grid2op.dtypes import dt_float, dt_int
-from grid2op.tests.helper_path_test import *
 from grid2op.Action import PlayableAction
 
-from grid2op.gym_compat import GymActionSpace, GymObservationSpace
-from grid2op.gym_compat import GymEnv  # TODO GYMENV
-from grid2op.gym_compat import ContinuousToDiscreteConverter
-from grid2op.gym_compat import ScalerAttrConverter
-from grid2op.gym_compat import MultiToTupleConverter
-from grid2op.gym_compat import (
+from grid2op.gym_compat import (GymEnv,
+                                ContinuousToDiscreteConverter,
+                                ScalerAttrConverter,
+                                MultiToTupleConverter,
     GYM_AVAILABLE, 
     GYMNASIUM_AVAILABLE,
     BoxGymObsSpace,

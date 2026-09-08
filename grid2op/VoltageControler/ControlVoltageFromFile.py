@@ -17,6 +17,28 @@ class ControlVoltageFromFile(BaseVoltageController):
     chronics.
 
     If the voltages are not on the chronics (missing files), it will not change the voltage setpoint at all.
+    
+    .. warning::
+        This function does not take into account in any way any setpoint given by the Agent.
+        
+        .. versionadded: 1.12.2
+        
+        If you want your agent to be able to modify the voltage, you need to use the
+        :class:`grid2op.VoltageControler.VCFromFileAgentOverrides`, 
+        for example like this:
+        
+        .. code-block:: python
+        
+            import grid2op
+            from grid2op.VoltageControler import VCFromFileAgentOverrides
+            
+            env_name = ...
+            
+            env = grid2op.make(env_name,
+                               ..., 
+                               voltagecontroler_class=VCFromFileAgentOverrides)
+
+        
     """
 
     def __init__(self,

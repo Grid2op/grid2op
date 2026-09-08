@@ -10,10 +10,9 @@ import os
 import warnings
 import numpy as np
 import copy
-import re
-from typing import Any, Dict, Tuple, Union, List, Literal, Optional
+from typing import Union, Optional
 
-from grid2op.dtypes import dt_int, dt_float
+from grid2op.dtypes import dt_int
 from grid2op.Space import (GridObjects,
                            RandomObject,
                            DEFAULT_N_BUSBAR_PER_SUB,
@@ -22,9 +21,8 @@ from grid2op.Space import (GridObjects,
 from grid2op.Exceptions import EnvError, Grid2OpException
 from grid2op.Backend import Backend
 from grid2op.Observation import BaseObservation
-from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 from grid2op.Environment.baseEnv import BaseEnv
-from grid2op.typing_variables import STEP_INFO_TYPING, RESET_OPTIONS_TYPING
+from grid2op.typing_variables import RESET_OPTIONS_TYPING
 
 
 class _OverloadNameMultiMixInfo:
@@ -370,7 +368,7 @@ class MultiMixEnvironment(GridObjects, RandomObject):
         try:
             # should pass with grid2op >= 1.7.1
             bk = backendClass(**backend_kwargs)
-        except TypeError as exc_:
+        except TypeError as exc_:  # noqa: F841
             # with grid2Op version prior to 1.7.1
             # you might have trouble with 
             # "TypeError: __init__() got an unexpected keyword argument 'can_be_copied'"
@@ -616,12 +614,12 @@ class MultiMixEnvironment(GridObjects, RandomObject):
             raise EnvError("This environment is closed, you cannot use it.")
         try:
             seed = np.array(seed).astype(dt_int)
-        except Exception as e:
+        except Exception as exc:  # noqa: F841
             raise Grid2OpException(
                 "Cannot to seed with the seed provided."
                 "Make sure it can be converted to a"
                 "numpy 32 bits integer."
-            )
+            ) from exc
 
         s = super().seed(seed)
         seeds = [s]

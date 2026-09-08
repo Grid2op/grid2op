@@ -1,3 +1,5 @@
+..  SPDX-License-Identifier: MPL-2.0
+..  This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 .. |l2rpn_case14_sandbox_layout| image:: ./img/l2rpn_case14_sandbox_layout.png
 .. |R2_full_grid| image:: ./img/R2_full_grid.png

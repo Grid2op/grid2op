@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import copy
 import pdb
 import warnings
 import unittest
@@ -84,13 +85,18 @@ class Issue321Tester(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             env = grid2op.make("l2rpn_wcci_2022_dev",
-                                    test=True,
-                                    _add_to_name=type(self).__name__)
+                               test=True,
+                               _add_to_name=type(self).__name__)
         param = env.parameters
-        param.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION = True
+        param.NO_OVERFLOW_DISCONNECTION = True
+        param.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION = False
+        env.change_parameters(copy.deepcopy(param))
         env.seed(seed_)
         env.set_id(scen_nm)
         obs = env.reset()
+        
+        # for the next expe
+        param.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION = True
         
         # produce a list of actions that can curtail down to O.
         # then remove all curtailment at once (and check it
@@ -115,7 +121,7 @@ class Issue321Tester(unittest.TestCase):
         obs, reward, done, info = env.step(second_)
         assert not done
         obs, reward, done, info = env.step(third_)
-        assert not done
+        assert not done, f"{info['exception']}: {env.backend.div_exception}"
         obs, reward, done, info = env.step(all_zero)
         assert not done
         obs, reward, done, info = env.step(all_one)

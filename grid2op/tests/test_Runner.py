@@ -10,6 +10,8 @@ import warnings
 import tempfile
 import json
 import unittest
+import os
+import numpy as np
 import pdb
 import packaging
 from packaging import version
@@ -346,7 +348,7 @@ class TestRunner(HelperTests, unittest.TestCase):
                 )
 
         # test that the right seeds are assigned to the agent
-        res = runner.run(
+        _ = runner.run(
             nb_episode=3,
             max_iter=self.max_iter,
             env_seeds=[1, 2, 3],
@@ -356,7 +358,7 @@ class TestRunner(HelperTests, unittest.TestCase):
 
         # test that is no seeds are set, then the "seed" function of the agent is not called.
         my_agent.seeds = []
-        res = runner.run(nb_episode=3, max_iter=self.max_iter, env_seeds=[1, 2, 3])
+        _ = runner.run(nb_episode=3, max_iter=self.max_iter, env_seeds=[1, 2, 3])
         assert my_agent.seeds == []
 
     def test_always_same_order(self):
@@ -474,11 +476,11 @@ class TestRunner(HelperTests, unittest.TestCase):
                 assert (
                     EpisodeData.get_grid2op_version(full_episode_path)
                     == grid2op.__version__
-                ), "wrong grid2op version stored (test_version)"
+                ), f"wrong grid2op version stored (test_version): {EpisodeData.get_grid2op_version(full_episode_path)} vs {grid2op.__version__}"
             else:
                 assert (
                     EpisodeData.get_grid2op_version(full_episode_path) == g2op_version
-                ), "wrong grid2op version stored (>=1.5.0)"
+                ), f"wrong grid2op version stored (>=1.5.0): loaded version from {full_episode_path} {EpisodeData.get_grid2op_version(full_episode_path)} vs {g2op_version}"
 
     def test_backward_compatibility(self):
         backward_comp_version = [
@@ -524,6 +526,10 @@ class TestRunner(HelperTests, unittest.TestCase):
             "1.10.4",
             "1.10.5",
             "1.11.0",
+            "1.12.0",
+            "1.12.1",
+            "1.12.2",
+            "1.12.3",
         ]
         curr_version = "test_version"
         assert (

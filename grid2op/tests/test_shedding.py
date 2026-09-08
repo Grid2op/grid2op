@@ -14,7 +14,6 @@ import tempfile
 
 import grid2op
 from grid2op.dtypes import dt_float
-from grid2op.Action.baseAction import BaseAction
 from grid2op.Exceptions import AmbiguousAction
 from grid2op.Action import CompleteAction
 from grid2op.Backend import PandaPowerBackend
@@ -214,6 +213,7 @@ class TestSheddingActions(unittest.TestCase):
         # flag not set
         act7 = self.env.action_space()
         getattr(act7, _detach_xxx)[0] = True
+        act7._cached_is_not_ambiguous = False
         is_amb, exc_ = act7.is_ambiguous()
         assert is_amb, f"error for {el_type}"
         assert isinstance(exc_, AmbiguousAction), f"error for {el_type}"

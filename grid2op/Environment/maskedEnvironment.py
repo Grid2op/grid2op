@@ -5,12 +5,12 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import warnings
 import copy
-import warnings
 import numpy as np
 import os
-from typing import Tuple, Union, List
+from typing import Union
 
 from grid2op.Environment.environment import Environment
 from grid2op.Exceptions import EnvError
@@ -201,7 +201,7 @@ class MaskedEnvironment(Environment):
                        "_read_from_local_dir": _read_from_local_dir,
                        "_local_dir_cls": _local_dir_cls,
                        "_overload_name_multimix": _overload_name_multimix}
-        if not "lines_of_interest" in other_env_kwargs:
+        if "lines_of_interest" not in other_env_kwargs:
             raise EnvError("You cannot make a MaskedEnvironment without providing the list of lines of interest")
         for el in other_env_kwargs:
             if el == "lines_of_interest":

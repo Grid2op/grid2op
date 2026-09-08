@@ -123,8 +123,13 @@ celerybeat-schedule
 # pipenv
 Pipfile.lock
 
-# dotenv
+# dotenv, secrets etc.
 .env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
 
 # virtualenv
 venv/
@@ -417,6 +422,32 @@ grid2op/tests/venv_test_autoclass/
 test_eduardo.py
 grid2op/tests/failed_test*
 venv_312
+grid2op_test_issue_discord.ipynb
+grid2op_test_issue_discord_orig.ipynb
+grid_bug_pp3.json
+grid_bug_pp3_3.json
+grid_bug_pp3_3_orig.json
+issue_new_pp.py
+log.txt
+venv_*/**
+TestLM.ipynb
+bug_pp3.py
+bug_pp3_repro.py
+change_file_mode.py
+file_changed.txt
+test_ljn_theta.py
+test_multiproc_shared_act.py
+saved_MANIFEST.in
+saved_setup.cfg
+saved_setup.py
+requirements_pp2.txt
+requirements_pp3.txt
+Grid2Op-*.tar.gz
+*-py3-none-any.whl
+grid2op/data/**/__init__.py
+grid2op/tests/aux_test_baseAction_extended.py
+release_digests.json
+
 
 # profiling files
 **.prof

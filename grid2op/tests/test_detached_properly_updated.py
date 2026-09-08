@@ -128,6 +128,50 @@ class DetachmentBackendOutputTester(unittest.TestCase):
         assert not done
         assert obs2.storage_detached[sto_id]
         assert obs2.storage_power[sto_id] == 0., f"{obs2.storage_power[sto_id]} vs 0."
+    
+    def test_min_uptime_downtime_updated(self):
+        # test it's update normally
+        assert (self.env._gen_uptime == [ 0,  0,  0, -1, -1,  0]).all()
+        assert (self.env._gen_downtime == [-1, -1, -1,  0,  0, -1]).all()
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert (self.env._gen_uptime == [ 1,  1,  1, -1, -1,  1]).all()
+        assert (self.env._gen_downtime == [-1, -1, -1,  1,  1, -1]).all()
+        
+        # now test the detachment of a gen updates it correctly
+        obs, reward, done, info = self.env.step(self.env.action_space(
+            {
+                "set_bus": {"generators_id": [(0, -1)]}
+            }
+        ))
+        assert self.env._gen_uptime[0] == -1, f"{self.env._gen_uptime[0]} vs -1"  # gen is disconnected
+        assert self.env._gen_downtime[0] == 0, f"{self.env._gen_downtime[0]} vs 0"
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert self.env._gen_uptime[0] == -1, f"{self.env._gen_uptime[0]} vs -1"  # gen is disconnected
+        assert self.env._gen_downtime[0] == 1, f"{self.env._gen_downtime[0]} vs 1"
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert self.env._gen_uptime[0] == -1, f"{self.env._gen_uptime[0]} vs -1"  # gen is disconnected
+        assert self.env._gen_downtime[0] == 2, f"{self.env._gen_downtime[0]} vs 2"
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert self.env._gen_uptime[0] == -1, f"{self.env._gen_uptime[0]} vs -1"  # gen is disconnected
+        assert self.env._gen_downtime[0] == 3, f"{self.env._gen_downtime[0]} vs 3"
+        
+        # now re attached the gen and make sure it works
+        obs, reward, done, info = self.env.step(self.env.action_space(
+            {
+                "set_bus": {"generators_id": [(0, 1)]}
+            }
+        ))
+        assert not done
+        assert not info["exception"], f'{info["exception"]}'
+        assert not info["is_illegal"]
+        assert self.env._gen_uptime[0] == 0, f"{self.env._gen_uptime[0]} vs 0" 
+        assert self.env._gen_downtime[0] == -1, f"{self.env._gen_downtime[0]} vs -1"
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert self.env._gen_uptime[0] == 1, f"{self.env._gen_uptime[0]} vs 1" 
+        assert self.env._gen_downtime[0] == -1, f"{self.env._gen_downtime[0]} vs -1"
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert self.env._gen_uptime[0] == 2, f"{self.env._gen_uptime[0]} vs 2" 
+        assert self.env._gen_downtime[0] == -1, f"{self.env._gen_downtime[0]} vs -1"
         
         
 if __name__ == "__main__":

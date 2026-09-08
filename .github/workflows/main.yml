@@ -7,9 +7,13 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions: {}  # deny all by default
+
 jobs:
   manylinux_build:
     name: Build linux ${{ matrix.python.name }} wheel
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux_2_28_x86_64
     env:
@@ -18,11 +22,11 @@ jobs:
     strategy:
       matrix:
         python:
-          - {
-            name: cp38,
-            abi: cp38,
-            version: '3.8',
-          }
+          # - {
+          #   name: cp38,
+          #   abi: cp38,
+          #   version: '3.8',
+          # }
           - {
             name: cp39,
             abi: cp39,
@@ -43,31 +47,45 @@ jobs:
             abi: cp312,
             version: '3.12',
           }
-          # - {
-          #   name: cp313,   # issue with pandapower atm
-          #   abi: cp313,
-          #   version: '3.13',
-          # }
+          - {
+            name: cp313,
+            abi: cp313,
+            version: '3.13',
+          }
+
+          - {
+            name: cp314,
+            abi: cp314,
+            version: '3.14',
+          }
 
     steps:
 
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           submodules: true
+          fetch-depth: 0        # needed for setuptools_scm to read tags
+
+      - name: Fix git safe directory
+        run: git config --global --add safe.directory "$(pwd)"
 
       - name: Setup path
         run: echo "/opt/python/${{ matrix.python.name }}-${{ matrix.python.abi }}/bin/" >> $GITHUB_PATH
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade wheel
-          python -m pip install --upgrade setuptools
-          
+          python -m pip install --upgrade pip wheel setuptools build
+      
+      - name: Rename pyproject_38.toml file (python 3.8)
+        if: matrix.python.name == 'cp38'
+        run: |
+          rm pyproject.toml
+          cp pyproject_38.toml pyproject.toml
+
       - name: Build wheel
         run: |
-          python setup.py bdist_wheel
+          python -m build --wheel .
 
       - name: Install wheel
         run: |
@@ -101,13 +119,15 @@ jobs:
           ls ./dist/*.whl
 
       - name: Upload wheel
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: grid2op-wheel-${{ matrix.config.name }}-${{ matrix.python.name }}
+          name: grid2op-wheel-${{ matrix.python.name }}
           path: dist/*.whl
 
   macos_windows_build:
     name: Build ${{ matrix.config.name }} ${{ matrix.python.name }} wheel
+    permissions:
+      contents: read
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
@@ -118,13 +138,13 @@ jobs:
           }
           - {
             name: windows,
-            os: windows-2019,
+            os: windows-2022,
           }
         python:
-          - {
-            name: cp38,
-            version: '3.8',
-          }
+          # - {
+          #   name: cp38,
+          #   version: '3.8',
+          # }
           - {
             name: cp39,
             version: '3.9',
@@ -141,31 +161,45 @@ jobs:
             name: cp312,
             version: '3.12',
           }
-          # - {  # issue with pandapower atm
-          #   name: cp313,
-          #   version: '3.13',
-          # }
+          - {
+            name: cp313,
+            version: '3.13',
+          }
+          - {
+            name: cp314,
+            version: '3.14',
+          }
 
     steps:
 
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           submodules: true
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: ${{ matrix.python.version }}
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade wheel
-          python -m pip install --upgrade setuptools
+          python -m pip install --upgrade pip wheel setuptools build
+
+      - name: Rename pyproject_38.toml file (python 3.8 - macos)
+        if: ((matrix.python.name == 'cp38') && (matrix.config.name == 'darwin'))
+        run: |
+          rm pyproject.toml
+          cp pyproject_38.toml pyproject.toml
+
+      - name: Rename pyproject_38.toml file (python 3.8 - windows)
+        if: ((matrix.python.name == 'cp38') && (matrix.config.name == 'windows'))
+        run: |
+          del pyproject.toml
+          cp pyproject_38.toml pyproject.toml
 
       - name: Build wheel
-        run: python setup.py bdist_wheel
+        run: python -m build --wheel .
 
       - name: Install wheel
         shell: bash
@@ -179,25 +213,74 @@ jobs:
           python -c "from grid2op import *"
           python -c "from grid2op.Action._backendAction import _BackendAction"
 
-      - name: Build source archive
-        if: matrix.config.name == 'darwin' && matrix.python.name == 'cp310'
-        run: python setup.py sdist
-
       - name: Upload wheel
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: grid2op-wheel-${{ matrix.config.name }}-${{ matrix.python.name }}
           path: dist/*.whl
 
+  source_build:
+    name: Build tar.gz grid2op file on ${{ matrix.config.name}}
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          - {
+            name: darwin,
+            os: macos-latest,
+          }
+          - {
+            name: windows,
+            os: windows-2022,
+          }
+          - {
+            name: linux,
+            os: ubuntu-latest,
+          }
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          submodules: true
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: 3.12
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools build   
+
+      - name: Build tar gz
+        run: python -m build --sdist .
+
+      - name: Install tar gz
+        shell: bash
+        run: |
+          python -m pip install dist/*.tar.gz --user
+          pip freeze
+
+      - name: Check package can be imported
+        run: |
+          python -c "import grid2op"
+          python -c "from grid2op import *"
+          python -c "from grid2op.Action._backendAction import _BackendAction"  
+
       - name: Upload source archive
-        uses: actions/upload-artifact@v4
-        if: matrix.config.name == 'darwin' && matrix.python.name == 'cp310'
+        if: (matrix.config.name == 'darwin')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: grid2op-sources
-          path: dist/*.tar.gz
-
+          path: dist/*.tar.gz        
+          
   auto_class_in_file:
-    name: Test ${{ matrix.config.name }} OS can handle automatic class generation
+    name: Test ${{ matrix.config.name }} OS can handle automatic class generation for python ${{matrix.python.version}}
+    permissions:
+      contents: read
     runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
@@ -208,7 +291,7 @@ jobs:
           }
           # - {
           #   name: windows,
-          #   os: windows-2019,
+          #   os: windows-2022,
           # }
           - { 
             name: ubuntu,
@@ -216,35 +299,32 @@ jobs:
           }
         python:
           - {
-            name: cp39,
-            version: '3.9',
+            name: cp310,
+            version: '3.10',
           }  
           - {
-            name: cp312,
-            version: '3.12',
+            name: cp314,
+            version: '3.14',
           }  
 
     steps:
 
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           submodules: true
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: ${{ matrix.python.version }}
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade wheel
-          python -m pip install --upgrade setuptools
-          python -m pip install --upgrade gymnasium "numpy<2"
+          python -m pip install --upgrade pip wheel setuptools gymnasium build
 
       - name: Build wheel
-        run: python setup.py bdist_wheel
+        run: python -m build --wheel .
 
       - name: Install wheel
         shell: bash
@@ -254,7 +334,7 @@ jobs:
 
       - name: Test the automatic generation of classes in the env folder
         run: |
-          python -m unittest grid2op/tests/automatic_classes.py -f
+          python -m unittest grid2op/tests/automatic_classes.py -v -f
   
   package:
     name: Test install
@@ -263,12 +343,12 @@ jobs:
 
     steps:
       - name: Download wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           path: download
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: grid2op-wheels
           path: |

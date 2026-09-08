@@ -9,17 +9,14 @@
 import copy
 import datetime
 import numpy as np
-import warnings
-from typing import Dict, Union, Tuple, List, Optional, Any, Literal
+from typing import Tuple
 
 import grid2op
 import grid2op.Action
-from grid2op.Environment._env_prev_state import _EnvPreviousState
 import grid2op.Observation  # for type hints
 from grid2op.typing_variables import STEP_INFO_TYPING
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.Exceptions import EnvError
-from grid2op.Chronics import ChangeNothing
 from grid2op.Chronics._obs_fake_chronics_handler import _ObsCH
 from grid2op.Rules import RulesChecker
 from grid2op.Space import DEFAULT_ALLOW_DETACHMENT
@@ -399,8 +396,7 @@ class _ObsEnv(BaseEnv):
         gen_v = obs._get_gen_v_for_forecasts()
         load_p = obs._get_load_p_for_forecasts()
         load_q = obs._get_load_q_for_forecasts()
-        self._backend_action_set += self._helper_action_env(
-            {
+        dict_ = {
                 "set_line_status": set_status,
                 "set_bus": topo_vect,
                 "injection": {
@@ -410,7 +406,13 @@ class _ObsEnv(BaseEnv):
                     "load_q": load_q,
                 },
             }
-        )
+        
+        if type(self).shunts_data_available:
+            # fix for https://github.com/Grid2op/lightsim2grid/issues/128
+            dict_shunt = self.backend.get_shunt_info_from_obs(obs)
+            dict_["shunt"] = dict_shunt
+        
+        self._backend_action_set += self._helper_action_env(dict_)
         self._backend_action_set += new_state_action
         # for storage unit
         if time_step > 0:
@@ -572,3 +574,13 @@ class _ObsEnv(BaseEnv):
             if hasattr(self, attr_nm):
                 delattr(self, attr_nm)
             setattr(self, attr_nm, None)
+            
+    def synch_backend_action(self, real_env_backend_action: grid2op.Action._BackendAction) -> None:
+        """Synchronize the backend action of the (simulated) environment with the backend action of the real environment.
+        
+        This is called by the "simulated environment" (forecast env) and allow to remember "past state" of the grid
+        """
+        self._backend_action.last_topo_registered.values[:] = real_env_backend_action.last_topo_registered.values
+        self._backend_action.current_topo.values[:] = real_env_backend_action.current_topo.values
+        self._backend_action.invalidate_cache()
+        self._backend_action.all_changed()

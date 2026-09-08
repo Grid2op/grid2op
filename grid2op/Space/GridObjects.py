@@ -23,20 +23,41 @@ import os
 import numpy as np
 import sys
 
-import importlib.metadata
 from packaging import version
 from typing import Dict, Type, Union, Literal, Any, List, Optional, ClassVar, Tuple
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
     
 import grid2op
 from grid2op.dtypes import dt_int, dt_float, dt_bool
 from grid2op.typing_variables import CLS_AS_DICT_TYPING, N_BUSBAR_PER_SUB_TYPING
-from grid2op.Exceptions import *
+from grid2op.Exceptions import (
+    Grid2OpException,
+    IncorrectNumberOfElements,
+    AmbiguousAction,
+    EnvError,
+    IncorrectNumberOfGenerators,
+    IncorrectNumberOfStorages,
+    IncorrectNumberOfLoads,
+    IncorrectNumberOfLines,
+    IncorrectNumberOfSubstation,
+    BackendError,
+    InvalidRedispatching,
+    NonFiniteElement,
+    IncorrectPositionOfGenerators,
+    IncorrectPositionOfLines,
+    IncorrectPositionOfLoads,
+    IncorrectPositionOfStorages
+)
 from grid2op.Space.space_utils import extract_from_dict, save_to_dict, ElTypeInfo
-from grid2op.Space.default_var import (DEFAULT_ALLOW_DETACHMENT,
-                                       DEFAULT_N_BUSBAR_PER_SUB,
-                                       GRID2OP_CLASSES_ENV_FOLDER,
-                                       GRID2OP_CURRENT_VERSION_STR,
-                                       GRID2OP_CURRENT_VERSION)
+from grid2op.Space.default_var import (
+    DEFAULT_ALLOW_DETACHMENT,
+    DEFAULT_N_BUSBAR_PER_SUB,
+    GRID2OP_CLASSES_ENV_FOLDER,
+    GRID2OP_CURRENT_VERSION_STR,
+)
 
 # TODO tests of these methods and this class in general
 
@@ -1498,10 +1519,10 @@ class GridObjects:
             try:
                 cls.storage_to_subid = np.array(cls.storage_to_subid)
                 cls.storage_to_subid = cls.storage_to_subid.astype(dt_int)
-            except Exception as e:
+            except Exception as exc:
                 raise EnvError(
                     "self.storage_to_subid should be convertible to a numpy array"
-                )
+                ) from exc
 
         # now check the sizes
         if len(cls.load_to_subid) != cls.n_load:
@@ -1664,7 +1685,7 @@ class GridObjects:
                 cls.name_line = cls.name_line.astype(str)
             except Exception as exc_:
                 raise EnvError(
-                    f"self.name_line should be convertible to a numpy array of type str"
+                    "self.name_line should be convertible to a numpy array of type str"
                 ) from exc_
         if not isinstance(cls.name_load, np.ndarray):
             try:
@@ -2329,7 +2350,6 @@ class GridObjects:
                 "Mismatch between storage_to_subid, "
                 "storage_to_sub_pos and storage_pos_topo_vect"
             )
-
         # no empty bus: at least one element should be present on each bus
         if (cls.sub_info < 1).any():
             if not grid2op.Space.space_utils._WARNING_ISSUED_FOR_SUB_NO_ELEM:
@@ -2361,35 +2381,37 @@ class GridObjects:
     def _check_validity_alarm_data(cls):
         if cls.dim_alarms == 0:
             # no alarm data
-            assert (
-                cls.alarms_area_names == []
-            ), "No alarm data is provided, yet cls.alarms_area_names != []"
-            assert (
-                cls.alarms_lines_area == {}
-            ), "No alarm data is provided, yet cls.alarms_lines_area != {}"
-            assert (
-                cls.alarms_area_lines == []
-            ), "No alarm data is provided, yet cls.alarms_area_lines != []"
+            if cls.alarms_area_names != []:
+                raise Grid2OpException("No alarm data is provided, yet cls.alarms_area_names != []")
+            if cls.alarms_lines_area != {}:
+                raise Grid2OpException("No alarm data is provided, yet cls.alarms_lines_area != {}")
+            if cls.alarms_area_lines != []:
+                raise Grid2OpException("No alarm data is provided, yet cls.alarms_area_lines != []")
         elif cls.dim_alarms < 0:
             raise EnvError(
                 f"The number of areas for the alarm feature should be >= 0. It currently is {cls.dim_alarms}"
             )
         else:
-            assert cls.assistant_warning_type == "zonal"
+            if cls.assistant_warning_type != "zonal":
+                raise Grid2OpException("cls.assistant_warning_type shoud be 'zonal'")
             
             # the "alarm" feature is supported
-            assert isinstance(
+            if not isinstance(
                 cls.alarms_area_names, (list, tuple)
-            ), "cls.alarms_area_names should be a list or a tuple"
-            assert isinstance(
+            ):
+                raise Grid2OpException("cls.alarms_area_names should be a list or a tuple")
+            if not isinstance(
                 cls.alarms_lines_area, dict
-            ), "cls.alarms_lines_area should be a dict"
-            assert isinstance(
+            ):
+                raise Grid2OpException("cls.alarms_lines_area should be a dict")
+            if not isinstance(
                 cls.alarms_area_lines, (list, tuple)
-            ), "cls.alarms_area_lines should be a list or a tuple"
-            assert (
-                len(cls.alarms_area_names) == cls.dim_alarms
-            ), "len(cls.alarms_area_names) != cls.dim_alarms"
+            ):
+                raise Grid2OpException("cls.alarms_area_lines should be a list or a tuple")
+            if (
+                len(cls.alarms_area_names) != cls.dim_alarms
+            ):
+                raise Grid2OpException("len(cls.alarms_area_names) != cls.dim_alarms")
             names_to_id = {nm: id_ for id_, nm in enumerate(cls.alarms_area_names)}
 
             # check that information in alarms_lines_area and alarms_area_lines match
@@ -2397,24 +2419,26 @@ class GridObjects:
                 for area_nm in li_area:
                     area_id = names_to_id[area_nm]
                     all_lines_this_area = cls.alarms_area_lines[area_id]
-                    assert l_nm in all_lines_this_area, (
-                        f'line "{l_nm}" is said to belong to area "{area_nm}" '
-                        f"in cls.alarms_lines_area yet when looking for the lines in "
-                        f"this "
-                        f"area in cls.alarms_area_lines, this line is not in there"
-                    )
+                    if l_nm not in all_lines_this_area:
+                        raise Grid2OpException(
+                            f'line "{l_nm}" is said to belong to area "{area_nm}" '
+                            f"in cls.alarms_lines_area yet when looking for the lines in "
+                            f"this "
+                            f"area in cls.alarms_area_lines, this line is not in there"
+                        )
 
             for area_id, all_lines_this_area in enumerate(cls.alarms_area_lines):
                 area_nm = cls.alarms_area_names[area_id]
                 for l_nm in all_lines_this_area:
-                    assert area_nm in cls.alarms_lines_area[l_nm], (
-                        f'line "{l_nm}" is said to belong to area '
-                        f'"{area_nm}" '
-                        f"in cls.alarms_area_lines yet when looking for "
-                        f"the areas where this line belong in "
-                        f"cls.alarms_lines_area it appears it does not "
-                        f"belong there."
-                    )
+                    if area_nm not in cls.alarms_lines_area[l_nm]:
+                        raise Grid2OpException(
+                            f'line "{l_nm}" is said to belong to area '
+                            f'"{area_nm}" '
+                            f"in cls.alarms_area_lines yet when looking for "
+                            f"the areas where this line belong in "
+                            f"cls.alarms_lines_area it appears it does not "
+                            f"belong there."
+                        )
 
             # now check that all lines are in at least one area
             for line, li_area in cls.alarms_lines_area.items():
@@ -2433,28 +2457,32 @@ class GridObjects:
 
     @classmethod
     def _check_validity_alert_data(cls):
-        # TODO remove assert and raise Grid2opExcpetion instead
         if cls.dim_alerts == 0:
             # no alert data
-            assert (
-                cls.alertable_line_names == []
-            ), "No alert data is provided, yet cls.alertable_line_names != []"
-            assert (
-               len(cls.alertable_line_ids) == 0
-            ), "No alert data is provided, yet len(cls.alertable_line_ids) != 0"
+            if (
+                cls.alertable_line_names != []
+            ):
+                raise Grid2OpException("No alert data is provided, yet cls.alertable_line_names != []")
+            if (
+               len(cls.alertable_line_ids) != 0
+            ):
+                raise Grid2OpException("No alert data is provided, yet len(cls.alertable_line_ids) != 0")
         elif cls.dim_alerts < 0:
             raise EnvError(
                 f"The number of lines for the alert feature should be >= 0. It currently is {cls.dim_alerts}"
             )
         else:
-            assert cls.assistant_warning_type == "by_line"
+            if cls.assistant_warning_type != "by_line":
+                raise Grid2OpException("cls.assistant_warning_type should be 'by_line'")
             # the "alert" feature is supported
-            assert isinstance(
+            if not isinstance(
                 cls.alertable_line_names, list
-            ), "cls.alertable_line_names should be a list"
-            assert (
-                len(cls.alertable_line_names) == cls.dim_alerts
-            ), "len(cls.alertable_line_names) != cls.dim_alerts"
+            ):
+                raise Grid2OpException("cls.alertable_line_names should be a list")
+            if (
+                len(cls.alertable_line_names) != cls.dim_alerts
+            ):
+                raise Grid2OpException("len(cls.alertable_line_names) != cls.dim_alerts")
             
             try:
                 cls.alertable_line_ids = np.array(cls.alertable_line_ids).astype(dt_int)
@@ -2627,16 +2655,16 @@ class GridObjects:
             except Exception as exc:
                 raise EnvError(
                     'name_shunt should be convertible to a numpy array with dtype "str".'
-                )
+                ) from exc
 
         if not isinstance(cls.shunt_to_subid, np.ndarray):
             try:
                 cls.shunt_to_subid = np.array(cls.shunt_to_subid)
                 cls.shunt_to_subid = cls.shunt_to_subid.astype(dt_int)
-            except Exception as e:
+            except Exception as exc:
                 raise EnvError(
                     'shunt_to_subid should be convertible to a numpy array with dtype "int".'
-                )
+                ) from exc
 
         if cls.name_shunt.shape[0] != cls.n_shunt:
             raise IncorrectNumberOfElements(
@@ -2794,7 +2822,7 @@ class GridObjects:
             )
 
         for el in cls.gen_type:
-            if not el in ["solar", "wind", "hydro", "thermal", "nuclear"]:
+            if el not in ["solar", "wind", "hydro", "thermal", "nuclear"]:
                 raise InvalidRedispatching("Unknown generator type : {}".format(el))
 
         if (cls.gen_pmin < 0.0).any():
@@ -2905,6 +2933,18 @@ class GridObjects:
         cls.env_name = name
 
     @classmethod
+    def _aux_finish_init_grid_from_file(cls):
+        # used in the _aux_init_grid_from_cls
+        # do not forget to create the cls_dict once and for all
+        if cls._CLS_DICT is None:
+            tmp = {}
+            cls._make_cls_dict_extended(cls, tmp, as_list=False)
+
+        cls._compute_pos_big_topo_cls()
+        cls.process_shunt_static_data()
+        cls.process_detachment()
+        
+    @classmethod
     def _aux_init_grid_from_cls(cls, gridobj, name_res):
         import importlib
         # NB: these imports needs to be consistent with what is done in
@@ -2922,15 +2962,13 @@ class GridObjects:
             super_module_nm = super_supermodule
         
         if f"{module_nm}.{name_res}_file" in sys.modules:
-            cls_res = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
+            cls_res : Type[GridObjects]  = getattr(sys.modules[f"{module_nm}.{name_res}_file"], name_res)
             # do not forget to create the cls_dict once and for all
-            if cls_res._CLS_DICT is None:
-                tmp = {}
-                cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
+            cls_res._aux_finish_init_grid_from_file()
             return cls_res
         
         super_module = importlib.import_module(module_nm, super_module_nm)  # env/path/_grid2op_classes/
-        module_all_classes = importlib.import_module(f"{module_nm}")  # module specific to the tmpdir created
+        module_all_classes = importlib.import_module(f"{module_nm}")  # module specific to the tmpdir created  # noqa: F841
         try:
             module = importlib.import_module(f".{name_res}_file", package=module_nm)  # module containing the definition of the class
         except ModuleNotFoundError:
@@ -2938,15 +2976,12 @@ class GridObjects:
             importlib.invalidate_caches()
             importlib.reload(super_module)
             module = importlib.import_module(f".{name_res}_file", package=module_nm)
-        cls_res = getattr(module, name_res)
-        # do not forget to create the cls_dict once and for all
-        if cls_res._CLS_DICT is None:
-            tmp = {}
-            cls_res._make_cls_dict_extended(cls_res, tmp, as_list=False)
+        cls_res : Type[GridObjects] = getattr(module, name_res)
+        cls_res._aux_finish_init_grid_from_file()
         return cls_res
     
     @classmethod
-    def init_grid(cls, gridobj, force=False, extra_name=None, force_module=None, _local_dir_cls=None):
+    def init_grid(cls, gridobj, force=False, extra_name=None, force_module=None, _local_dir_cls=None) -> Type[Self]:
         """
         INTERNAL
 
@@ -3040,9 +3075,9 @@ class GridObjects:
         res_cls._IS_INIT = True
         
         res_cls._compute_pos_big_topo_cls()
-        res_cls.process_shunt_static_data()
         compat_mode = res_cls.process_grid2op_compat()
         res_cls.process_detachment()
+        res_cls.process_shunt_static_data()
         res_cls._check_convert_to_np_array()  # convert everything to numpy array
         if force_module is not None:
             res_cls.__module__ = force_module  # hack because otherwise it says "abc" which is not the case
@@ -4561,7 +4596,7 @@ class GridObjects:
             module = importlib.import_module(GRID2OP_CLASSES_ENV_FOLDER)
             if hasattr(module, name_cls):
                 my_class : Type["GridObjects"] = getattr(module, name_cls)
-        except (ModuleNotFoundError, ImportError) as exc_:
+        except (ModuleNotFoundError, ImportError) as exc_:  # noqa: F841
             # normal behaviour i don't do anything there
             # TODO explain why
             pass

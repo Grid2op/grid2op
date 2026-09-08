@@ -733,7 +733,7 @@ class BaseTestCascadingFailure:
             warnings.filterwarnings("ignore")
             params = Parameters()
             params.MAX_SUB_CHANGED = 0
-            params.NB_TIMESTEP_POWERFLOW_ALLOWED = 2
+            params.NB_TIMESTEP_OVERFLOW_ALLOWED = 2
             rules = DefaultRules
             self.env = grid2op.make(
                 "rte_case14_test",

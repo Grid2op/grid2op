@@ -1,3 +1,6 @@
+..  SPDX-License-Identifier: MPL-2.0
+..  This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 .. Grid2Op documentation master file, created by
    sphinx-quickstart on Wed Jul 24 15:07:20 2019.
    You can adapt this file completely to your liking, but it should at least
@@ -70,6 +73,7 @@ or overall view of what is happing when you "run" a scenario using in grid2op.
 
    quickstart
    grid2op
+   release_verification
 
 Usage examples
 ---------------------
@@ -179,6 +183,7 @@ For example, you might want to :
 - have an opponent that act differently than the provided ones
 - evaluate the performance of the agent differently (change the reward / score function)
 - use a different way to control the voltages
+- add information for the agent 
 - etc.
  
 The main focuse of these pages of the documentation is put on the 
@@ -192,7 +197,7 @@ but if you want to slightly modify one of its component.
 .. note::
    This type of contribution can be developed and hosted in a different 
    github repository than grid2op (*eg* lightsim2grid, another faster backend
-   is hosted on https://github.com/bdonnot/lightsim2grid.git)
+   is hosted on https://github.com/grid2op/lightsim2grid.git)
 
    Feel free to contact us if you have done such an "external contribution" so 
    that we can at least reference it in the documentation.
@@ -201,7 +206,7 @@ but if you want to slightly modify one of its component.
    :maxdepth: 1
    :caption: Technical documentation for grid2op "external" contributions
 
-   developer
+   grid2op_extend
 
 
 Technical documentation for grid2op developers

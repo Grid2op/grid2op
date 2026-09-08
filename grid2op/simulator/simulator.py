@@ -5,19 +5,19 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import copy
 from typing import Optional, Tuple
 try:
     from typing import Self
 except ImportError:
-    from typing_extensions import Self
+    from typing_extensions import Self # type: ignore
     
 import numpy as np
 import os
 from scipy.optimize import minimize
 from scipy.optimize import LinearConstraint
 
-from grid2op.dtypes import dt_float
 from grid2op.Environment import BaseEnv
 from grid2op.Action import BaseAction
 from grid2op.Backend import Backend
@@ -70,9 +70,9 @@ class Simulator(object):
                 )
             if not isinstance(env, BaseEnv):
                 raise SimulatorError(
-                    f"Make sure the environment you provided is "
-                    f"a grid2op Environment (an object of a type "
-                    f"inheriting from BaseEnv"
+                    "Make sure the environment you provided is "
+                    "a grid2op Environment (an object of a type "
+                    "inheriting from BaseEnv"
                 )
             if env.backend._can_be_copied:
                 self.backend: Backend = env.backend.copy_public()
@@ -375,7 +375,7 @@ class Simulator(object):
             )
             res_jac /= scale_objective  # scaling the function
             res_jac += 2e-2 * actual_dispatchable * weights
-            return res_jac
+            return res_jac.reshape(-1)
 
         mat_sum_ok = np.ones((1, nb_dispatchable))
         equality_const = LinearConstraint(

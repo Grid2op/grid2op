@@ -5,14 +5,15 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
+import datetime
 import os
 import copy
 import warnings
 import numpy as np
 import re
-from typing import Optional, Union, Literal
+from typing import Optional, Type, Union, Literal
 
-import grid2op
 from grid2op.Opponent import OpponentSpace
 from grid2op.dtypes import dt_float, dt_bool, dt_int
 from grid2op.Action import (
@@ -22,10 +23,15 @@ from grid2op.Action import (
     DontAct,
     CompleteAction,
 )
-from grid2op.Exceptions import *
+from grid2op.Exceptions import (
+    Grid2OpException,
+    EnvError,
+    BackendError,
+    
+)
 from grid2op.Observation import CompleteObservation, ObservationSpace, BaseObservation
 from grid2op.Reward import FlatReward, RewardHelper, BaseReward
-from grid2op.Rules import RulesChecker, AlwaysLegal, BaseRules
+from grid2op.Rules import RulesChecker, AlwaysLegal
 from grid2op.Backend import Backend
 from grid2op.Chronics import ChronicsHandler
 from grid2op.VoltageControler import ControlVoltageFromFile, BaseVoltageController
@@ -55,19 +61,19 @@ class Environment(BaseEnv):
         The name of the environment
 
     action_space: :class:`grid2op.Action.ActionSpace`
-        Another name for :attr:`Environment.helper_action_player` for gym compatibility.
+        Another name for :attr:`Environment.helper_action_player` for gymnasium compatibility.
 
     observation_space:  :class:`grid2op.Observation.ObservationSpace`
-        Another name for :attr:`Environment.helper_observation` for gym compatibility.
+        Another name for :attr:`Environment.helper_observation` for gymnasium compatibility.
 
     reward_range: ``(float, float)``
         The range of the reward function
 
     metadata: ``dict``
-        For gym compatibility, do not use
+        For gymnasium compatibility, do not use
 
     spec: ``None``
-        For Gym compatibility, do not use
+        For gymansium compatibility, do not use
 
     _viewer: ``object``
         Used to display the powergrid. Currently properly supported.
@@ -303,6 +309,7 @@ class Environment(BaseEnv):
             )  # the real powergrid of the environment
             self.backend.load_storage_data(self.get_path_env())
             self.backend._fill_names_obj()
+            self._needs_active_bus = backend._needs_active_bus
             try:
                 self.backend.load_redispacthing_data(self.get_path_env())
             except BackendError as exc_:
@@ -379,7 +386,7 @@ class Environment(BaseEnv):
         # be careful here: you need to initialize from the class, and not from the object
         bk_type = type(self.backend) 
         self._rewardClass = rewardClass
-        self._actionClass = actionClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
+        self._actionClass : Type[BaseAction] = actionClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
         self._actionClass._add_shunt_data()
         self._actionClass._update_value_set()
         self._observationClass = observationClass.init_grid(gridobj=bk_type, _local_dir_cls=self._local_dir_cls)
@@ -413,6 +420,14 @@ class Environment(BaseEnv):
             names_chronics_to_backend = self.backend.names_target_to_source
             
         self.chronics_handler = chronics_handler
+        if self._init_obs is not None:
+            # env init from an observation, I must update date and time
+            # from the chronics handler
+            delta_t_step = datetime.timedelta(minutes=float(self._init_obs.delta_time))
+            init_dt = self._init_obs.get_time_stamp() - delta_t_step
+            self.chronics_handler._real_data.start_datetime = init_dt
+            self.chronics_handler._real_data.current_datetime = init_dt
+            self.chronics_handler._real_data.time_interval = delta_t_step
         self.chronics_handler.initialize(
             self.name_load,
             self.name_gen,
@@ -420,6 +435,7 @@ class Environment(BaseEnv):
             self.name_sub,
             names_chronics_to_backend=names_chronics_to_backend,
         )
+            
         # new in grdi2op 1.10.2: used
         self.chronics_handler.action_space = self._helper_action_env
         self._names_chronics_to_backend = names_chronics_to_backend
@@ -487,7 +503,7 @@ class Environment(BaseEnv):
         self._observation_space.set_real_env_kwargs(self)
 
         # see issue https://github.com/Grid2Op/grid2op/issues/617
-        # thermal limits are set AFTER this initial step
+        # thermal limits are set AFTER this initial "step"
         _no_overflow_disconnection = self._no_overflow_disconnection
         self._no_overflow_disconnection = True
         self._last_obs = None
@@ -964,21 +980,19 @@ class Environment(BaseEnv):
         
         # the real powergrid of the environment
         self.backend.reset_public(self._init_grid_path)  
+        self._needs_active_bus = self.backend._needs_active_bus
         
-        # self.backend.assert_grid_correct()
         self._previous_conn_state.update_from_other(self._cst_prev_state_at_init)
 
         if self._thermal_limit_a is not None:
             self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
 
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
-        
-        if self._init_obs is not None:
-            # update the backend
-            self._backend_action = self.backend.update_from_obs(self._init_obs)
-            self._backend_action.last_topo_registered.values[:] = self._init_obs._prev_conn._topo_vect
-        else:
-            self._backend_action = self._backend_action_class()
+            
+        # synch the backend action with the init topology        
+        # NB topolgy is supposed to be accessible when the backend is loaded in "reset_public"
+        #    so no need to perform a powerflow in this case.
+        self._compute_init_state(do_powerflow=False) 
         
         if self._init_obs is not None:
             # NB this is called twice (once at the end of reset), this is the first call
@@ -1020,7 +1034,7 @@ class Environment(BaseEnv):
                 raise Grid2OpException(f"kwargs `method` used to set the initial state of the grid "
                                        f"is not understood (use one of `combine` or `ignore` and "
                                        f"not `{method}`)")
-                
+        
         *_, fail_to_start, info = self.step(init_action)
         if fail_to_start:
             raise Grid2OpException(
@@ -1031,7 +1045,7 @@ class Environment(BaseEnv):
             raise Grid2OpException(f"There has been an error at the initialization, most likely due to a "
                                    f"incorrect 'init state'. You need to change either the time series used (chronics, chronics_handler, "
                                    f"gridvalue, etc.) or the 'init state' option provided in "
-                                   f"`env.reset(..., options={'init state': XXX, ...})`. Error was: {info['exception']}")
+                                   f"`env.reset(..., options={{'init state': XXX, ...}})`. Error was: {info['exception']}")
         # assign the right
         self._observation_space.set_real_env_kwargs(self)
 
@@ -1381,7 +1395,6 @@ class Environment(BaseEnv):
         else:
             # reset previous max iter to value set with `env.set_max_iter(...)` (or -1 by default)
             self.chronics_handler._set_max_iter(self._max_iter)
-            
         self.chronics_handler.next_chronics()
         self.chronics_handler.initialize(
             self.backend.name_load,
@@ -1424,7 +1437,7 @@ class Environment(BaseEnv):
                     self.chronics_handler.set_current_datetime(init_dt) 
                 self._last_obs = None  # properly initialize the last observation
                 self._called_from_reset = True
-                self.step(self.action_space())
+                self.step(self.action_space())  # pylint: disable=not-callable
             elif skip_ts == 2:
                 self.fast_forward_chronics(1, init_dt)
             else:
@@ -1508,7 +1521,6 @@ class Environment(BaseEnv):
         
         # Return the rgb array
         try:
-            import matplotlib.colors
             tmp = fig.canvas.tostring_argb()
             argb_array = np.frombuffer(tmp, dtype=np.uint8).reshape(self._viewer.height, self._viewer.width, 4)
             rgb_array = argb_array[:,:,1:]
@@ -1646,6 +1658,7 @@ class Environment(BaseEnv):
         res["kwargs_attention_budget"] = copy.deepcopy(self._kwargs_attention_budget)
         res["has_attention_budget"] = self._has_attention_budget
         res["_read_from_local_dir"] = self._read_from_local_dir
+        res["_local_dir_cls"] = self._local_dir_cls
         res["kwargs_observation"] = copy.deepcopy(self._kwargs_observation)
         res["logger"] = self.logger
         res["observation_bk_class"] = self._observation_bk_class
@@ -1845,10 +1858,10 @@ class Environment(BaseEnv):
                 )
 
         if add_for_test is None and test_scen_id is not None:
-            raise EnvError(f"add_for_test is None and test_scen_id is not None.")
+            raise EnvError("add_for_test is None and test_scen_id is not None.")
 
         if add_for_test is not None and test_scen_id is None:
-            raise EnvError(f"add_for_test is not None and test_scen_id is None.")
+            raise EnvError("add_for_test is not None and test_scen_id is None.")
 
         from grid2op.Chronics import MultifolderWithCache, Multifolder
 
@@ -2151,10 +2164,10 @@ class Environment(BaseEnv):
             )
 
         if add_for_test is None and pct_test is not None:
-            raise EnvError(f"add_for_test is None and pct_test is not None.")
+            raise EnvError("add_for_test is None and pct_test is not None.")
 
         if add_for_test is not None and pct_test is None:
-            raise EnvError(f"add_for_test is not None and pct_test is None.")
+            raise EnvError("add_for_test is not None and pct_test is None.")
 
         my_path = self.get_path_env()
         chronics_path = os.path.join(my_path, self._chronics_folder_name())
@@ -2400,12 +2413,12 @@ class Environment(BaseEnv):
             key word arguments passed to `add_data` function of `chronix2grid.grid2op_utils` module
         """
         try:
-            from chronix2grid.grid2op_utils import add_data
+            from chronix2grid.grid2op_utils import add_data # type: ignore
         except ImportError as exc_:
             raise ImportError(
-                f"Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
-                f"Please visit https://github.com/bdonnot/chronix2grid#installation "
-                f"for further install instructions."
+                "Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
+                "Please visit https://github.com/bdonnot/chronix2grid#installation "
+                "for further install instructions."
             ) from exc_
         pot_file = None
         if self.get_path_env() is not None:
@@ -2415,7 +2428,7 @@ class Environment(BaseEnv):
             with open(pot_file, "r", encoding="utf-8") as f:
                 kwargs_default = json.load(f)
             for el in kwargs_default:
-                if not el in kwargs:
+                if el not in kwargs:
                     kwargs[el] = kwargs_default[el]
         # TODO logger here for the kwargs used (including seed=seed, nb_scenario=nb_year, nb_core=nb_core)
         add_data(

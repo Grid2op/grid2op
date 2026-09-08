@@ -8,13 +8,12 @@
 
 import os
 import json
-from typing import Optional, Union
+from typing import Optional
 import numpy as np
-import hashlib
 from datetime import datetime, timedelta
 
 import grid2op
-from grid2op.dtypes import dt_bool, dt_int
+from grid2op.dtypes import dt_int
 from grid2op.Chronics import GridValue, ChangeNothing
 from grid2op.Chronics.GSFFWFWM import GridStateFromFileWithForecastsWithMaintenance
 from grid2op.Chronics.fromNPY import FromNPY
@@ -163,9 +162,9 @@ class FromChronix2grid(GridValue):
             from chronix2grid.grid2op_utils import generate_one_episode
         except ImportError as exc_:
             raise ChronicsError(
-                f"Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
-                f"Please visit https://github.com/bdonnot/chronix2grid#installation "
-                f"for further install instructions."
+                "Chronix2grid package is not installed. Install it with `pip install grid2op[chronix2grid]`"
+                "Please visit https://github.com/bdonnot/chronix2grid#installation "
+                "for further install instructions."
             ) from exc_
 
         return generate_one_episode(*args, **kwargs)
@@ -283,12 +282,12 @@ class FromChronix2grid(GridValue):
                                              with_loss=self._with_loss,
                                              nb_steps=self._max_iter)
         
-        self._load_p = res_gen[0].values
-        self._load_p_forecasted = res_gen[1].values
-        self._load_q = res_gen[2].values
-        self._load_q_forecasted = res_gen[3].values
-        self._gen_p = res_gen[4].values
-        self._gen_p_forecasted = res_gen[5].values
+        self._load_p = res_gen[0].to_numpy()
+        self._load_p_forecasted = res_gen[1].to_numpy()
+        self._load_q = res_gen[2].to_numpy()
+        self._load_q_forecasted = res_gen[3].to_numpy()
+        self._gen_p = res_gen[4].to_numpy()
+        self._gen_p_forecasted = res_gen[5].to_numpy()
         
         if self.has_maintenance:
             self.maintenance = GridStateFromFileWithForecastsWithMaintenance._generate_matenance_static(

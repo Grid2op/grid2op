@@ -1,0 +1,130 @@
+/*
+ SPDX-License-Identifier: MPL-2.0
+ This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+*/
+
+/*Allow to add some custom colors and text decoration.
+ For example, :black:`text in black` or :blink:`text blinking` in rST. */
+
+.aqua {
+    color: aqua;
+}
+
+.black {
+    color: black;
+}
+
+.blue {
+    color: blue;
+}
+
+.cyan {
+    color: cyan;
+}
+
+.fuchsia {
+    color: fuchsia;
+}
+
+.gray {
+    color: gray;
+}
+
+.green {
+    color: green;
+}
+
+.lime {
+    color: lime;
+}
+
+.magenta {
+    color: magenta;
+}
+
+.maroon {
+    color: maroon;
+}
+
+.navy {
+    color: navy;
+}
+
+.olive {
+    color: olive;
+}
+
+.orange {
+    color: orange;
+}
+
+.pink {
+    color: pink;
+}
+
+.purple {
+    color: purple;
+}
+
+.red {
+    color: red;
+}
+
+.silver {
+    color: silver;
+}
+
+.teal {
+    color: teal;
+}
+
+.white {
+    color: white;
+}
+
+.yellow {
+    color: yellow;
+}
+
+
+/** font type **/
+
+.blink {
+    text-decoration: blink;
+}
+
+.it {
+    font-style: italic;
+}
+
+.large {
+    font-size: large;
+}
+
+.line {
+    text-decoration: line-through;
+}
+
+.ob {
+    font-style: oblique;
+}
+
+.over {
+    text-decoration: overline;
+}
+
+.small {
+    font-size: small;
+}
+
+.smallpar {
+    font-size: small;
+}
+
+.strike {
+    text-decoration: line-through;
+}
+
+.under {
+    text-decoration: underline;
+}

@@ -9,6 +9,14 @@
 from grid2op.Exceptions.grid2OpException import Grid2OpException
 
 
+class InvalidAction(Grid2OpException):
+    """
+    This exception indicate that the :class:`grid2op.BaseAction` has most likely not been
+    properly initialized.
+    """
+
+    pass
+
 # ambiguous action
 class AmbiguousAction(Grid2OpException):
     """
@@ -122,6 +130,14 @@ class InvalidCurtailment(AmbiguousAction):
     try to apply an invalid curtailment strategy.
     """
 
+    pass
+
+class InvalidBackendCallback(AmbiguousAction):
+    """
+    This is a more precise exception than :class:`AmbiguousAction` indicating that
+    the :class:`grid2op.BaseAction.BaseAction`
+    try to apply an invalid callback to the backend.
+    """
     pass
 
 

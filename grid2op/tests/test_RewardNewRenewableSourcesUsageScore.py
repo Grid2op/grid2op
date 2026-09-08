@@ -14,6 +14,7 @@ import grid2op
 from grid2op.Reward import _NewRenewableSourcesUsageScore
 from grid2op.Agent import DoNothingAgent, BaseAgent
 
+
 class CurtailTrackerAgent(BaseAgent):
     def __init__(self, action_space, gen_renewable, gen_pmax, curtail_level=1.):
         super().__init__(action_space)

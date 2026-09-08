@@ -1,2 +1,0 @@
-
-.. include:: ../final.rst

@@ -5,10 +5,11 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import warnings
 import time
 from math import floor
-from typing import Any, Dict, Tuple, Union, List, Literal
+from typing import Dict, Tuple, Union, List, Literal
 import os
 
 from grid2op.Environment.environment import Environment
@@ -16,7 +17,6 @@ from grid2op.Action import BaseAction
 from grid2op.Observation import BaseObservation
 from grid2op.Exceptions import EnvError
 from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
-from grid2op.MakeEnv.PathUtils import USE_CLASS_IN_FILE
 
 
 class TimedOutEnvironment(Environment):  # TODO heritage ou alors on met un truc de base
@@ -148,7 +148,7 @@ class TimedOutEnvironment(Environment):  # TODO heritage ou alors on met un truc
             nb_dn = floor(1000. * (self.__last_act_received  - self.__last_act_send) / (self.time_out_ms))
         else:
             nb_dn = 0
-        do_nothing_action = self.action_space()
+        do_nothing_action = self.action_space()  # pylint: disable=not-callable
         for _ in range(nb_dn):
             obs, reward, done, info = super().step(do_nothing_action)
             self._nb_dn_last += 1
@@ -270,7 +270,7 @@ class TimedOutEnvironment(Environment):  # TODO heritage ou alors on met un truc
                      "allow_detachment": bool(allow_detachment),
                      "_local_dir_cls": _local_dir_cls,
                      "_overload_name_multimix": _overload_name_multimix}
-        if not "time_out_ms" in other_env_kwargs:
+        if "time_out_ms" not in other_env_kwargs:
             raise EnvError("You cannot make a MaskedEnvironment without providing the list of lines of interest")
         for el in other_env_kwargs:
             if el == "time_out_ms":

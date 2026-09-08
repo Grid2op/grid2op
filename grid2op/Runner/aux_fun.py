@@ -16,8 +16,7 @@ from grid2op.Agent import BaseAgent
 
 from grid2op.Episode import EpisodeData, CompactEpisodeData
 from grid2op.Runner.FakePBar import _FakePbar
-from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Chronics import ChronicsHandler
+from grid2op.dtypes import dt_float, dt_bool
 
 
 def _aux_add_data(reward, env, episode,

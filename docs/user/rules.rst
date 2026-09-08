@@ -1,3 +1,6 @@
+..  SPDX-License-Identifier: MPL-2.0
+..  This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 .. currentmodule:: grid2op.Rules
 
 .. _rule-module:
@@ -51,8 +54,6 @@ To illustrate this, let's create an environment that we'll use for an example an
     import grid2op
     env_name = "l2rpn_case14_sandbox"
     env = grid2op.make(env_name)
-    env.set_id(0) 
-    env.seed(0)
 
     # for this example, we enforce that we need to wait 3 steps
     # before being able to change again a line or a substation
@@ -61,7 +62,7 @@ To illustrate this, let's create an environment that we'll use for an example an
     param.NB_TIMESTEP_COOLDOWN_LINE = 3
     env.change_parameters(param)
 
-    obs = env.reset()
+    obs = env.reset(seed=0, options={"time serie id": 0})
 
     # in summary (see descriptions bellow for more information) : 
     act_line_1 = env.action_space({"set_line_status": [(1, -1)]})

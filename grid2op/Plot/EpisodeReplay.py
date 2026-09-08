@@ -18,17 +18,17 @@ from grid2op.Exceptions.plotExceptions import PyGameQuit
 
 try:
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
-    import pygame
+    import pygame # type: ignore
 
     can_plot = True
-except Exception as e:
+except ImportError:
     can_plot = False
     pass
 
 try:
     # from array2gif import write_gif
-    import imageio
-    import imageio_ffmpeg
+    import imageio # type: ignore
+    import imageio_ffmpeg  # type: ignore # noqa: F401
 
     can_save_gif = True
 except ImportError as exc_:
@@ -36,7 +36,7 @@ except ImportError as exc_:
     can_save_gif = False
 
 
-class EpisodeReplay(object):
+class EpisodeReplay(object):  # pragma: no cover
     """
     INTERNAL
 

@@ -10,9 +10,8 @@ import copy, re
 import io
 import numpy as np
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 from dataclasses import dataclass, fields
-from typing import Tuple, Literal, Callable, Union, List
+from typing import Tuple, Literal, Union, List
 from matplotlib.colors import Colormap, LinearSegmentedColormap, Normalize, is_color_like, BoundaryNorm
 from matplotlib.figure import Figure
 from matplotlib.path import Path
@@ -107,7 +106,7 @@ class Settings:
     storage:PatchSettings
     line:LineSettings
 
-class PlotMatplot(BasePlot):
+class PlotMatplot(BasePlot):  # pragma: no cover
     """
     This class uses the python library "matplotlib" to draw the powergrid.
 

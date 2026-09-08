@@ -7,52 +7,26 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import time
-import requests
 import os
 import warnings
-import pkg_resources
 from typing import Union, Optional
 import logging
-
+    
 from grid2op.Environment import Environment
-from grid2op.MakeEnv.MakeFromPath import make_from_dataset_path, ERR_MSG_KWARGS
+from grid2op.MakeEnv.MakeFromPath import (
+    make_from_dataset_path,   
+    MakeKwargsTypeHints,
+    Unpack
+)
+from grid2op.MakeEnv.get_default_env_kwargs import ERR_MSG_KWARGS
 from grid2op.Exceptions import Grid2OpException, UnknownEnv
 import grid2op.MakeEnv.PathUtils
 from grid2op.MakeEnv.PathUtils import _create_path_folder
+from grid2op.MakeEnv._aux_var import TEST_DEV_ENVS
 from grid2op.Download.DownloadDataset import _aux_download
 from grid2op.Space import DEFAULT_ALLOW_DETACHMENT, DEFAULT_N_BUSBAR_PER_SUB
 
 _VAR_FORCE_TEST = "_GRID2OP_FORCE_TEST"
-
-DEV_DATA_FOLDER = pkg_resources.resource_filename("grid2op", "data")
-DEV_DATASET = os.path.join(DEV_DATA_FOLDER, "{}")
-TEST_DEV_ENVS = {
-    "blank": DEV_DATASET.format("blank"),
-    "rte_case14_realistic": DEV_DATASET.format("rte_case14_realistic"),
-    "rte_case14_redisp": DEV_DATASET.format("rte_case14_redisp"),
-    "rte_case14_test": DEV_DATASET.format("rte_case14_test"),
-    "rte_case5_example": DEV_DATASET.format("rte_case5_example"),
-    "rte_case118_example": DEV_DATASET.format("rte_case118_example"),
-    "rte_case14_opponent": DEV_DATASET.format("rte_case14_opponent"),
-    "l2rpn_wcci_2020": DEV_DATASET.format("l2rpn_wcci_2020"),
-    "l2rpn_neurips_2020_track2": DEV_DATASET.format("l2rpn_neurips_2020_track2"),
-    "l2rpn_neurips_2020_track1": DEV_DATASET.format("l2rpn_neurips_2020_track1"),
-    "l2rpn_case14_sandbox": DEV_DATASET.format("l2rpn_case14_sandbox"),
-    "l2rpn_case14_sandbox_diff_grid": DEV_DATASET.format("l2rpn_case14_sandbox_diff_grid"),
-    "l2rpn_icaps_2021": DEV_DATASET.format("l2rpn_icaps_2021"),
-    "l2rpn_wcci_2022_dev": DEV_DATASET.format("l2rpn_wcci_2022_dev"),
-    "l2rpn_wcci_2022": DEV_DATASET.format("l2rpn_wcci_2022_dev"),
-    "l2rpn_idf_2023": DEV_DATASET.format("l2rpn_idf_2023"),
-    # educational files
-    "educ_case14_redisp": DEV_DATASET.format("educ_case14_redisp"),
-    "educ_case14_storage": DEV_DATASET.format("educ_case14_storage"),
-    # keep the old names for now
-    "case14_realistic": DEV_DATASET.format("rte_case14_realistic"),
-    "case14_redisp": DEV_DATASET.format("rte_case14_redisp"),
-    "case14_test": DEV_DATASET.format("rte_case14_test"),
-    "case5_example": DEV_DATASET.format("rte_case5_example"),
-    "case14_fromfile": DEV_DATASET.format("rte_case14_test"),
-}
 
 _REQUEST_FAIL_EXHAUSTED_ERR = (
     'Impossible to retrieve data at "{}".\n'
@@ -146,6 +120,7 @@ def _send_request_retry(url, nb_retry=10, gh_session=None):
         raise Grid2OpException(_REQUEST_FAIL_EXHAUSTED_ERR.format(url))
 
     if gh_session is None:
+        import requests
         gh_session = requests.Session()
 
     try:
@@ -159,7 +134,7 @@ def _send_request_retry(url, nb_retry=10, gh_session=None):
         raise
     except KeyboardInterrupt:
         raise
-    except Exception as exc_:
+    except Exception as exc_:  # noqa: F841
         warnings.warn(_REQUEST_EXCEPT_RETRY_ERR.format(url, nb_retry - 1))
         time.sleep(1)
         return _send_request_retry(url, nb_retry=nb_retry - 1, gh_session=gh_session)
@@ -192,7 +167,7 @@ def _list_available_remote_env_aux():
 
 def _fecth_environments(dataset_name):
     avail_datasets_json = _list_available_remote_env_aux()
-    if not dataset_name in avail_datasets_json:
+    if dataset_name not in avail_datasets_json:
         known_ds = sorted(avail_datasets_json.keys())
         raise UnknownEnv(_FETCH_ENV_UNKNOWN_ERR.format(dataset_name, known_ds))
     # url = _FETCH_ENV_TAR_URL.format(avail_datasets_json[dataset_name], dataset_name)
@@ -290,13 +265,13 @@ def make(
     test : bool=False,
     logger: Optional[logging.Logger]=None,
     experimental_read_from_local_dir : bool=False,
-    n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-    allow_detachment=DEFAULT_ALLOW_DETACHMENT,
-    _add_cls_nm_bk=True,
+    n_busbar: int=DEFAULT_N_BUSBAR_PER_SUB,
+    allow_detachment: bool=DEFAULT_ALLOW_DETACHMENT,
+    _add_cls_nm_bk: bool=True,
     _add_to_name : str="",
     _compat_glop_version : Optional[str]=None,
     _overload_name_multimix : Optional[str]=None,  # do not use !
-    **kwargs
+    **kwargs: Unpack[MakeKwargsTypeHints]
 ) -> Environment:
     """
     This function is a shortcut to rapidly create some (pre defined) environments within the grid2op framework.
@@ -439,9 +414,9 @@ def make(
         elif _aux_is_multimix(dataset) and test_tmp:
 
             def make_from_path_fn_(*args, **kwargs):
-                if not "logger" in kwargs:
+                if "logger" not in kwargs:
                     kwargs["logger"] = logger
-                if not "experimental_read_from_local_dir" in kwargs:
+                if "experimental_read_from_local_dir" not in kwargs:
                     kwargs[
                         "experimental_read_from_local_dir"
                     ] = experimental_read_from_local_dir
@@ -449,9 +424,9 @@ def make(
 
             make_from_path_fn = make_from_path_fn_
         
-        if not "logger" in kwargs:
+        if "logger" not in kwargs:
             kwargs["logger"] = logger
-        if not "experimental_read_from_local_dir" in kwargs:
+        if "experimental_read_from_local_dir" not in kwargs:
             kwargs[
                 "experimental_read_from_local_dir"
             ] = experimental_read_from_local_dir

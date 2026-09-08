@@ -8,7 +8,6 @@
 
 from collections import OrderedDict
 import numpy as np
-import copy
 
 from grid2op.dtypes import dt_int, dt_bool, dt_float
 from grid2op.gym_compat.utils import check_gym_version, sample_seed
@@ -68,7 +67,7 @@ class __AuxBaseGymSpaceConverter:
 
     @classmethod
     def _boolean_type(cls, sh):
-        return cls._MultiBinaryType(n=sh)
+        return cls._MultiBinaryType(n=int(sh))
 
     @staticmethod
     def _simplifykeys_for_timestamps(key):

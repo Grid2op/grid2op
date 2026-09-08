@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import copy
+import os
 import numpy as np
 import warnings
 from datetime import datetime, timedelta
@@ -15,7 +17,13 @@ from typing import Union, Dict, Literal
 import grid2op
 from grid2op.dtypes import dt_int
 from grid2op.Space import RandomObject
-from grid2op.Exceptions import EnvError, Grid2OpException, ChronicsNotFoundError
+from grid2op.Exceptions import (
+    EnvError,
+    Grid2OpException,
+    ChronicsNotFoundError,
+    IncorrectNumberOfElements,
+    ChronicsError,
+    )
 
 # TODO sous echantillonner ou sur echantilloner les scenario: need to modify everything that affect the number
 # TODO of time steps there, for example "Space.gen_min_time_on" or "params.NB_TIMESTEP_POWERFLOW_ALLOWED" for
@@ -128,7 +136,7 @@ class GridValue(RandomObject, ABC):
         if not isinstance(values, SerializableActionSpace):
             raise EnvError(f"Impossible to set the action space with a value of type {type(values)}")
         if self.__action_space is not None:
-            raise EnvError(f"Impossible to change the action space once initialized.")
+            raise EnvError("Impossible to change the action space once initialized.")
         # TODO maybe raise a warning if the underlying action class is not CompleteAction
         self.__action_space = values
 
@@ -946,3 +954,102 @@ class GridValue(RandomObject, ABC):
             
         """
         pass
+    
+    def _handle_names_chronics_to_backend(
+        self,
+        order_backend_loads,
+        order_backend_prods,
+        order_backend_lines,
+        order_backend_subs,
+        names_chronics_to_backend
+        ):
+        
+        self.names_chronics_to_backend = copy.deepcopy(names_chronics_to_backend)
+        if self.names_chronics_to_backend is None:
+            self.names_chronics_to_backend = {}
+        if "loads" not in self.names_chronics_to_backend:
+            self.names_chronics_to_backend["loads"] = {
+                k: k for k in order_backend_loads
+            }
+        else:
+            self._assert_correct(
+                self.names_chronics_to_backend["loads"], order_backend_loads
+            )
+        if "prods" not in self.names_chronics_to_backend:
+            self.names_chronics_to_backend["prods"] = {
+                k: k for k in order_backend_prods
+            }
+        else:
+            self._assert_correct(
+                self.names_chronics_to_backend["prods"], order_backend_prods
+            )
+        if "lines" not in self.names_chronics_to_backend:
+            self.names_chronics_to_backend["lines"] = {
+                k: k for k in order_backend_lines
+            }
+        else:
+            self._assert_correct(
+                self.names_chronics_to_backend["lines"], order_backend_lines
+            )
+        if "subs" not in self.names_chronics_to_backend:
+            self.names_chronics_to_backend["subs"] = {k: k for k in order_backend_subs}
+        else:
+            self._assert_correct(
+                self.names_chronics_to_backend["subs"], order_backend_subs
+            )
+
+    def _assert_correct(self, dict_convert, order_backend):
+        len_backend = len(order_backend)
+        len_dict_keys = len(dict_convert)
+        vals = set(dict_convert.values())
+        lend_dict_values = len(vals)
+
+        if len_dict_keys != len_backend:
+            err_msg = "Conversion mismatch between backend data {} elements and converter data {} (keys)"
+            raise IncorrectNumberOfElements(err_msg.format(len_backend, len_dict_keys))
+        if lend_dict_values != len_backend:
+            err_msg = "Conversion mismatch between backend data {} elements and converter data {} (values)"
+            raise IncorrectNumberOfElements(
+                err_msg.format(len_backend, lend_dict_values)
+            )
+
+        for el in order_backend:
+            if el not in vals:
+                raise ChronicsError(
+                    'Impossible to find element "{}" in the original converter data'.format(
+                        el
+                    )
+                )
+                
+    def _init_date_time(self,
+                        path):
+        if os.path.exists(os.path.join(path, "start_datetime.info")):
+            with open(os.path.join(path, "start_datetime.info"), "r") as f:
+                a = f.read().rstrip().lstrip()
+            try:
+                tmp = datetime.strptime(a, "%Y-%m-%d %H:%M")
+            except ValueError:
+                tmp = datetime.strptime(a, "%Y-%m-%d")
+            except Exception:
+                raise ChronicsNotFoundError(
+                    'Impossible to understand the content of "start_datetime.info". Make sure '
+                    'it\'s composed of only one line with a datetime in the "%Y-%m-%d %H:%M"'
+                    "format."
+                )
+            self.start_datetime = tmp
+            self.current_datetime = tmp
+
+        if os.path.exists(os.path.join(path, "time_interval.info")):
+            with open(os.path.join(path, "time_interval.info"), "r") as f:
+                a = f.read().rstrip().lstrip()
+            try:
+                tmp = datetime.strptime(a, "%H:%M")
+            except ValueError:
+                tmp = datetime.strptime(a, "%M")
+            except Exception:
+                raise ChronicsNotFoundError(
+                    'Impossible to understand the content of "time_interval.info". Make sure '
+                    'it\'s composed of only one line with a datetime in the "%H:%M"'
+                    "format."
+                )
+            self.time_interval = timedelta(hours=tmp.hour, minutes=tmp.minute)

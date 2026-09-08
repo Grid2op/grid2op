@@ -1,3 +1,6 @@
+..  SPDX-License-Identifier: MPL-2.0
+..  This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 .. currentmodule:: grid2op.Reward
 
 .. _reward-module:
@@ -27,6 +30,13 @@ Customization of the reward
 
 In grid2op you can customize the reward function / reward kernel used by your agent. By default, when you create an
 environment a reward has been specified for you by the creator of the environment and you have nothing to do:
+
+.. note::
+    In the mathematical MDP notation, the reward kernel is often written as a function of the state,
+    the next state and the action. In grid2op's implementation, reward classes also receive contextual
+    flags such as `has_error`, `is_illegal` and `is_ambiguous`. These flags make it possible to distinguish
+    the original action submitted by the agent from the action effectively applied by the environment, for
+    example when an out-of-bounds redispatching action is replaced by a do-nothing action.
 
 .. code-block:: python
 

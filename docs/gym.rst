@@ -1,3 +1,5 @@
+..  SPDX-License-Identifier: MPL-2.0
+..  This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 .. _BaseGymSpaceConverter.add_key: ./gym.html#grid2op.gym_compat.gym_space_converter._BaseGymSpaceConverter.add_key
 .. _BaseGymSpaceConverter.keep_only_attr: ./gym.html#grid2op.gym_compat.gym_space_converter._BaseGymSpaceConverter.keep_only_attr

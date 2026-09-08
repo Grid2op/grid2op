@@ -10,10 +10,10 @@ import warnings
 import numpy as np
 import unittest
 import os
-from grid2op.Observation import BaseObservation
 from grid2op.tests.helper_path_test import *
 
-from grid2op import make
+import grid2op
+from grid2op.Observation import BaseObservation
 from grid2op.Reward import AlertReward
 from grid2op.Runner import Runner  # TODO
 from grid2op.Action import PlayableAction
@@ -52,7 +52,7 @@ class TestAction(unittest.TestCase):
         kwargs_opponent = dict(lines_attacked=ALL_ATTACKABLE_LINES)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.env = make(self.env_nm,
+            self.env = grid2op.make(self.env_nm,
                             test=True,
                             difficulty="1", 
                             opponent_attack_cooldown=0, 
@@ -149,7 +149,11 @@ class TestAction(unittest.TestCase):
         try:
             act2.raise_alert = [self.env.dim_alerts]
         except Exception as e:
-            assert e.args[0] ==  'Impossible to modify the alert with your input. Please consult the documentation. The error was:\n"Grid2OpException IllegalAction "Impossible to change a raise alert id 10 because there are only 10 on the grid (and in python id starts at 0)""'
+            assert e.args[0] == ('Impossible to modify the alert with your input. '
+                                 'Please consult the documentation. The error '
+                                 'was:\n"Grid2OpException AmbiguousAction "Impossible to change '
+                                 'a raise alert id 10 because there are only 10 '
+                                 'on the grid (and in python id starts at 0)""')
 
         # TODO : is it really illicit or rather ambiguous ? 
         #assert act.is_ambiguous()[0]
@@ -167,7 +171,7 @@ class TestObservation(unittest.TestCase):
         kwargs_opponent = dict(lines_attacked=ALL_ATTACKABLE_LINES)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            self.env = make(self.env_nm,
+            self.env = grid2op.make(self.env_nm,
                             test=True,
                             difficulty="1", 
                             opponent_attack_cooldown=0, 

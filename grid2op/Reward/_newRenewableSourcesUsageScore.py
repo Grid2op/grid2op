@@ -10,6 +10,7 @@ import numpy as np
 from grid2op.Reward.baseReward import BaseReward
 from grid2op.dtypes import dt_float
 
+
 class _NewRenewableSourcesUsageScore(BaseReward):
     """
 

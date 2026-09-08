@@ -151,7 +151,7 @@ class FromHandlers(GridValue):
         
         self.path = path
         if self.path is not None:
-            self._init_date_time()
+            self._init_date_time(self.path)
             
         # all my "handlers" (I need to perform a deepcopy otherwise data are kept between episode...)
         self.gen_p_handler : BaseHandler = copy.deepcopy(gen_p_handler)
@@ -494,38 +494,6 @@ class FromHandlers(GridValue):
             if tmp_ is not None:
                 prod_v = dt_float(1.0) * tmp_
         return dict_, prod_v
-        
-    def _init_date_time(self):  # in csv handler
-        if os.path.exists(os.path.join(self.path, "start_datetime.info")):
-            with open(os.path.join(self.path, "start_datetime.info"), "r") as f:
-                a = f.read().rstrip().lstrip()
-            try:
-                tmp = datetime.strptime(a, "%Y-%m-%d %H:%M")
-            except ValueError:
-                tmp = datetime.strptime(a, "%Y-%m-%d")
-            except Exception:
-                raise ChronicsNotFoundError(
-                    'Impossible to understand the content of "start_datetime.info". Make sure '
-                    'it\'s composed of only one line with a datetime in the "%Y-%m-%d %H:%M"'
-                    "format."
-                )
-            self.start_datetime = tmp
-            self.current_datetime = tmp
-
-        if os.path.exists(os.path.join(self.path, "time_interval.info")):
-            with open(os.path.join(self.path, "time_interval.info"), "r") as f:
-                a = f.read().rstrip().lstrip()
-            try:
-                tmp = datetime.strptime(a, "%H:%M")
-            except ValueError:
-                tmp = datetime.strptime(a, "%M")
-            except Exception:
-                raise ChronicsNotFoundError(
-                    'Impossible to understand the content of "time_interval.info". Make sure '
-                    'it\'s composed of only one line with a datetime in the "%H:%M"'
-                    "format."
-                )
-            self.time_interval = timedelta(hours=tmp.hour, minutes=tmp.minute)
             
     def fast_forward(self, nb_timestep):
         for _ in range(nb_timestep):
@@ -543,9 +511,9 @@ class FromHandlers(GridValue):
             return None
         
         if self.action_space is None:
-            raise Grid2OpException(f"We detected an action to set the intial state of the grid "
-                                   f"but we cannot build it because the 'action_space' of the time"
-                                   f"serie is not set.")
+            raise Grid2OpException("We detected an action to set the intial state of the grid "
+                                   "but we cannot build it because the 'action_space' of the time"
+                                   "serie is not set.")
             
         try:
             act : BaseAction = self.action_space(act_as_dict,

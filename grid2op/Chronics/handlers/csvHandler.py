@@ -220,7 +220,7 @@ class CSVHandler(BaseHandler):
 
         if array is not None:
             self.array = copy.deepcopy(
-                array.values[:, self._order_array].astype(dt_float)
+                array.to_numpy()[:, self._order_array].astype(dt_float)
             )
         
     def _get_fileext(self, path_tmp):  # in csvhandler

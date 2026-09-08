@@ -11,8 +11,6 @@ from gymnasium.spaces import Box, Discrete, MultiDiscrete, Dict
 from gymnasium.vector import AsyncVectorEnv
 import warnings
 import numpy as np
-from multiprocessing import set_start_method
-
 import grid2op
 from grid2op.Action import PlayableAction
 from grid2op.gym_compat import GymEnv, BoxGymActSpace, BoxGymObsSpace, DiscreteActSpace, MultiDiscreteActSpace
@@ -31,7 +29,7 @@ class AsyncGymEnvTester_Fork(unittest.TestCase):
                                     _add_to_name=type(self).__name__,
                                     action_class=PlayableAction,
                                     experimental_read_from_local_dir=False)
-        obs = self.env.reset(seed=0, options={"time serie id": 0})
+        _ = self.env.reset(seed=0, options={"time serie id": 0})
         return super().setUp()
     
     def test_default_space_obs_act(self):
@@ -48,12 +46,15 @@ class AsyncGymEnvTester_Fork(unittest.TestCase):
         dn_act_single = template_env.action_space.sample()
         for k, v in dn_act_single.items():
             v[:] = 0
-        dn_acts = {k: np.tile(v, reps=[2, 1]) for k, v in dn_act_single.items()}       
-        obs2 = async_vect_env.step(dn_acts)
+        dn_acts = {k: np.tile(v, reps=[2, 1]) for k, v in dn_act_single.items()}     
+        _ = async_vect_env.step(dn_acts)
         
         rnd_acts_li = [template_env.action_space.sample(), template_env.action_space.sample()]
-        rnd_acts = {k: np.concatenate((rnd_acts_li[0][k], rnd_acts_li[1][k])) for k in rnd_acts_li[0].keys()} 
-        obs3 = async_vect_env.step(rnd_acts)
+        rnd_acts = {k: np.concatenate((rnd_acts_li[0][k].reshape(1,-1),
+                                       rnd_acts_li[1][k].reshape(1,-1)))
+                    for k in rnd_acts_li[0].keys()} 
+        
+        _ = async_vect_env.step(rnd_acts)
         
         obs, infos = async_vect_env.reset(seed=[2, 3],
                                           options={"time serie id": 0},

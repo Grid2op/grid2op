@@ -6,24 +6,16 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
-import warnings
-import numpy as np
 import unittest
 import tempfile
 import grid2op
-from grid2op.Reward import _AlertCostScore, _AlertTrustScore
-from grid2op.Agent import DoNothingAgent, BaseAgent
+from grid2op.Reward import _AlertCostScore
+from grid2op.Agent import  BaseAgent
 from grid2op.tests.helper_path_test import *
-from grid2op.Exceptions import Grid2OpException
 from grid2op.Runner import Runner 
 from grid2op.Observation import BaseObservation
 from grid2op.Episode import EpisodeData
-from grid2op.Parameters import Parameters
-from grid2op.Opponent import BaseOpponent, GeometricOpponent
-from grid2op.Action import BaseAction, PlayableAction
-from _aux_opponent_for_test_alerts import (_get_steps_attack,
-                                           TestOpponent
-                                           )
+from grid2op.Action import BaseAction
 
 ATTACKED_LINE = "48_50_136"
 

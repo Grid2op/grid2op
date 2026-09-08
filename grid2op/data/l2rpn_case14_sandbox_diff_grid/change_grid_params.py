@@ -24,8 +24,10 @@ sim_case.line["x_ohm_per_km"] *= np.random.lognormal(0., noise)
 
 pp.runpp(sim_case)
 pp.runpp(real_case)
-assert sim_case.converged
-assert sim_case.res_line.shape[0] == sim_case.line.shape[0]
+if not sim_case.converged:
+    raise RuntimeError("Should have converged")
+if sim_case.res_line.shape[0] != sim_case.line.shape[0]:
+    raise RuntimeError("Should have the same number of lines")
 print(f"L1 error on p: {np.mean(np.abs(sim_case.res_line['p_from_mw'] - real_case.res_line['p_from_mw'])):.2f}MW")
 print(f"L1 error on q: {np.mean(np.abs(sim_case.res_line['q_from_mvar'] - real_case.res_line['q_from_mvar'])):.2f}MVAr")
 pp.to_json(sim_case, "grid_forecast.json")

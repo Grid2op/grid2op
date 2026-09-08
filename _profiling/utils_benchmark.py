@@ -190,10 +190,13 @@ def run_env(env, max_ts, agent):
     nb_ts = 0
     prev_act = None
     beg_ = time.perf_counter()
+    time_step = 0.
     with tqdm(total=nb_rows) as pbar:
         while not done:
             act = agent.act(obs, reward, done)
+            beg_step = time.perf_counter()
             obs, reward, done, info = env.step(act)
+            time_step += time.perf_counter() - beg_step
             aor[nb_ts, :] = obs.a_or
             gen_p[nb_ts, :] = obs.prod_p
             gen_q[nb_ts, :] = obs.prod_q
@@ -208,7 +211,7 @@ def run_env(env, max_ts, agent):
             #     print(act)
     end_ = time.perf_counter()
     total_time = end_ - beg_
-    return nb_ts, total_time, aor, gen_p, gen_q
+    return nb_ts, total_time, aor, gen_p, gen_q, time_step
 
 
 def run_env_with_reset(env, max_ts, agent, seed=None):

@@ -9,8 +9,10 @@
 import copy
 import json
 import re
+from typing import Type
 import warnings
 import unittest
+import os
 import numpy as np
 from abc import ABC, abstractmethod
 
@@ -18,8 +20,29 @@ import grid2op
 from grid2op.tests.helper_path_test import *
 
 from grid2op.dtypes import dt_int, dt_float, dt_bool
-from grid2op.Exceptions import *
-from grid2op.Action import *
+from grid2op.Exceptions import (
+    Grid2OpException,
+    InvalidLineStatus,
+    InvalidBusStatus,
+    NonFiniteElement,
+    AmbiguousAction,
+)
+from grid2op.Action import (
+    ActionSpace,
+    TopologySetAndDispatchAction,
+    TopologySetAction,
+    TopologyChangeAndDispatchAction,
+    TopologyChangeAction,
+    BaseAction,
+    DispatchAction,
+    DontAct,
+    PowerlineChangeAndDispatchAction,
+    PowerlineChangeAction,
+    PowerlineSetAction,
+    PowerlineSetAndDispatchAction,
+    TopologyAndDispatchAction,
+    TopologyAction,
+)
 from grid2op.Rules import RulesChecker, DefaultRules
 from grid2op.Space import GridObjects
 from grid2op.Space.space_utils import save_to_dict
@@ -27,9 +50,11 @@ from grid2op.Space.space_utils import save_to_dict
 # TODO check that if i set the element of a powerline to -1, then it's working as intended (disconnect both ends)
 
 
-def _get_action_grid_class():
+def _get_action_grid_class(nm_to_add: str=""):
     GridObjects._clear_class_attribute()
-    GridObjects.env_name = "test_action_env"
+    if nm_to_add == "":
+        nm_to_add = os.path.splitext(os.path.split(__file__)[-1])[0]
+    GridObjects.env_name = f"test_act_{nm_to_add}"
     GridObjects.n_busbar_per_sub = 2
     GridObjects.detachment_is_allowed = False
     GridObjects.n_gen = 5
@@ -162,7 +187,7 @@ def _get_action_grid_class():
             "sub_13",
         ],
         "name_storage": ["storage_0", "storage_1"],
-        "env_name": "test_action_env",
+        "env_name": "test_act_test_Action",
         "sub_info": [3, 7, 5, 6, 5, 6, 3, 2, 5, 3, 3, 3, 4, 3],
         "load_to_subid": [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13],
         "gen_to_subid": [0, 1, 2, 5, 7],
@@ -347,7 +372,7 @@ def _get_action_grid_class():
 
 class TestActionBase(ABC):
     @abstractmethod
-    def _action_setup(self):
+    def _action_setup(self) -> Type[BaseAction]:
         pass
 
     def _skipMissingKey(self, key):
@@ -421,10 +446,14 @@ class TestActionBase(ABC):
             act._assign_attr_from_name(
                 "_set_line_status", np.zeros(self.helper_action.n_line)
             )
+    
+    def test_reset_is_do_nothing(self):
+        act = self.helper_action.sample()
+        act.reset()
 
     def test_eq_none(self):
         act = self.helper_action.sample()
-        assert not (act == None)
+        assert act is not None
 
     def test_eq_diff_grid(self):
         act = self.helper_action.sample()
@@ -1213,11 +1242,8 @@ class TestActionBase(ABC):
         self._skipMissingKey("set_line_status")
         self._skipMissingKey("change_line_status")
         self._skipMissingKey("injection")
+        self._skipMissingKey("storage_power")  # you cannot modify the bus of a storage unit in this case
 
-        arr1 = np.array([False, False, False, True, True, True, True], dtype=dt_bool)
-        arr2 = np.array([1, 1, 2, 2], dtype=dt_int)
-        id_1 = 1
-        id_2 = 12
         new_vect = np.random.randn(self.helper_action.n_load).astype(dt_int)
         new_vect2 = np.random.randn(self.helper_action.n_load).astype(dt_int)
 
@@ -1740,7 +1766,7 @@ class TestIADD:
                 # i now test all attributes have been modified for attributes in both
                 for attr_nm in act1.attr_list_set & act2.attr_list_set:
                     assert np.any(
-                        act1.__dict__[attr_nm] != act1_init.__dict__[attr_nm]
+                         getattr(act1, attr_nm) != getattr(act1_init, attr_nm)
                     ), "error, attr {} has not been updated".format(attr_nm)
 
                 # for all in act1 not in act2, nothing should have changed
@@ -1757,7 +1783,7 @@ class TestIADD:
                         # TODO improve these tests
                         continue
                     assert np.all(
-                        act1.__dict__[attr_nm] == act1_init.__dict__[attr_nm]
+                        getattr(act1, attr_nm) == getattr(act1_init, attr_nm)
                     ), "error, attr {} has been updated".format(attr_nm)
 
     def test_iadd_change_set_status(self):
@@ -2264,13 +2290,13 @@ class TestTopologicalImpact(unittest.TestCase):
     def test_get_topo_imp_setstatus_down_isup(self):
         l_id = 3
         powerline_status = np.full(self.n_line, fill_value=True, dtype=dt_bool)
-        changelor = self.helper_action({"set_line_status": [(l_id, -1)]})
+        changelor : BaseAction = self.helper_action({"set_line_status": [(l_id, -1)]})
         # this is a real reconnection, is concerns only the powerline
         lines_impacted, subs_impacted = changelor.get_topological_impact(
             powerline_status
         )
-        assert np.sum(lines_impacted) == 1
-        assert np.sum(subs_impacted) == 0
+        assert np.sum(lines_impacted) == 1, f"{lines_impacted.sum()} != 1"
+        assert np.sum(subs_impacted) == 0, f"{subs_impacted.sum()} != 0"
         assert lines_impacted[l_id]
 
 

@@ -5,6 +5,7 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
 import os
 import numpy as np
 from collections import OrderedDict
@@ -271,7 +272,7 @@ class IdToAct(Converter):
                 except Exception as exc_:
                     raise Grid2OpException(
                         'Impossible to convert the data provided in "all_actions" into valid '
-                        "grid2op action. The error was:\n{}".format(e)
+                        "grid2op action. The error was:\n{}".format(exc_)
                     ) from exc_
         else:
             # first make sure that all action is "correct"
@@ -279,7 +280,8 @@ class IdToAct(Converter):
                 nb = len(all_actions)  # assert I can compute the "len"
                 for i in range(nb):
                     act = all_actions[i]  # assert I can use the `[]` operator
-                    assert isinstance(act, BaseAction)  # assert what's in there is a BaseAction
+                    if not isinstance(act, BaseAction):
+                        raise RuntimeError("The action provided is not a valid grid2op action")
             except Exception as exc_:
                 raise RuntimeError("Impossible to load the action provided.") from exc_
             # does not copy here (to save memory in case of shared memory setting)

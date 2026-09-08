@@ -13,7 +13,6 @@ from grid2op.dtypes import dt_int
 
 from grid2op.Opponent.baseOpponent import BaseOpponent
 from grid2op.Opponent.geometricOpponent import GeometricOpponent
-from grid2op.Exceptions import OpponentError
 
 
 class GeometricOpponentMultiArea(BaseOpponent):

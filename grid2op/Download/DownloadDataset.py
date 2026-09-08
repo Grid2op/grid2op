@@ -16,12 +16,15 @@ import tarfile
 from grid2op.Exceptions import Grid2OpException
 
 try:
+    import urllib.parse
     import urllib.request
-except Exception as e:
-    raise RuntimeError("Impossible to find library urllib. Please install it.")
+except Exception as exc_:  # pragma: no cover
+    raise RuntimeError(f"Impossible to find library urllib. Please install it, error was:\n{exc_}.")
 
 URL_GRID2OP_DATA = "https://github.com/Tezirg/Grid2Op/releases/download/{}/{}"
+
 DATASET_TAG_v0_1_0 = "datasets-v0.1.0"
+
 DICT_URL_GRID2OP_DL = {
     "rte_case14_realistic": URL_GRID2OP_DATA.format(
         DATASET_TAG_v0_1_0, "rte_case14_realistic.tar.bz2"
@@ -31,10 +34,17 @@ DICT_URL_GRID2OP_DL = {
     ),
     "l2rpn_2019": URL_GRID2OP_DATA.format(DATASET_TAG_v0_1_0, "l2rpn_2019.tar.bz2"),
 }
+
 LI_VALID_ENV = sorted(['"{}"'.format(el) for el in DICT_URL_GRID2OP_DL.keys()])
 
+ALLOWED_SCHEMES = {"http", "https"}
 
-class DownloadProgressBar(tqdm):
+# Archive extraction safety limits (S5042)
+_MAX_UNCOMPRESSED_SIZE = 30 * 1024 * 1024 * 1024  # 30 GB
+_MAX_COMPRESSION_RATIO = 100  # reject archives that expand more than 100×
+
+
+class DownloadProgressBar(tqdm):  # pragma: no cover
     """
     INTERNAL
 
@@ -49,7 +59,7 @@ class DownloadProgressBar(tqdm):
         self.update(b * bsize - self.n)
 
 
-def download_url(url, output_path):
+def download_url(url, output_path):  # pragma: no cover
     """
     INTERNAL
 
@@ -65,13 +75,19 @@ def download_url(url, output_path):
     output_path: ``str``
         The path where the data will be stored.
     """
+    scheme = urllib.parse.urlparse(url).scheme.lower()
+    if scheme not in ALLOWED_SCHEMES:
+        raise ValueError(
+            f"Unsafe URL scheme '{scheme}'. Only {ALLOWED_SCHEMES} are allowed."
+        )
+        
     with DownloadProgressBar(
         unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
     ) as t:
         urllib.request.urlretrieve(url, filename=output_path, reporthook=t.update_to)
 
 
-def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
+def _aux_download(url, dataset_name, path_data, ds_name_dl=None):  # pragma: no cover
     """
     INTERNAL
 
@@ -89,7 +105,7 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
             'Alternatively you can also delete the folder "{final_path}" from your computer and run this command '
             "again.\n"
             "Finally, you can download the data in a different folder by specifying (in a command prompt):\n"
-            '\t grid2op.download --name "{env_name}" --path_save PATH\WHERE\YOU\WANT\TO\DOWNLOAD'
+            '\t grid2op.download --name "{env_name}" --path_save PATH\\WHERE\\YOU\\WANT\\TO\\DOWNLOAD'
             "".format(final_path=final_path, env_name=dataset_name)
         )
         print(str_)
@@ -119,6 +135,20 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
     download_url(url, output_path)
 
     tar = tarfile.open(output_path, "r:bz2")
+    compressed_size = os.path.getsize(output_path)
+    total_uncompressed = sum(m.size for m in tar.getmembers())
+    if total_uncompressed > _MAX_UNCOMPRESSED_SIZE:
+        tar.close()
+        raise Grid2OpException(
+            f"Refusing to extract archive: uncompressed size ({total_uncompressed} bytes) "
+            f"exceeds the limit of {_MAX_UNCOMPRESSED_SIZE} bytes."
+        )
+    if compressed_size > 0 and total_uncompressed / compressed_size > _MAX_COMPRESSION_RATIO:
+        tar.close()
+        raise Grid2OpException(
+            f"Refusing to extract archive: compression ratio "
+            f"({total_uncompressed / compressed_size:.1f}x) exceeds {_MAX_COMPRESSION_RATIO}x."
+        )
     print('Extract the tar archive in "{}"'.format(os.path.abspath(path_data)))
     tar.extractall(path_data)
     tar.close()
@@ -127,7 +157,7 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
     if ds_name_dl != dataset_name:
         try:
             os.rename(final_path, os.path.join(path_data, dataset_name))
-        except FileNotFoundError as exc_:
+        except FileNotFoundError as exc_:  # noqa: F841
             # the try catch is added because for some environments, the
             # archive name does not match the env name.
             # so the folder cannot be deleted properly.
@@ -150,7 +180,7 @@ def _aux_download(url, dataset_name, path_data, ds_name_dl=None):
     )
 
 
-def main_download(dataset_name, path_data):
+def main_download(dataset_name, path_data):  # pragma: no cover
     """
     INTERNAL
 

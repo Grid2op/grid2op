@@ -7,15 +7,16 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 from datetime import datetime, timedelta
-from typing import Optional, Union, List, Dict, Literal
+from typing import Optional, Union, List, Dict, Literal, TYPE_CHECKING
 
 from grid2op.Exceptions import ChronicsError
 
 from grid2op.Chronics.gridValue import GridValue
-
-from grid2op.dtypes import dt_int, dt_float
 from grid2op.Chronics.fromOneEpisodeData import TYPE_EP_DATA_INGESTED, FromOneEpisodeData
 
+
+if TYPE_CHECKING:
+    from grid2op.Action.playableAction import PlayableAction
 
 class FromMultiEpisodeData(GridValue): 
     """This class allows to redo some episode that have been previously run using a runner.
@@ -227,7 +228,7 @@ class FromMultiEpisodeData(GridValue):
     def fast_forward(self, nb_timestep):
         self.data.fast_forward(nb_timestep)
         
-    def get_init_action(self, names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None) -> Union["grid2op.Action.playableAction.PlayableAction", None]:
+    def get_init_action(self, names_chronics_to_backend: Optional[Dict[Literal["loads", "prods", "lines"], Dict[str, str]]]=None) -> Union["PlayableAction", None]:
         return self.data.get_init_action(names_chronics_to_backend)
     
     def cleanup_action_space(self):

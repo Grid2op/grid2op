@@ -7,6 +7,7 @@
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
 import numpy as np
+
 from grid2op.utils.l2rpn_2020_scores import ScoreL2RPN2020
 from grid2op.Reward import L2RPNSandBoxScore, _NewRenewableSourcesUsageScore, _AlertTrustScore
 from grid2op.utils.underlying_statistics import EpisodeStatistics
