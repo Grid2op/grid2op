@@ -10,7 +10,6 @@ __all__ = [
     "GridStateFromFileWithForecastsWithMaintenance",
     "GridStateFromFileWithForecastsWithoutMaintenance",
     "FromNPY",
-    "FromNPYMultiHorizon",
     "FromChronix2grid",
     "FromHandlers",
     "FromOneEpisodeData",
@@ -31,7 +30,6 @@ from grid2op.Chronics.fromFileWithoutMaintenance import (
 )
 from grid2op.Chronics.multifolderWithCache import MultifolderWithCache
 from grid2op.Chronics.fromNPY import FromNPY
-from grid2op.Chronics.fromNPYMultiHorizon import FromNPYMultiHorizon
 from grid2op.Chronics.fromChronix2grid import FromChronix2grid
 from grid2op.Chronics.time_series_from_handlers import FromHandlers
 

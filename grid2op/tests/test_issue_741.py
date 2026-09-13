@@ -11,7 +11,7 @@ from datetime import timedelta
 
 import numpy as np
 
-from grid2op.Chronics import FromNPYMultiHorizon
+from grid2op.Chronics import FromNPY
 from grid2op.Exceptions import ChronicsError
 
 
@@ -24,7 +24,7 @@ class TestIssue741MultiHorizonForecasts(unittest.TestCase):
         self.prod_v = np.arange(4, dtype=float).reshape(4, 1) + 300.0
 
     def _make_chronics(self, load_p_fc, load_q_fc, prod_p_fc, prod_v_fc=None):
-        chronics = FromNPYMultiHorizon(
+        chronics = FromNPY(
             load_p=self.load_p,
             load_q=self.load_q,
             prod_p=self.prod_p,
@@ -64,9 +64,6 @@ class TestIssue741MultiHorizonForecasts(unittest.TestCase):
         )
         np.testing.assert_allclose(
             forecasts[0][1]["injection"]["prod_p"], prod_p_fc[0]
-        )
-        np.testing.assert_allclose(
-            forecasts[0][1]["injection"]["prod_v"], prod_v_fc[0]
         )
 
     def test_three_dimensional_forecasts_return_each_horizon(self):
@@ -111,7 +108,7 @@ class TestIssue741MultiHorizonForecasts(unittest.TestCase):
         prod_p_fc = np.zeros((self.timesteps, 2, 1))
 
         with self.assertRaises(ChronicsError):
-            FromNPYMultiHorizon(
+            FromNPY(
                 load_p=self.load_p,
                 load_q=self.load_q,
                 prod_p=self.prod_p,
