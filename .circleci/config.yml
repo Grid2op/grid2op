@@ -589,7 +589,7 @@ jobs:
                    python -m unittest grid2op/tests/test_basic_env_ls.py
 
     legacy_lightsim:            
-        executor: python39  # needs to be 389: whl of lightsim were not released for 3.10 at the time
+        executor: python39  # needs to be 39: whl of lightsim were not released for 3.10 at the time
         resource_class: small
         steps:
             - checkout
@@ -599,11 +599,7 @@ jobs:
                command: |
                    source venv_test/bin/activate
                    python -m pip install -U pip setuptools wheel
-                   python -m pip install -U lightsim2grid==0.6.0 gymnasium "numpy<1.22"
-            - run:
-               command: |
-                   rm pyproject.toml
-                   cp pyproject_38.toml pyproject.toml
+                   python -m pip install -U lightsim2grid==0.6.0 gymnasium "numpy<1.22" "pandapower<3"
             - run:
                command: |
                    source venv_test/bin/activate
