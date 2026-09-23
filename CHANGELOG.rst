@@ -76,6 +76,7 @@ The "simulate" function :
 
 Better handling of the voltages:
 
+- add voltage angle attributes to the complete observation vector (issue #711)
 - model better the voltage, include voltage constraints
 - shunts in observation too, for real (but what to do when backend is not shunt compliant to prevent the
   stuff to break)
