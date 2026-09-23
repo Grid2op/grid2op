@@ -76,7 +76,6 @@ The "simulate" function :
 
 Better handling of the voltages:
 
-- add voltage angle attributes to the complete observation vector (issue #711)
 - model better the voltage, include voltage constraints
 - shunts in observation too, for real (but what to do when backend is not shunt compliant to prevent the
   stuff to break)
@@ -107,6 +106,7 @@ Native multi agents support:
 - [FIXED] remove deprecated python 3.8 runner on CI
 - [FIXED] CI for python 3.9 with lightsim2grid 0.6.0 (not compatible with pandapower 3)
 - [FIXED] an issue in test when using recent gymnasium version
+- [ADDED] add voltage angle attributes to the complete observation vector (issue #711)
 - [IMPROVED] clarify MultiMixENv docstring
 - [IMPROVED] clarify reward kernel flags
 
