@@ -603,7 +603,7 @@ jobs:
             - run:
                command: |
                    source venv_test/bin/activate
-                   python -m pip install -e . 
+                   python -m pip install -e . --no-deps   # force no deps otherwise it re installs pandapower >= 3
                    pip freeze
             - run:
                 command: |
