@@ -105,6 +105,7 @@ Native multi agents support:
 -----------------------
 - [FIXED] remove deprecated python 3.8 runner on CI
 - [FIXED] CI for python 3.9 with lightsim2grid 0.6.0 (not compatible with pandapower 3)
+- [FIXED] an issue in test when using recent gymnasium version
 - [IMPROVED] clarify MultiMixENv docstring
 - [IMPROVED] clarify reward kernel flags
 
