@@ -100,6 +100,10 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.6] - 2026-xx-yy
+-----------------------
+- [FIXED] remove deprecated python 3.8 runner on CI
+
 [1.12.5] - 2026-06-12
 -------------------------
 - [FIXED] license issues in the documentation

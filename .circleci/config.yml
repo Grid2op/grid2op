@@ -589,7 +589,7 @@ jobs:
                    python -m unittest grid2op/tests/test_basic_env_ls.py
 
     legacy_lightsim:            
-        executor: python38  # needs to be 38: whl of lightsim were not released for 3.10 at the time
+        executor: python39  # needs to be 389: whl of lightsim were not released for 3.10 at the time
         resource_class: small
         steps:
             - checkout
@@ -863,7 +863,7 @@ workflows:
                     - test_issue
     install:
         jobs:
-          - install38
+        #   - install38
           - install39
           - install310
           - install311
