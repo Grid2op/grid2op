@@ -3,6 +3,11 @@ Work "in progress"
 
 General grid2op improvments:
 
+- protections: let the backend expose default protections (for example read from its grid file) when they
+  are not given in `protections.json`, like it exposes the thermal limits today (`backend.thermal_limit_a`).
+  To be tracked in an issue referencing the protections PR.
+- protections: dynamic line rating as a protection with its own logic (for example the temperature of the
+  cable computed from the current, the current temperature and weather data)
 - fix docstring in MultiMixEnv: "step" should be "reset" (#734)
 - ill formed docstring in the BaseAction module
 - remove pandapower dependency (have a way to install grid2op without pandapower)
@@ -110,21 +115,45 @@ Native multi agents support:
 - [IMPROVED] clarify MultiMixENv docstring
 - [IMPROVED] clarify reward kernel flags
 - [ADDED] configurable overcurrent protections (`grid2op.Environment.protection`): any number of protections
-  per powerline, on the "or" and / or "ex" side, each with its own threshold (relative to the thermal limit),
-  delay and in service status. They are set with `env.set_protections`, `env.add_protection`,
-  `env.set_protection_in_service` or a `protections.json` file in the environment directory, and
-  are carried to `env.copy`, `obs.simulate`, `obs.get_forecast_env` and the runner. By default they are
-  built from `HARD_OVERFLOW_THRESHOLD`, `SOFT_OVERFLOW_THRESHOLD` and `NB_TIMESTEP_OVERFLOW_ALLOWED`
-  (same behaviour as before, see `grid2op.Environment.protection.legacy_from_parameters` for the mapping)
-- [ADDED] `env.init_protection_legacy(parameters=None)` to (re)build the protections from the legacy parameters
-- [ADDED] `obs.protection_counters`, `obs.protection_line_id` and `obs.protection_side` (not part of
-  the vector representation of the observation)
+  per powerline, on the "or" and / or "ex" side, each with its own limit (in A), delay and in service status.
+  They are set with `env.set_protections`, `env.add_protection`, `env.set_protection_in_service` or a
+  `protections.json` file in the environment directory, and are carried to `env.copy`, `obs.simulate`,
+  `obs.get_forecast_env` and the runner. The protections of the same side of a powerline must be consistent
+  (different limits, different delays, a higher limit needs a strictly lower delay); the one with the lowest
+  limit is the "reference" protection of this side.
+- [ADDED] new parameter `PROTECTION_THRESHOLD`: a protection is engaged when the current on its side is
+  above `PROTECTION_THRESHOLD * limit` (whatever its delay)
+- [ADDED] "legacy" protections, used when none are given: they reproduce exactly the previous behaviour from
+  the thermal limits, `HARD_OVERFLOW_THRESHOLD`, `SOFT_OVERFLOW_THRESHOLD` and `NB_TIMESTEP_OVERFLOW_ALLOWED`
+  (see `grid2op.Environment.protection.legacy_from_parameters` for the mapping), and
+  `env.init_protection_legacy(parameters=None)` to go back to them
+- [ADDED] in the observation (not in its vector representation): `rho_or`, `rho_ex` (current divided by the limit
+  of the reference protection of each side), `timestep_protection_engaged_or` / `_ex`,
+  `time_before_protection_trip` (and `_or` / `_ex`: number of steps before a protection disconnects
+  the powerline if the currents stay the same), `protection_counters`, `protection_steps_before_trip`,
+  `protection_line_id` and `protection_side`
 - [ADDED] `Backend.get_line_flow_ex` and `Backend.get_line_flows_both_sides` (with default implementations)
-- [BREAKING] the (private) environment attributes `_protection_counter`, `_hard_overflow_threshold` and
-  `_nb_ts_max_protection_counter` are replaced by `_protection_config` and `_protection_state`
+- [UPDATED] `obs.rho` is the maximum of `obs.rho_or` and `obs.rho_ex` (unchanged with the legacy protections),
+  `obs.timestep_overflow` counts the steps with `rho > 1` and `obs.timestep_protection_engaged` is the maximum
+  counter of the protections of each powerline (both unchanged with the legacy protections)
 - [BREAKING] no protection acts on the initial state of the grid (the step performed by `env.reset`):
   previously a powerline above `HARD_OVERFLOW_THRESHOLD` was disconnected in the observation returned by
   `env.reset`, now it is disconnected (if still above) at the first `env.step`
+- [BREAKING] dynamic line rating is removed from the backend: `Backend.update_thermal_limit` is no longer called by
+  the environment (and `Backend.update_thermal_limit_from_vect` does nothing). It belongs to the protections
+  (a protection with its own logic), out of the scope of this version.
+- [BREAKING] `Backend.set_thermal_limit` does nothing once the grid is loaded (and warns): the limits are the ones
+  of the protections of the environment
+- [BREAKING] the (private) environment attributes `_protection_counter`, `_hard_overflow_threshold` and
+  `_nb_ts_max_protection_counter` are replaced by `_protection_config` and `_protection_state`
+- [DEPRECATION] `SOFT_OVERFLOW_THRESHOLD` (alias of `PROTECTION_THRESHOLD`), `HARD_OVERFLOW_THRESHOLD` and
+  `NB_TIMESTEP_OVERFLOW_ALLOWED`: only used by the legacy protections, define the protections instead
+- [DEPRECATION] the thermal limits: `env.set_thermal_limit`, the `"thermal limit"` option of `env.reset`, the
+  `thermal_limit_a` arguments of the environment and the runner and the `thermal_limits` key of `config.py`
+  only change the legacy protections (no effect with custom protections); `env.get_thermal_limit` and
+  `obs.thermal_limit` return the limits of the reference protections
+- [DEPRECATION] `Backend.get_thermal_limit`, `Backend.get_relative_flow` and `Backend.get_line_overflow` are no
+  longer used by the environment
 
 [1.12.5] - 2026-06-12
 -------------------------
