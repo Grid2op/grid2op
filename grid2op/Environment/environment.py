@@ -130,6 +130,7 @@ class Environment(BaseEnv):
         _allow_loaded_backend=False,
         _local_dir_cls=None,  # only set at the first call to `make(...)` after should be false
         _overload_name_multimix=None,
+        redispatch_solver=None,
     ):
         if other_rewards is None:
             other_rewards = {}
@@ -179,6 +180,7 @@ class Environment(BaseEnv):
             _is_test=_is_test,  # is this created with "test=True" # TODO not implemented !!
             _local_dir_cls=_local_dir_cls,
             _read_from_local_dir=_read_from_local_dir,
+            redispatch_solver=redispatch_solver,
         )
         
         if name == "unknown":
@@ -1663,6 +1665,7 @@ class Environment(BaseEnv):
         res["logger"] = self.logger
         res["observation_bk_class"] = self._observation_bk_class
         res["observation_bk_kwargs"] = self._observation_bk_kwargs
+        res["redispatch_solver"] = self.get_redispatch_solver_for_kwargs()
         return res
 
     def _chronics_folder_name(self):
@@ -2280,6 +2283,7 @@ class Environment(BaseEnv):
         res["kwargs_observation"] = copy.deepcopy(self._kwargs_observation)
         res["observation_bk_class"] = self._observation_bk_class
         res["observation_bk_kwargs"] = self._observation_bk_kwargs
+        res["redispatch_solver"] = self.get_redispatch_solver_for_kwargs()
         res["_is_test"] = self._is_test  # TODO not implemented !!
         return res
 
@@ -2323,6 +2327,7 @@ class Environment(BaseEnv):
                              _overload_name_multimix,
                              n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
                              allow_detachment=DEFAULT_ALLOW_DETACHMENT,
+                             redispatch_solver=None,
                              ):        
         res = cls(init_env_path=init_env_path,
                   init_grid_path=init_grid_path,
@@ -2359,7 +2364,8 @@ class Environment(BaseEnv):
                   _raw_backend_class=_raw_backend_class,
                   _read_from_local_dir=_read_from_local_dir,
                   _local_dir_cls=_local_dir_cls,
-                  _overload_name_multimix=_overload_name_multimix)
+                  _overload_name_multimix=_overload_name_multimix,
+                  redispatch_solver=redispatch_solver)
         return res
     
     def generate_data(self, nb_year=1, nb_core=1, seed=None, **kwargs):

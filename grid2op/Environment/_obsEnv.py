@@ -70,6 +70,7 @@ class _ObsEnv(BaseEnv):
         _ptr_orig_obs_space=None,
         _local_dir_cls=None,
         _read_from_local_dir=None,
+        redispatch_solver=None,
     ):
         if other_rewards is None:
             other_rewards = {}
@@ -93,7 +94,8 @@ class _ObsEnv(BaseEnv):
             update_obs_after_reward=False,
             _local_dir_cls=_local_dir_cls,
             _read_from_local_dir=_read_from_local_dir,
-            allow_detachment=allow_detachment
+            allow_detachment=allow_detachment,
+            redispatch_solver=redispatch_solver,
         )
         self._do_not_erase_local_dir_cls = True
         self.__unusable = False  # unsuable if backend cannot be copied
