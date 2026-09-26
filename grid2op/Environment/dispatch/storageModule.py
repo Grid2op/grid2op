@@ -14,6 +14,7 @@ from .dispatchTypes import RedispatchState, StorageResult
 
 
 class StorageModule:
+    """Computes the charge of the storage units and the power they absorb from the grid."""
     def __init__(self, env) -> None:
         self.env = env
 

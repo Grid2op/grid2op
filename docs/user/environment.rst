@@ -690,6 +690,44 @@ You can do these at creation time:
 
 Of course you can combine everything. More examples are given in section :ref:`env_cust_makeenv`. 
 
+Customize the redispatching solver
+-----------------------------------
+
+.. versionadded:: 1.12.6
+
+At each step the environment computes the "actual dispatch" of the generators: it makes sure that
+the generators compensate the power absorbed by the storage units, the curtailment and the detached
+elements while respecting their pmin / pmax and ramps, and stays as close as possible to the
+redispatching asked by the agent.
+
+This computation is done by a "redispatch solver", by default the
+:class:`grid2op.Environment.dispatch.DefaultRedispatchSolver`. You can provide your own by
+inheriting from :class:`grid2op.Environment.dispatch.BaseRedispatchSolver` and implementing its
+`solve` method (and `reset` if it has an internal state):
+
+.. code-block:: python
+
+    import grid2op
+    from grid2op.Environment.dispatch import BaseRedispatchSolver
+
+    class MySolver(BaseRedispatchSolver):
+        def solve(self, constraints, state):
+            # constraints: grid2op.Environment.dispatch.RedispatchConstraints
+            # state: grid2op.Environment.dispatch.RedispatchState
+            # update state.actual_dispatch in place, then
+            return None  # or the exception explaining why no dispatch could be found
+
+    env = grid2op.make("l2rpn_case14_sandbox", redispatch_solver=MySolver)
+
+The environment keeps track of the target dispatch, checks that the redispatching actions are valid
+and enforces the minimum up and down times of the generators, the solver only computes the dispatch.
+The solver is copied to every environment derived from this one (`obs.simulate`, the forecast
+environment, `env.copy()`, the runner...). It can also be set in the `config.py` of an environment
+with the key `redispatch_solver`.
+
+.. automodule:: grid2op.Environment.dispatch
+    :members: BaseRedispatchSolver, DefaultRedispatchSolver, RedispatchConstraints, RedispatchState
+
 Detailed Documentation by class
 --------------------------------
 .. automodule:: grid2op.Environment
