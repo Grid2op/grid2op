@@ -109,6 +109,14 @@ Native multi agents support:
 - [ADDED] add voltage angle attributes to the complete observation vector (issue #711)
 - [IMPROVED] clarify MultiMixENv docstring
 - [IMPROVED] clarify reward kernel flags
+- [FIXED] the class attribute `gen_redispatchable` was modified (detached generators were
+  removed from it) when a dispatch was infeasible with generators detached and
+  `IGNORE_MIN_UP_DOWN_TIME` and `ALLOW_DISPATCH_GEN_SWITCH_OFF` set
+- [ADDED] the solver used to compute the dispatch of the generators can be customized with
+  the `redispatch_solver` key word argument of `grid2op.make` (or in the `config.py`), see
+  `grid2op.Environment.dispatch.BaseRedispatchSolver`
+- [IMPROVED] handling of redispatching, storage units, curtailment and detachment as separate
+  modules (grid2op/Environment/dispatch)
 
 [1.12.5] - 2026-06-12
 -------------------------
@@ -123,9 +131,6 @@ Native multi agents support:
 - [IMPROVED] add a SECRETS_MANAGEMENTS.md file to explicitely detail how secret should be
   handled by commiters
 - [IMPROVED] tests splitting to reduce the duration on circle ci
-- [IMPROVED] handling of redispatching as a separate module now 
-  (grid2op/Environment/dispatch)
-- [IMPROVED] remove the use of "assert" block in the main codebase
 
 [1.12.4] - 2026-04-28
 ----------------------
