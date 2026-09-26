@@ -1662,7 +1662,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         thermal_limit[self.id_first_line_disco] = (
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
-        self.backend.set_thermal_limit(thermal_limit)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(thermal_limit)
 
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         assert conv_ is None
@@ -1699,7 +1700,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         thermal_limit[self.id_first_line_disco] = (
             lines_flows_init[self.id_first_line_disco] / 2
         )
-        self.backend.set_thermal_limit(thermal_limit)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(thermal_limit)
 
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         assert conv_ is None
@@ -1741,7 +1743,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         th_lims[0] = 600  # should stay connected (even though there are 2 iterations)
         th_lims[10] = a_or[10] / 2.  # disconnected at first iteration
         th_lims[2] = 18849.43 / 1.6  # disconnected at second iteration
-        self.backend.set_thermal_limit(th_lims)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(th_lims)
         
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         res_a = self.backend.lines_or_info()[-1]
@@ -1788,7 +1791,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         th_lims[0] = 650  # should stay connected (even though there are 2 iterations)
         th_lims[10] = a_or[10] / 2.  # disconnected at first iteration
         th_lims[2] = 18849.43 / 1.6  # disconnected at second iteration
-        self.backend.set_thermal_limit(th_lims)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(th_lims)
         
         # delayed ("soft") protection of line 0 in the default protections
         env._protection_state.counter[2 * 0 + 1] = 2  # already 1 step on overflow
@@ -1803,9 +1807,13 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         assert np.abs(res_a[2]) <= 1e-8
     
     def test_set_thermal_limit(self):
+        # since grid2op 1.12.6 it does nothing once the grid is loaded (the limits are the ones
+        # of the protections of the environment)
         thermal_limit = np.arange(self.backend.n_line)
-        self.backend.set_thermal_limit(thermal_limit)
-        assert np.all(self.backend.thermal_limit_a == thermal_limit)
+        init_limit = 1. * self.backend.thermal_limit_a
+        with self.assertWarns(DeprecationWarning):
+            self.backend.set_thermal_limit(thermal_limit)
+        assert np.all(self.backend.thermal_limit_a == init_limit)
 
     def test_nb_timestep_overflow_disc0(self):
         # on this _grid, first line with id 5 is overheated,
@@ -1841,7 +1849,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(thermal_limit)
 
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         assert conv_ is None
@@ -1885,7 +1894,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(thermal_limit)
 
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         assert conv_ is None
@@ -1929,7 +1939,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(thermal_limit)
 
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         assert conv_ is None
@@ -1972,7 +1983,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
             self.lines_flows_init[self.id_first_line_disco] / 2
         )
         thermal_limit[self.id_2nd_line_disco] = 400
-        self.backend.set_thermal_limit(thermal_limit)
+        # the limits are the ones of the (legacy) protections of the environment
+        env.set_thermal_limit(thermal_limit)
 
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         assert conv_ is None

@@ -776,8 +776,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         # specific to Basic Env, do not change
         new_obj.backend = self.backend.copy_public()
-        if self._thermal_limit_a is not None:
-            new_obj.backend.set_thermal_limit(self._thermal_limit_a)
         new_obj._thermal_limit_a = copy.deepcopy(self._thermal_limit_a)
 
         new_obj.__is_init = self.__is_init
@@ -2056,7 +2054,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 f"is not supported."
             )
         self._thermal_limit_a[:] = tmp
-        self.backend.set_thermal_limit(self._thermal_limit_a)
         self.observation_space.set_thermal_limit(self._thermal_limit_a)
         if self._protection_is_custom:
             warnings.warn("The thermal limits are only used by the legacy protections (built from the "
@@ -2756,6 +2753,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     def get_thermal_limit(self):
         """
         Get the current thermal limit in amps registered for the environment.
+
+        .. deprecated:: 1.12.6
+            It returns, for each powerline, the limit of the reference protection of its "or" side (of its "ex"
+            side if there is no protection on the "or" side, ``inf`` if it has no protection), see
+            :mod:`grid2op.Environment.protection`. With the legacy protections it is the thermal limit, as before.
+            Use :func:`BaseEnv.get_protection_config` instead.
 
         Examples
         ---------
@@ -3709,8 +3712,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                     new_p) -> Optional[Grid2OpException]:
         cls = type(self)
         beg_res = time.perf_counter()
-        # update the thermal limit, for DLR for example
-        self.backend.update_thermal_limit(self)  
         # overflow: rho > 1 on at least one side (rho is relative to the protections, see `_compute_rho`)
         rho_or, rho_ex = self._compute_rho()
         overflow_lines = (rho_or > 1.) | (rho_ex > 1.)
@@ -5198,7 +5199,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         update the value of the "time dependant" attributes, used mainly for the "_ObsEnv" (simulate) or
         the "Forecasted env" (obs.get_forecast_env())
         """
-        self.backend.set_thermal_limit(obs._thermal_limit)
         if "opp_space_state" in obs._env_internal_params:
             self._oppSpace._set_state(obs._env_internal_params["opp_space_state"], 
                                       obs._env_internal_params["opp_state"])

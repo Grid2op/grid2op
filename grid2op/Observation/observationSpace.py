@@ -223,7 +223,6 @@ class ObservationSpace(SerializableObservationSpace):
         self._backend_obs.assert_grid_correct()
         self._backend_obs.runpf()
         self._backend_obs.assert_grid_correct_after_powerflow()
-        self._backend_obs.set_thermal_limit(env.get_thermal_limit())
             
     def _create_backend_obs(self, env, observation_bk_class, observation_bk_kwargs, _local_dir_cls):
         _with_obs_env = True
@@ -439,8 +438,6 @@ class ObservationSpace(SerializableObservationSpace):
     def set_thermal_limit(self, thermal_limit_a):
         if self.obs_env is not None:
             self.obs_env.set_thermal_limit(thermal_limit_a)
-        if self._backend_obs is not None:
-            self._backend_obs.set_thermal_limit(thermal_limit_a)
         
     def reset_space(self):
         if self.with_forecast:

@@ -1056,6 +1056,13 @@ class Backend(GridObjects, ABC):
 
             You can set the thermal limit directly in the environment.
 
+        .. deprecated:: 1.12.6
+            The limits of the powerlines are now the ones of the protections, owned by the environment (see
+            :mod:`grid2op.Environment.protection`). Once the backend has exposed its thermal limits
+            (:attr:`Backend.thermal_limit_a`, set when the grid is loaded) this function does nothing (and
+            warns). It is only effective while :attr:`Backend.thermal_limit_a` is not set yet, so that a backend
+            can still use it in its `load_grid` implementation.
+
         This function is used as a convenience function to set the thermal limits :attr:`Backend.thermal_limit_a`
         in amperes.
 
@@ -1080,6 +1087,12 @@ class Backend(GridObjects, ABC):
             In all cases, limits are expected to be given in A (not in kA)
 
         """
+        if self.thermal_limit_a is not None:
+            warnings.warn("`backend.set_thermal_limit` does nothing (since grid2op 1.12.6) once the backend has "
+                          "loaded its grid: the limits are the ones of the protections of the environment "
+                          "(see `env.set_protections` or, for the legacy protections, `env.set_thermal_limit`).",
+                          DeprecationWarning, stacklevel=2)
+            return
         if isinstance(limits, np.ndarray):
             if limits.shape[0] == self.n_line:
                 self.thermal_limit_a = 1.0 * limits.astype(dt_float)
@@ -1109,23 +1122,12 @@ class Backend(GridObjects, ABC):
                     self.thermal_limit_a[i] = tmp
 
     def update_thermal_limit_from_vect(self, thermal_limit_a : np.ndarray) -> None:
-        """You can use it if your backend stores the thermal limits
-        of the grid in a vector (see :class:`PandaPowerBackend` for example)
-        
-        .. warning::
-            This is not called by the environment and cannot be used to
-            model Dynamic Line Rating. For such purpose please use `update_thermal_limit`
-            
-            This function is used to create a "Simulator" from a backend for example.
-        
-
-        Parameters
-        ----------
-        vect : np.ndarray
-            The thermal limits (in A)
         """
-        thermal_limit_a = np.array(thermal_limit_a).astype(dt_float)
-        self.thermal_limit_a[:] = thermal_limit_a
+        .. deprecated:: 1.12.6
+            Does nothing: the limits of the powerlines are the ones of the protections, owned by the
+            environment (see :mod:`grid2op.Environment.protection`).
+        """
+        pass
     
     def update_thermal_limit(self, env : "BaseEnv") -> None:
         """
@@ -1136,6 +1138,11 @@ class Backend(GridObjects, ABC):
             This is done in a call to `env.step` in case of DLR for example.
 
             If you don't want this feature, do not implement it.
+
+        .. deprecated:: 1.12.6
+            It is no longer called by the environment: dynamic line rating is removed from the backend. It
+            belongs to the protections (a protection with its own logic, for example computing the temperature
+            of the cable from the current and the weather), see :mod:`grid2op.Environment.protection`.
 
         Update the new thermal limit in case of DLR for example.
 
@@ -1165,6 +1172,10 @@ class Backend(GridObjects, ABC):
             Retrieve the thermal limit directly from the environment instead (with a call
             to :func:`grid2op.Environment.BaseEnc.get_thermal_limit` for example)
 
+        .. deprecated:: 1.12.6
+            It gives the limits exposed by the backend when the grid is loaded (used to build the legacy
+            protections), not the limits used by the environment (the ones of its protections).
+
         Gives the thermal limit (in amps) for each powerline of the _grid. Only one value per powerline is returned.
 
         It is assumed that both :func:`Backend.get_line_flow` and *_get_thermal_limit* gives the value of the same
@@ -1187,6 +1198,10 @@ class Backend(GridObjects, ABC):
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
             Prefer using :attr:`grid2op.Observation.BaseObservation.rho`
+
+        .. deprecated:: 1.12.6
+            Not used by the environment anymore: `rho` is computed from the limits of the reference
+            protections (see :mod:`grid2op.Environment.protection`).
 
         .. note::
             It is called after the solver has been ran, only in case of success (convergence).
@@ -1215,6 +1230,10 @@ class Backend(GridObjects, ABC):
             check whether or not the flow is higher tha 1. or have a look at
             :attr:`grid2op.Observation.BaseObservation.timestep_overflow` and check the
             non zero index.
+
+        .. deprecated:: 1.12.6
+            Not used by the environment anymore: overflows are computed from the limits of the reference
+            protections (see :mod:`grid2op.Environment.protection`).
 
         .. note::
             It is called after the solver has been ran, only in case of success (convergence).

@@ -457,6 +457,9 @@ class Runner(object):
         thermal_limit_a: ``numpy.ndarray``
             The thermal limit for the environment (if any).
 
+            .. deprecated:: 1.12.6
+                Only used by the legacy protections, see :func:`grid2op.Environment.BaseEnv.set_thermal_limit`.
+
         protections: :class:`grid2op.Environment.protection.ProtectionConfig`
             The overcurrent protections of the environment, if they are not built from the
             parameters (see :func:`grid2op.Environment.BaseEnv.set_protections`).

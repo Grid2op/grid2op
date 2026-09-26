@@ -4501,6 +4501,11 @@ class BaseObservation(GridObjects):
         """
         Return the thermal limit of the powergrid, given in Amps (A)
 
+        .. deprecated:: 1.12.6
+            It is the limit of the reference protection of each powerline (see
+            :func:`grid2op.Environment.BaseEnv.get_thermal_limit`). With the legacy protections it is the thermal
+            limit, as before.
+
         Examples
         --------
         .. code-block:: python

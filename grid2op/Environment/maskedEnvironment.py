@@ -29,6 +29,12 @@ class MaskedEnvironment(Environment):
     
     .. warning::
         At time of writing, the behaviour of "obs.simulate" is not modified
+
+    .. note::
+        Since grid2op 1.12.6, it only changes the legacy protections (see
+        :func:`grid2op.Environment.BaseEnv.init_protection_legacy`). The same can be done with any
+        environment by putting the protections of some powerlines out of service with
+        :func:`grid2op.Environment.BaseEnv.set_protection_in_service` (their counters are then frozen).
         
     Examples
     ---------

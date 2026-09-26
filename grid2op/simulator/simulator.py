@@ -221,7 +221,6 @@ class Simulator(object):
         tmp_backend.assert_grid_correct()
         tmp_backend.runpf()
         tmp_backend.assert_grid_correct_after_powerflow()
-        tmp_backend.set_thermal_limit(self.backend.get_thermal_limit())
         self.backend.close()
         self.backend = tmp_backend
         self.set_state(obs=self.current_obs)
@@ -259,6 +258,10 @@ class Simulator(object):
             otherwise some bugs can appear such as 
             https://github.com/Grid2Op/grid2op/issues/377)
 
+            .. deprecated:: 1.12.6
+                Ignored: `rho` is computed from the limits of the protections, stored in the observation
+                (see :mod:`grid2op.Environment.protection`).
+
         Raises
         ------
         SimulatorError
@@ -293,9 +296,6 @@ class Simulator(object):
         self.error = None
         self.backend.update_from_obs(self.current_obs, force_update=True)
 
-        if update_thermal_limit:
-            self.backend.update_thermal_limit_from_vect(self.current_obs.thermal_limit)
-            
         if do_powerflow:
             self._do_powerflow()
 

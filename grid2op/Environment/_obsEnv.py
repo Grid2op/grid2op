@@ -199,7 +199,6 @@ class _ObsEnv(BaseEnv):
         self._legalActClass = legalActClass
         
         # self._action_space = self._do_nothing
-        self.backend.set_thermal_limit(self._thermal_limit_a)
 
         from grid2op.Observation import ObservationSpace
         from grid2op.Reward import FlatReward
