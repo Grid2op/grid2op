@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, RTE (https://www.rte-france.com)
+# Copyright (c) 2019-2026, RTE (https://www.rte-france.com)
 # See AUTHORS.txt
 # This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
 # If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
@@ -20,7 +20,7 @@ import subprocess
 import time
 
 
-def start_subprocess_print(li, sleepbefore=2, cwd=None):
+def __start_subprocess_print(li, sleepbefore=2, cwd=None):
     print("Will execute command after {}s: \n\t{}".format(sleepbefore, " ".join(li)))
     time.sleep(sleepbefore)
     subprocess.run(li, cwd=cwd)
@@ -28,7 +28,7 @@ def start_subprocess_print(li, sleepbefore=2, cwd=None):
 
 def modify_and_push_docker(version,  # grid2op version
                            path,
-                           templateDockerFile_to_use="templateDockerFile",
+                           templateDockerFile_to_use="Dockerfile.template",
                            docker_versions=[],
                            docker_tags=[]):
     # Dockerfile
@@ -44,9 +44,9 @@ def modify_and_push_docker(version,  # grid2op version
 
     # Create new docker containers
     for vers_ in docker_versions:
-        start_subprocess_print(
+        __start_subprocess_print(
             ["docker", "build"] + docker_tags + ["-t", "{}/grid2op:{}".format(dockeruser, vers_), "."], cwd=path)
-        start_subprocess_print(["docker", "push", "{}/grid2op:{}".format(dockeruser, vers_)], cwd=path)
+        __start_subprocess_print(["docker", "push", "{}/grid2op:{}".format(dockeruser, vers_)], cwd=path)
 
 
 if __name__ == "__main__":
@@ -72,7 +72,10 @@ if __name__ == "__main__":
             "script \"update_version\": version should be formated as XX.YY.ZZ (eg 0.3.1). "
             "Please modify \"--version\" argument") from exc_
 
-    regex_version = "[0-9]+\.[0-9]+\.[0-9]+(.post[0-9]+){0,1}(.rc[0-9]+){0,1}(.pre[0-9]+){0,1}(.dev[0-9]+){0,1}"
+    if not re.match(r'^[a-zA-Z0-9_-]+$', dockeruser):
+        raise ValueError(f"Invalid dockeruser: {dockeruser!r}")
+
+    regex_version = r"[0-9]+\.[0-9]+\.[0-9]+(.post[0-9]+){0,1}(.rc[0-9]+){0,1}(.pre[0-9]+){0,1}(.dev[0-9]+){0,1}"
     # TODO use the official regex !
     # see https://semver.org/ and https://regex101.com/r/Ly7O1x/3/
     # regex_version = r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
@@ -142,7 +145,7 @@ if __name__ == "__main__":
                 f.write(new_setup)
 
             # Stage in git
-            start_subprocess_print(["git", "add", setup_path])
+            __start_subprocess_print(["git", "add", setup_path])
 
         # grid2op/__init__.py
         with open(grid2op_init, "r") as f:
@@ -155,7 +158,7 @@ if __name__ == "__main__":
             f.write(new_setup)
             
         # Stage in git
-        start_subprocess_print(["git", "add", grid2op_init])
+        __start_subprocess_print(["git", "add", grid2op_init])
 
         # docs/conf.py
         docs_conf = os.path.join(path, "docs", "conf.py")
@@ -170,10 +173,10 @@ if __name__ == "__main__":
         with open(docs_conf, "w") as f:
             f.write(new_setup)
         # Stage in git
-        start_subprocess_print(["git", "add", docs_conf])
+        __start_subprocess_print(["git", "add", docs_conf])
 
         # Dockerfile
-        template_dockerfile = os.path.join(path, "utils", "templateDockerFile")
+        template_dockerfile = os.path.join(path, "utils", "Dockerfile.template")
         dockerfile = os.path.join(path, "Dockerfile")
         with open(template_dockerfile, "r") as f:
             new_setup = f.read()
@@ -185,7 +188,7 @@ if __name__ == "__main__":
 
         if not is_prerelease:
             # Stage in git
-            start_subprocess_print(["git", "add", dockerfile])
+            __start_subprocess_print(["git", "add", dockerfile])
 
             # generate some logs, for backward compatibility
             # NB this generation is part of the test run, so it's safe to re generate the log when each version is released
@@ -206,7 +209,7 @@ if __name__ == "__main__":
                         pbar=True,
                         max_iter=100)
             # Stage in git
-            start_subprocess_print(["git", "add", f'{os.path.join(PATH_PREVIOUS_RUNNER, f"res_agent_{version}")}/*'])
+            __start_subprocess_print(["git", "add", f'{os.path.join(PATH_PREVIOUS_RUNNER, f"res_agent_{version}")}/*'])
 
         # Commit
         # start_subprocess_print(["git", "commit", "-s", "-S", "-m", "Release v{}".format(version)])
@@ -228,18 +231,18 @@ if __name__ == "__main__":
         sys.exit()
     # Wait for user to push changes
     pushed = input("Please push changes: 'git push && git push --tags' - then press any key")
-    # TODO refacto these, no need to have 3 times almost the same "templatedockerfile"
+    # TODO refacto these, no need to have 3 times almost the same "Dockerfile.template"
 
     # update docker for test version
     # TODO remove the "-e" in this docker file, and copy paste the data in data_test in the appropriate folder
     # that you can get with a python call
     modify_and_push_docker(version, path=path,
-                           templateDockerFile_to_use="templateDockerFile_test",
+                           templateDockerFile_to_use="Dockerfile.template.test",
                            docker_versions=["test"],
                            docker_tags=["--no-cache"])
     # update docker for "light"
     modify_and_push_docker(version, path=path,
-                           templateDockerFile_to_use="templateDockerFile_light",
+                           templateDockerFile_to_use="Dockerfile.template.light",
                            docker_versions=[f"{version}-light"],
                            docker_tags=["--no-cache"])
     # update version for competition and regular version

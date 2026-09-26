@@ -3,6 +3,7 @@ Work "in progress"
 
 General grid2op improvments:
 
+- fix docstring in MultiMixEnv: "step" should be "reset" (#734)
 - ill formed docstring in the BaseAction module
 - remove pandapower dependency (have a way to install grid2op without pandapower)
 - better logging
@@ -100,9 +101,27 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
-[1.12.5] 2026-xx-yy
---------------------
+[1.12.6] - 2026-xx-yy
+-----------------------
+- [FIXED] remove deprecated python 3.8 runner on CI
+- [FIXED] CI for python 3.9 with lightsim2grid 0.6.0 (not compatible with pandapower 3)
+- [FIXED] an issue in test when using recent gymnasium version
+- [ADDED] add voltage angle attributes to the complete observation vector (issue #711)
+- [IMPROVED] clarify MultiMixENv docstring
+- [IMPROVED] clarify reward kernel flags
+
+[1.12.5] - 2026-06-12
+-------------------------
 - [FIXED] license issues in the documentation
+- [FIXED] remove the "assert" outside of the tests
+- [FIXED] some security quality issue spotted by codeQL (I/O function call with non totally checked user input)
+- [FIXED] license issues in the documentation
+- [FIXED] remove the "assert" outside of the tests
+- [ADDED] automatic release on pypi
+- [IMPROVED] clarifying the CONTRIBUTING.md document
+- [IMPROVED] added pre commit hooks to detect potential secret push on github
+- [IMPROVED] add a SECRETS_MANAGEMENTS.md file to explicitely detail how secret should be
+  handled by commiters
 - [IMPROVED] tests splitting to reduce the duration on circle ci
 - [IMPROVED] handling of redispatching as a separate module now 
   (grid2op/Environment/dispatch)

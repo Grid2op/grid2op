@@ -1,0 +1,52 @@
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+    import
+omit =
+    # omit anything in a .local directory anywhere
+    */.local/*
+    grid2op/data/*
+    grid2op/data_test/*
+    grid2op/data_grid2op/*
+    # omit this single file
+    grid2op/tests/*test*.py
+    grid2op/tests/*BaseBackendTest.py
+    grid2op/tests/*BaseRedispTest.py
+    *__init__.py
+    *config.py
+    dtypes.py
+    
+[run]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+    import
+omit =
+    # omit anything in a .local directory anywhere
+    */.local/*
+    # omit everything in /usr
+    /usr/*
+    grid2op/data/*
+    grid2op/data_test/*
+    grid2op/data_grid2op/*
+    # omit this single file
+    grid2op/tests/*test*.py
+    grid2op/tests/*BaseBackendTest.py
+    grid2op/tests/*BaseRedispTest.py
+    *__init__.py
+    
+[coverage:report]
+ignore_errors = True

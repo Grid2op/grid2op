@@ -36,7 +36,7 @@ except ImportError as exc_:
     can_save_gif = False
 
 
-class EpisodeReplay(object):
+class EpisodeReplay(object):  # pragma: no cover
     """
     INTERNAL
 

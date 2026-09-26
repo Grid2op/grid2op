@@ -38,15 +38,15 @@ __LI_FILENAME_TESTS = [
 ]
 
 
-def main():
+def main():  # pragma: no cover
     mainEntryPoint()
 
 
-def download():
+def download():  # pragma: no cover
     downloadEntryPoint()
 
 
-def replay():
+def replay():  # pragma: no cover
     try:
         from grid2op.Episode.EpisodeReplay import main as replayEntryPoint
 
@@ -59,7 +59,12 @@ def replay():
         warnings.warn(warn_msg.format(e))
 
 
-def testinstall():
+def check_release():  # pragma: no cover
+    from grid2op.check_release import main as _main_check_release
+    _main_check_release()
+        
+        
+def testinstall():  # pragma: no cover
     """
     Performs basic tests to make sure grid2op is properly installed and working.
 

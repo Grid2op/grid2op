@@ -73,6 +73,7 @@ or overall view of what is happing when you "run" a scenario using in grid2op.
 
    quickstart
    grid2op
+   release_verification
 
 Usage examples
 ---------------------

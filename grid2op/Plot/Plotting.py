@@ -14,7 +14,7 @@ from grid2op.Plot.PlotPyGame import PlotPyGame
 from grid2op.Exceptions.plotExceptions import PyGameQuit
 
 
-class Plotting:
+class Plotting:  # pragma: no cover
     """
     INTERNAL
 

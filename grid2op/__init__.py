@@ -11,7 +11,7 @@
 Grid2Op a testbed platform to model sequential decision making in power systems.
 """
 
-__version__ = '1.12.5.dev0'
+__version__ = '1.12.6.dev0'
 
 __all__ = [
     "Action",
@@ -60,3 +60,4 @@ try:
 except ImportError as exc_:
     # grid2op is most likely not installed in editable mode from source
     pass
+        

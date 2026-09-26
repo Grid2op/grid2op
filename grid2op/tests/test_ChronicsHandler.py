@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import copy
 import pdb
 import warnings
 import pandas as pd
@@ -1113,6 +1114,25 @@ class TestLoadingMultiFolder(HelperTests, unittest.TestCase):
             raise RuntimeError("This should have thrown a StopIteration exception")
         except StopIteration:
             pass
+    
+    def test_can_make_env(self):
+        """test I can make an env with proper action for this feature"""
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = grid2op.make("rte_case14_test",
+                            test=True,
+                            _add_to_name=type(self).__name__,
+                            chronics_class=Multifolder,
+                            names_chronics_to_grid=self.names_chronics_to_backend,
+                            chronics_path=self.path)
+        obs = env.reset(seed=0, options={"time serie id": 0})
+        obs, reward, done, info = env.step(env.action_space({}))
+        for _ in range(10):
+            act = env.action_space.sample()
+            dict_ = act.as_dict()
+            dict_ser = act.as_serializable_dict()
+            act2 = env.action_space(dict_ser)
+            assert act == act2
 
 
 class TestEnvChunk(HelperTests, unittest.TestCase):

@@ -9,6 +9,7 @@
 import copy
 import json
 import os
+import re
 from hashlib import blake2b
 from unittest.mock import patch
 import numpy as np
@@ -605,6 +606,42 @@ class TestScoreL2RPN2020SecurityDefenses(HelperTests, unittest.TestCase):
                 # hash were absent or compromised
                 malicious_meta = copy.deepcopy(scores.stat_dn.get_metadata())
                 malicious_meta["0"]["scenario_name"] = "../../etc/passwd"
+
+                with patch.object(
+                    scores.stat_dn, "get_metadata", return_value=malicious_meta
+                ):
+                    with self.assertRaises(RuntimeError):
+                        scores.get(my_agent)
+
+                scores.clear_all()
+
+    def test_dotdot_passes_regex_but_containment_check_blocks_it(self):
+        """Layer 3 (realpath containment check, fix for S2083).
+
+        A bare '..' has no '/' so it passes REGEX_SPLIT, which only blocks
+        multi-component paths like '../../etc/passwd'.  Before the fix,
+        os.path.join(path_save, '..', META_FILE) would silently read a file
+        one directory above path_save.  The realpath containment check now
+        catches this case.
+        """
+        # First, confirm that '..' passes the regex — documenting WHY the regex
+        # alone is not sufficient.
+        self.assertIsNotNone(
+            re.match(EpisodeStatistics.REGEX_SPLIT_COMPILED, ".."),
+            "'..' contains only dots which are in the allowed charset — "
+            "regex alone cannot block single-component traversal",
+        )
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            with grid2op.make(
+                "rte_case5_example", test=True, _add_to_name=type(self).__name__
+            ) as env:
+                scores = ScoreL2RPN2020(env, nb_scenario=2, verbose=0, max_step=10)
+                my_agent = DoNothingAgent(env.action_space)
+
+                malicious_meta = copy.deepcopy(scores.stat_dn.get_metadata())
+                malicious_meta["0"]["scenario_name"] = ".."
 
                 with patch.object(
                     scores.stat_dn, "get_metadata", return_value=malicious_meta

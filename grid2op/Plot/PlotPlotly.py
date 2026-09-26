@@ -55,7 +55,7 @@ try:
     import seaborn as sns # type: ignore
 
     can_plot = True
-except ImportError:
+except ImportError:  # pragma: no cover
     can_plot = False
     pass
 
@@ -63,7 +63,7 @@ except ImportError:
 
 
 # Some utilities to plot substation, lines or get the color id for the colormap.
-def draw_sub(pos, radius=50, line_color="LightSeaGreen"):
+def draw_sub(pos, radius=50, line_color="LightSeaGreen"):  # pragma: no cover
     """
     INTERNAL
 
@@ -100,7 +100,7 @@ def draw_sub(pos, radius=50, line_color="LightSeaGreen"):
     return res
 
 
-def get_col(rho):
+def get_col(rho):  # pragma: no cover
     """
     INTERNAL
 
@@ -132,7 +132,7 @@ def get_col(rho):
     return 6
 
 
-def draw_line(pos_sub_or, pos_sub_ex, rho, color_palette, status, line_color="gray"):
+def draw_line(pos_sub_or, pos_sub_ex, rho, color_palette, status, line_color="gray"):  # pragma: no cover
     """
     INTERNAL
 
@@ -180,7 +180,7 @@ def draw_line(pos_sub_or, pos_sub_ex, rho, color_palette, status, line_color="gr
     return res
 
 
-class PlotPlotly(BasePlot):
+class PlotPlotly(BasePlot):  # pragma: no cover
     """
     INTERNAL
 

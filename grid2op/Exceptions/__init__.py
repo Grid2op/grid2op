@@ -36,6 +36,7 @@ __all__ = [
     "InvalidLineStatus",
     "InvalidStorage",
     "InvalidCurtailment",
+    "InvalidAction",
     "AmbiguousAction",
     "NonFiniteElement",
     "AmbiguousActionRaiseAlert",
@@ -103,7 +104,8 @@ from grid2op.Exceptions.illegalActionExceptions import (IllegalAction,
                                                         IllegalRedispatching,
                                                         )
 
-from grid2op.Exceptions.ambiguousActionExceptions import (NotEnoughGenerators,
+from grid2op.Exceptions.ambiguousActionExceptions import (InvalidAction,
+                                                          NotEnoughGenerators,
                                                           GeneratorTurnedOffTooSoon,
                                                           GeneratorTurnedOnTooSoon,
                                                           InvalidRedispatching,

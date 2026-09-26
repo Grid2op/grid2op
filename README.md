@@ -70,6 +70,11 @@ source venv_grid2op/bin/activate
 pip3 install grid2op
 ```
 
+### Release integrity
+
+See [release-verification.md](release-verification.md) for 
+instructions on verifying the authenticity and integrity of release assets.
+
 ### Install from source
 
 ```commandline

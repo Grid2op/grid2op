@@ -43,14 +43,14 @@ try:
     from matplotlib.lines import Line2D  # type: ignore
 
     can_plot = True
-except ImportError as exc_:  # noqa: F841
+except ImportError as exc_:  # noqa: F841   # pragma: no cover
     can_plot = False
     pass
 
 # TODO add tests there
 
 
-class PlotMatplotlib(BasePlot):
+class PlotMatplotlib(BasePlot):  # pragma: no cover
     """
     INTERNAL
 
