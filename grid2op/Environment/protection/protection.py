@@ -10,7 +10,7 @@ import json
 import os
 from dataclasses import dataclass, asdict
 from functools import lru_cache
-from typing import Dict, Iterable, List, Literal, Optional, Sequence, Union
+from typing import Dict, Iterable, List, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -39,11 +39,11 @@ class Protection:
         Side of the powerline the current is measured on: ``"or"`` (origin side, the
         `a_or` of the observation) or ``"ex"`` (extremity side, `a_ex`).
 
-    threshold: ``float``
-        Multiplier of the thermal limit of the powerline. The protection is *engaged*
-        when the current on its side is strictly above ``threshold * thermal_limit``.
-        As it is relative to the thermal limit, it follows the updates of the thermal
-        limits (:func:`grid2op.Environment.BaseEnv.set_thermal_limit` or dynamic line rating).
+    limit: ``float``
+        Current limit of the protection, in A, on its side of the powerline. The protection
+        is *engaged* when the current on its side is strictly above
+        ``PROTECTION_THRESHOLD * limit`` (see :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD`,
+        1 by default). It can be ``inf`` (never engaged).
 
     delay: ``int``
         Number of consecutive steps the protection can stay engaged without tripping.
@@ -60,7 +60,7 @@ class Protection:
     """
     line_id: int
     side: Literal["or", "ex"]
-    threshold: float
+    limit: float
     delay: int
     in_service: bool = True
     name: str = ""
@@ -70,15 +70,15 @@ class Protection:
             raise EnvError(f"The side of a protection should be one of {PROTECTION_SIDES}, found {self.side!r}")
         if int(self.delay) < 0:
             raise EnvError(f"The delay of a protection should be >= 0, found {self.delay}")
-        if not float(self.threshold) > 0.:
-            raise EnvError(f"The threshold of a protection should be > 0., found {self.threshold}")
+        if not float(self.limit) > 0.:
+            raise EnvError(f"The limit of a protection should be > 0., found {self.limit}")
         if int(self.line_id) < 0:
             raise EnvError(f"The line_id of a protection should be >= 0, found {self.line_id}")
 
     def to_dict(self) -> Dict:
         res = asdict(self)
         res["line_id"] = int(self.line_id)
-        res["threshold"] = float(self.threshold)
+        res["limit"] = float(self.limit)
         res["delay"] = int(self.delay)
         res["in_service"] = bool(self.in_service)
         return res
@@ -102,12 +102,12 @@ class Protection:
             if "line_id" in dict_ and int(dict_["line_id"]) != line_id:
                 raise EnvError(f"Inconsistent 'line_id' and 'line_name' for protection {dict_}")
             dict_["line_id"] = line_id
-        unknown = set(dict_) - {"line_id", "side", "threshold", "delay", "in_service", "name"}
+        unknown = set(dict_) - {"line_id", "side", "limit", "delay", "in_service", "name"}
         if unknown:
             raise EnvError(f"Unknown key(s) {sorted(unknown)} to define a protection")
         return cls(line_id=int(dict_["line_id"]),
                    side=dict_.get("side", "or"),
-                   threshold=float(dict_["threshold"]),
+                   limit=float(dict_["limit"]),
                    delay=int(dict_.get("delay", 0)),
                    in_service=bool(dict_.get("in_service", True)),
                    name=str(dict_.get("name", "")))
@@ -116,9 +116,20 @@ class Protection:
 class ProtectionConfig:
     """All the protections of a grid, stored as a "structure of arrays".
 
-    The structural definition (``line_id``, ``side_is_ex``, ``threshold``, ``delay``,
+    The structural definition (``line_id``, ``side_is_ex``, ``limit``, ``delay``,
     ``name``) is read only. The operational status ``in_service`` is the only mutable
     array: toggling a protection does not require to rebuild the configuration.
+
+    The protections placed on the same side of the same powerline must be consistent
+    (checked when the configuration is built, regardless of `in_service`):
+
+    - no two of them have the same limit,
+    - no two of them have the same delay,
+    - a higher limit comes with a strictly lower delay.
+
+    On each side of each powerline, the protection with the lowest limit (hence the longest
+    delay) is the *reference* protection: `rho` is computed with respect to its limit
+    (see :func:`ProtectionConfig.reference_limits`).
 
     .. versionadded:: 1.12.6
 
@@ -130,8 +141,8 @@ class ProtectionConfig:
     side_is_ex: ``numpy.ndarray``, dtype: bool
         ``True`` if the protection measures the current on the "ex" side, shape (n_prot,)
 
-    threshold: ``numpy.ndarray``, dtype: float
-        Threshold (multiplier of the thermal limit) of each protection, shape (n_prot,)
+    limit: ``numpy.ndarray``, dtype: float
+        Limit (in A) of each protection, shape (n_prot,)
 
     delay: ``numpy.ndarray``, dtype: int
         Delay (in steps) of each protection, shape (n_prot,)
@@ -149,7 +160,7 @@ class ProtectionConfig:
     def __init__(self,
                  line_id: np.ndarray,
                  side_is_ex: np.ndarray,
-                 threshold: np.ndarray,
+                 limit: np.ndarray,
                  delay: np.ndarray,
                  in_service: Optional[np.ndarray] = None,
                  name: Optional[np.ndarray] = None,
@@ -157,7 +168,7 @@ class ProtectionConfig:
         line_id = np.array(line_id, dtype=dt_int).reshape(-1)
         n_prot = line_id.shape[0]
         side_is_ex = np.array(side_is_ex, dtype=dt_bool).reshape(-1)
-        threshold = np.array(threshold, dtype=dt_float).reshape(-1)
+        limit = np.array(limit, dtype=dt_float).reshape(-1)
         delay = np.array(delay, dtype=dt_int).reshape(-1)
         if in_service is None:
             in_service = np.ones(n_prot, dtype=dt_bool)
@@ -165,15 +176,15 @@ class ProtectionConfig:
         if name is None:
             name = np.array(["" for _ in range(n_prot)], dtype=str)
         name = np.array(name, dtype=str).reshape(-1)
-        for arr_nm, arr in (("side_is_ex", side_is_ex), ("threshold", threshold), ("delay", delay),
+        for arr_nm, arr in (("side_is_ex", side_is_ex), ("limit", limit), ("delay", delay),
                             ("in_service", in_service), ("name", name)):
             if arr.shape[0] != n_prot:
                 raise EnvError(f"Protection config: '{arr_nm}' has {arr.shape[0]} elements "
                                f"but there are {n_prot} protections")
         if (delay < 0).any():
             raise EnvError("Protection config: all delays should be >= 0")
-        if not (threshold > 0.).all():
-            raise EnvError("Protection config: all thresholds should be > 0.")
+        if not (limit > 0.).all():
+            raise EnvError("Protection config: all limits should be > 0.")
         if (line_id < 0).any():
             raise EnvError("Protection config: all line ids should be >= 0")
         if n_line is not None and (line_id >= n_line).any():
@@ -182,10 +193,11 @@ class ProtectionConfig:
         named = name[name != ""]
         if np.unique(named).shape[0] != named.shape[0]:
             raise EnvError("Protection config: two protections have the same (non empty) name")
+        _check_consistency(line_id, side_is_ex, limit, delay, name)
 
         self.line_id = line_id
         self.side_is_ex = side_is_ex
-        self.threshold = threshold
+        self.limit = limit
         self.delay = delay
         self.name = name
         self.side = np.where(side_is_ex, "ex", "or")
@@ -194,7 +206,7 @@ class ProtectionConfig:
         self.has_ex_side = bool(side_is_ex.any())
 
     def _freeze(self) -> None:
-        for arr in (self.line_id, self.side_is_ex, self.threshold, self.delay, self.name, self.side):
+        for arr in (self.line_id, self.side_is_ex, self.limit, self.delay, self.name, self.side):
             arr.flags.writeable = False
 
     def __setstate__(self, state: Dict) -> None:
@@ -219,7 +231,7 @@ class ProtectionConfig:
                  for el in protections]
         return cls(line_id=[el.line_id for el in prots],
                    side_is_ex=[el.side == "ex" for el in prots],
-                   threshold=[el.threshold for el in prots],
+                   limit=[el.limit for el in prots],
                    delay=[el.delay for el in prots],
                    in_service=[el.in_service for el in prots],
                    name=[el.name for el in prots],
@@ -261,7 +273,7 @@ class ProtectionConfig:
         """Convert back to a list of :class:`Protection` (with the current `in_service` status)."""
         return [Protection(line_id=int(self.line_id[i]),
                            side=str(self.side[i]),
-                           threshold=float(self.threshold[i]),
+                           limit=float(self.limit[i]),
                            delay=int(self.delay[i]),
                            in_service=bool(self.in_service[i]),
                            name=str(self.name[i]))
@@ -292,7 +304,7 @@ class ProtectionConfig:
             return NotImplemented
         return (np.array_equal(self.line_id, other.line_id) and
                 np.array_equal(self.side_is_ex, other.side_is_ex) and
-                np.array_equal(self.threshold, other.threshold) and
+                np.array_equal(self.limit, other.limit) and
                 np.array_equal(self.delay, other.delay) and
                 np.array_equal(self.in_service, other.in_service) and
                 np.array_equal(self.name, other.name))
@@ -302,7 +314,7 @@ class ProtectionConfig:
         return (self.n_prot == other.n_prot and
                 np.array_equal(self.line_id, other.line_id) and
                 np.array_equal(self.side_is_ex, other.side_is_ex) and
-                np.array_equal(self.threshold, other.threshold) and
+                np.array_equal(self.limit, other.limit) and
                 np.array_equal(self.delay, other.delay) and
                 np.array_equal(self.name, other.name))
 
@@ -310,7 +322,7 @@ class ProtectionConfig:
         """Return a new configuration with the protections of `self` followed by those of `other`."""
         return type(self)(line_id=np.concatenate((self.line_id, other.line_id)),
                           side_is_ex=np.concatenate((self.side_is_ex, other.side_is_ex)),
-                          threshold=np.concatenate((self.threshold, other.threshold)),
+                          limit=np.concatenate((self.limit, other.limit)),
                           delay=np.concatenate((self.delay, other.delay)),
                           in_service=np.concatenate((self.in_service, other.in_service)),
                           name=np.concatenate((self.name, other.name)))
@@ -339,6 +351,31 @@ class ProtectionConfig:
                 res[i] = el
         return res
 
+    def reference_limits(self, n_line: int) -> Tuple[np.ndarray, np.ndarray]:
+        """Limit (in A) of the reference protection of each side of each powerline: the lowest limit of
+        the protections placed on this side (in service or not). ``inf`` when there is no protection on
+        this side. Cached (the structure of a configuration never changes).
+
+        Returns
+        -------
+        ref_limit_or, ref_limit_ex: ``numpy.ndarray``, dtype: float, shape (n_line,)
+        """
+        cache = self.__dict__.setdefault("_cache_reference_limits", {})
+        if n_line not in cache:
+            res = np.full((2, n_line), np.inf, dtype=dt_float)
+            np.minimum.at(res, (self.side_is_ex.astype(dt_int), self.line_id), self.limit)
+            for arr in res:
+                arr.flags.writeable = False
+            cache[n_line] = (res[0], res[1])
+        return cache[n_line]
+
+    def is_reference(self) -> np.ndarray:
+        """Whether each protection is the reference protection of its side of its powerline, shape (n_prot,)"""
+        n_line = int(self.line_id.max()) + 1 if self.n_prot else 0
+        ref_or, ref_ex = self.reference_limits(n_line)
+        ref = np.where(self.side_is_ex, ref_ex[self.line_id], ref_or[self.line_id])
+        return self.limit == ref
+
     def line_max(self, values: np.ndarray, n_line: int, mask: Optional[np.ndarray] = None) -> np.ndarray:
         """Maximum over the protections of each powerline of a per-protection vector (0 if no protection)."""
         res = np.zeros(n_line, dtype=values.dtype)
@@ -349,20 +386,59 @@ class ProtectionConfig:
         return res
 
 
+def _check_consistency(line_id: np.ndarray,
+                       side_is_ex: np.ndarray,
+                       limit: np.ndarray,
+                       delay: np.ndarray,
+                       name: np.ndarray) -> None:
+    """Check the rules between the protections placed on the same side of the same powerline:
+    sorted by increasing limit, the limits must be strictly increasing and the delays strictly
+    decreasing (which forbids equal limits and equal delays)."""
+    if line_id.shape[0] <= 1:
+        return
+    order = np.lexsort((limit, side_is_ex, line_id))
+    same_group = ((line_id[order][1:] == line_id[order][:-1]) &
+                  (side_is_ex[order][1:] == side_is_ex[order][:-1]))
+    bad = same_group & ((limit[order][1:] <= limit[order][:-1]) | (delay[order][1:] >= delay[order][:-1]))
+    if bad.any():
+        i = int(np.flatnonzero(bad)[0])
+        p0, p1 = order[i], order[i + 1]
+        side = "ex" if side_is_ex[p0] else "or"
+        raise EnvError(f"Protection config: inconsistent protections on the \"{side}\" side of powerline "
+                       f"{line_id[p0]}: protection {p0} ({str(name[p0])!r}, limit={limit[p0]}, delay={delay[p0]}) "
+                       f"and protection {p1} ({str(name[p1])!r}, limit={limit[p1]}, delay={delay[p1]}). On the same side "
+                       f"of a powerline, two protections cannot have the same limit or the same delay, and a "
+                       f"higher limit requires a strictly lower delay.")
+
+
+#: minimum limit (A) used by the legacy protections, for powerlines with a thermal limit <= 0
+LEGACY_MIN_LIMIT = 1e-6
+
+
 def legacy_from_parameters(params: "grid2op.Parameters.Parameters",
-                           n_line: int,
+                           thermal_limit: np.ndarray,
                            in_service: Optional[np.ndarray] = None) -> ProtectionConfig:
-    """Map the legacy protection parameters to protections: the behaviour of grid2op before
-    protections could be configured.
+    """Map the legacy protection parameters and the thermal limits to protections: the behaviour of
+    grid2op before protections could be configured.
 
-    Convention: each powerline ``i`` gets two protections on its "or" side, in this order:
+    Convention, for each powerline ``i`` with thermal limit ``th[i]``, both on its "or" side:
 
-    ========  ========  ==================================  ========================================
-    id        name      threshold (x thermal limit)         delay
-    ========  ========  ==================================  ========================================
-    ``2*i``   l{i}_hard ``params.HARD_OVERFLOW_THRESHOLD``  ``0`` (instantaneous)
-    ``2*i+1`` l{i}_soft ``params.SOFT_OVERFLOW_THRESHOLD``  ``params.NB_TIMESTEP_OVERFLOW_ALLOWED``
-    ========  ========  ==================================  ========================================
+    ============  ==========================================================  ==========================================
+    name          limit (A)                                                   delay
+    ============  ==========================================================  ==========================================
+    ``l{i}_hard`` ``HARD_OVERFLOW_THRESHOLD / PROTECTION_THRESHOLD * th[i]``  ``0`` (instantaneous)
+    ``l{i}_soft`` ``th[i]`` (the reference protection)                        ``NB_TIMESTEP_OVERFLOW_ALLOWED``
+    ============  ==========================================================  ==========================================
+
+    A protection is engaged above ``PROTECTION_THRESHOLD * limit``, so the "hard" one acts above
+    ``HARD_OVERFLOW_THRESHOLD * th`` and the "soft" one above ``PROTECTION_THRESHOLD * th`` (formerly
+    ``SOFT_OVERFLOW_THRESHOLD * th``), and `rho` is ``a_or / th``: exactly the behaviour of the previous
+    grid2op versions.
+
+    When ``NB_TIMESTEP_OVERFLOW_ALLOWED`` is 0 the "hard" protection is not created: it would have the same
+    delay as the "soft" one (not allowed) and it is redundant (the "soft" one already trips instantly, at
+    a lower current). Protections ``2 * i`` and ``2 * i + 1`` are then placed on powerline ``i``
+    (protection ``i`` if ``NB_TIMESTEP_OVERFLOW_ALLOWED`` is 0).
 
     ``params.NO_OVERFLOW_DISCONNECTION`` is not part of the configuration: it stays a global switch
     of the environment.
@@ -371,31 +447,43 @@ def legacy_from_parameters(params: "grid2op.Parameters.Parameters",
 
     .. seealso:: :func:`grid2op.Environment.BaseEnv.init_protection_legacy`
     """
-    n_prot = 2 * n_line
-    line_id = np.repeat(np.arange(n_line, dtype=dt_int), 2)
-    threshold = np.empty(n_prot, dtype=dt_float)
-    threshold[0::2] = params.HARD_OVERFLOW_THRESHOLD
-    threshold[1::2] = params.SOFT_OVERFLOW_THRESHOLD
+    thermal_limit = np.maximum(np.asarray(thermal_limit, dtype=dt_float).reshape(-1), LEGACY_MIN_LIMIT)
+    n_line = thermal_limit.shape[0]
+    nb_ts = int(params.NB_TIMESTEP_OVERFLOW_ALLOWED)
+    with_hard = nb_ts > 0
+    per_line = 2 if with_hard else 1
+    n_prot = per_line * n_line
+    line_id = np.repeat(np.arange(n_line, dtype=dt_int), per_line)
+    limit = np.empty(n_prot, dtype=dt_float)
     delay = np.empty(n_prot, dtype=dt_int)
-    delay[0::2] = 0
-    delay[1::2] = int(params.NB_TIMESTEP_OVERFLOW_ALLOWED)
+    if with_hard:
+        limit[0::2] = float(params.HARD_OVERFLOW_THRESHOLD) / float(params.PROTECTION_THRESHOLD) * thermal_limit
+        limit[1::2] = thermal_limit
+        delay[0::2] = 0
+        delay[1::2] = nb_ts
+    else:
+        limit[:] = thermal_limit
+        delay[:] = 0
     if in_service is not None:
         in_service = np.array(in_service, dtype=dt_bool)
         if in_service.shape[0] != n_prot:
             in_service = None
     return ProtectionConfig(line_id=line_id,
                             side_is_ex=np.zeros(n_prot, dtype=dt_bool),
-                            threshold=threshold,
+                            limit=limit,
                             delay=delay,
                             in_service=in_service,
-                            name=_default_names(n_line))
+                            name=_legacy_names(n_line, with_hard))
 
 
 @lru_cache(maxsize=8)
-def _default_names(n_line: int) -> np.ndarray:
-    res = np.empty(2 * n_line, dtype=object)
-    res[0::2] = [f"l{i}_hard" for i in range(n_line)]
-    res[1::2] = [f"l{i}_soft" for i in range(n_line)]
-    res = res.astype(str)
+def _legacy_names(n_line: int, with_hard: bool) -> np.ndarray:
+    if not with_hard:
+        res = np.array([f"l{i}_soft" for i in range(n_line)], dtype=str)
+    else:
+        res = np.empty(2 * n_line, dtype=object)
+        res[0::2] = [f"l{i}_hard" for i in range(n_line)]
+        res[1::2] = [f"l{i}_soft" for i in range(n_line)]
+        res = res.astype(str)
     res.flags.writeable = False
     return res

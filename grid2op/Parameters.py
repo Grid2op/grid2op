@@ -32,6 +32,11 @@ class Parameters:
         disconnected (if :attr:`.NO_OVERFLOW_DISCONNECTION` is set to ``False``) after 2 time steps above its thermal
         limit. This is called a "soft overflow".
 
+        .. deprecated:: 1.12.6
+            It is only used to build the "legacy" protections: it is the delay of the reference protection
+            of each powerline (see :func:`grid2op.Environment.protection.legacy_from_parameters`). Define the
+            protections instead (:func:`grid2op.Environment.BaseEnv.set_protections` or a `protections.json` file).
+
     NB_TIMESTEP_RECONNECTION: ``int``
         Number of timesteps a powerline disconnected for security motives (for example due to
         :attr:`.NB_TIMESTEP_POWERFLOW_ALLOWED` or :attr:`.HARD_OVERFLOW_THRESHOLD`) will remain disconnected.
@@ -60,13 +65,27 @@ class Parameters:
         HARD_OVERFLOW_THRESHOLD is 2.0, then if the flow on the powerline reaches 2 * 150 = 300.0 the powerline
         the powerline is automatically disconnected.
 
+        .. deprecated:: 1.12.6
+            It is only used to build the "legacy" protections: an instantaneous protection with a limit of
+            ``HARD_OVERFLOW_THRESHOLD / PROTECTION_THRESHOLD * thermal_limit``, so that it acts above
+            ``HARD_OVERFLOW_THRESHOLD * thermal_limit`` (see :func:`grid2op.Environment.protection.legacy_from_parameters`).
+            Define the protections instead (:func:`grid2op.Environment.BaseEnv.set_protections` or a
+            `protections.json` file).
+
+    PROTECTION_THRESHOLD: ``float``
+        .. versionadded:: 1.12.6
+
+        A protection is *engaged* (its counter starts) when the current on its side of the powerline is strictly
+        above ``PROTECTION_THRESHOLD * limit`` (the limit of this protection, in A), whatever its delay (including
+        instantaneous protections). It does not change `rho` (always relative to the limit of the reference
+        protection). It defaults to 1. See :mod:`grid2op.Environment.protection`.
+
     SOFT_OVERFLOW_THRESHOLD: ``float``
         .. versionadded:: 1.9.3
-        
-        Threshold above which delayed protection are triggered. A line with its current bellow `SOFT_OVERFLOW_THRESHOLD * thermal_limit`
-        then nothing happens. If it's above the delay start. And if it's above `SOFT_OVERFLOW_THRESHOLD * thermal_limit`
-        for more than :attr:`NB_TIMESTEP_OVERFLOW_ALLOWED` consecutive steps.
-    
+
+        .. deprecated:: 1.12.6
+            Former name of :attr:`Parameters.PROTECTION_THRESHOLD` (which it is an alias of).
+
     ENV_DC: ``bool``
         Whether or not making the simulations of the environment in the "direct current" approximation. This can be
         usefull for early training of agent, as this mode is much faster to compute than the corresponding
@@ -218,7 +237,7 @@ class Parameters:
         "NB_TIMESTEP_COOLDOWN_LINE",
         "NB_TIMESTEP_COOLDOWN_SUB",
         "HARD_OVERFLOW_THRESHOLD",
-        "SOFT_OVERFLOW_THRESHOLD",
+        "PROTECTION_THRESHOLD",
         "ENV_DC",
         "FORECAST_DC",
         "MAX_SUB_CHANGED",
@@ -238,6 +257,21 @@ class Parameters:
         "STOP_EP_IF_GEN_BREAK_CONSTRAINTS"
     )
     
+    @property
+    def SOFT_OVERFLOW_THRESHOLD(self) -> float:
+        """
+        .. deprecated:: 1.12.6
+            Alias of :attr:`Parameters.PROTECTION_THRESHOLD`.
+        """
+        return self.PROTECTION_THRESHOLD
+
+    @SOFT_OVERFLOW_THRESHOLD.setter
+    def SOFT_OVERFLOW_THRESHOLD(self, value) -> None:
+        warnings.warn("`SOFT_OVERFLOW_THRESHOLD` is deprecated, use `PROTECTION_THRESHOLD` instead "
+                      "(same meaning, see grid2op.Environment.protection)",
+                      DeprecationWarning, stacklevel=2)
+        self.PROTECTION_THRESHOLD = value
+
     def __init__(self, parameters_path=None):
         """
         Build an object representing the _parameters of the game.
@@ -267,7 +301,9 @@ class Parameters:
         # 243 A, to disconnect it instantly if it has a powerflow higher than 2 * 243 = 486 A
         self.HARD_OVERFLOW_THRESHOLD = dt_float(2.0)
         
-        self.SOFT_OVERFLOW_THRESHOLD = dt_float(1.0)
+        # a protection is engaged when the current on its side is above
+        # PROTECTION_THRESHOLD * its limit (see grid2op.Environment.protection)
+        self.PROTECTION_THRESHOLD = dt_float(1.0)
 
         # are the powerflow performed by the environment in DC mode (dc powerflow) or AC (ac powerflow)
         self.ENV_DC = False
@@ -401,7 +437,10 @@ class Parameters:
             self.HARD_OVERFLOW_THRESHOLD = dt_float(dict_["HARD_OVERFLOW_THRESHOLD"])
             
         if "SOFT_OVERFLOW_THRESHOLD" in dict_:
-            self.SOFT_OVERFLOW_THRESHOLD = dt_float(dict_["SOFT_OVERFLOW_THRESHOLD"])
+            # legacy name (grid2op < 1.12.6)
+            self.PROTECTION_THRESHOLD = dt_float(dict_["SOFT_OVERFLOW_THRESHOLD"])
+        if "PROTECTION_THRESHOLD" in dict_:
+            self.PROTECTION_THRESHOLD = dt_float(dict_["PROTECTION_THRESHOLD"])
 
         if "ENV_DC" in dict_:
             self.ENV_DC = Parameters._isok_txt(dict_["ENV_DC"])
@@ -477,6 +516,7 @@ class Parameters:
             "NB_TIMESTEP_POWERFLOW_ALLOWED",
             "NB_TIMESTEP_TOPOLOGY_REMODIF",
             "NB_TIMESTEP_LINE_STATUS_REMODIF",
+            "SOFT_OVERFLOW_THRESHOLD",
         }
 
         ignored_keys = dict_.keys() - authorized_keys
@@ -506,7 +546,9 @@ class Parameters:
         res["NB_TIMESTEP_OVERFLOW_ALLOWED"] = int(self.NB_TIMESTEP_OVERFLOW_ALLOWED)
         res["NB_TIMESTEP_RECONNECTION"] = int(self.NB_TIMESTEP_RECONNECTION)
         res["HARD_OVERFLOW_THRESHOLD"] = float(self.HARD_OVERFLOW_THRESHOLD)
-        res["SOFT_OVERFLOW_THRESHOLD"] = float(self.SOFT_OVERFLOW_THRESHOLD)
+        res["PROTECTION_THRESHOLD"] = float(self.PROTECTION_THRESHOLD)
+        # legacy name, kept so that older grid2op versions can read it
+        res["SOFT_OVERFLOW_THRESHOLD"] = float(self.PROTECTION_THRESHOLD)
         res["ENV_DC"] = bool(self.ENV_DC)
         res["FORECAST_DC"] = bool(self.FORECAST_DC)
         res["MAX_SUB_CHANGED"] = int(self.MAX_SUB_CHANGED)
@@ -653,19 +695,21 @@ class Parameters:
             )
             
         try:
-            self.SOFT_OVERFLOW_THRESHOLD = float(
-                self.SOFT_OVERFLOW_THRESHOLD
+            self.PROTECTION_THRESHOLD = float(
+                self.PROTECTION_THRESHOLD
             )  # to raise if numpy array
-            self.SOFT_OVERFLOW_THRESHOLD = dt_float(self.SOFT_OVERFLOW_THRESHOLD)
+            self.PROTECTION_THRESHOLD = dt_float(self.PROTECTION_THRESHOLD)
         except Exception as exc_:
             raise RuntimeError(
-                f'Impossible to convert SOFT_OVERFLOW_THRESHOLD to float with error \n:"{exc_}"'
+                f'Impossible to convert PROTECTION_THRESHOLD to float with error \n:"{exc_}"'
             ) from exc_
-            
-        if self.SOFT_OVERFLOW_THRESHOLD >= self.HARD_OVERFLOW_THRESHOLD:
+        if not self.PROTECTION_THRESHOLD > 0.:
+            raise RuntimeError("PROTECTION_THRESHOLD <= 0., this should be > 0.")
+
+        if self.PROTECTION_THRESHOLD >= self.HARD_OVERFLOW_THRESHOLD:
             raise RuntimeError(
-                "self.SOFT_OVERFLOW_THRESHOLD >= self.HARD_OVERFLOW_THRESHOLD this would that the"
-                "soft overflow would be deactivated. It's not possible at the moment."
+                "self.PROTECTION_THRESHOLD (formerly SOFT_OVERFLOW_THRESHOLD) >= self.HARD_OVERFLOW_THRESHOLD "
+                "this would mean that the delayed protection would be deactivated. It's not possible at the moment."
             )
             
         try:

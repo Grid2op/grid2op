@@ -55,7 +55,7 @@ class MaskedEnvironment(Environment):
     """  
     # some kind of infinity value
     # NB we multiply np.finfo(dt_float).max by a small number (1e-7) to avoid overflow
-    # indeed, the threshold of the protections is multiplied by the thermal limit
+    # indeed, the limit of the protections is multiplied by PROTECTION_THRESHOLD
     INF_VAL_THM_LIM = 1e-7 * np.finfo(dt_float).max  
     
     # some kind of infinity value
@@ -105,21 +105,20 @@ class MaskedEnvironment(Environment):
                            "number of lines on the grid.")
         return res
     
-    def _make_default_protection_config(self, parameters=None) -> ProtectionConfig:
-        # protections of the lines that are not "of interest" never trip: the instantaneous one
-        # has an "infinite" threshold and the delayed one an "infinite" delay (its counter
-        # is still updated, as for the other lines)
-        res = super()._make_default_protection_config(parameters)
+    def _make_default_protection_config(self, parameters=None, thermal_limit=None) -> ProtectionConfig:
+        # protections of the lines that are not "of interest" never trip: the reference one gets an
+        # "infinite" delay (its counter and rho are unchanged) and the other one an "infinite" limit
+        res = super()._make_default_protection_config(parameters, thermal_limit)
         cls = type(self)
         not_interest = ~self._lines_of_interest[res.line_id]
-        instantaneous = res.delay == 0
-        threshold = res.threshold.copy()
-        threshold[not_interest & instantaneous] = cls.INF_VAL_THM_LIM
+        is_ref = res.is_reference()
+        limit = res.limit.copy()
+        limit[not_interest & ~is_ref] = cls.INF_VAL_THM_LIM
         delay = res.delay.copy()
-        delay[not_interest & ~instantaneous] = cls.INF_VAL_TS_OVERFLOW_ALLOW
+        delay[not_interest & is_ref] = cls.INF_VAL_TS_OVERFLOW_ALLOW
         return ProtectionConfig(line_id=res.line_id,
                                 side_is_ex=res.side_is_ex,
-                                threshold=threshold,
+                                limit=limit,
                                 delay=delay,
                                 in_service=res.in_service,
                                 name=res.name)

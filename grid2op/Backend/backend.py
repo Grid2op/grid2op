@@ -1523,9 +1523,8 @@ class Backend(GridObjects, ABC):
             # simulate the cascading failure
             a_or = self.get_line_flow()
             a_ex = self.get_line_flow_ex() if prot_cfg.has_ex_side else None
-            thermal_limits = self.get_thermal_limit()
             lines_status = self.get_line_status()
-            engaged = compute_engaged(prot_cfg, a_or, a_ex, thermal_limits, lines_status)
+            engaged = compute_engaged(prot_cfg, a_or, a_ex, env._protection_threshold, lines_status)
             to_disc = cascade_iteration(prot_cfg,
                                         protection_counter,
                                         counter_increased,

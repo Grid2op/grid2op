@@ -243,8 +243,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         several per powerline and on both sides). Unless a custom configuration is given
         (see :func:`BaseEnv.set_protections`) it is built from the parameters
         :attr:`grid2op.Parameters.Parameters.HARD_OVERFLOW_THRESHOLD`,
-        :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` and
-        :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED`
+        :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD`,
+        :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED` and the thermal limits
         (see :func:`grid2op.Environment.protection.legacy_from_parameters`).
 
     _protection_state: :class:`grid2op.Environment.protection.ProtectionState`
@@ -478,7 +478,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._protection_config: Optional[ProtectionConfig] = None
         self._protection_state: Optional[ProtectionState] = None
         self._protection_is_custom: bool = False
-        self._protection_last_default_key: Optional[Tuple[float, float, int]] = None
+        self._protection_last_default_key: Optional[Tuple] = None
 
         # store actions "cooldown"
         self._times_before_line_status_actionable: np.ndarray = None
@@ -1962,6 +1962,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         Set the thermal limit effectively.
 
+        .. deprecated:: 1.12.6
+            The thermal limits are only used to build the "legacy" protections (see
+            :func:`BaseEnv.init_protection_legacy`): with them, the thermal limit is the limit of the reference
+            protection of each powerline. With custom protections (:func:`BaseEnv.set_protections`) this function
+            has no effect on the protections nor on `rho`. Define the protections instead.
+
         Parameters
         ----------
         thermal_limit: ``numpy.ndarray``
@@ -2052,6 +2058,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._thermal_limit_a[:] = tmp
         self.backend.set_thermal_limit(self._thermal_limit_a)
         self.observation_space.set_thermal_limit(self._thermal_limit_a)
+        if self._protection_is_custom:
+            warnings.warn("The thermal limits are only used by the legacy protections (built from the "
+                          "parameters), this environment uses custom protections: they are not modified.")
+        else:
+            self._update_default_protections()
 
     def _reset_redispatching(self):
         # redispatching
@@ -2768,27 +2779,46 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 "This environment is not initialized. It has no thermal limits. "
                 "Have you called `env.reset()` after last game over ?"
             )
-        return 1.0 * self._thermal_limit_a
+        if self._protection_config is None:
+            return 1.0 * self._thermal_limit_a
+        ref_or, ref_ex = self._protection_config.reference_limits(type(self).n_line)
+        return np.where(np.isfinite(ref_or), ref_or, ref_ex).astype(dt_float)
 
-    def _make_default_protection_config(self, parameters: Optional[Parameters] = None) -> ProtectionConfig:
-        """Build the protections from the (legacy) parameters, by default the ones of the environment
-        (keeps the current `in_service` status if possible).
+    @property
+    def _protection_threshold(self) -> float:
+        """see :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD`"""
+        return float(self._parameters.PROTECTION_THRESHOLD)
+
+    def _legacy_thermal_limit(self) -> np.ndarray:
+        """thermal limits used to build the legacy protections"""
+        if self._thermal_limit_a is not None:
+            return self._thermal_limit_a
+        return self.backend.thermal_limit_a
+
+    def _make_default_protection_config(self,
+                                        parameters: Optional[Parameters] = None,
+                                        thermal_limit: Optional[np.ndarray] = None) -> ProtectionConfig:
+        """Build the protections from the (legacy) parameters and thermal limits, by default the ones of the
+        environment (keeps the current `in_service` status if possible).
 
         Can be overridden by environments that emulate protections differently
         (for example :class:`grid2op.Environment.MaskedEnvironment`).
         """
         if parameters is None:
             parameters = self._parameters
+        if thermal_limit is None:
+            thermal_limit = self._legacy_thermal_limit()
         in_service = None
         if self._protection_config is not None:
             in_service = self._protection_config.in_service
-        return legacy_from_parameters(parameters, type(self).n_line, in_service=in_service)
+        return legacy_from_parameters(parameters, thermal_limit, in_service=in_service)
 
-    def _protection_default_key(self) -> Tuple[float, float, int]:
+    def _protection_default_key(self) -> Tuple:
         params = self._parameters
         return (float(params.HARD_OVERFLOW_THRESHOLD),
-                float(params.SOFT_OVERFLOW_THRESHOLD),
-                int(params.NB_TIMESTEP_OVERFLOW_ALLOWED))
+                float(params.PROTECTION_THRESHOLD),
+                int(params.NB_TIMESTEP_OVERFLOW_ALLOWED),
+                np.asarray(self._legacy_thermal_limit(), dtype=dt_float).tobytes())
 
     def _update_default_protections(self) -> None:
         """Rebuild the protections from the parameters, unless the user gave a custom configuration."""
@@ -2799,19 +2829,23 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             return
         self._protection_config = self._make_default_protection_config()
         self._protection_last_default_key = key
-        self._protection_state.sync_in_service(self._protection_config)
+        if self._protection_state.n_prot != self._protection_config.n_prot:
+            # the number of legacy protections depends on NB_TIMESTEP_OVERFLOW_ALLOWED
+            self._protection_state = ProtectionState.from_config(self._protection_config)
+        else:
+            self._protection_state.sync_in_service(self._protection_config)
 
     def _update_protection_counters(self) -> None:
         """Update the counters of the protections with the flows of the backend (at the end of a step)."""
         cfg = self._protection_config
         a_or = self.backend.get_line_flow()
         a_ex = self.backend.get_line_flow_ex() if cfg.has_ex_side else None
-        engaged = compute_engaged(cfg, a_or, a_ex, self.backend.get_thermal_limit())
+        engaged = compute_engaged(cfg, a_or, a_ex, self._protection_threshold)
         self._protection_state.update(cfg, engaged)
 
     def _protection_engaged_from_obs(self, obs: BaseObservation) -> np.ndarray:
         """Which protections are engaged given the flows and thermal limits of an observation."""
-        return compute_engaged(self._protection_config, obs.a_or, obs.a_ex, obs._thermal_limit)
+        return compute_engaged(self._protection_config, obs.a_or, obs.a_ex, self._protection_threshold)
 
     def _set_protection_state_from_obs(self, obs: BaseObservation) -> None:
         cfg = self._protection_config
@@ -2865,15 +2899,19 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                                                     os.PathLike]] = None) -> None:
         """Define the overcurrent protections of the powerlines.
 
-        By default (and when `protections` is ``None``) each powerline has two protections on its
-        "or" side built from the parameters (see
-        :func:`grid2op.Environment.protection.legacy_from_parameters`): an instantaneous one at
-        :attr:`grid2op.Parameters.Parameters.HARD_OVERFLOW_THRESHOLD` and a delayed one at
-        :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` that trips after
-        :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED` steps.
+        By default (and when `protections` is ``None``) the "legacy" protections are used, built from
+        the thermal limits and the parameters (see :func:`BaseEnv.init_protection_legacy`).
 
-        Once a custom configuration is set, these three parameters are no longer used. The global
-        switch :attr:`grid2op.Parameters.Parameters.NO_OVERFLOW_DISCONNECTION` still applies.
+        Once a custom configuration is set, the thermal limits and the parameters
+        :attr:`grid2op.Parameters.Parameters.HARD_OVERFLOW_THRESHOLD` and
+        :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED` are no longer used.
+        :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD` (a protection is engaged above
+        ``PROTECTION_THRESHOLD * limit``) and the global switch
+        :attr:`grid2op.Parameters.Parameters.NO_OVERFLOW_DISCONNECTION` still apply.
+
+        The protections placed on the same side of a powerline must be consistent (see
+        :class:`grid2op.Environment.protection.ProtectionConfig`): different limits, different delays,
+        and a higher limit comes with a strictly lower delay.
 
         The change is immediate (it does not wait for the next `reset`) and all the counters
         are set to 0. It also applies to `obs.simulate` and `obs.get_forecast_env`.
@@ -2899,10 +2937,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
             env = grid2op.make("l2rpn_case14_sandbox")
             env.set_protections([
-                # instantaneous trip at 150% of the thermal limit, measured on the "ex" side
-                Protection(line_id=0, side="ex", threshold=1.5, delay=0, name="l0_inst"),
-                # trip after 3 steps above the thermal limit, measured on the "or" side
-                Protection(line_id=0, side="or", threshold=1.0, delay=3, name="l0_slow"),
+                # on the "or" side: instantaneous trip above 800 A,
+                Protection(line_id=0, side="or", limit=800., delay=0, name="l0_inst"),
+                # and trip after 3 steps above 540 A (the reference protection of this side)
+                Protection(line_id=0, side="or", limit=540., delay=3, name="l0_slow"),
+                # on the "ex" side: trip after 1 step above 600 A
+                Protection(line_id=0, side="ex", limit=600., delay=1, name="l0_ex"),
             ])
             obs = env.reset()
 
@@ -2920,17 +2960,17 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._observation_space._set_protections(config)
 
     def init_protection_legacy(self, parameters: Optional[Parameters] = None) -> None:
-        """Use the protections built from the legacy parameters
+        """Use the protections built from the thermal limits and the legacy parameters
         :attr:`grid2op.Parameters.Parameters.HARD_OVERFLOW_THRESHOLD`,
-        :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` and
+        :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD` (formerly ``SOFT_OVERFLOW_THRESHOLD``) and
         :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED`.
 
         This is what an environment uses when no protections are given. The mapping
         convention is described in :func:`grid2op.Environment.protection.legacy_from_parameters`:
-        for each powerline ``i``, protection ``2 * i`` is an instantaneous one at
-        ``HARD_OVERFLOW_THRESHOLD`` and protection ``2 * i + 1`` a delayed one at
-        ``SOFT_OVERFLOW_THRESHOLD`` with a delay of ``NB_TIMESTEP_OVERFLOW_ALLOWED`` steps,
-        both on the "or" side.
+        for each powerline ``i``, both on the "or" side, a reference protection with the thermal limit
+        as limit and a delay of ``NB_TIMESTEP_OVERFLOW_ALLOWED`` steps, and an instantaneous one acting
+        above ``HARD_OVERFLOW_THRESHOLD * thermal_limit``. It reproduces exactly the behaviour of
+        the previous grid2op versions. They follow the thermal limits (:func:`BaseEnv.set_thermal_limit`).
 
         The counters are set to 0.
 
@@ -2978,9 +3018,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     def add_protection(self,
                        line_id: Union[int, str],
-                       side: Literal["or", "ex"] = "or",
-                       threshold: float = 1.0,
-                       delay: int = 0,
+                       side: Literal["or", "ex"],
+                       limit: float,
+                       delay: int,
                        in_service: bool = True,
                        name: str = "") -> int:
         """Add one protection to the current ones.
@@ -2999,8 +3039,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         side:
             ``"or"`` or ``"ex"``
 
-        threshold:
-            Multiplier of the thermal limit above which the protection is engaged
+        limit:
+            Limit (in A) of the protection: it is engaged above ``PROTECTION_THRESHOLD * limit``
 
         delay:
             Number of steps the protection can stay engaged before tripping (0 = instantaneous)
@@ -3019,11 +3059,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._check_protections_usable()
         cls = type(self)
         if isinstance(line_id, str):
-            new_prot = Protection.from_dict({"line_name": line_id, "side": side, "threshold": threshold,
+            new_prot = Protection.from_dict({"line_name": line_id, "side": side, "limit": limit,
                                              "delay": delay, "in_service": in_service, "name": name},
                                             name_line=cls.name_line)
         else:
-            new_prot = Protection(line_id=int(line_id), side=side, threshold=float(threshold),
+            new_prot = Protection(line_id=int(line_id), side=side, limit=float(limit),
                                   delay=int(delay), in_service=bool(in_service), name=str(name))
         new_cfg = self._protection_config.concatenate(
             ProtectionConfig.from_protections([new_prot], n_line=cls.n_line))

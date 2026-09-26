@@ -38,13 +38,15 @@ def protection_flows(config: ProtectionConfig,
 def compute_engaged(config: ProtectionConfig,
                     a_or: np.ndarray,
                     a_ex: Optional[np.ndarray],
-                    thermal_limit: np.ndarray,
+                    protection_threshold: float,
                     line_status: Optional[np.ndarray] = None) -> np.ndarray:
     """Whether each protection is engaged: current on its side strictly above
-    ``threshold * thermal_limit`` of its powerline (and powerline connected when
-    `line_status` is given). This does not look at `in_service`."""
+    ``protection_threshold * limit`` (and powerline connected when `line_status` is given).
+    This does not look at `in_service`.
+
+    `protection_threshold` is :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD`."""
     flows = protection_flows(config, a_or, a_ex)
-    engaged = flows > config.threshold * thermal_limit[config.line_id]
+    engaged = flows > protection_threshold * config.limit
     if line_status is not None:
         engaged &= line_status[config.line_id]
     return engaged

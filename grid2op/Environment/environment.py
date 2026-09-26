@@ -348,6 +348,8 @@ class Environment(BaseEnv):
             self._thermal_limit_a = self.backend.thermal_limit_a.astype(dt_float)
         else:
             self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
+        # legacy protections are built from the thermal limits
+        self._update_default_protections()
 
         *_, tmp = self.backend.generators_info()
 
