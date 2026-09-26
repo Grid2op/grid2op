@@ -349,20 +349,27 @@ class ProtectionConfig:
         return res
 
 
-def default_from_parameters(params: "grid2op.Parameters.Parameters",
-                            n_line: int,
-                            in_service: Optional[np.ndarray] = None) -> ProtectionConfig:
-    """Build the default configuration, the one grid2op used before protections could be configured.
+def legacy_from_parameters(params: "grid2op.Parameters.Parameters",
+                           n_line: int,
+                           in_service: Optional[np.ndarray] = None) -> ProtectionConfig:
+    """Map the legacy protection parameters to protections: the behaviour of grid2op before
+    protections could be configured.
 
-    Each powerline gets two protections on its "or" side:
+    Convention: each powerline ``i`` gets two protections on its "or" side, in this order:
 
-    - an instantaneous one (``delay=0``) at ``params.HARD_OVERFLOW_THRESHOLD`` (named ``l{i}_hard``)
-    - a delayed one at ``params.SOFT_OVERFLOW_THRESHOLD`` with ``delay=params.NB_TIMESTEP_OVERFLOW_ALLOWED``
-      (named ``l{i}_soft``)
+    ========  ========  ==================================  ========================================
+    id        name      threshold (x thermal limit)         delay
+    ========  ========  ==================================  ========================================
+    ``2*i``   l{i}_hard ``params.HARD_OVERFLOW_THRESHOLD``  ``0`` (instantaneous)
+    ``2*i+1`` l{i}_soft ``params.SOFT_OVERFLOW_THRESHOLD``  ``params.NB_TIMESTEP_OVERFLOW_ALLOWED``
+    ========  ========  ==================================  ========================================
 
-    Protections ``2 * i`` and ``2 * i + 1`` are placed on powerline ``i``.
+    ``params.NO_OVERFLOW_DISCONNECTION`` is not part of the configuration: it stays a global switch
+    of the environment.
 
     .. versionadded:: 1.12.6
+
+    .. seealso:: :func:`grid2op.Environment.BaseEnv.init_protection_legacy`
     """
     n_prot = 2 * n_line
     line_id = np.repeat(np.arange(n_line, dtype=dt_int), 2)

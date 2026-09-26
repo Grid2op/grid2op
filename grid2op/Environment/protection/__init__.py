@@ -10,11 +10,11 @@ __all__ = [
     "Protection",
     "ProtectionConfig",
     "ProtectionState",
-    "default_from_parameters",
+    "legacy_from_parameters",
     "PROTECTIONS_FILE_NAME",
 ]
 
-from grid2op.Environment.protection.protection import Protection, ProtectionConfig, default_from_parameters
+from grid2op.Environment.protection.protection import Protection, ProtectionConfig, legacy_from_parameters
 from grid2op.Environment.protection.protection_state import ProtectionState
 
 #: name of the file, in the environment directory, that defines the protections

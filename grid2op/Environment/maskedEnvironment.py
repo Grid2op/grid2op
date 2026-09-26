@@ -105,11 +105,11 @@ class MaskedEnvironment(Environment):
                            "number of lines on the grid.")
         return res
     
-    def _make_default_protection_config(self) -> ProtectionConfig:
+    def _make_default_protection_config(self, parameters=None) -> ProtectionConfig:
         # protections of the lines that are not "of interest" never trip: the instantaneous one
         # has an "infinite" threshold and the delayed one an "infinite" delay (its counter
         # is still updated, as for the other lines)
-        res = super()._make_default_protection_config()
+        res = super()._make_default_protection_config(parameters)
         cls = type(self)
         not_interest = ~self._lines_of_interest[res.line_id]
         instantaneous = res.delay == 0

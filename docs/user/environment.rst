@@ -716,8 +716,9 @@ A powerline can have any number of protections, on both of its sides. The first 
 **Default protections.** When nothing is specified, each powerline gets two protections on its ``"or"`` side,
 built from the :class:`grid2op.Parameters.Parameters` (this is the behaviour of previous grid2op versions):
 an instantaneous one at ``HARD_OVERFLOW_THRESHOLD`` and a delayed one at ``SOFT_OVERFLOW_THRESHOLD`` with a delay of
-``NB_TIMESTEP_OVERFLOW_ALLOWED`` steps (see :func:`grid2op.Environment.protection.default_from_parameters`). They are
-rebuilt when these parameters change (at the next `reset`).
+``NB_TIMESTEP_OVERFLOW_ALLOWED`` steps (see :func:`grid2op.Environment.protection.legacy_from_parameters`). They are
+rebuilt when these parameters change (at the next `reset`). :func:`grid2op.Environment.BaseEnv.init_protection_legacy`
+goes back to them (or builds them once from other parameters).
 
 **Custom protections.** They can be given in a ``protections.json`` file in the environment directory (read
 by `grid2op.make`), or programmatically:
@@ -771,8 +772,8 @@ each powerline (protections in service only). The per protection attributes are 
 representation of the observation (their size depends on the number of protections).
 
 .. note::
-    During the step performed by `env.reset`, the counters are not increased, so only the instantaneous
-    protections (``delay == 0``) can trip.
+    The observation returned by `env.reset` is the initial state of the grid: no protection acts on it, whatever
+    its delay (even the instantaneous ones) and the counters start at 0. Only `env.step` can trip a powerline.
 
 .. automodule:: grid2op.Environment.protection
     :members:

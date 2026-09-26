@@ -62,7 +62,7 @@ from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.Environment.protection import (Protection,
                                             ProtectionConfig,
                                             ProtectionState,
-                                            default_from_parameters)
+                                            legacy_from_parameters)
 from grid2op.Environment.protection.protection_solver import compute_engaged
 
 # TODO put in a separate class the redispatching function
@@ -245,7 +245,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         :attr:`grid2op.Parameters.Parameters.HARD_OVERFLOW_THRESHOLD`,
         :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` and
         :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED`
-        (see :func:`grid2op.Environment.protection.default_from_parameters`).
+        (see :func:`grid2op.Environment.protection.legacy_from_parameters`).
 
     _protection_state: :class:`grid2op.Environment.protection.ProtectionState`
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
@@ -2770,16 +2770,19 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             )
         return 1.0 * self._thermal_limit_a
 
-    def _make_default_protection_config(self) -> ProtectionConfig:
-        """Build the protections from the parameters (keeps the current `in_service` status if possible).
+    def _make_default_protection_config(self, parameters: Optional[Parameters] = None) -> ProtectionConfig:
+        """Build the protections from the (legacy) parameters, by default the ones of the environment
+        (keeps the current `in_service` status if possible).
 
         Can be overridden by environments that emulate protections differently
         (for example :class:`grid2op.Environment.MaskedEnvironment`).
         """
+        if parameters is None:
+            parameters = self._parameters
         in_service = None
         if self._protection_config is not None:
             in_service = self._protection_config.in_service
-        return default_from_parameters(self._parameters, type(self).n_line, in_service=in_service)
+        return legacy_from_parameters(parameters, type(self).n_line, in_service=in_service)
 
     def _protection_default_key(self) -> Tuple[float, float, int]:
         params = self._parameters
@@ -2864,7 +2867,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         By default (and when `protections` is ``None``) each powerline has two protections on its
         "or" side built from the parameters (see
-        :func:`grid2op.Environment.protection.default_from_parameters`): an instantaneous one at
+        :func:`grid2op.Environment.protection.legacy_from_parameters`): an instantaneous one at
         :attr:`grid2op.Parameters.Parameters.HARD_OVERFLOW_THRESHOLD` and a delayed one at
         :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` that trips after
         :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED` steps.
@@ -2915,6 +2918,63 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._set_protection_config(config)
         if self._observation_space is not None:
             self._observation_space._set_protections(config)
+
+    def init_protection_legacy(self, parameters: Optional[Parameters] = None) -> None:
+        """Use the protections built from the legacy parameters
+        :attr:`grid2op.Parameters.Parameters.HARD_OVERFLOW_THRESHOLD`,
+        :attr:`grid2op.Parameters.Parameters.SOFT_OVERFLOW_THRESHOLD` and
+        :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_OVERFLOW_ALLOWED`.
+
+        This is what an environment uses when no protections are given. The mapping
+        convention is described in :func:`grid2op.Environment.protection.legacy_from_parameters`:
+        for each powerline ``i``, protection ``2 * i`` is an instantaneous one at
+        ``HARD_OVERFLOW_THRESHOLD`` and protection ``2 * i + 1`` a delayed one at
+        ``SOFT_OVERFLOW_THRESHOLD`` with a delay of ``NB_TIMESTEP_OVERFLOW_ALLOWED`` steps,
+        both on the "or" side.
+
+        The counters are set to 0.
+
+        .. versionadded:: 1.12.6
+
+        Parameters
+        ----------
+        parameters:
+            If ``None`` (default) the parameters of the environment are used, and the protections
+            follow them: they are rebuilt at the next `reset` after
+            :func:`BaseEnv.change_parameters`. Otherwise the protections are built once from the
+            given parameters and no longer follow the ones of the environment.
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            import grid2op
+            from grid2op.Parameters import Parameters
+
+            env = grid2op.make("l2rpn_case14_sandbox")
+
+            # go back to the protections of the environment parameters
+            env.init_protection_legacy()
+
+            # or use fixed "legacy" protections, whatever the parameters of the environment
+            params = Parameters()
+            params.HARD_OVERFLOW_THRESHOLD = 1.5
+            params.NB_TIMESTEP_OVERFLOW_ALLOWED = 3
+            env.init_protection_legacy(params)
+
+        """
+        self._check_protections_usable()
+        if parameters is None:
+            self.set_protections(None)
+            return
+        if not isinstance(parameters, Parameters):
+            raise EnvError(f"`parameters` should be a grid2op Parameters object, found {type(parameters)}")
+        parameters.check_valid()
+        config = self._make_default_protection_config(parameters)
+        # all protections in service
+        config.in_service[:] = True
+        self.set_protections(config)
 
     def add_protection(self,
                        line_id: Union[int, str],

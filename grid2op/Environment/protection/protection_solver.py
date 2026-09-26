@@ -55,7 +55,6 @@ def cascade_iteration(config: ProtectionConfig,
                       increased: np.ndarray,
                       engaged: np.ndarray,
                       n_line: int,
-                      increment_counters: bool = True,
                       protections_disabled: bool = False) -> np.ndarray:
     """One iteration of the cascading failure loop.
 
@@ -69,10 +68,6 @@ def cascade_iteration(config: ProtectionConfig,
 
     Parameters
     ----------
-    increment_counters:
-        ``False`` for the step performed during a `reset`: counters are not increased,
-        so only the instantaneous protections (``delay == 0``) can trip.
-
     protections_disabled:
         Global switch (:attr:`grid2op.Parameters.Parameters.NO_OVERFLOW_DISCONNECTION`).
 
@@ -82,11 +77,10 @@ def cascade_iteration(config: ProtectionConfig,
         Powerlines to disconnect, shape (n_line,)
     """
     in_service = config.in_service
-    if increment_counters:
-        inc = engaged & in_service & ~increased
-        counter[inc] += 1
-        increased |= inc
-    would_trip = engaged & ((counter > config.delay) | (config.delay <= 0))
+    inc = engaged & in_service & ~increased
+    counter[inc] += 1
+    increased |= inc
+    would_trip = engaged & (counter > config.delay)
     tripped_prot = would_trip & in_service
     tripped_line = np.zeros(n_line, dtype=dt_bool)
     if protections_disabled:

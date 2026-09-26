@@ -115,14 +115,16 @@ Native multi agents support:
   `env.set_protection_in_service` or a `protections.json` file in the environment directory, and
   are carried to `env.copy`, `obs.simulate`, `obs.get_forecast_env` and the runner. By default they are
   built from `HARD_OVERFLOW_THRESHOLD`, `SOFT_OVERFLOW_THRESHOLD` and `NB_TIMESTEP_OVERFLOW_ALLOWED`
-  (same behaviour as before)
+  (same behaviour as before, see `grid2op.Environment.protection.legacy_from_parameters` for the mapping)
+- [ADDED] `env.init_protection_legacy(parameters=None)` to (re)build the protections from the legacy parameters
 - [ADDED] `obs.protection_counters`, `obs.protection_line_id` and `obs.protection_side` (not part of
   the vector representation of the observation)
 - [ADDED] `Backend.get_line_flow_ex` and `Backend.get_line_flows_both_sides` (with default implementations)
 - [BREAKING] the (private) environment attributes `_protection_counter`, `_hard_overflow_threshold` and
   `_nb_ts_max_protection_counter` are replaced by `_protection_config` and `_protection_state`
-- [BREAKING] with `NB_TIMESTEP_OVERFLOW_ALLOWED = 0`, the "soft" protection is instantaneous and can now
-  trip during the step performed by `env.reset` (like the "hard" one)
+- [BREAKING] no protection acts on the initial state of the grid (the step performed by `env.reset`):
+  previously a powerline above `HARD_OVERFLOW_THRESHOLD` was disconnected in the observation returned by
+  `env.reset`, now it is disconnected (if still above) at the first `env.step`
 
 [1.12.5] - 2026-06-12
 -------------------------

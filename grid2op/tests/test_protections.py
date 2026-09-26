@@ -22,7 +22,7 @@ from grid2op.Environment import MaskedEnvironment
 from grid2op.Environment.protection import (Protection,
                                             ProtectionConfig,
                                             ProtectionState,
-                                            default_from_parameters,
+                                            legacy_from_parameters,
                                             PROTECTIONS_FILE_NAME)
 from grid2op.Environment.protection.protection_solver import compute_engaged, cascade_iteration
 from grid2op.Exceptions import EnvError
@@ -102,7 +102,7 @@ class TestProtectionConfig(unittest.TestCase):
         assert cfg2 == cfg
 
     def test_get_ids(self):
-        cfg = default_from_parameters(Parameters(), 3)
+        cfg = legacy_from_parameters(Parameters(), 3)
         assert np.array_equal(cfg.get_ids("l1_soft"), [3])
         assert np.array_equal(cfg.get_ids([0, "l2_hard"]), [0, 4])
         assert np.array_equal(cfg.get_ids(cfg.line_id == 1), [2, 3])
@@ -111,12 +111,12 @@ class TestProtectionConfig(unittest.TestCase):
         with self.assertRaises(EnvError):
             cfg.get_ids(6)
 
-    def test_default_from_parameters(self):
+    def test_legacy_from_parameters(self):
         params = Parameters()
         params.HARD_OVERFLOW_THRESHOLD = 3.
         params.SOFT_OVERFLOW_THRESHOLD = 1.1
         params.NB_TIMESTEP_OVERFLOW_ALLOWED = 4
-        cfg = default_from_parameters(params, 3)
+        cfg = legacy_from_parameters(params, 3)
         assert cfg.n_prot == 6
         assert np.array_equal(cfg.line_id, [0, 0, 1, 1, 2, 2])
         assert not cfg.has_ex_side
@@ -126,7 +126,7 @@ class TestProtectionConfig(unittest.TestCase):
         assert cfg.name[1] == "l0_soft"
         # the in_service status can be kept
         in_service = np.array([True, False] * 3)
-        cfg = default_from_parameters(params, 3, in_service=in_service)
+        cfg = legacy_from_parameters(params, 3, in_service=in_service)
         assert np.array_equal(cfg.in_service, in_service)
 
     def test_state_in_service(self):
@@ -174,13 +174,6 @@ class TestProtectionConfig(unittest.TestCase):
         tripped = cascade_iteration(cfg, counter, increased, engaged, 2, protections_disabled=True)
         assert not tripped.any()
         assert np.array_equal(counter, [0, 3, 0, 0])
-        # during a reset: no counter increment, only instantaneous protections trip
-        counter = np.array([0, 2, 0, 0])
-        increased[:] = False
-        engaged[0] = True
-        tripped = cascade_iteration(cfg, counter, increased, engaged, 2, increment_counters=False)
-        assert np.array_equal(tripped, [True, False])
-        assert np.array_equal(counter, [0, 2, 0, 0])
 
 
 class _BaseProtectionEnv:
@@ -214,7 +207,7 @@ class TestProtectionEnv(_BaseProtectionEnv, unittest.TestCase):
     def test_default_config(self):
         obs = self._reset()
         cfg = self.env.get_protection_config()
-        assert cfg == default_from_parameters(self.env.parameters, type(self.env).n_line)
+        assert cfg == legacy_from_parameters(self.env.parameters, type(self.env).n_line)
         assert not self.env._protection_is_custom
         assert obs.protection_counters.shape == (2 * type(self.env).n_line, )
         assert np.array_equal(obs.protection_line_id, cfg.line_id)
@@ -254,7 +247,7 @@ class TestProtectionEnv(_BaseProtectionEnv, unittest.TestCase):
             warnings.filterwarnings("ignore")
             env2 = grid2op.make("l2rpn_case14_sandbox", test=True, _add_to_name=type(self).__name__)
         try:
-            env2.set_protections(default_from_parameters(env2.parameters, type(env2).n_line))
+            env2.set_protections(legacy_from_parameters(env2.parameters, type(env2).n_line))
             assert env2._protection_is_custom
             options = {"time serie id": 0, "thermal limit": th_lim}
             obs1 = self.env.reset(seed=0, options=options)
@@ -471,6 +464,73 @@ class TestProtectionEnv(_BaseProtectionEnv, unittest.TestCase):
         finally:
             env_runner.close()
 
+    def test_no_protection_at_reset(self):
+        """the observation given by reset is the initial state of the grid: no protection acts
+        on it, whatever its delay (even instantaneous ones), only a real step can trip a line"""
+        th_lim = 1. * self.th_lim
+        th_lim[self.line_id] = 1.  # flow on this line is far above any threshold
+        for delay in [0, 1, 3]:
+            self.env.set_protections([Protection(self.line_id, "or", 1.5, delay, name="p"),
+                                      Protection(self.line_id, "ex", 1.5, delay, name="q")])
+            obs = self.env.reset(seed=0, options={"time serie id": 0, "thermal limit": th_lim})
+            assert obs.line_status[self.line_id], f"error for delay {delay}"
+            assert obs.rho[self.line_id] > 50., f"error for delay {delay}"
+            assert (obs.protection_counters == 0).all(), f"error for delay {delay}"
+            assert obs.timestep_protection_engaged[self.line_id] == 0, f"error for delay {delay}"
+            for ts in range(1, delay + 1):
+                obs, info = self._step()
+                assert obs.line_status[self.line_id], f"error for delay {delay} at step {ts}"
+                assert (obs.protection_counters == ts).all(), f"error for delay {delay} at step {ts}"
+            obs, info = self._step()
+            assert not obs.line_status[self.line_id], f"error for delay {delay}"
+            assert info["disc_lines"][self.line_id] == 0, f"error for delay {delay}"
+
+        # same with the legacy protections: the "hard overflow" does not act at reset
+        self.env.init_protection_legacy()
+        obs = self.env.reset(seed=0, options={"time serie id": 0, "thermal limit": th_lim})
+        assert obs.rho[self.line_id] > self.env.parameters.HARD_OVERFLOW_THRESHOLD
+        assert obs.line_status[self.line_id]
+        obs, info = self._step()
+        assert not obs.line_status[self.line_id]
+
+    def test_no_protection_at_reset_init_ts(self):
+        """also when the first steps of the time series are skipped at reset"""
+        th_lim = 1. * self.th_lim
+        th_lim[self.line_id] = 1.
+        for init_ts in [2, 3]:
+            obs = self.env.reset(seed=0, options={"time serie id": 0, "thermal limit": th_lim, "init ts": init_ts})
+            assert obs.line_status[self.line_id], f"error for {init_ts}"
+            assert (obs.protection_counters == 0).all(), f"error for {init_ts}"
+
+    def test_init_protection_legacy(self):
+        n_line = type(self.env).n_line
+        self.env.set_protections([Protection(0, "or", 1.5, 1)])
+        # back to the protections following the parameters of the env
+        self.env.init_protection_legacy()
+        assert not self.env._protection_is_custom
+        assert self.env.get_protection_config() == legacy_from_parameters(self.env.parameters, n_line)
+
+        # fixed legacy protections from other parameters
+        params = Parameters()
+        params.HARD_OVERFLOW_THRESHOLD = 3.
+        params.SOFT_OVERFLOW_THRESHOLD = 1.25
+        params.NB_TIMESTEP_OVERFLOW_ALLOWED = 4
+        self.env.set_protection_in_service(0, False)
+        self.env.init_protection_legacy(params)
+        assert self.env._protection_is_custom
+        cfg = self.env.get_protection_config()
+        assert cfg == legacy_from_parameters(params, n_line)
+        assert cfg.in_service.all()
+        assert np.array_equal(cfg.name[:2], ["l0_hard", "l0_soft"])
+        # they do not follow the parameters of the environment
+        env_params = self.env.parameters
+        env_params.NB_TIMESTEP_OVERFLOW_ALLOWED = 1
+        self.env.change_parameters(env_params)
+        self._reset()
+        assert np.all(self.env.get_protection_config().delay[1::2] == 4)
+        with self.assertRaises(EnvError):
+            self.env.init_protection_legacy({"HARD_OVERFLOW_THRESHOLD": 3.})
+
     def test_errors(self):
         with self.assertRaises(EnvError):
             self.env.set_protections([Protection(type(self.env).n_line, "or", 1.1, 1)])
@@ -489,6 +549,8 @@ class TestProtectionMasked(unittest.TestCase):
             lines_of_interest[:3] = True
             env_masked = MaskedEnvironment(env, lines_of_interest=lines_of_interest)
         try:
+            # masked lines also with init_protection_legacy
+            env_masked.init_protection_legacy(env_masked.parameters)
             cfg = env_masked.get_protection_config()
             not_interest = ~lines_of_interest[cfg.line_id]
             assert (cfg.threshold[not_interest & (cfg.delay == 0)] >= MaskedEnvironment.INF_VAL_THM_LIM * 0.99).all()

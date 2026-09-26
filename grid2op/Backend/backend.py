@@ -1504,7 +1504,9 @@ class Backend(GridObjects, ABC):
         infos = []
         self._disconnected_during_cf[:] = -1
         conv_ = self._runpf_with_diverging_exception(is_dc)
-        if env._no_overflow_disconnection or conv_ is not None:
+        if env._no_overflow_disconnection or env._called_from_reset or conv_ is not None:
+            # protections are globally deactivated, or this is the initial state of the grid
+            # (step performed by `env.reset`): no protection can act
             return self._disconnected_during_cf, infos, conv_
 
         # the environment disconnect some powerlines
@@ -1524,13 +1526,11 @@ class Backend(GridObjects, ABC):
             thermal_limits = self.get_thermal_limit()
             lines_status = self.get_line_status()
             engaged = compute_engaged(prot_cfg, a_or, a_ex, thermal_limits, lines_status)
-            # no counter increase after a reset (only instantaneous protections act)
             to_disc = cascade_iteration(prot_cfg,
                                         protection_counter,
                                         counter_increased,
                                         engaged,
                                         n_line,
-                                        increment_counters=not env._called_from_reset,
                                         protections_disabled=env._no_overflow_disconnection)
             to_disc &= lines_status
 
