@@ -63,7 +63,7 @@ from grid2op.Environment.protection import (Protection,
                                             ProtectionConfig,
                                             ProtectionState,
                                             legacy_from_parameters)
-from grid2op.Environment.protection.protection_solver import compute_engaged
+from grid2op.Environment.protection.protection_solver import compute_engaged, compute_rho
 
 # TODO put in a separate class the redispatching function
 
@@ -2835,6 +2835,14 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         else:
             self._protection_state.sync_in_service(self._protection_config)
 
+    def _compute_rho(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Relative loading `(rho_or, rho_ex)` of both sides of each powerline, computed from the backend,
+        with respect to the reference protections (see
+        :func:`grid2op.Environment.protection.protection_solver.compute_rho`)."""
+        cfg = self._protection_config
+        a_ex = self.backend.get_line_flow_ex() if cfg.has_ex_side else None
+        return compute_rho(cfg, self.backend.get_line_flow(), a_ex, type(self).n_line)
+
     def _update_protection_counters(self) -> None:
         """Update the counters of the protections with the flows of the backend (at the end of a step)."""
         cfg = self._protection_config
@@ -3703,7 +3711,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         beg_res = time.perf_counter()
         # update the thermal limit, for DLR for example
         self.backend.update_thermal_limit(self)  
-        overflow_lines = self.backend.get_line_overflow()
+        # overflow: rho > 1 on at least one side (rho is relative to the protections, see `_compute_rho`)
+        rho_or, rho_ex = self._compute_rho()
+        overflow_lines = (rho_or > 1.) | (rho_ex > 1.)
         # save the current topology as "last" topology (for connected powerlines)
         # and update the state of the disconnected powerline due to cascading failure
         self._backend_action.update_state(disc_lines)

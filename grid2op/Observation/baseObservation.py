@@ -151,6 +151,11 @@ class BaseObservation(GridObjects):
         The capacity of each powerline. It is defined at the observed current flow divided by the thermal limit of each
         powerline (no unit)
 
+        .. versionchanged:: 1.12.6
+            It is the maximum of :attr:`BaseObservation.rho_or` and :attr:`BaseObservation.rho_ex`: the current on
+            each side divided by the limit of the reference protection of this side. With the legacy protections
+            (built from the thermal limits) it is unchanged: ``a_or / thermal_limit``.
+
     topo_vect: :class:`numpy.ndarray`, dtype:int
         For each object (load, generator, ends of a powerline) it gives on which bus this object is connected
         in its substation. See :func:`grid2op.Backend.Backend.get_topo_vect` for more information.
@@ -161,6 +166,10 @@ class BaseObservation(GridObjects):
 
     timestep_overflow: :class:`numpy.ndarray`, dtype:int
         Gives the number of time steps since a powerline is in overflow.
+
+        .. versionchanged:: 1.12.6
+            A powerline is in overflow when :attr:`BaseObservation.rho` is strictly above 1 (on any of its sides).
+            It does not depend on the protections, only on the limits of the reference protections.
 
     timestep_protection_engaged: :class:`numpy.ndarray`, dtype:int
         .. versionadded:: 1.11.0
@@ -174,7 +183,67 @@ class BaseObservation(GridObjects):
 
         .. versionchanged:: 1.12.6
             It is the maximum, over the protections in service of each powerline, of
-            :attr:`BaseObservation.protection_counters`. With the default protections it is unchanged.
+            :attr:`BaseObservation.protection_counters`. With the legacy protections it is unchanged.
+            With several delayed protections on the same powerline it does not tell when the powerline
+            will be disconnected: use :attr:`BaseObservation.time_before_protection_trip` instead.
+
+    rho_or: :class:`numpy.ndarray`, dtype:float
+        .. versionadded:: 1.12.6
+
+        Relative loading of the "or" side of each powerline: ``a_or`` divided by the limit of the reference
+        protection of this side (the protection with the lowest limit, see
+        :class:`grid2op.Environment.protection.ProtectionConfig`). It is 0 when there is no protection on this
+        side. It does not depend on :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD`. With the legacy
+        protections (see :func:`grid2op.Environment.BaseEnv.init_protection_legacy`) it is
+        ``a_or / thermal_limit``, the historical `rho`.
+
+    rho_ex: :class:`numpy.ndarray`, dtype:float
+        .. versionadded:: 1.12.6
+
+        Same as :attr:`BaseObservation.rho_or` for the "ex" side (0 when there is no protection on this side).
+
+    timestep_protection_engaged_or: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        For each powerline, the maximum of the :attr:`BaseObservation.protection_counters` of the protections in
+        service placed on its "or" side.
+
+    timestep_protection_engaged_ex: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        Same as :attr:`BaseObservation.timestep_protection_engaged_or` for the "ex" side.
+
+    time_before_protection_trip: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        For each powerline, the number of steps before a protection disconnects it if the currents stay above
+        the thresholds of the protections currently engaged: the minimum of
+        :attr:`BaseObservation.time_before_protection_trip_or` and
+        :attr:`BaseObservation.time_before_protection_trip_ex`, ``-1`` if no protection is engaged.
+        ``1`` means "at the next step". Unlike :attr:`BaseObservation.timestep_protection_engaged`, it is
+        not ambiguous when several delayed protections are placed on the same side.
+
+        Instantaneous protections (delay 0) can never be anticipated this way: they act at the first step
+        they are engaged. Compare :attr:`BaseObservation.rho` with their thresholds instead.
+
+    time_before_protection_trip_or: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        Minimum, over the protections in service placed on the "or" side of each powerline, of
+        :attr:`BaseObservation.protection_steps_before_trip` (``-1`` if none is engaged).
+
+    time_before_protection_trip_ex: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        Same as :attr:`BaseObservation.time_before_protection_trip_or` for the "ex" side.
+
+    protection_steps_before_trip: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        For each protection, the number of steps before it trips if its current stays above its threshold:
+        ``delay + 1 - counter``. ``-1`` if it is not engaged or out of service, ``0`` if it should already
+        have tripped (only when :attr:`grid2op.Parameters.Parameters.NO_OVERFLOW_DISCONNECTION` is set).
+        Not part of the vector representation.
 
     protection_counters: :class:`numpy.ndarray`, dtype:int
         .. versionadded:: 1.12.6
@@ -694,7 +763,15 @@ class BaseObservation(GridObjects):
         "gen_p_detached",
         "storage_p_detached",
         # soft_overflow_threshold
-        "timestep_protection_engaged"
+        "timestep_protection_engaged",
+        # protections (>= 1.12.6), not in the vector representation
+        "rho_or",
+        "rho_ex",
+        "timestep_protection_engaged_or",
+        "timestep_protection_engaged_ex",
+        "time_before_protection_trip",
+        "time_before_protection_trip_or",
+        "time_before_protection_trip_ex",
     ]
 
     def __init__(self,
@@ -729,8 +806,21 @@ class BaseObservation(GridObjects):
         cls = type(self)
         self.timestep_overflow = np.empty(shape=(cls.n_line,), dtype=dt_int)
         self.timestep_protection_engaged = np.empty(shape=(cls.n_line,), dtype=dt_int)
-        # one element per protection (not part of the vector representation)
+        # protections (not part of the vector representation)
+        self.rho_or = np.zeros(shape=(cls.n_line,), dtype=dt_float)
+        self.rho_ex = np.zeros(shape=(cls.n_line,), dtype=dt_float)
+        self.timestep_protection_engaged_or = np.zeros(shape=(cls.n_line,), dtype=dt_int)
+        self.timestep_protection_engaged_ex = np.zeros(shape=(cls.n_line,), dtype=dt_int)
+        self.time_before_protection_trip = np.full(shape=(cls.n_line,), fill_value=-1, dtype=dt_int)
+        self.time_before_protection_trip_or = np.full(shape=(cls.n_line,), fill_value=-1, dtype=dt_int)
+        self.time_before_protection_trip_ex = np.full(shape=(cls.n_line,), fill_value=-1, dtype=dt_int)
+        # limits of the reference protections of each side (static, set from the protections of
+        # the environment, None: no information, historical rho given by the backend)
+        self._ref_limit_or = None
+        self._ref_limit_ex = None
+        # one element per protection
         self.protection_counters = np.zeros(shape=(0,), dtype=dt_int)
+        self.protection_steps_before_trip = np.zeros(shape=(0,), dtype=dt_int)
         self.protection_line_id = np.zeros(shape=(0,), dtype=dt_int)
         self.protection_side = np.zeros(shape=(0,), dtype="<U2")
 
@@ -862,6 +952,9 @@ class BaseObservation(GridObjects):
             # for old code (eg lightsim2grid legacy)
             return
         other.protection_counters = self.protection_counters.copy()
+        other.protection_steps_before_trip = self.protection_steps_before_trip.copy()
+        other._ref_limit_or = self._ref_limit_or
+        other._ref_limit_ex = self._ref_limit_ex
         # static and read only: shared
         other.protection_line_id = self.protection_line_id
         other.protection_side = self.protection_side
@@ -1521,6 +1614,8 @@ class BaseObservation(GridObjects):
         self.a_ex[:] = np.nan
         # lines relative flows
         self.rho[:] = np.nan
+        self.rho_or[:] = np.nan
+        self.rho_ex[:] = np.nan
 
         # cool down and reconnection time after hard overflow, soft overflow or cascading failure
         self.time_before_cooldown_line[:] = 0
@@ -1529,7 +1624,13 @@ class BaseObservation(GridObjects):
         self.duration_next_maintenance[:] = 0
         self.timestep_overflow[:] = 0
         self.timestep_protection_engaged[:] = 0
+        self.timestep_protection_engaged_or[:] = 0
+        self.timestep_protection_engaged_ex[:] = 0
+        self.time_before_protection_trip[:] = -1
+        self.time_before_protection_trip_or[:] = -1
+        self.time_before_protection_trip_ex[:] = -1
         self.protection_counters[:] = 0
+        self.protection_steps_before_trip[:] = -1
 
         # calendar data
         self.year = dt_int(1970)
@@ -1655,6 +1756,8 @@ class BaseObservation(GridObjects):
         self.a_ex[:] = 0.0
         # lines relative flows
         self.rho[:] = 0.0
+        self.rho_or[:] = 0.0
+        self.rho_ex[:] = 0.0
         # line status
         self.line_status[:] = False
         # topological vector
@@ -1689,7 +1792,13 @@ class BaseObservation(GridObjects):
         # overflow
         self.timestep_overflow[:] = 0
         self.timestep_protection_engaged[:] = 0
+        self.timestep_protection_engaged_or[:] = 0
+        self.timestep_protection_engaged_ex[:] = 0
+        self.time_before_protection_trip[:] = -1
+        self.time_before_protection_trip_or[:] = -1
+        self.time_before_protection_trip_ex[:] = -1
         self.protection_counters[:] = 0
+        self.protection_steps_before_trip[:] = -1
 
         if type(self).shunts_data_available:
             self._shunt_p[:] = 0.0
@@ -4452,7 +4561,7 @@ class BaseObservation(GridObjects):
         self.p_or[:], self.q_or[:], self.v_or[:], self.a_or[:] = backend.lines_or_info()
         self.p_ex[:], self.q_ex[:], self.v_ex[:], self.a_ex[:] = backend.lines_ex_info()
 
-        self.rho[:] = backend.get_relative_flow().astype(dt_float)
+        self._update_rho(backend)
 
         # margin up and down
         if cls.redispatching_unit_commitment_availble:
@@ -4497,6 +4606,43 @@ class BaseObservation(GridObjects):
             self.load_theta[:] = 0.
             self.gen_theta[:] = 0.
             self.storage_theta[:] = 0.
+
+    def _update_protections(self, env: "grid2op.Environment.BaseEnv") -> None:
+        """update the attributes related to the protections (except rho_or, rho_ex and rho,
+        computed with the other backend attributes)"""
+        from grid2op.Environment.protection.protection_solver import (line_reductions,
+                                                                      combine_trip)
+        n_line = type(self).n_line
+        prot_cfg = env._protection_config
+        prot_state = env._protection_state
+        self._ref_limit_or, self._ref_limit_ex = prot_cfg.reference_limits(n_line)
+        self.protection_line_id = prot_cfg.line_id
+        self.protection_side = prot_cfg.side
+        if self.protection_counters.shape[0] != prot_cfg.n_prot:
+            self.protection_counters = np.zeros(shape=(prot_cfg.n_prot,), dtype=dt_int)
+            self.protection_steps_before_trip = np.zeros(shape=(prot_cfg.n_prot,), dtype=dt_int)
+        self.protection_counters[:] = prot_state.counter
+        red = line_reductions(prot_cfg, prot_state.counter, n_line)
+        self.protection_steps_before_trip[:] = red["prot_trip"]
+        self.timestep_protection_engaged_or[:] = red["engaged_or"]
+        self.timestep_protection_engaged_ex[:] = red["engaged_ex"]
+        self.timestep_protection_engaged[:] = np.maximum(red["engaged_or"], red["engaged_ex"])
+        self.time_before_protection_trip_or[:] = red["trip_or"]
+        self.time_before_protection_trip_ex[:] = red["trip_ex"]
+        self.time_before_protection_trip[:] = combine_trip(red["trip_or"], red["trip_ex"])
+
+    def _update_rho(self, backend: "grid2op.Backend.Backend") -> None:
+        """compute rho_or, rho_ex and rho (the maximum of both) from the currents (`a_or` and `a_ex`
+        must be up to date) and the limits of the reference protections"""
+        if self._ref_limit_or is None:
+            # no information about the protections: historical rho (given by the backend)
+            self.rho_or[:] = backend.get_relative_flow()
+            self.rho_ex[:] = 0.
+        else:
+            with np.errstate(divide="ignore", invalid="ignore"):
+                self.rho_or[:] = np.divide(self.a_or, self._ref_limit_or)
+                self.rho_ex[:] = np.divide(self.a_ex, self._ref_limit_ex)
+        self.rho[:] = np.maximum(self.rho_or, self.rho_ex)
 
     def _update_internal_env_params(self, env: "grid2op.Environment.BaseEnv"):
         # this is only done if the env supports forecast
@@ -4546,14 +4692,7 @@ class BaseObservation(GridObjects):
 
         # get the values related to topology
         self.timestep_overflow[:] = env._timestep_overflow
-        prot_cfg = env._protection_config
-        prot_state = env._protection_state
-        self.timestep_protection_engaged[:] = prot_state.line_counter(prot_cfg, type(self).n_line)
-        if self.protection_counters.shape[0] != prot_cfg.n_prot:
-            self.protection_counters = np.zeros(shape=(prot_cfg.n_prot,), dtype=dt_int)
-        self.protection_counters[:] = prot_state.counter
-        self.protection_line_id = prot_cfg.line_id
-        self.protection_side = prot_cfg.side
+        self._update_protections(env)
 
         # attribute that depends only on the backend state
         self._update_attr_backend(env.backend)

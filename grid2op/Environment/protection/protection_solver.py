@@ -15,11 +15,11 @@ the protections.
 .. versionadded:: 1.12.6
 """
 
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 
-from grid2op.dtypes import dt_bool
+from grid2op.dtypes import dt_bool, dt_float, dt_int
 from grid2op.Environment.protection.protection import ProtectionConfig
 
 
@@ -89,3 +89,82 @@ def cascade_iteration(config: ProtectionConfig,
         return tripped_line
     tripped_line[config.line_id[tripped_prot]] = True
     return tripped_line
+
+
+# value used for "no trip scheduled" in the time before trip
+NO_TRIP = -1
+
+
+def compute_rho(config: ProtectionConfig,
+                a_or: np.ndarray,
+                a_ex: Optional[np.ndarray],
+                n_line: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Relative loading of both sides of each powerline: the current on this side divided by the limit
+    of the reference protection of this side (the protection with the lowest limit placed on it, see
+    :func:`grid2op.Environment.protection.ProtectionConfig.reference_limits`).
+
+    It is 0 on a side without protection (the reference limit is ``inf``). It does not depend on
+    :attr:`grid2op.Parameters.Parameters.PROTECTION_THRESHOLD`.
+
+    `a_ex` is only used when at least one protection is placed on the "ex" side.
+
+    Returns
+    -------
+    rho_or, rho_ex: ``numpy.ndarray``, dtype: float, shape (n_line,)
+    """
+    ref_or, ref_ex = config.reference_limits(n_line)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rho_or = np.divide(a_or, ref_or)
+        if config.has_ex_side:
+            rho_ex = np.divide(a_ex, ref_ex)
+        else:
+            rho_ex = np.zeros(n_line, dtype=dt_float)
+    return rho_or.astype(dt_float), rho_ex.astype(dt_float)
+
+
+def steps_before_trip(config: ProtectionConfig, counter: np.ndarray) -> np.ndarray:
+    """For each protection, the number of steps before it trips if its current stays above its
+    threshold: ``delay + 1 - counter``. It is :data:`NO_TRIP` (-1) for the protections that are not
+    engaged (counter at 0) or out of service. It is 0 for a protection that should already have
+    tripped (only possible when protections are globally deactivated)."""
+    engaged = (counter > 0) & config.in_service
+    res = np.full(config.n_prot, NO_TRIP, dtype=dt_int)
+    res[engaged] = np.maximum(config.delay[engaged] + 1 - counter[engaged], 0)
+    return res
+
+
+def line_reductions(config: ProtectionConfig,
+                    counter: np.ndarray,
+                    n_line: int) -> Dict[str, np.ndarray]:
+    """Per powerline and per side summaries of the protections in service.
+
+    Returns a dictionary with (all of shape (n_line,)):
+
+    - ``engaged_or`` / ``engaged_ex``: maximum counter on each side (0 if none)
+    - ``trip_or`` / ``trip_ex``: minimum number of steps before a trip on each side
+      (:data:`NO_TRIP` if no protection is engaged on this side)
+    - ``prot_trip``: :func:`steps_before_trip` of each protection, shape (n_prot,)
+    """
+    in_service = config.in_service
+    prot_trip = steps_before_trip(config, counter)
+    side = config.side_is_ex.astype(dt_int)
+
+    engaged = np.zeros((2, n_line), dtype=dt_int)
+    np.maximum.at(engaged, (side[in_service], config.line_id[in_service]), counter[in_service])
+
+    big = np.iinfo(dt_int).max
+    trip = np.full((2, n_line), big, dtype=dt_int)
+    pending = prot_trip != NO_TRIP
+    np.minimum.at(trip, (side[pending], config.line_id[pending]), prot_trip[pending])
+    trip[trip == big] = NO_TRIP
+    return {"engaged_or": engaged[0], "engaged_ex": engaged[1],
+            "trip_or": trip[0], "trip_ex": trip[1],
+            "prot_trip": prot_trip}
+
+
+def combine_trip(trip_or: np.ndarray, trip_ex: np.ndarray) -> np.ndarray:
+    """Minimum of two "steps before trip" vectors, ignoring :data:`NO_TRIP`."""
+    res = np.where(trip_or == NO_TRIP, trip_ex, trip_or)
+    both = (trip_or != NO_TRIP) & (trip_ex != NO_TRIP)
+    res[both] = np.minimum(trip_or[both], trip_ex[both])
+    return res

@@ -633,6 +633,126 @@ class TestProtectionEnv(_BaseProtectionEnv, unittest.TestCase):
             self.env.set_protections([self._prot(1.1, 1), self._prot(1.2, 1)])
 
 
+class TestProtectionObservation(_BaseProtectionEnv, unittest.TestCase):
+    """rho_or, rho_ex, per side counters and time before a trip"""
+    def test_rho_legacy(self):
+        obs = self._reset()
+        th = self.env.get_thermal_limit()
+        assert np.allclose(obs.rho_or, obs.a_or / th)
+        assert (obs.rho_ex == 0.).all()  # no protection on the "ex" side
+        assert np.allclose(obs.rho, obs.rho_or)
+        assert np.allclose(obs.rho, obs.a_or / self.th_lim)
+        # the protection threshold does not change rho
+        params = self.env.parameters
+        params.PROTECTION_THRESHOLD = 0.75
+        self.env.change_parameters(params)
+        obs2 = self._reset()
+        assert np.allclose(obs2.rho, obs.rho)
+
+    def test_rho_reference_per_side(self):
+        # line 15 is a transformer: the current is much higher on its "ex" side
+        line_id = 15
+        obs = self._reset()
+        self.env.set_protections([self._prot(1.0, 3), self._prot(2.0, 0),  # reference of "or" side: th_line
+                                  Protection(line_id, "ex", 2. * obs.a_ex[line_id], 2),
+                                  Protection(line_id, "ex", 4. * obs.a_ex[line_id], 0),
+                                  Protection(line_id, "or", 0.25 * obs.a_or[line_id], 2)])
+        obs, info = self._step()
+        # reference = lowest limit of each side, rho = max of both sides
+        assert np.isclose(obs.rho_or[self.line_id], obs.a_or[self.line_id] / self.th_line)
+        assert obs.rho_ex[self.line_id] == 0.
+        assert np.isclose(obs.rho_ex[line_id], obs.a_ex[line_id] / self.env.get_protection_config().limit[2])
+        assert np.isclose(obs.rho_or[line_id], obs.a_or[line_id] / self.env.get_protection_config().limit[4])
+        assert np.allclose(obs.rho, np.maximum(obs.rho_or, obs.rho_ex))
+        # lines without any protection: rho is 0
+        others = np.ones(type(self.env).n_line, dtype=bool)
+        others[[self.line_id, line_id]] = False
+        assert (obs.rho[others] == 0.).all()
+        # timestep_overflow follows rho > 1 (on any side)
+        assert obs.timestep_overflow[line_id] == 1  # rho_or > 1 on the "or" side
+        assert obs.timestep_overflow[self.line_id] == 1
+        assert (obs.timestep_overflow[others] == 0).all()
+
+    def test_time_before_trip(self):
+        """3 protections on the same side: delays 4, 1 and 0. The per line counter is ambiguous,
+        the time before trip is not"""
+        self.env.set_protections([self._prot(1.1, 4, name="slow"),
+                                  self._prot(1.25, 1, name="fast"),
+                                  self._prot(5.0, 0, name="inst")])
+        obs = self._reset()
+        assert (obs.time_before_protection_trip == -1).all()
+        assert (obs.protection_steps_before_trip == -1).all()
+        obs, info = self._step()
+        a_rel = obs.a_or[self.line_id] / self.th_line
+        assert 1.1 < a_rel < 1.25  # only the "slow" stage is engaged
+        assert np.array_equal(obs.protection_counters, [1, 0, 0])
+        assert obs.timestep_protection_engaged[self.line_id] == 1
+        assert np.array_equal(obs.protection_steps_before_trip, [4, -1, -1])
+        assert obs.time_before_protection_trip[self.line_id] == 4
+        assert obs.time_before_protection_trip_or[self.line_id] == 4
+        assert obs.time_before_protection_trip_ex[self.line_id] == -1
+
+        # same counter (1) but the "fast" stage is engaged too: trip at the next step
+        self.env.set_protections([self._prot(1.1, 4, name="slow"),
+                                  self._prot(1.12, 1, name="fast"),
+                                  self._prot(5.0, 0, name="inst")])
+        obs = self._reset()
+        obs, info = self._step()
+        assert np.array_equal(obs.protection_counters, [1, 1, 0])
+        assert obs.timestep_protection_engaged[self.line_id] == 1
+        assert np.array_equal(obs.protection_steps_before_trip, [4, 1, -1])
+        assert obs.time_before_protection_trip[self.line_id] == 1
+        obs, info = self._step()
+        assert not obs.line_status[self.line_id]
+
+    def test_time_before_trip_legacy(self):
+        """with the legacy protections: NB_TIMESTEP_OVERFLOW_ALLOWED + 1 - timestep_protection_engaged"""
+        nb = int(self.env.parameters.NB_TIMESTEP_OVERFLOW_ALLOWED)
+        obs = self._reset()
+        for ts in range(1, nb + 1):
+            obs, info = self._step()
+            assert obs.timestep_protection_engaged[self.line_id] == ts
+            assert obs.time_before_protection_trip[self.line_id] == nb + 1 - ts
+            others = np.arange(type(self.env).n_line) != self.line_id
+            assert (obs.time_before_protection_trip[others] == -1).all()
+        obs, info = self._step()
+        assert not obs.line_status[self.line_id]
+        assert obs.time_before_protection_trip[self.line_id] == -1
+
+    def test_per_side_and_overdue(self):
+        line_id = 15
+        obs = self._reset()
+        params = self.env.parameters
+        params.NO_OVERFLOW_DISCONNECTION = True
+        self.env.change_parameters(params)
+        self.env.set_protections([Protection(line_id, "ex", 0.5 * obs.a_ex[line_id], 1),
+                                  Protection(line_id, "or", 0.5 * obs.a_or[line_id], 3)])
+        obs = self._reset()
+        for ts in range(1, 4):
+            obs, info = self._step()
+            assert obs.timestep_protection_engaged_ex[line_id] == ts
+            assert obs.timestep_protection_engaged_or[line_id] == ts
+            assert obs.timestep_protection_engaged[line_id] == ts
+            # the "ex" one should already have tripped (protections are deactivated): 0
+            assert obs.time_before_protection_trip_ex[line_id] == max(1 + 1 - ts, 0)
+            assert obs.time_before_protection_trip_or[line_id] == 3 + 1 - ts
+            assert obs.time_before_protection_trip[line_id] == max(1 + 1 - ts, 0)
+
+    def test_copy_and_simulate(self):
+        self.env.set_protections([self._prot(1.1, 3, name="slow"), self._prot(1.12, 1, name="fast")])
+        obs = self._reset()
+        obs, info = self._step()
+        obs_cpy = obs.copy()
+        for attr_nm in ["rho_or", "rho_ex", "time_before_protection_trip", "timestep_protection_engaged_or",
+                        "protection_steps_before_trip"]:
+            assert np.array_equal(getattr(obs, attr_nm), getattr(obs_cpy, attr_nm)), attr_nm
+        sim_obs, *_ = obs.simulate(self.env.action_space({"set_line_status": [(self.line_id, -1)]}))
+        assert sim_obs.rho[self.line_id] == 0.
+        assert sim_obs.time_before_protection_trip[self.line_id] == -1
+        sim_obs, *_ = obs.simulate(self.env.action_space())
+        assert not sim_obs.line_status[self.line_id]
+
+
 class TestProtectionMasked(unittest.TestCase):
     def test_masked_default_config(self):
         with warnings.catch_warnings():
