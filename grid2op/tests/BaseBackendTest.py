@@ -1790,7 +1790,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         th_lims[2] = 18849.43 / 1.6  # disconnected at second iteration
         self.backend.set_thermal_limit(th_lims)
         
-        env._protection_counter[0] = 2  # already 1 step on overflow
+        # delayed ("soft") protection of line 0 in the default protections
+        env._protection_state.counter[2 * 0 + 1] = 2  # already 1 step on overflow
         disco, infos, conv_ = self.backend.next_grid_state(env, is_dc=False)
         res_a = self.backend.lines_or_info()[-1]
         assert conv_ is None
@@ -1877,7 +1878,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
 
-        env._protection_counter[self.id_2nd_line_disco] = 0
+        # delayed ("soft") protection of this line in the default protections
+        env._protection_state.counter[2 * self.id_2nd_line_disco + 1] = 0
         thermal_limit = 10 * self.lines_flows_init
         thermal_limit[self.id_first_line_disco] = (
             self.lines_flows_init[self.id_first_line_disco] / 2
@@ -1919,7 +1921,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
 
-        env._protection_counter[self.id_2nd_line_disco] = 1
+        # delayed ("soft") protection of this line in the default protections
+        env._protection_state.counter[2 * self.id_2nd_line_disco + 1] = 1
 
         thermal_limit = 10 * self.lines_flows_init
         thermal_limit[self.id_first_line_disco] = (
@@ -1962,7 +1965,8 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         type(self.backend).set_no_storage()
         self.backend.assert_grid_correct()
 
-        env._protection_counter[self.id_2nd_line_disco] = 2
+        # delayed ("soft") protection of this line in the default protections
+        env._protection_state.counter[2 * self.id_2nd_line_disco + 1] = 2
         thermal_limit = 10 * self.lines_flows_init
         thermal_limit[self.id_first_line_disco] = (
             self.lines_flows_init[self.id_first_line_disco] / 2

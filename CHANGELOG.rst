@@ -109,6 +109,20 @@ Native multi agents support:
 - [ADDED] add voltage angle attributes to the complete observation vector (issue #711)
 - [IMPROVED] clarify MultiMixENv docstring
 - [IMPROVED] clarify reward kernel flags
+- [ADDED] configurable overcurrent protections (`grid2op.Environment.protection`): any number of protections
+  per powerline, on the "or" and / or "ex" side, each with its own threshold (relative to the thermal limit),
+  delay and in service status. They are set with `env.set_protections`, `env.add_protection`,
+  `env.set_protection_in_service` or a `protections.json` file in the environment directory, and
+  are carried to `env.copy`, `obs.simulate`, `obs.get_forecast_env` and the runner. By default they are
+  built from `HARD_OVERFLOW_THRESHOLD`, `SOFT_OVERFLOW_THRESHOLD` and `NB_TIMESTEP_OVERFLOW_ALLOWED`
+  (same behaviour as before)
+- [ADDED] `obs.protection_counters`, `obs.protection_line_id` and `obs.protection_side` (not part of
+  the vector representation of the observation)
+- [ADDED] `Backend.get_line_flow_ex` and `Backend.get_line_flows_both_sides` (with default implementations)
+- [BREAKING] the (private) environment attributes `_protection_counter`, `_hard_overflow_threshold` and
+  `_nb_ts_max_protection_counter` are replaced by `_protection_config` and `_protection_state`
+- [BREAKING] with `NB_TIMESTEP_OVERFLOW_ALLOWED = 0`, the "soft" protection is instantaneous and can now
+  trip during the step performed by `env.reset` (like the "hard" one)
 
 [1.12.5] - 2026-06-12
 -------------------------

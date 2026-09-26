@@ -361,7 +361,7 @@ class _ObsEnv(BaseEnv):
         
         if time_step >= 1:
             is_overflow = obs.rho > 1.
-            protection_triggered = obs.rho > self._parameters.SOFT_OVERFLOW_THRESHOLD
+            protection_triggered = self._protection_engaged_from_obs(obs)
             # handle the components that depends on the time
             (
                 still_in_maintenance,

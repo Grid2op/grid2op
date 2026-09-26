@@ -13,6 +13,7 @@ import os
 from typing import Union
 
 from grid2op.Environment.environment import Environment
+from grid2op.Environment.protection import ProtectionConfig
 from grid2op.Exceptions import EnvError
 from grid2op.dtypes import dt_bool, dt_float, dt_int
 from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
@@ -54,7 +55,7 @@ class MaskedEnvironment(Environment):
     """  
     # some kind of infinity value
     # NB we multiply np.finfo(dt_float).max by a small number (1e-7) to avoid overflow
-    # indeed, _hard_overflow_threshold is multiply by the flow on the lines
+    # indeed, the threshold of the protections is multiplied by the thermal limit
     INF_VAL_THM_LIM = 1e-7 * np.finfo(dt_float).max  
     
     # some kind of infinity value
@@ -104,10 +105,24 @@ class MaskedEnvironment(Environment):
                            "number of lines on the grid.")
         return res
     
-    def _reset_vectors_and_timings(self):
-        super()._reset_vectors_and_timings()
-        self._hard_overflow_threshold[~self._lines_of_interest] = type(self).INF_VAL_THM_LIM
-        self._nb_ts_max_protection_counter[~self._lines_of_interest] = type(self).INF_VAL_TS_OVERFLOW_ALLOW
+    def _make_default_protection_config(self) -> ProtectionConfig:
+        # protections of the lines that are not "of interest" never trip: the instantaneous one
+        # has an "infinite" threshold and the delayed one an "infinite" delay (its counter
+        # is still updated, as for the other lines)
+        res = super()._make_default_protection_config()
+        cls = type(self)
+        not_interest = ~self._lines_of_interest[res.line_id]
+        instantaneous = res.delay == 0
+        threshold = res.threshold.copy()
+        threshold[not_interest & instantaneous] = cls.INF_VAL_THM_LIM
+        delay = res.delay.copy()
+        delay[not_interest & ~instantaneous] = cls.INF_VAL_TS_OVERFLOW_ALLOW
+        return ProtectionConfig(line_id=res.line_id,
+                                side_is_ex=res.side_is_ex,
+                                threshold=threshold,
+                                delay=delay,
+                                in_service=res.in_service,
+                                name=res.name)
 
     def get_kwargs(self, with_backend=True, with_chronics_handler=True):
         res = {}

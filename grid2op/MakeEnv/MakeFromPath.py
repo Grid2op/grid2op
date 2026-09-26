@@ -13,6 +13,7 @@ from typing import Optional
 import warnings
 
 from grid2op.Environment import Environment
+from grid2op.Environment.protection import PROTECTIONS_FILE_NAME
 from grid2op.Exceptions import EnvError
 from grid2op.Space import GRID2OP_CLASSES_ENV_FOLDER
 from grid2op.Space import DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
@@ -339,6 +340,11 @@ def make_from_dataset_path(
     # Update the thermal limit if any
     if thermal_limits is not None:
         env.set_thermal_limit(thermal_limits)
+
+    # overcurrent protections, if defined in the environment directory
+    protections_path = os.path.join(os.path.abspath(dataset_path), PROTECTIONS_FILE_NAME)
+    if os.path.isfile(protections_path):
+        env.set_protections(protections_path)
         
     # Set graph layout if not None and not an empty dict
     if graph_layout is not None and graph_layout:

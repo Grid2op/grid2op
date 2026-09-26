@@ -172,6 +172,28 @@ class BaseObservation(GridObjects):
         
         In that case it counts the consecutive steps for which `flow > limit * SOFT_OVERFLOW_THRESHOLD`
 
+        .. versionchanged:: 1.12.6
+            It is the maximum, over the protections in service of each powerline, of
+            :attr:`BaseObservation.protection_counters`. With the default protections it is unchanged.
+
+    protection_counters: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        For each overcurrent protection (see :func:`grid2op.Environment.BaseEnv.set_protections`), the number of
+        consecutive steps it has been engaged (current on its side above its threshold). Its size is the number of
+        protections of the environment, so it is not part of the vector representation of the observation.
+
+    protection_line_id: :class:`numpy.ndarray`, dtype:int
+        .. versionadded:: 1.12.6
+
+        For each protection, the id of its powerline (static, read only).
+
+    protection_side: :class:`numpy.ndarray`, dtype:str
+        .. versionadded:: 1.12.6
+
+        For each protection, ``"or"`` or ``"ex"``: the side of the powerline where it measures the current
+        (static, read only).
+
     time_before_cooldown_line: :class:`numpy.ndarray`, dtype:int
         For each powerline, it gives the number of time step the powerline is unavailable due to "cooldown"
         (see :attr:`grid2op.Parameters.Parameters.NB_TIMESTEP_COOLDOWN_LINE` for more information). 0 means the
@@ -707,6 +729,10 @@ class BaseObservation(GridObjects):
         cls = type(self)
         self.timestep_overflow = np.empty(shape=(cls.n_line,), dtype=dt_int)
         self.timestep_protection_engaged = np.empty(shape=(cls.n_line,), dtype=dt_int)
+        # one element per protection (not part of the vector representation)
+        self.protection_counters = np.zeros(shape=(0,), dtype=dt_int)
+        self.protection_line_id = np.zeros(shape=(0,), dtype=dt_int)
+        self.protection_side = np.zeros(shape=(0,), dtype="<U2")
 
         # 0. (line is disconnected) / 1. (line is connected)
         self.line_status = np.empty(shape=cls.n_line, dtype=dt_bool)
@@ -831,6 +857,15 @@ class BaseObservation(GridObjects):
                 # some attribute did not exist
                 getattr(other, attr_nm)[:] = getattr(self, attr_nm)
 
+    def _aux_copy_protections(self, other: Self) -> None:
+        if not hasattr(self, "protection_counters"):
+            # for old code (eg lightsim2grid legacy)
+            return
+        other.protection_counters = self.protection_counters.copy()
+        # static and read only: shared
+        other.protection_line_id = self.protection_line_id
+        other.protection_side = self.protection_side
+
     def change_reward(self, reward_func: "grid2op.Reward.BaseReward"):
         """Allow to change the reward used when calling :func:`BaseObservation.simulate`
         without having to access the observation space.
@@ -876,6 +911,7 @@ class BaseObservation(GridObjects):
         res._forecasted_grid_act = copy.copy(self._forecasted_grid_act)
         res._forecasted_inj = copy.copy(self._forecasted_inj)
         res._env_internal_params  = copy.copy(self._env_internal_params )
+        self._aux_copy_protections(res)
 
         return res
 
@@ -903,6 +939,7 @@ class BaseObservation(GridObjects):
         res._forecasted_grid_act = copy.deepcopy(self._forecasted_grid_act, memodict)
         res._forecasted_inj = copy.deepcopy(self._forecasted_inj, memodict)
         res._env_internal_params = copy.deepcopy(self._env_internal_params, memodict)
+        self._aux_copy_protections(res)
 
         return res
 
@@ -1492,6 +1529,7 @@ class BaseObservation(GridObjects):
         self.duration_next_maintenance[:] = 0
         self.timestep_overflow[:] = 0
         self.timestep_protection_engaged[:] = 0
+        self.protection_counters[:] = 0
 
         # calendar data
         self.year = dt_int(1970)
@@ -1651,6 +1689,7 @@ class BaseObservation(GridObjects):
         # overflow
         self.timestep_overflow[:] = 0
         self.timestep_protection_engaged[:] = 0
+        self.protection_counters[:] = 0
 
         if type(self).shunts_data_available:
             self._shunt_p[:] = 0.0
@@ -4507,7 +4546,14 @@ class BaseObservation(GridObjects):
 
         # get the values related to topology
         self.timestep_overflow[:] = env._timestep_overflow
-        self.timestep_protection_engaged[:] = env._protection_counter
+        prot_cfg = env._protection_config
+        prot_state = env._protection_state
+        self.timestep_protection_engaged[:] = prot_state.line_counter(prot_cfg, type(self).n_line)
+        if self.protection_counters.shape[0] != prot_cfg.n_prot:
+            self.protection_counters = np.zeros(shape=(prot_cfg.n_prot,), dtype=dt_int)
+        self.protection_counters[:] = prot_state.counter
+        self.protection_line_id = prot_cfg.line_id
+        self.protection_side = prot_cfg.side
 
         # attribute that depends only on the backend state
         self._update_attr_backend(env.backend)

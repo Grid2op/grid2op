@@ -375,6 +375,7 @@ class Runner(object):
         gridStateclass_kwargs={},
         voltageControlerClass=ControlVoltageFromFile,
         thermal_limit_a=None,
+        protections=None,
         max_iter=-1,
         other_rewards={},
         opponent_space_type=OpponentSpace,
@@ -455,6 +456,12 @@ class Runner(object):
 
         thermal_limit_a: ``numpy.ndarray``
             The thermal limit for the environment (if any).
+
+        protections: :class:`grid2op.Environment.protection.ProtectionConfig`
+            The overcurrent protections of the environment, if they are not built from the
+            parameters (see :func:`grid2op.Environment.BaseEnv.set_protections`).
+
+            .. versionadded:: 1.12.6
 
         voltagecontrolerClass: :class:`grid2op.VoltageControler.ControlVoltageFromFile`, optional
             The controler that will change the voltage setpoints of the generators.
@@ -667,6 +674,7 @@ class Runner(object):
 
         self.verbose = verbose
         self.thermal_limit_a = thermal_limit_a
+        self.protections = protections
 
         # controler for voltage
         if not issubclass(voltageControlerClass, ControlVoltageFromFile):
@@ -807,6 +815,9 @@ class Runner(object):
 
         if self.thermal_limit_a is not None:
             res.set_thermal_limit(self.thermal_limit_a)
+
+        if self.protections is not None:
+            res.set_protections(self.protections)
 
         if self.grid_layout is not None:
             res.attach_layout(self.grid_layout)
@@ -1278,6 +1289,7 @@ class Runner(object):
             "gridStateclass_kwargs": copy.deepcopy(self.gridStateclass_kwargs),
             "voltageControlerClass": self.voltageControlerClass,
             "thermal_limit_a": self.thermal_limit_a,
+            "protections": self.protections,
             "max_iter": self.max_iter,
             "other_rewards": copy.deepcopy(self._other_rewards),
             "opponent_space_type": self._opponent_space_type,

@@ -42,6 +42,7 @@ from grid2op.Exceptions import (
     Grid2OpException,
 )
 from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.Environment.protection.protection_solver import compute_engaged, cascade_iteration
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -1010,6 +1011,43 @@ class Backend(GridObjects, ABC):
         p_or, q_or, v_or, a_or = self.lines_or_info()
         return a_or
 
+    def get_line_flow_ex(self) -> np.ndarray:
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+            Prefer using :attr:`grid2op.Observation.BaseObservation.a_ex`
+
+        Return the current flow at the "extremity side" of each powerline, the counterpart
+        of :func:`Backend.get_line_flow` for the protections placed on the "ex" side.
+
+        .. versionadded:: 1.12.6
+
+        .. note::
+            It is called after the solver has been ran, only in case of success (convergence),
+            and only if at least one protection is placed on the "ex" side of a powerline.
+
+        :return: an array with the current flow at the extremity side of each powerline
+        :rtype: np.array, dtype:float
+        """
+        p_ex, q_ex, v_ex, a_ex = self.lines_ex_info()
+        return a_ex
+
+    def get_line_flows_both_sides(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+        Return the current flows at both sides of each powerline: `(a_or, a_ex)`, as seen by
+        the protections. By default it relies on :func:`Backend.get_line_flow` and
+        :func:`Backend.get_line_flow_ex`.
+
+        .. versionadded:: 1.12.6
+        """
+        return self.get_line_flow(), self.get_line_flow_ex()
+
     def set_thermal_limit(self, limits : Union[np.ndarray, Dict[str, float]]) -> None:
         """
         INTERNAL
@@ -1470,33 +1508,31 @@ class Backend(GridObjects, ABC):
             return self._disconnected_during_cf, infos, conv_
 
         # the environment disconnect some powerlines
-        protection_counter = 1 * env._protection_counter
+        # protections, see grid2op.Environment.protection
+        prot_cfg = env._protection_config
+        prot_state = env._protection_state
+        prot_state.sync_in_service(prot_cfg)
+        # working copy of the counters: at most one increment per protection per step
+        protection_counter = 1 * prot_state.counter
         counter_increased = np.zeros_like(protection_counter, dtype=dt_bool)
+        n_line = type(self).n_line
         iter_num = 0
         while True:
             # simulate the cascading failure
-            lines_flows = self.get_line_flow()
+            a_or = self.get_line_flow()
+            a_ex = self.get_line_flow_ex() if prot_cfg.has_ex_side else None
             thermal_limits = self.get_thermal_limit()
             lines_status = self.get_line_status()
-
-            # a) disconnect lines on hard overflow (that are still connected)
-            to_disc = (
-                lines_flows > env._hard_overflow_threshold * thermal_limits
-            ) & lines_status
-
-            # b) deals with soft overflow (disconnect them if lines still connected)
-            if env._called_from_reset:
-                # no soft overflow after a reset
-                mask_inc = np.zeros_like(thermal_limits, dtype=dt_bool)
-            else: 
-                mask_inc = (lines_flows > env._parameters.SOFT_OVERFLOW_THRESHOLD * thermal_limits) & lines_status
-                mask_inc[counter_increased] = False
-            protection_counter[mask_inc] += 1
-            counter_increased[mask_inc] = True
-            to_disc[
-                (protection_counter > env._nb_ts_max_protection_counter)
-                & lines_status
-            ] = True
+            engaged = compute_engaged(prot_cfg, a_or, a_ex, thermal_limits, lines_status)
+            # no counter increase after a reset (only instantaneous protections act)
+            to_disc = cascade_iteration(prot_cfg,
+                                        protection_counter,
+                                        counter_increased,
+                                        engaged,
+                                        n_line,
+                                        increment_counters=not env._called_from_reset,
+                                        protections_disabled=env._no_overflow_disconnection)
+            to_disc &= lines_status
 
             # disconnect the current power lines
             if to_disc[lines_status].any() == 0:

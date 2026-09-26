@@ -690,6 +690,93 @@ You can do these at creation time:
 
 Of course you can combine everything. More examples are given in section :ref:`env_cust_makeenv`. 
 
+.. _environment-module-protections:
+
+Overcurrent protections
+--------------------------
+
+.. versionadded:: 1.12.6
+
+At each step, after the power flow, the environment emulates the overcurrent protections of the powerlines:
+a powerline whose protection *trips* is disconnected, the power flow is computed again and so on until no
+more protection trips (this is the "cascading failure" loop).
+
+Each protection is placed on one side (``"or"`` or ``"ex"``) of one powerline and is defined by:
+
+- a ``threshold``, a multiplier of the thermal limit of the powerline: the protection is *engaged* when the
+  current on its side is strictly above ``threshold * thermal_limit``. As it is relative to the thermal limit,
+  it follows :func:`grid2op.Environment.BaseEnv.set_thermal_limit` (and dynamic line rating);
+- a ``delay``, in number of steps: the powerline is disconnected when the protection is engaged
+  and has been so for strictly more than ``delay`` consecutive steps (``0`` means instantaneous);
+- an ``in_service`` status: a protection out of service never trips and its counter is frozen. When it is
+  put back in service, its counter restarts from 0.
+
+A powerline can have any number of protections, on both of its sides. The first one that trips disconnects it.
+
+**Default protections.** When nothing is specified, each powerline gets two protections on its ``"or"`` side,
+built from the :class:`grid2op.Parameters.Parameters` (this is the behaviour of previous grid2op versions):
+an instantaneous one at ``HARD_OVERFLOW_THRESHOLD`` and a delayed one at ``SOFT_OVERFLOW_THRESHOLD`` with a delay of
+``NB_TIMESTEP_OVERFLOW_ALLOWED`` steps (see :func:`grid2op.Environment.protection.default_from_parameters`). They are
+rebuilt when these parameters change (at the next `reset`).
+
+**Custom protections.** They can be given in a ``protections.json`` file in the environment directory (read
+by `grid2op.make`), or programmatically:
+
+.. code-block:: python
+
+    import grid2op
+    from grid2op.Environment.protection import Protection
+
+    env = grid2op.make("l2rpn_case14_sandbox")
+
+    # replace all the protections
+    env.set_protections([
+        Protection(line_id=0, side="ex", threshold=1.5, delay=0, name="l0_inst"),
+        Protection(line_id=0, side="or", threshold=1.0, delay=3, name="l0_slow"),
+    ])
+
+    # add one protection to the current ones (returns its id)
+    prot_id = env.add_protection("1_3_3", side="or", threshold=1.2, delay=1)
+
+    # put a protection out of service (by id, name or boolean mask), then back in service
+    env.set_protection_in_service("l0_slow", False)
+    env.set_protection_in_service("l0_slow", True)
+
+    # back to the protections built from the parameters
+    env.set_protections(None)
+
+The ``protections.json`` file holds either a list of protections or a dictionary with a ``"protections"`` key,
+each protection being a dictionary with the keys of :class:`grid2op.Environment.protection.Protection` (a powerline
+can be given by its id with ``"line_id"`` or by its name with ``"line_name"``):
+
+.. code-block:: json
+
+    {
+        "protections": [
+            {"line_name": "0_1_0", "side": "ex", "threshold": 1.5, "delay": 0, "name": "l0_inst"},
+            {"line_id": 0, "side": "or", "threshold": 1.0, "delay": 3, "name": "l0_slow"}
+        ]
+    }
+
+Once custom protections are set, ``HARD_OVERFLOW_THRESHOLD``, ``SOFT_OVERFLOW_THRESHOLD`` and
+``NB_TIMESTEP_OVERFLOW_ALLOWED`` are no longer used. ``NO_OVERFLOW_DISCONNECTION`` remains a global switch:
+when it is set, nothing trips, but the counters are still updated. The protections are also used by
+`obs.simulate`, `obs.get_forecast_env`, `env.copy` and the :class:`grid2op.Runner.Runner`.
+
+**In the observation.** :attr:`grid2op.Observation.BaseObservation.protection_counters` gives, for each
+protection, the number of consecutive steps it has been engaged, :attr:`grid2op.Observation.BaseObservation.protection_line_id`
+and :attr:`grid2op.Observation.BaseObservation.protection_side` where it is placed.
+:attr:`grid2op.Observation.BaseObservation.timestep_protection_engaged` is the maximum of these counters for
+each powerline (protections in service only). The per protection attributes are not part of the vector
+representation of the observation (their size depends on the number of protections).
+
+.. note::
+    During the step performed by `env.reset`, the counters are not increased, so only the instantaneous
+    protections (``delay == 0``) can trip.
+
+.. automodule:: grid2op.Environment.protection
+    :members:
+
 Detailed Documentation by class
 --------------------------------
 .. automodule:: grid2op.Environment

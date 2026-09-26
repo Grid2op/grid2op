@@ -847,7 +847,10 @@ class TestDeactivateForecast(unittest.TestCase):
         # type of power flow to play
         # if True, then it will not disconnect lines above their thermal limits
         assert env._no_overflow_disconnection == param.NO_OVERFLOW_DISCONNECTION
-        assert (env._hard_overflow_threshold == param.HARD_OVERFLOW_THRESHOLD).all()
+        # default protections: [hard, soft] for each line
+        prot_cfg = env._protection_config
+        assert (prot_cfg.threshold[0::2] == param.HARD_OVERFLOW_THRESHOLD).all()
+        assert (prot_cfg.threshold[1::2] == param.SOFT_OVERFLOW_THRESHOLD).all()
 
         # store actions "cooldown"
         assert (
@@ -857,13 +860,13 @@ class TestDeactivateForecast(unittest.TestCase):
         assert env._nb_ts_reco == param.NB_TIMESTEP_RECONNECTION
 
         assert np.all(
-            env._nb_ts_max_protection_counter == param.NB_TIMESTEP_OVERFLOW_ALLOWED
+            env._protection_config.delay[1::2] == param.NB_TIMESTEP_OVERFLOW_ALLOWED
         )
 
         # hard overflow part
         assert env._env_dc == param.ENV_DC
         assert np.all(
-            env._nb_ts_max_protection_counter == param.NB_TIMESTEP_OVERFLOW_ALLOWED
+            env._protection_config.delay[1::2] == param.NB_TIMESTEP_OVERFLOW_ALLOWED
         )
         assert (
             env._max_timestep_line_status_deactivated == param.NB_TIMESTEP_COOLDOWN_LINE

@@ -1,0 +1,543 @@
+# Copyright (c) 2026, RTE (https://www.rte-france.com)
+# See AUTHORS.txt
+# This Source Code Form is subject to the terms of the Mozilla Public License, version 2.0.
+# If a copy of the Mozilla Public License, version 2.0 was not distributed with this file,
+# you can obtain one at http://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+# This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
+
+import json
+import os
+import pickle
+import shutil
+import tempfile
+import unittest
+import warnings
+
+import numpy as np
+
+import grid2op
+from grid2op.Agent import DoNothingAgent
+from grid2op.Environment import MaskedEnvironment
+from grid2op.Environment.protection import (Protection,
+                                            ProtectionConfig,
+                                            ProtectionState,
+                                            default_from_parameters,
+                                            PROTECTIONS_FILE_NAME)
+from grid2op.Environment.protection.protection_solver import compute_engaged, cascade_iteration
+from grid2op.Exceptions import EnvError
+from grid2op.Parameters import Parameters
+from grid2op.Runner import Runner
+
+
+class TestProtectionConfig(unittest.TestCase):
+    """pure numpy tests, no environment"""
+    def test_protection_checks(self):
+        with self.assertRaises(EnvError):
+            Protection(line_id=0, side="middle", threshold=1., delay=0)
+        with self.assertRaises(EnvError):
+            Protection(line_id=0, side="or", threshold=1., delay=-1)
+        with self.assertRaises(EnvError):
+            Protection(line_id=0, side="or", threshold=0., delay=0)
+        with self.assertRaises(EnvError):
+            Protection(line_id=-1, side="or", threshold=1., delay=0)
+
+    def test_soa_layout(self):
+        prots = [Protection(1, "or", 1.5, 0, name="a"),
+                 Protection(1, "ex", 1.25, 3, name="b"),
+                 Protection(0, "or", 1.0, 2, in_service=False)]
+        cfg = ProtectionConfig.from_protections(prots, n_line=2)
+        assert cfg.n_prot == 3
+        assert np.array_equal(cfg.line_id, [1, 1, 0])
+        assert np.array_equal(cfg.side_is_ex, [False, True, False])
+        assert np.array_equal(cfg.side, ["or", "ex", "or"])
+        assert np.allclose(cfg.threshold, [1.5, 1.25, 1.0])
+        assert np.array_equal(cfg.delay, [0, 3, 2])
+        assert np.array_equal(cfg.in_service, [True, True, False])
+        assert cfg.has_ex_side
+        assert cfg.to_protections() == prots
+        # structure is frozen, operational status is not
+        with self.assertRaises(ValueError):
+            cfg.threshold[0] = 2.
+        with self.assertRaises(ValueError):
+            cfg.line_id[0] = 0
+        cfg.in_service[2] = True
+        # copies do not share the operational status
+        cfg2 = cfg.copy()
+        cfg2.in_service[0] = False
+        assert cfg.in_service[0]
+        assert cfg.same_structure(cfg2)
+        assert cfg != cfg2
+        # pickle (multiprocessing) keeps everything, including the read only flags
+        cfg3 = pickle.loads(pickle.dumps(cfg))
+        assert cfg3 == cfg
+        with self.assertRaises(ValueError):
+            cfg3.delay[0] = 2
+        cfg3.in_service[0] = False
+
+    def test_errors(self):
+        with self.assertRaises(EnvError):
+            # line id too high
+            ProtectionConfig.from_protections([Protection(2, "or", 1., 0)], n_line=2)
+        with self.assertRaises(EnvError):
+            # duplicated names
+            ProtectionConfig.from_protections([Protection(0, "or", 1., 0, name="a"),
+                                               Protection(1, "or", 1., 0, name="a")])
+        with self.assertRaises(EnvError):
+            Protection.from_dict({"line_id": 0, "threshold": 1., "unknown_key": 1})
+        with self.assertRaises(EnvError):
+            Protection.from_dict({"line_name": "l_x", "threshold": 1.}, name_line=["l_0", "l_1"])
+
+    def test_from_dict_and_json(self):
+        content = {"protections": [{"line_name": "l_1", "side": "ex", "threshold": 1.2, "delay": 2, "name": "p"},
+                                   {"line_id": 0, "threshold": 2.}]}
+        cfg = ProtectionConfig.from_raw(content, n_line=2, name_line=["l_0", "l_1"])
+        assert np.array_equal(cfg.line_id, [1, 0])
+        assert np.array_equal(cfg.side, ["ex", "or"])
+        assert np.array_equal(cfg.delay, [2, 0])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "prot.json")
+            cfg.to_json(path)
+            cfg2 = ProtectionConfig.from_json(path, n_line=2)
+        assert cfg2 == cfg
+
+    def test_get_ids(self):
+        cfg = default_from_parameters(Parameters(), 3)
+        assert np.array_equal(cfg.get_ids("l1_soft"), [3])
+        assert np.array_equal(cfg.get_ids([0, "l2_hard"]), [0, 4])
+        assert np.array_equal(cfg.get_ids(cfg.line_id == 1), [2, 3])
+        with self.assertRaises(EnvError):
+            cfg.get_ids("unknown")
+        with self.assertRaises(EnvError):
+            cfg.get_ids(6)
+
+    def test_default_from_parameters(self):
+        params = Parameters()
+        params.HARD_OVERFLOW_THRESHOLD = 3.
+        params.SOFT_OVERFLOW_THRESHOLD = 1.1
+        params.NB_TIMESTEP_OVERFLOW_ALLOWED = 4
+        cfg = default_from_parameters(params, 3)
+        assert cfg.n_prot == 6
+        assert np.array_equal(cfg.line_id, [0, 0, 1, 1, 2, 2])
+        assert not cfg.has_ex_side
+        assert np.allclose(cfg.threshold, [3., 1.1] * 3)
+        assert np.array_equal(cfg.delay, [0, 4] * 3)
+        assert cfg.name[0] == "l0_hard"
+        assert cfg.name[1] == "l0_soft"
+        # the in_service status can be kept
+        in_service = np.array([True, False] * 3)
+        cfg = default_from_parameters(params, 3, in_service=in_service)
+        assert np.array_equal(cfg.in_service, in_service)
+
+    def test_state_in_service(self):
+        cfg = ProtectionConfig.from_protections([Protection(0, "or", 1., 5), Protection(1, "or", 1., 5)])
+        state = ProtectionState.from_config(cfg)
+        engaged = np.array([True, True])
+        state.update(cfg, engaged)
+        state.update(cfg, engaged)
+        assert np.array_equal(state.counter, [2, 2])
+        # out of service: frozen
+        cfg.in_service[1] = False
+        state.update(cfg, engaged)
+        assert np.array_equal(state.counter, [3, 2])
+        state.update(cfg, ~engaged)
+        assert np.array_equal(state.counter, [0, 2])
+        # back in service: restarts from 0
+        cfg.in_service[1] = True
+        state.update(cfg, engaged)
+        assert np.array_equal(state.counter, [1, 1])
+        assert np.array_equal(state.line_counter(cfg, 3), [1, 1, 0])
+
+    def test_solver(self):
+        cfg = ProtectionConfig.from_protections([Protection(0, "or", 2., 0),
+                                                 Protection(0, "or", 1., 2),
+                                                 Protection(1, "ex", 1., 0),
+                                                 Protection(1, "or", 1., 0, in_service=False)])
+        a_or = np.array([15., 15.])
+        a_ex = np.array([15., 5.])
+        th = np.array([10., 10.])
+        status = np.array([True, True])
+        engaged = compute_engaged(cfg, a_or, a_ex, th, status)
+        assert np.array_equal(engaged, [False, True, False, True])
+        counter = np.array([0, 2, 0, 0])
+        increased = np.zeros(4, dtype=bool)
+        tripped = cascade_iteration(cfg, counter, increased, engaged, 2)
+        # soft protection of line 0 trips (3 > 2), "or" protection of line 1 is out of service
+        assert np.array_equal(tripped, [True, False])
+        assert np.array_equal(counter, [0, 3, 0, 0])
+        # at most one increment per step
+        tripped = cascade_iteration(cfg, counter, increased, engaged, 2)
+        assert np.array_equal(counter, [0, 3, 0, 0])
+        # global switch: counters are updated, nothing trips
+        counter = np.array([0, 2, 0, 0])
+        increased[:] = False
+        tripped = cascade_iteration(cfg, counter, increased, engaged, 2, protections_disabled=True)
+        assert not tripped.any()
+        assert np.array_equal(counter, [0, 3, 0, 0])
+        # during a reset: no counter increment, only instantaneous protections trip
+        counter = np.array([0, 2, 0, 0])
+        increased[:] = False
+        engaged[0] = True
+        tripped = cascade_iteration(cfg, counter, increased, engaged, 2, increment_counters=False)
+        assert np.array_equal(tripped, [True, False])
+        assert np.array_equal(counter, [0, 2, 0, 0])
+
+
+class _BaseProtectionEnv:
+    """line 1 is overloaded (between 1.15 and 1.35 x its limit) for the first steps of the
+    scenario, all the other lines are far from their limits (see `setUp`)"""
+    line_id = 1
+
+    def setUp(self) -> None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("l2rpn_case14_sandbox", test=True, _add_to_name=type(self).__name__)
+        obs = self.env.reset(seed=0, options={"time serie id": 0})
+        self.th_lim = 10. * np.maximum(obs.a_or, obs.a_ex)
+        self.th_lim[self.line_id] = 110.
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.env.close()
+        return super().tearDown()
+
+    def _reset(self):
+        return self.env.reset(seed=0, options={"time serie id": 0, "thermal limit": self.th_lim})
+
+    def _step(self):
+        obs, reward, done, info = self.env.step(self.env.action_space())
+        assert not done
+        return obs, info
+
+
+class TestProtectionEnv(_BaseProtectionEnv, unittest.TestCase):
+    def test_default_config(self):
+        obs = self._reset()
+        cfg = self.env.get_protection_config()
+        assert cfg == default_from_parameters(self.env.parameters, type(self.env).n_line)
+        assert not self.env._protection_is_custom
+        assert obs.protection_counters.shape == (2 * type(self.env).n_line, )
+        assert np.array_equal(obs.protection_line_id, cfg.line_id)
+        assert np.array_equal(obs.protection_side, cfg.side)
+        assert self.env.get_params_for_runner()["protections"] is None
+
+    def test_default_follows_parameters(self):
+        params = self.env.parameters
+        params.HARD_OVERFLOW_THRESHOLD = 3.
+        params.SOFT_OVERFLOW_THRESHOLD = 1.1
+        params.NB_TIMESTEP_OVERFLOW_ALLOWED = 5
+        self.env.change_parameters(params)
+        self._reset()
+        cfg = self.env.get_protection_config()
+        assert np.allclose(cfg.threshold[0::2], 3.)
+        assert np.allclose(cfg.threshold[1::2], 1.1)
+        assert np.all(cfg.delay[1::2] == 5)
+
+        # custom configuration does not follow the parameters
+        self.env.set_protections([Protection(0, "or", 1.5, 1)])
+        params.HARD_OVERFLOW_THRESHOLD = 4.
+        self.env.change_parameters(params)
+        self._reset()
+        cfg = self.env.get_protection_config()
+        assert cfg.n_prot == 1
+        assert np.allclose(cfg.threshold, 1.5)
+
+        # back to the default ones
+        self.env.set_protections(None)
+        assert np.allclose(self.env.get_protection_config().threshold[0::2], 4.)
+
+    def test_default_identical_to_explicit(self):
+        """an environment with an explicit config equal to the default one behaves exactly the same"""
+        th_lim = 1. * self.th_lim
+        th_lim[[1, 4, 9]] = [120., 100., 600.]  # a few overloads, with cascades
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env2 = grid2op.make("l2rpn_case14_sandbox", test=True, _add_to_name=type(self).__name__)
+        try:
+            env2.set_protections(default_from_parameters(env2.parameters, type(env2).n_line))
+            assert env2._protection_is_custom
+            options = {"time serie id": 0, "thermal limit": th_lim}
+            obs1 = self.env.reset(seed=0, options=options)
+            obs2 = env2.reset(seed=0, options=options)
+            for _ in range(10):
+                obs1, r1, done1, info1 = self.env.step(self.env.action_space())
+                obs2, r2, done2, info2 = env2.step(env2.action_space())
+                assert done1 == done2
+                assert np.array_equal(obs1.line_status, obs2.line_status)
+                assert np.array_equal(info1["disc_lines"], info2["disc_lines"])
+                assert np.array_equal(obs1.timestep_protection_engaged, obs2.timestep_protection_engaged)
+                assert np.array_equal(obs1.protection_counters, obs2.protection_counters)
+                assert np.allclose(obs1.a_or, obs2.a_or)
+                if done1:
+                    break
+            # there has been some disconnections
+            assert (~obs1.line_status).any()
+        finally:
+            env2.close()
+
+    def test_ex_side_only(self):
+        # line 15 is a transformer: the current is much higher on its "ex" side
+        line_id = 15
+        th_lim = 1. * self.th_lim
+        obs = self._reset()
+        th_lim[line_id] = 0.5 * (obs.a_or[line_id] + obs.a_ex[line_id])
+        assert obs.a_ex[line_id] > 1.5 * th_lim[line_id]
+        assert obs.a_or[line_id] < 0.5 * th_lim[line_id]
+        self.env.set_thermal_limit(th_lim)
+
+        # protection on the "or" side: no trip
+        self.env.set_protections([Protection(line_id, "or", 1.0, 0)])
+        obs, info = self._step()
+        assert obs.line_status[line_id]
+        assert obs.protection_counters[0] == 0
+
+        # protection on the "ex" side: trip
+        self.env.set_protections([Protection(line_id, "ex", 1.0, 0)])
+        obs, info = self._step()
+        assert not obs.line_status[line_id]
+        assert info["disc_lines"][line_id] == 0
+
+    def test_two_stages(self):
+        self.env.set_protections([Protection(self.line_id, "or", 1.1, 3, name="slow"),
+                                  Protection(self.line_id, "or", 1.15, 1, name="fast"),
+                                  Protection(self.line_id, "or", 5.0, 0, name="inst")])
+        obs = self._reset()
+        assert (obs.protection_counters == 0).all()
+        obs, info = self._step()
+        assert obs.rho[self.line_id] > 1.15
+        assert obs.line_status[self.line_id]
+        assert np.array_equal(obs.protection_counters, [1, 1, 0])
+        assert obs.timestep_protection_engaged[self.line_id] == 1
+        obs, info = self._step()
+        # "fast" stage: 2 > 1
+        assert not obs.line_status[self.line_id]
+        assert info["disc_lines"][self.line_id] == 0
+
+        # without the fast stage, the slow one trips after 4 steps
+        self.env.set_protection_in_service("fast", False)
+        obs = self._reset()
+        for ts in range(1, 4):
+            obs, info = self._step()
+            assert obs.line_status[self.line_id], f"error for {ts}"
+            assert np.array_equal(obs.protection_counters, [ts, 0, 0]), f"error for {ts}"
+        obs, info = self._step()
+        assert not obs.line_status[self.line_id]
+
+    def test_in_service(self):
+        self.env.set_protections([Protection(self.line_id, "or", 1.1, 1, in_service=False, name="p")])
+        obs = self._reset()
+        for _ in range(3):
+            obs, info = self._step()
+            assert obs.line_status[self.line_id]
+            assert obs.protection_counters[0] == 0
+            # no protection in service on this line
+            assert obs.timestep_protection_engaged[self.line_id] == 0
+
+        self.env.set_protection_in_service("p", True)
+        obs, info = self._step()
+        assert obs.line_status[self.line_id]
+        assert obs.protection_counters[0] == 1
+        # out of service: frozen
+        self.env.set_protection_in_service(0, False)
+        for _ in range(2):
+            obs, info = self._step()
+            assert obs.line_status[self.line_id]
+            assert obs.protection_counters[0] == 1
+        # back in service: restarts from 0
+        self.env.set_protection_in_service([0], True)
+        assert self.env.get_protection_counters()[0] == 0
+        obs, info = self._step()
+        assert obs.line_status[self.line_id]
+        assert obs.protection_counters[0] == 1
+        obs, info = self._step()
+        assert not obs.line_status[self.line_id]
+
+    def test_in_service_default_config(self):
+        # protections of the default config can be put out of service, it survives a reset
+        cfg = self.env.get_protection_config()
+        self.env.set_protection_in_service(cfg.line_id == self.line_id, False)
+        obs = self._reset()
+        assert not self.env._protection_is_custom
+        for _ in range(5):
+            obs, info = self._step()
+            assert obs.line_status[self.line_id]
+        self.env.set_protection_in_service(cfg.line_id == self.line_id, True)
+        for _ in range(2):
+            obs, info = self._step()
+            assert obs.line_status[self.line_id]
+        obs, info = self._step()
+        assert not obs.line_status[self.line_id]
+
+    def test_no_overflow_disconnection(self):
+        params = self.env.parameters
+        params.NO_OVERFLOW_DISCONNECTION = True
+        self.env.change_parameters(params)
+        self.env.set_protections([Protection(self.line_id, "or", 1.1, 1),
+                                  Protection(self.line_id, "or", 1.1, 0)])
+        obs = self._reset()
+        for ts in range(1, 5):
+            obs, info = self._step()
+            assert obs.line_status[self.line_id]
+            # counters are still updated
+            assert np.array_equal(obs.protection_counters, [ts, ts])
+            assert obs.timestep_protection_engaged[self.line_id] == ts
+
+    def test_add_protection(self):
+        n_prot = 2 * type(self.env).n_line
+        obs = self._reset()
+        obs, info = self._step()
+        counters = obs.protection_counters.copy()
+        assert counters[2 * self.line_id + 1] == 1
+        new_id = self.env.add_protection(type(self.env).name_line[self.line_id], "or", 1.125, 1, name="extra")
+        assert new_id == n_prot
+        assert self.env._protection_is_custom
+        # counters of the existing protections are kept
+        assert np.array_equal(self.env.get_protection_counters()[:n_prot], counters)
+        obs, info = self._step()
+        assert obs.protection_counters[new_id] == 1
+        assert obs.line_status[self.line_id]
+        obs, info = self._step()
+        # the new protection trips first (the default one needs 3 steps)
+        assert not obs.line_status[self.line_id]
+        assert self.env.get_protections()[new_id] == Protection(self.line_id, "or", 1.125, 1, name="extra")
+
+    def test_copy(self):
+        cfg = [Protection(self.line_id, "or", 1.1, 2, name="p"),
+               Protection(15, "ex", 3., 0, name="q")]
+        self.env.set_protections(cfg)
+        obs = self._reset()
+        obs, info = self._step()
+        env_cpy = self.env.copy()
+        try:
+            assert env_cpy.get_protection_config() == self.env.get_protection_config()
+            assert np.array_equal(env_cpy.get_protection_counters(), [1, 0])
+            # independent from each other
+            assert self.env._protection_config.in_service is not env_cpy._protection_config.in_service
+            assert self.env._protection_state.counter is not env_cpy._protection_state.counter
+            for _ in range(2):
+                obs, *_ = self.env.step(self.env.action_space())
+                obs_cpy, *_ = env_cpy.step(env_cpy.action_space())
+                assert np.array_equal(obs.protection_counters, obs_cpy.protection_counters)
+                assert np.array_equal(obs.line_status, obs_cpy.line_status)
+            assert not obs_cpy.line_status[self.line_id]
+        finally:
+            env_cpy.close()
+
+    def test_simulate(self):
+        self.env.set_protections([Protection(self.line_id, "or", 1.1, 1, name="p")])
+        obs = self._reset()
+        sim_obs, *_ = obs.simulate(self.env.action_space())
+        assert sim_obs.line_status[self.line_id]
+        assert sim_obs.protection_counters[0] == 1
+        obs, info = self._step()
+        assert obs.protection_counters[0] == 1
+        # counter is taken from the observation, simulated line trips
+        sim_obs, *_ = obs.simulate(self.env.action_space())
+        assert not sim_obs.line_status[self.line_id]
+
+        # out of service also applies to simulate
+        self.env.set_protection_in_service("p", False)
+        sim_obs, *_ = obs.simulate(self.env.action_space())
+        assert sim_obs.line_status[self.line_id]
+        self.env.set_protection_in_service("p", True)
+
+        # and to the forecast env
+        for_env = obs.get_forecast_env()
+        try:
+            assert for_env.get_protection_config() == self.env.get_protection_config()
+            for_obs = for_env.reset()
+            assert for_obs.protection_counters[0] == 1
+            for_obs, *_ = for_env.step(for_env.action_space())
+            assert not for_obs.line_status[self.line_id]
+        finally:
+            for_env.close()
+
+        # back to the default protections: simulate does not trip (NB_TIMESTEP_OVERFLOW_ALLOWED=2)
+        self.env.set_protections(None)
+        obs = self._reset()
+        obs, info = self._step()
+        sim_obs, *_ = obs.simulate(self.env.action_space())
+        assert sim_obs.line_status[self.line_id]
+
+    def test_runner(self):
+        cfg = ProtectionConfig.from_protections([Protection(self.line_id, "or", 1.1, 1)])
+        self.env.set_protections(cfg)
+        params = self.env.get_params_for_runner()
+        assert params["protections"] == cfg
+        runner = Runner(**params, agentClass=DoNothingAgent)
+        env_runner = runner.init_env()
+        try:
+            assert env_runner.get_protection_config() == cfg
+        finally:
+            env_runner.close()
+
+    def test_errors(self):
+        with self.assertRaises(EnvError):
+            self.env.set_protections([Protection(type(self.env).n_line, "or", 1.1, 1)])
+        with self.assertRaises(EnvError):
+            self.env.add_protection("unknown_line", "or", 1.1, 1)
+        with self.assertRaises(EnvError):
+            self.env.set_protection_in_service("unknown_protection", False)
+
+
+class TestProtectionMasked(unittest.TestCase):
+    def test_masked_default_config(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = grid2op.make("l2rpn_case14_sandbox", test=True, _add_to_name=type(self).__name__)
+            lines_of_interest = np.zeros(type(env).n_line, dtype=bool)
+            lines_of_interest[:3] = True
+            env_masked = MaskedEnvironment(env, lines_of_interest=lines_of_interest)
+        try:
+            cfg = env_masked.get_protection_config()
+            not_interest = ~lines_of_interest[cfg.line_id]
+            assert (cfg.threshold[not_interest & (cfg.delay == 0)] >= MaskedEnvironment.INF_VAL_THM_LIM * 0.99).all()
+            assert (cfg.delay[not_interest & (cfg.delay > 0)] == MaskedEnvironment.INF_VAL_TS_OVERFLOW_ALLOW).all()
+            assert (cfg.delay[~not_interest] == np.array([0, 2] * 3)).all()
+        finally:
+            env_masked.close()
+            env.close()
+
+
+class TestProtectionFile(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        self.env_path = os.path.join(self.tmp_dir.name, "l2rpn_case14_sandbox")
+        shutil.copytree(os.path.join(os.path.dirname(grid2op.__file__), "data", "l2rpn_case14_sandbox"),
+                        self.env_path,
+                        ignore=shutil.ignore_patterns("_grid2op_classes", "__pycache__"))
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.tmp_dir.cleanup()
+        return super().tearDown()
+
+    def test_read_file(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = grid2op.make(self.env_path, test=True, _add_to_name=type(self).__name__ + "ref")
+        name_line = type(env).name_line
+        env.close()
+        content = {"protections": [
+            {"line_name": name_line[2], "side": "ex", "threshold": 1.25, "delay": 3, "name": "a"},
+            {"line_id": 0, "side": "or", "threshold": 1.5, "delay": 0, "in_service": False}
+        ]}
+        with open(os.path.join(self.env_path, PROTECTIONS_FILE_NAME), "w", encoding="utf-8") as f:
+            json.dump(content, f)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            env = grid2op.make(self.env_path, test=True, _add_to_name=type(self).__name__)
+        try:
+            assert env.get_protections() == [Protection(2, "ex", 1.25, 3, name="a"),
+                                             Protection(0, "or", 1.5, 0, in_service=False)]
+            obs = env.reset()
+            assert obs.protection_counters.shape == (2,)
+            # the protections are also used by the runner
+            assert env.get_params_for_runner()["protections"] == env.get_protection_config()
+            assert np.array_equal(obs.protection_side, ["ex", "or"])
+        finally:
+            env.close()
+
+
+if __name__ == "__main__":
+    unittest.main()

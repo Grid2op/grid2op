@@ -230,7 +230,7 @@ class EpisodeReboot:
         ) + obs.actual_dispatch.astype(dt_float)
         self.env.current_obs = obs
         self.env._timestep_overflow[:] = obs.timestep_overflow.astype(dt_int)
-        self.env._protection_counter[:] = obs.timestep_protection_engaged.astype(dt_int)
+        self.env._set_protection_state_from_obs(obs)
         self.env._times_before_line_status_actionable[
             :
         ] = obs.time_before_cooldown_line.astype(dt_int)
