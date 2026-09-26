@@ -14,10 +14,11 @@ from .dispatchTypes import DetachmentResult, RedispatchState
 
 
 class DetachmentModule:
+    """Computes the power of the loads and generators detached by the agent, that the other generators have to compensate."""
     def __init__(self, env) -> None:
         self.env = env
 
-    def feed_data(self, new_p_th, state: RedispatchState) -> None:
+    def feed_data(self, new_p_th) -> None:
         self.env._prev_gen_p[:] = new_p_th
         self.env._aux_retrieve_modif_act(self.env._prev_load_p, self.env._env_modification, "load_p")
         self.env._aux_retrieve_modif_act(self.env._prev_load_q, self.env._env_modification, "load_q")

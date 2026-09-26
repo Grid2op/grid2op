@@ -16,6 +16,7 @@ from .dispatchTypes import CurtailmentResult, RedispatchState
 
 
 class CurtailmentModule:
+    """Applies the curtailment limits to the renewable generators and computes the power removed."""
     def __init__(self, env) -> None:
         self.env = env
 

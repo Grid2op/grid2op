@@ -12,10 +12,13 @@ import numpy as np
 
 from grid2op.dtypes import dt_float
 
-from .dispatchTypes import CurtailmentResult, GuardInfo, RedispatchState, StorageResult
+from .dispatchTypes import GuardInfo, RedispatchState
 
 
 class FeasibilityGuard:
+    """Limits the curtailment and the storage actions when the generators cannot
+    compensate them (not enough ramps or margin to pmin / pmax), so that a dispatch can
+    still be found. Used when ``LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION`` is set."""
     def __init__(self, env) -> None:
         self.env = env
 
@@ -90,8 +93,6 @@ class FeasibilityGuard:
 
     def check_and_clamp(
         self,
-        storage_result: StorageResult,
-        curtail_result: CurtailmentResult,
         new_p,
         new_p_th,
         state: RedispatchState,

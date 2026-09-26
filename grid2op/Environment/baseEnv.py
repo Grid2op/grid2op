@@ -61,36 +61,14 @@ from grid2op.VoltageControler import ControlVoltageFromFile
 from grid2op.Environment.dispatch import (
     BaseRedispatchSolver,
     CurtailmentModule,
-    CurtailmentResult,
     DefaultRedispatchSolver,
     DetachmentModule,
-    DetachmentResult,
     FeasibilityGuard,
     RedispatchConstraints,
     RedispatchState,
     StorageModule,
-    StorageResult,
 )
-
-# TODO put in a separate class the redispatching function
-
-DETAILED_REDISP_ERR_MSG = (
-    "\nThis is an attempt to explain why the dispatch did not succeed and caused a game over.\n"
-    "To compensate the {increase} of loads and / or {decrease} of "
-    "renewable energy (due to naturl causes but also through curtailment) and / or variation in the storage units, "
-    "the generators should {increase} their total production of {sum_move:.2f}MW (in total).\n"
-    "But, if you take into account the generator constraints ({pmax} and {max_ramp_up}) you "
-    "can have at most {avail_up_sum:.2f}MW.\n"
-    "Indeed at time t, generators are in state:\n\t{gen_setpoint}\ntheir ramp max is:"
-    "\n\t{ramp_up}\n and pmax is:\n\t{gen_pmax}\n"
-    "Wrapping up, each generator can {increase} at {maximum} of:\n\t{avail_up}\n"
-    "NB: if you did not do any dispatch during this episode, it would have been possible to "
-    "meet these constraints. This situation is caused by not having enough degree of freedom "
-    'to "compensate" the variation of the load due to (most likely) an "over usage" of '
-    "redispatching feature (some generators stuck at {pmax} as a consequence of your "
-    "redispatching. They can't increase their productions to meet the {increase} in demand or "
-    "{decrease} of renewables)"
-)
+from grid2op.Environment.dispatch.baseRedispatchSolver import DETAILED_REDISP_ERR_MSG  # noqa: F401  (kept importable from here)
 
 
 BASE_TXT_COPYRIGHT = """# Copyright (c) 2019-2025, RTE (https://www.rte-france.com)
@@ -335,7 +313,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
     ALARM_KEY = "fixed"
     ALERT_FILE_NAME = "alerts_info.json"
     ALERT_KEY = "by_line"
-    DETAILED_REDISP_ERR_MSG = DETAILED_REDISP_ERR_MSG
     
     CAN_SKIP_TS = False  # each step is exactly one time step
 
@@ -387,7 +364,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         _local_dir_cls=None,
         _read_from_local_dir=None,
         _raw_backend_class=None,
-        redispatch_solver: Optional[BaseRedispatchSolver] = None,
+        redispatch_solver: Optional[Union[BaseRedispatchSolver, Type[BaseRedispatchSolver]]] = None,
     ):
         #: flag to indicate not to erase the directory when the env has been used
         self._do_not_erase_local_dir_cls = False
@@ -715,19 +692,33 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
     def _init_dispatch_modules(
         self,
-        redispatch_solver: Optional[BaseRedispatchSolver],
+        redispatch_solver: Optional[Union[BaseRedispatchSolver, Type[BaseRedispatchSolver]]],
     ) -> None:
         self._storage_module = StorageModule(self)
         self._curtailment_module = CurtailmentModule(self)
         self._detachment_module = DetachmentModule(self)
         self._feasibility_guard = FeasibilityGuard(self)
         if redispatch_solver is None:
-            solver = DefaultRedispatchSolver()
-        elif isinstance(redispatch_solver, type):
-            solver = redispatch_solver()
+            solver = DefaultRedispatchSolver().bind(self)
+        elif isinstance(redispatch_solver, type) and issubclass(redispatch_solver, BaseRedispatchSolver):
+            solver = redispatch_solver().bind(self)
+        elif isinstance(redispatch_solver, BaseRedispatchSolver):
+            # the same instance can be given to different environments (or reused
+            # by "make" for the environment that generates the classes)
+            solver = redispatch_solver.copy_for_env(self)
         else:
-            solver = redispatch_solver
-        self._redispatch_solver = solver.bind(self)
+            raise EnvError("The redispatch solver should be an instance or a subclass of "
+                           f"BaseRedispatchSolver, found {redispatch_solver}")
+        self._redispatch_solver = solver
+
+    def get_redispatch_solver_for_kwargs(self) -> BaseRedispatchSolver:
+        """
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+        Copy of the redispatch solver, not bound to any environment, used to build
+        other environments (runner, forecast environment, multi processing...)
+        """
+        return self._redispatch_solver.copy_for_env(None)
 
     def _get_dispatch_attr(self, name: str):
         return getattr(self._dispatch_state, name)
@@ -936,6 +927,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         RandomObject._custom_deepcopy_for_copy(self, new_obj)
         new_obj.name = self.name
         new_obj._dispatch_state = RedispatchState()
+        # needed before the observation space is copied (it reads the solver)
+        new_obj._init_dispatch_modules(self._redispatch_solver)
         if dict_ is None:
             dict_ = {}
         new_obj._n_busbar = self._n_busbar
@@ -1244,7 +1237,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         new_obj._called_from_reset = self._called_from_reset
         new_obj._needs_active_bus = self._needs_active_bus
-        new_obj._init_dispatch_modules(self._redispatch_solver.copy_for_env(new_obj))
         
     def get_path_env(self):
         """
@@ -2232,11 +2224,19 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self.observation_space.set_thermal_limit(self._thermal_limit_a)
 
     def _reset_redispatching(self):
-        self._redispatch_solver.reset(self._dispatch_state)
+        # redispatching
+        self._target_dispatch[:] = 0.0
+        self._already_modified_gen[:] = False
+        self._actual_dispatch[:] = 0.0
+        self._gen_uptime[:] = 0
+        self._gen_downtime[:] = 0
+        self._gen_activeprod_t[:] = 0.0
+        self._gen_activeprod_t_redisp[:] = 0.0
+        self._redispatch_solver.reset()
 
     def _feed_data_for_detachment(self, new_p_th):
         """feed the attribute for the detachment"""
-        self._detachment_module.feed_data(new_p_th, self._dispatch_state)
+        self._detachment_module.feed_data(new_p_th)
         
     def _aux_retrieve_modif_act(self,
                                 input_ : np.ndarray,
@@ -2263,35 +2263,120 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         return new_p
 
     def _get_already_modified_gen(self, action: BaseAction):
-        return self._redispatch_solver._update_target_dispatch(action, self._dispatch_state)
+        if not action._modif_redispatch:
+            # nothing changes if the action does
+            # not affect redispatching
+            return self._already_modified_gen
+        
+        redisp_act_orig = action._redispatch
+        is_redisped = np.abs(redisp_act_orig) > 1e-7
+        self._target_dispatch[self._already_modified_gen] += redisp_act_orig[self._already_modified_gen]
+        first_modified = (~self._already_modified_gen) & is_redisped
+        self._target_dispatch[first_modified] = (
+            self._actual_dispatch[first_modified] + redisp_act_orig[first_modified]
+        )
+        self._already_modified_gen[is_redisped] = True
+        return self._already_modified_gen
 
     def _prepare_redisp(self, action: BaseAction, new_p, already_modified_gen):
-        return self._redispatch_solver._validate_dispatch(
-            action, new_p, already_modified_gen, self._dispatch_state
-        )
+        cls = type(self)
+        # trying with an optimization method
+        except_ = None
+        info_ = []
+        valid = True
+
+        # get the redispatching action (if any)
+        if action._modif_redispatch:
+            redisp_act_orig = action._redispatch.copy()
+        else:
+            redisp_act_orig = None
+            
+        if (
+            (redisp_act_orig is not None and (np.abs(redisp_act_orig) <= 1e-7).all())
+            and (np.abs(self._target_dispatch) <= 1e-7).all()
+            and (np.abs(self._actual_dispatch) <= 1e-7).all()
+        ):
+            return valid, except_, info_
+        
+        if redisp_act_orig is None:
+            redisp_act_orig = type(action)._build_attr("_redispatch")
+            
+        # check that everything is consistent with pmin, pmax:
+        if (self._target_dispatch > cls.gen_pmax - cls.gen_pmin).any():
+            # action is invalid, the target redispatching would be above pmax for at least a generator
+            cond_invalid = self._target_dispatch > cls.gen_pmax - cls.gen_pmin
+            except_ = IllegalRedispatching(
+                "You cannot ask for a dispatch higher than pmax - pmin  [it would be always "
+                "invalid because, even if the sepoint is pmin, this dispatch would set it "
+                "to a number higher than pmax, which is impossible]. Invalid dispatch for "
+                "generator(s): "
+                "{}".format((cond_invalid).nonzero()[0])
+            )
+            self._target_dispatch -= redisp_act_orig
+            return valid, except_, info_
+        if (self._target_dispatch < cls.gen_pmin - cls.gen_pmax).any():
+            # action is invalid, the target redispatching would be below pmin for at least a generator
+            cond_invalid = self._target_dispatch < cls.gen_pmin - cls.gen_pmax
+            except_ = IllegalRedispatching(
+                "You cannot ask for a dispatch lower than pmin - pmax  [it would be always "
+                "invalid because, even if the sepoint is pmax, this dispatch would set it "
+                "to a number bellow pmin, which is impossible]. Invalid dispatch for "
+                "generator(s): "
+                "{}".format((cond_invalid).nonzero()[0])
+            )
+            self._target_dispatch -= redisp_act_orig
+            return valid, except_, info_
+
+        # i can't redispatch turned off generators [turned off generators need to be turned on before redispatching]
+        if (redisp_act_orig[np.abs(new_p) <= 1e-7]).any() and self._forbid_dispatch_off:
+            # action is invalid, a generator has been redispatched, but it's turned off
+            except_ = IllegalRedispatching(
+                "Impossible to dispatch a turned off generator"
+            )
+            self._target_dispatch -= redisp_act_orig
+            return valid, except_, info_
+
+        if self._forbid_dispatch_off:
+            redisp_act_orig_cut = redisp_act_orig.copy()
+            redisp_act_orig_cut[np.abs(new_p) <= 1e-7] = 0.0
+            if (redisp_act_orig_cut != redisp_act_orig).any():
+                info_.append(
+                    {
+                        "INFO: redispatching cut because generator will be turned_off": (
+                            redisp_act_orig_cut != redisp_act_orig
+                        ).nonzero()[0]
+                    }
+                )
+        return valid, except_, info_
 
     def _make_redisp(self, already_modified_gen, new_p):
         """this computes the redispaching vector, taking into account the storage units"""
-        constraints = RedispatchConstraints.from_results(
-            None, None, None, new_p, self._dispatch_state, self
-        )
-        except_ = self._redispatch_solver.solve(constraints, self._dispatch_state)
-        return except_ is None, except_
-
-    def _compute_dispatch_vect(self, already_modified_gen, new_p):        
-        constraints = RedispatchConstraints.from_results(
-            None, None, None, new_p, self._dispatch_state, self
-        )
-        return self._redispatch_solver._solve(constraints, self._dispatch_state)
-
-    def _detect_infeasible_dispatch(self, incr_in_chronics, avail_down, avail_up):
-        """This function is an attempt to give more detailed log by detecting infeasible dispatch"""
-        constraints = RedispatchConstraints.from_results(
-            None, None, None, self._gen_activeprod_t, self._dispatch_state, self
-        )
-        return self._redispatch_solver._detect_infeasible_dispatch(
-            constraints, incr_in_chronics, avail_down, avail_up, self._dispatch_state
-        )
+        except_ = None
+        valid = True
+        if not self._parameters.ENV_DOES_REDISPATCHING:
+            # env redispatching routine is asked not 
+            # to work
+            self._actual_dispatch[:] = self._target_dispatch.copy()
+            return valid, except_
+        
+        mismatch = self._actual_dispatch - self._target_dispatch
+        mismatch = np.abs(mismatch)
+        if (
+            np.abs((self._actual_dispatch).sum()) >= self._tol_poly
+            or np.max(mismatch) >= self._tol_poly
+            or np.abs(self._amount_storage) >= self._tol_poly
+            or np.abs(self._sum_curtailment_mw) >= self._tol_poly
+            or np.abs(self._detached_elements_mw) >= self._tol_poly
+        ):
+            # handle the case where there are storage or redispatching
+            # action or curtailment action on the "init state"
+            # of the grid
+            if self.nb_time_step == 0:
+                self._gen_activeprod_t_redisp[:] = new_p
+            constraints = RedispatchConstraints.from_state(new_p, self._dispatch_state, self)
+            except_ = self._redispatch_solver.solve(constraints, self._dispatch_state)
+            valid = except_ is None
+        return valid, except_
 
     def _update_actions(self):
         """
@@ -2409,9 +2494,68 @@ class BaseEnv(GridObjects, RandomObject, ABC):
 
         Handles the up and down tims for the generators.
         """
-        return self._redispatch_solver._check_updown_times(
-            gen_up_before, redisp_act, self._dispatch_state
-        )
+        # get the generators that are not connected after the action
+        except_ = None
+        cls = type(self)
+        # computes which generator will be turned on after the action
+        gen_up_after = self._gen_activeprod_t.copy()
+        if "prod_p" in self._env_modification._dict_inj:
+            tmp = self._env_modification._dict_inj["prod_p"]
+            indx_ok = np.isfinite(tmp)
+            gen_up_after[indx_ok] = self._env_modification._dict_inj["prod_p"][indx_ok]
+        gen_up_after += redisp_act
+        gen_up_after = np.abs(gen_up_after) > 1e-7
+
+        # update min down time, min up time etc.
+        gen_disconnected_this = gen_up_before & (~gen_up_after)
+        gen_connected_this_timestep = (~gen_up_before) & (gen_up_after) & ~self._gens_detached
+        gen_still_connected = (gen_up_before & gen_up_after)
+        gen_still_disconnected = ((~gen_up_before) & (~gen_up_after)) | self._gens_detached
+        if (not self._ignore_min_up_down_times and
+            (
+                self._gen_downtime[gen_connected_this_timestep]
+                < cls.gen_min_downtime[gen_connected_this_timestep]
+            ).any()
+        ):
+            # i reconnected a generator before the minimum time allowed
+            id_gen = (
+                self._gen_downtime[gen_connected_this_timestep]
+                < cls.gen_min_downtime[gen_connected_this_timestep]
+            )
+            id_gen = (id_gen).nonzero()[0]
+            id_gen = (gen_connected_this_timestep[id_gen]).nonzero()[0]
+            except_ = GeneratorTurnedOnTooSoon(
+                "Some generator has been connected too early ({})".format(id_gen)
+            )
+            return except_
+        else:
+            self._gen_downtime[gen_connected_this_timestep] = -1
+            self._gen_uptime[gen_connected_this_timestep] = 0
+
+        if (not self._ignore_min_up_down_times and 
+            (
+                self._gen_uptime[gen_disconnected_this]
+                < cls.gen_min_uptime[gen_disconnected_this]
+            ).any()
+        ):
+            # i disconnected a generator before the minimum time allowed
+            id_gen = (
+                self._gen_uptime[gen_disconnected_this]
+                < cls.gen_min_uptime[gen_disconnected_this]
+            )
+            id_gen = (id_gen).nonzero()[0]
+            id_gen = (gen_disconnected_this[id_gen]).nonzero()[0]
+            except_ = GeneratorTurnedOffTooSoon(
+                "Some generator has been disconnected too early ({})".format(id_gen)
+            )
+            return except_
+        else:
+            self._gen_downtime[gen_disconnected_this] = 0
+            self._gen_uptime[gen_disconnected_this] = -1
+            
+        self._gen_uptime[gen_still_connected] += 1
+        self._gen_downtime[gen_still_disconnected] += 1
+        return except_
 
     def get_obs(self, _update_state=True, _do_copy=True):
         """
@@ -2503,76 +2647,12 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         self._storage_module.withdraw_losses(self._dispatch_state)
 
-    def _aux_remove_power_too_high(self, delta_, indx_too_high):
-        """
-        delta_ is given in energy (and NOT power)
-
-        handles self._storage_power in
-        case we need to cut the storage action because the power would be too high
-        """
-        self._storage_module._clamp_too_high(delta_, indx_too_high, self._dispatch_state)
-
-    def _aux_remove_power_too_low(self, delta_, indx_too_low):
-        """
-        delta_ is given in energy (and NOT power)
-
-        handles self._storage_power in
-        case we need to cut the storage action because the power would be too low
-        """
-        self._storage_module._clamp_too_low(delta_, indx_too_low, self._dispatch_state)
-
     def _compute_storage(self, action_storage_power):
         return self._storage_module.compute(action_storage_power, self._dispatch_state)
-
-    def _compute_max_ramp_this_step(self, new_p):
-        """
-        compute the total "power" i can add or remove this step that takes into account
-        generators ramps and Pmin / Pmax
-
-        new_p: array of the (temporary) new production in the chronics that should happen
-        """
-        return self._feasibility_guard._compute_ramp_budget(new_p, self._dispatch_state)
-
-    def _aux_update_curtail_env_act(self, new_p):
-        self._curtailment_module._update_env_action(new_p)
-
-    def _aux_update_curtailment_act(self, action):
-        self._curtailment_module._update_limits(action, self._dispatch_state)
-
-    def _aux_compute_new_p_curtailment(self, new_p, curtailment_vect):
-        """modifies the new_p argument !!!!"""
-        return self._curtailment_module._apply_limits(new_p, curtailment_vect)
 
     def _aux_handle_curtailment_without_limit(self, action, new_p):
         """modifies the new_p argument !!!! (but not the action)"""
         return self._curtailment_module.compute(action, new_p, self._dispatch_state)
-
-    def _aux_readjust_curtailment_after_limiting(
-        self, total_curtailment, new_p_th, new_p
-    ):
-        self._feasibility_guard._readjust_curtailment(
-            total_curtailment, new_p_th, new_p, self._dispatch_state
-        )
-
-    def _aux_readjust_storage_after_limiting(self, total_storage):
-        self._feasibility_guard._readjust_storage(total_storage, self._dispatch_state)
-
-    def _aux_limit_curtail_storage_if_needed(self, new_p, new_p_th, gen_curtailed):
-        storage_result = StorageResult(
-            amount_storage_mw=self._amount_storage,
-            storage_power=self._storage_power,
-        )
-        curtail_result = CurtailmentResult(
-            sum_curtailment_mw=self._sum_curtailment_mw,
-            gen_curtailed=gen_curtailed,
-        )
-        return self._feasibility_guard.check_and_clamp(
-            storage_result,
-            curtail_result,
-            new_p,
-            new_p_th,
-            self._dispatch_state,
-        )
 
     def _aux_handle_act_inj(self, action: BaseAction):
         for inj_key in ["load_p", "prod_p", "load_q"]:
@@ -2619,9 +2699,6 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                           action: BaseAction,
                           new_p: np.ndarray,
                           new_p_th: np.ndarray,
-                          storage_result: StorageResult,
-                          curtail_result: CurtailmentResult,
-                          detach_result: DetachmentResult,
                           except_: List[Exception],
                           powerline_status):
         cls = type(self)
@@ -2664,9 +2741,8 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self.redispatching_unit_commitment_availble
             and self._parameters.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION
         ):
+            # limit the curtailment / storage in case of infeasible redispatching
             self._feasibility_guard.check_and_clamp(
-                storage_result,
-                curtail_result,
                 new_p,
                 new_p_th,
                 self._dispatch_state,
@@ -2675,16 +2751,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._storage_power_prev[:] = self._storage_power
         # case where the action modifies load (TODO maybe make a different env for that...)
         self._aux_handle_act_inj(action)
-        constraints = RedispatchConstraints.from_results(
-            storage_result,
-            curtail_result,
-            detach_result,
-            new_p,
-            self._dispatch_state,
-            self,
-        )
-        except_tmp = self._redispatch_solver.solve(constraints, self._dispatch_state)
-        valid_disp = except_tmp is None
+        valid_disp, except_tmp = self._make_redisp(already_modified_gen, new_p)
 
         if not valid_disp or except_tmp is not None:
             # game over case (divergence of the scipy routine to compute redispatching)
@@ -3228,16 +3295,15 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             self._feed_data_for_detachment(new_p_th)  # should be called before _axu_apply_detachment
             
             # storage unit
-            storage_result = StorageResult()
             if cls.n_storage > 0:
                 # limiting the storage units is done in `_aux_apply_redisp`
                 # this only ensure the Emin / Emax and all the actions
-                storage_result = self._compute_storage(action_storage_power)
+                self._compute_storage(action_storage_power)
 
             # curtailment (does not attempt to "limit" the curtailment to make sure
             # it is feasible)
             self._gen_before_curtailment[cls.gen_renewable] = new_p[cls.gen_renewable]
-            curtail_result = self._aux_handle_curtailment_without_limit(action, new_p)
+            self._aux_handle_curtailment_without_limit(action, new_p)
             
             # TODO detachment
             self._aux_update_backend_action(action, action_storage_power, init_disp)
@@ -3251,14 +3317,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 # and it is also in this function that the limiting of the curtailment / storage actions
                 # is perform to make the state "feasible"
                 res_disp = self._aux_apply_redisp(
-                    action,
-                    new_p,
-                    new_p_th,
-                    storage_result,
-                    curtail_result,
-                    detach_result,
-                    except_,
-                    powerline_status,
+                    action, new_p, new_p_th, except_, powerline_status
                 )
                 action, failed_redisp, is_illegal_reco, is_done = res_disp
             else:
@@ -3671,11 +3730,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             "_redispatch_solver",
             "_dispatch_state",
         ]:
+            if isinstance(getattr(type(self), attr_nm, None), property):
+                # stored in self._dispatch_state, released with it
+                continue
             if hasattr(self, attr_nm):
-                try:
-                    delattr(self, attr_nm)
-                except AttributeError:
-                    pass
+                delattr(self, attr_nm)
             setattr(self, attr_nm, None)
         
         if self._do_not_erase_local_dir_cls:
