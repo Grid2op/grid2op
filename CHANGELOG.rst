@@ -115,6 +115,9 @@ Native multi agents support:
 - [FIXED] `obs.simulate` after a load has been detached: the environment used by `simulate`
   restored the previous detached power from the wrong key and did not know the power of the
   detached loads, so it could predict a dispatch that no longer compensated them
+- [FIXED] `obs.get_forecast_env()` raised an `ImpossibleRedispatching` error when an element was
+  detached in the observation (its first internal step did not restore the state of the
+  observation)
 - [FIXED] `LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION` did not take the detached elements into
   account (the limitation and the dispatch could disagree on whether a step is feasible) and could
   reverse the storage units / curtailment instead of only cancelling them

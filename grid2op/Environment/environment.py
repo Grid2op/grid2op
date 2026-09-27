@@ -510,6 +510,11 @@ class Environment(BaseEnv):
         self._no_overflow_disconnection = True
         self._last_obs = None
         self._called_from_reset = True
+        if self._init_obs is not None:
+            # the backend is a copy of the one of the observation (it can have detached
+            # elements for example), the state of the environment (dispatch, storage...)
+            # must match it before this first step, as it is done in `reset`
+            self._reset_to_orig_state(self._init_obs)
         *_, fail_to_start, info = self.step(do_nothing)
         self._no_overflow_disconnection = _no_overflow_disconnection
         

@@ -241,6 +241,22 @@ class TestSimulateAfterDetachment(unittest.TestCase):
         assert abs(sim_obs.actual_dispatch.sum() - obs.actual_dispatch.sum()) <= 0.5
 
 
+    def test_forecast_env(self):
+        # the forecast env used to start its first (internal) step with the backend of the
+        # observation (load detached) but without the state of the dispatch
+        for_env = self.obs.get_forecast_env()
+        try:
+            for_obs = for_env.reset()
+            assert for_obs.load_detached[self.load_id]
+            assert abs(for_obs.actual_dispatch.sum() - self.obs.actual_dispatch.sum()) <= 1e-3
+            for_obs, _, for_done, for_info = for_env.step(for_env.action_space({}))
+            assert not for_done, for_info["exception"]
+        finally:
+            for_env.close()
+        obs, _, done, info = self.env.step(self.env.action_space({}))
+        assert not done, info["exception"]
+        assert abs(for_obs.actual_dispatch.sum() - obs.actual_dispatch.sum()) <= 0.5
+
 class TestLimitStorageWithDetachment(unittest.TestCase):
     """With LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION, the power of the detached elements
     must be taken into account when limiting the storage units, and the storage units can
