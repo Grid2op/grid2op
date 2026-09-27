@@ -112,6 +112,14 @@ Native multi agents support:
 - [FIXED] the class attribute `gen_redispatchable` was modified (detached generators were
   removed from it) when a dispatch was infeasible with generators detached and
   `IGNORE_MIN_UP_DOWN_TIME` and `ALLOW_DISPATCH_GEN_SWITCH_OFF` set
+- [FIXED] `obs.simulate` after a load has been detached: the environment used by `simulate`
+  restored the previous detached power from the wrong key and did not know the power of the
+  detached loads, so it could predict a dispatch that no longer compensated them
+- [FIXED] `LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION` did not take the detached elements into
+  account (the limitation and the dispatch could disagree on whether a step is feasible) and could
+  reverse the storage units / curtailment instead of only cancelling them
+- [FIXED] the injections of an action were overridden by the time series on grids without
+  redispatching data and without storage units
 - [ADDED] the solver used to compute the dispatch of the generators can be customized with
   the `redispatch_solver` key word argument of `grid2op.make` (or in the `config.py`), see
   `grid2op.Environment.dispatch.BaseRedispatchSolver`

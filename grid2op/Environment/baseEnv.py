@@ -3321,6 +3321,9 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 )
                 action, failed_redisp, is_illegal_reco, is_done = res_disp
             else:
+                # the injections of the action override the ones of the time series
+                # (done in `_aux_apply_redisp` in the other case)
+                self._aux_handle_act_inj(action)
                 # just check generator up and down times
                 gen_up_before = np.abs(self._gen_activeprod_t) > 1e-7
                 except_tmp = self._handle_updown_times(gen_up_before, self._actual_dispatch)
@@ -4375,7 +4378,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._sum_curtailment_mw = obs._env_internal_params["_sum_curtailment_mw"]
         self._sum_curtailment_mw_prev = obs._env_internal_params["_sum_curtailment_mw_prev"]
         self._detached_elements_mw = obs._env_internal_params["_detached_elements_mw"]
-        self._detached_elements_mw_prev = obs._env_internal_params["_detached_elements_mw"]
+        self._detached_elements_mw_prev = obs._env_internal_params["_detached_elements_mw_prev"]
 
         # line status
         self._line_status[:] = obs._env_internal_params["_line_status_env"] == 1

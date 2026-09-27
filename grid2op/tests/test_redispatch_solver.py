@@ -6,6 +6,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Grid2Op, Grid2Op a testbed platform to model sequential decision making in power systems.
 
+import os
+import shutil
+import tempfile
 import unittest
 import warnings
 
@@ -188,6 +191,139 @@ class TestGenRedispatchableNotModified(unittest.TestCase):
         assert any(isinstance(exc, ImpossibleRedispatching) for exc in info["exception"])
         assert (cls.gen_redispatchable == gen_redisp_before).all()
         assert (type(self.env.action_space).gen_redispatchable == gen_redisp_before).all()
+
+
+class TestSimulateAfterDetachment(unittest.TestCase):
+    """obs.simulate must keep compensating a load detached at the previous step (the
+    previous detached power was restored from the wrong key and the power of the detached
+    loads was not known by the environment used by simulate)."""
+    def setUp(self) -> None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    test=True,
+                                    allow_detachment=True,
+                                    action_class=CompleteAction,
+                                    _add_to_name=type(self).__name__)
+        self.load_id = 3
+        self.env.reset(seed=0, options={"time serie id": 1})
+        self.obs, _, done, info = self.env.step(self.env.action_space(
+            {"set_bus": {"loads_id": [(self.load_id, -1)]}}
+        ))
+        assert not done, info["exception"]
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.env.close()
+        return super().tearDown()
+
+    def test_state_restored(self):
+        # one step after the detachment the two values differ
+        obs, _, done, info = self.env.step(self.env.action_space({}))
+        assert not done, info["exception"]
+        params = obs._env_internal_params
+        assert abs(params["_detached_elements_mw"] - params["_detached_elements_mw_prev"]) >= 1.
+        obs_env = self.env.observation_space.obs_env
+        obs_env._reset_to_orig_state(obs)
+        assert obs_env._detached_elements_mw == params["_detached_elements_mw"]
+        assert obs_env._detached_elements_mw_prev == params["_detached_elements_mw_prev"]
+
+    def test_simulate(self):
+        sim_obs, _, sim_done, sim_info = self.obs.simulate(self.env.action_space({}))
+        assert not sim_done, sim_info["exception"]
+        assert sim_obs.load_detached[self.load_id]
+        # the load is still detached, the generators keep compensating it
+        # (up to the variation of its forecast)
+        assert abs(sim_obs.load_p_detached[self.load_id] - self.obs.load_p_detached[self.load_id]) <= 0.5
+        assert abs(sim_obs.actual_dispatch.sum() - self.obs.actual_dispatch.sum()) <= 0.5
+        obs, _, done, info = self.env.step(self.env.action_space({}))
+        assert not done, info["exception"]
+        assert abs(sim_obs.actual_dispatch.sum() - obs.actual_dispatch.sum()) <= 0.5
+
+
+class TestLimitStorageWithDetachment(unittest.TestCase):
+    """With LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION, the power of the detached elements
+    must be taken into account when limiting the storage units, and the storage units can
+    only be cancelled, not used to compensate the detachment."""
+    def setUp(self) -> None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    test=True,
+                                    allow_detachment=True,
+                                    action_class=CompleteAction,
+                                    _add_to_name=type(self).__name__)
+        params = self.env.parameters
+        params.LIMIT_INFEASIBLE_CURTAILMENT_STORAGE_ACTION = True
+        self.env.change_parameters(params)
+        self.obs = self.env.reset(seed=0, options={"time serie id": 1})
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.env.close()
+        return super().tearDown()
+
+    def _act(self, load_id):
+        # discharging the storage units at full power, this is feasible alone
+        return self.env.action_space({"set_storage": [(0, -5.), (1, -10.)],
+                                      "set_bus": {"loads_id": [(load_id, -1)]}})
+
+    def test_storage_limited(self):
+        # detaching load 0 alone is feasible, but not together with the storage units
+        obs, _, done, info = self.env.step(self._act(0))
+        assert not done, info["exception"]
+        assert obs.load_detached[0]
+        # the storage units have been limited, not cancelled nor reversed
+        assert (obs.storage_power < 0.).all()
+        assert (obs.storage_power > [-5., -10.]).all()
+        # and the storage units really produce what the dispatch took into account
+        losses = obs.gen_p.sum() - obs.load_p.sum() - obs.storage_power.sum()
+        assert 0. < losses < 10., f"{losses}"
+        cls = type(self.env)
+        coeff = self.env.delta_time_seconds / 3600.
+        expected = self.obs.storage_charge + obs.storage_power * coeff / cls.storage_discharging_efficiency
+        if self.env.parameters.ACTIVATE_STORAGE_LOSS:
+            expected -= cls.storage_loss * coeff
+        assert np.allclose(obs.storage_charge, expected, atol=1e-3), f"{obs.storage_charge} vs {expected}"
+
+    def test_storage_does_not_compensate_detachment(self):
+        # detaching load 2 is infeasible alone, cancelling the storage units cannot help
+        obs, _, done, info = self.env.step(self._act(2))
+        assert done
+        assert any(isinstance(exc, ImpossibleRedispatching) for exc in info["exception"])
+
+
+class TestInjectionWithoutRedispatchData(unittest.TestCase):
+    """The injections of the action override the time series even when the grid has no
+    redispatching data and no storage unit."""
+    def setUp(self) -> None:
+        self.tmp_dir = tempfile.mkdtemp()
+        env_path = os.path.join(self.tmp_dir, "case5_no_redisp")
+        src = os.path.join(os.path.dirname(grid2op.__file__), "data", "rte_case5_example")
+        shutil.copytree(src, env_path,
+                        ignore=shutil.ignore_patterns("prods_charac.csv", "_grid2op_classes", "__pycache__"))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make(env_path,
+                                    test=True,
+                                    action_class=CompleteAction,
+                                    _add_to_name=type(self).__name__)
+        assert not type(self.env).redispatching_unit_commitment_availble
+        assert type(self.env).n_storage == 0
+        self.obs = self.env.reset(seed=0, options={"time serie id": 0})
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.env.close()
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+        return super().tearDown()
+
+    def test_load_p_injection(self):
+        load_p = self.obs.load_p.copy()
+        load_p[0] += 1.
+        obs, _, done, info = self.env.step(self.env.action_space({"injection": {"load_p": load_p}}))
+        assert not done, info["exception"]
+        assert abs(obs.load_p[0] - load_p[0]) <= 1e-4, f"{obs.load_p[0]} vs {load_p[0]}"
 
 
 if __name__ == "__main__":

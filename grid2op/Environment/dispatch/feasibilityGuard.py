@@ -22,22 +22,6 @@ class FeasibilityGuard:
     def __init__(self, env) -> None:
         self.env = env
 
-    def _compute_ramp_budget(self, new_p, state: RedispatchState):
-        th_max = np.minimum(
-            state.gen_activeprod_t_redisp[self.env.gen_redispatchable]
-            + self.env.gen_max_ramp_up[self.env.gen_redispatchable],
-            self.env.gen_pmax[self.env.gen_redispatchable],
-        )
-        th_min = np.maximum(
-            state.gen_activeprod_t_redisp[self.env.gen_redispatchable]
-            - self.env.gen_max_ramp_down[self.env.gen_redispatchable],
-            self.env.gen_pmin[self.env.gen_redispatchable],
-        )
-
-        max_total_up = (th_max - new_p[self.env.gen_redispatchable]).sum()
-        max_total_down = (th_min - new_p[self.env.gen_redispatchable]).sum()
-        return max_total_down, max_total_up
-
     def _readjust_curtailment(
         self,
         total_curtailment,
@@ -65,7 +49,9 @@ class FeasibilityGuard:
     def _readjust_storage(self, total_storage, state: RedispatchState) -> None:
         new_act_storage = 1.0 * state.storage_power
         sum_this_step = new_act_storage.sum()
-        if abs(total_storage) < abs(sum_this_step):
+        if (abs(sum_this_step) > self.env._tol_poly
+            and abs(total_storage) <= abs(sum_this_step) + self.env._tol_poly):
+            # (this includes cancelling the current action completely)
             modif_storage = new_act_storage * total_storage / sum_this_step
         else:
             new_act_storage = 1.0 * state.storage_power_prev
@@ -78,8 +64,13 @@ class FeasibilityGuard:
         coeff_p_to_E = self.env.delta_time_seconds / 3600.0
         state.storage_power -= modif_storage
 
-        is_discharging = state.storage_power < 0.0
-        is_charging = state.storage_power > 0.0
+        # the efficiency depends on the direction of the resulting storage power, or on the
+        # one of the cancelled action when the action is cancelled completely
+        direction = 1.0 * state.storage_power
+        cancelled = np.abs(direction) <= 1e-7
+        direction[cancelled] = modif_storage[cancelled]
+        is_discharging = direction < 0.0
+        is_charging = direction > 0.0
         modif_storage[is_discharging] /= type(self.env).storage_discharging_efficiency[
             is_discharging
         ]
@@ -91,13 +82,28 @@ class FeasibilityGuard:
         state.amount_storage -= total_storage
         state.amount_storage_prev -= total_storage
 
+    @staticmethod
+    def _clamp_to_adjustable(too_much, total_storage_curtail):
+        """Storage and curtailment can at most be cancelled, not reversed: what they
+        cannot absorb is left to the solver (which then reports the infeasibility)."""
+        if np.sign(too_much) != np.sign(total_storage_curtail):
+            # limiting them would make the dispatch even harder
+            return dt_float(0.0)
+        if abs(too_much) > abs(total_storage_curtail):
+            return dt_float(total_storage_curtail)
+        return too_much
+
     def check_and_clamp(
         self,
         new_p,
         new_p_th,
         state: RedispatchState,
     ) -> GuardInfo:
-        gen_redisp = self.env.gen_redispatchable
+        cls = type(self.env)
+        # same generators as the ones the solver can use: the detached ones cannot move
+        gen_redisp = cls.gen_redispatchable.copy()
+        if cls.detachment_is_allowed:
+            gen_redisp[self.env._backend_action.get_gen_detached()] = False
         normal_increase = new_p - (
             state.gen_activeprod_t_redisp - state.actual_dispatch
         )
@@ -107,7 +113,14 @@ class FeasibilityGuard:
         p_max_up = self.env.gen_pmax[gen_redisp] - state.gen_activeprod_t_redisp[gen_redisp]
         avail_up = np.minimum(p_max_up, self.env.gen_max_ramp_up[gen_redisp])
 
-        sum_move = normal_increase.sum() + state.amount_storage - state.sum_curtailment_mw
+        # the power of the detached elements also has to be compensated by the generators
+        # (as in the solver) but it cannot be limited here, only storage and curtailment can
+        sum_move = (
+            normal_increase.sum()
+            + state.amount_storage
+            - state.sum_curtailment_mw
+            + state.detached_elements_mw
+        )
         total_storage_curtail = state.amount_storage - state.sum_curtailment_mw
         update_env_act = False
         total_curtailment = dt_float(0.0)
@@ -117,9 +130,11 @@ class FeasibilityGuard:
             too_much = 0.0
             if sum_move > avail_up.sum():
                 too_much = dt_float(sum_move - avail_up.sum() + self.env._tol_poly)
+                too_much = self._clamp_to_adjustable(too_much, total_storage_curtail)
                 state.limited_before = too_much
             elif sum_move < avail_down.sum():
                 too_much = dt_float(sum_move - avail_down.sum() - self.env._tol_poly)
+                too_much = self._clamp_to_adjustable(too_much, total_storage_curtail)
                 state.limited_before = too_much
             elif np.abs(state.limited_before) >= self.env._tol_poly:
                 update_env_act = True
