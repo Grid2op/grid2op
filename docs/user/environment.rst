@@ -708,14 +708,20 @@ inheriting from :class:`grid2op.Environment.dispatch.BaseRedispatchSolver` and i
 .. code-block:: python
 
     import grid2op
-    from grid2op.Environment.dispatch import BaseRedispatchSolver
+    from grid2op.Environment.dispatch import BaseRedispatchSolver, RedispatchResult
+    from grid2op.Exceptions import ImpossibleRedispatching
 
     class MySolver(BaseRedispatchSolver):
         def solve(self, constraints, state):
             # constraints: grid2op.Environment.dispatch.RedispatchConstraints
-            # state: grid2op.Environment.dispatch.RedispatchState
-            # update state.actual_dispatch in place, then
-            return None  # or the exception explaining why no dispatch could be found
+            # state: grid2op.Environment.dispatch.RedispatchState (read only)
+            # the generators must produce `constraints.power_to_compensate_mw` more than
+            # the time series (positive: more production)
+            new_dispatch = state.actual_dispatch.copy()
+            # ... compute the new dispatch
+            return RedispatchResult(success=True, actual_dispatch=new_dispatch)
+            # or, if no dispatch can be found (this is a game over):
+            # return RedispatchResult.failed(ImpossibleRedispatching("..."), unserved_mw=...)
 
     env = grid2op.make("l2rpn_case14_sandbox", redispatch_solver=MySolver)
 
@@ -726,7 +732,7 @@ environment, `env.copy()`, the runner...). It can also be set in the `config.py`
 with the key `redispatch_solver`.
 
 .. automodule:: grid2op.Environment.dispatch
-    :members: BaseRedispatchSolver, DefaultRedispatchSolver, RedispatchConstraints, RedispatchState
+    :members: BaseRedispatchSolver, DefaultRedispatchSolver, RedispatchConstraints, RedispatchResult, RedispatchState, dispatch_contributions
 
 Detailed Documentation by class
 --------------------------------

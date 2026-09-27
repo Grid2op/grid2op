@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 import numpy as np
 from scipy.optimize import LinearConstraint, minimize
@@ -16,7 +16,7 @@ from scipy.optimize import LinearConstraint, minimize
 from grid2op.Exceptions import ImpossibleRedispatching
 
 from .baseRedispatchSolver import BaseRedispatchSolver
-from .dispatchTypes import RedispatchConstraints, RedispatchState
+from .dispatchTypes import RedispatchConstraints, RedispatchResult, RedispatchState
 
 
 class _ScaledSolverInput(NamedTuple):
@@ -94,12 +94,12 @@ class DefaultRedispatchSolver(BaseRedispatchSolver):
         self,
         constraints: RedispatchConstraints,
         state: RedispatchState,
-    ) -> Optional[Exception]:
-        gen_participating, incr_in_chronics, except_ = self._prepare_solver_inputs(
+    ) -> RedispatchResult:
+        gen_participating, incr_in_chronics, failure = self._prepare_solver_inputs(
             constraints, state
         )
-        if except_ is not None:
-            return except_
+        if failure is not None:
+            return failure
 
         this_dt_float = self._dt_float
         scaled = self._scale_solver_input(constraints, state, gen_participating)
@@ -114,15 +114,11 @@ class DefaultRedispatchSolver(BaseRedispatchSolver):
 
         # add the "sum to 0"
         mat_sum_0_no_turn_on = np.ones((1, nb_dispatchable), dtype=this_dt_float)
-        # this is where the storage is taken into account
-        # storages are "load convention" this means that i need to sum the amount of production to sum of storage
-        # hence the "+ amount_storage_mw" below
-        # sum_curtailment_mw is "generator convention" hence the "-" there
+        # this is where the storage units, the curtailment, the detached elements... are
+        # taken into account: the dispatch must produce what they add or remove
         const_sum_0_no_turn_on = (
             np.zeros(1, dtype=this_dt_float)
-            + constraints.amount_storage_mw
-            - constraints.sum_curtailment_mw
-            + constraints.detached_mw
+            + constraints.power_to_compensate_mw
         )
 
         # gen increase in the chronics
@@ -228,9 +224,10 @@ class DefaultRedispatchSolver(BaseRedispatchSolver):
             },
             jac=jac,
         )
+        new_dispatch = state.actual_dispatch.copy()
         if res.success:
-            state.actual_dispatch[gen_participating] += res.x * scale_x
-            return None
+            new_dispatch[gen_participating] += res.x * scale_x
+            return RedispatchResult(success=True, actual_dispatch=new_dispatch)
 
         # check if constraints are "approximately" met
         mat_const = np.concatenate((mat_sum_0_no_turn_on, mat_pmin_max_ramps))
@@ -245,11 +242,12 @@ class DefaultRedispatchSolver(BaseRedispatchSolver):
         ok_up = np.all(vals - ups <= constraints.tol)
         if ok_up and ok_down:
             # it's ok i can tolerate "small" perturbations
-            state.actual_dispatch[gen_participating] += res.x * scale_x
-            return None
+            new_dispatch[gen_participating] += res.x * scale_x
+            return RedispatchResult(success=True, actual_dispatch=new_dispatch)
 
         error_dispatch = (
             "Redispatching automaton terminated with error (no more information available "
             'at this point):\n"{}"'.format(res.message)
         )
-        return ImpossibleRedispatching(error_dispatch)
+        # the optimizer does not tell how much could not be dispatched
+        return RedispatchResult.failed(ImpossibleRedispatching(error_dispatch))

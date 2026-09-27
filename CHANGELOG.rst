@@ -125,7 +125,10 @@ Native multi agents support:
   redispatching data and without storage units
 - [ADDED] the solver used to compute the dispatch of the generators can be customized with
   the `redispatch_solver` key word argument of `grid2op.make` (or in the `config.py`), see
-  `grid2op.Environment.dispatch.BaseRedispatchSolver`
+  `grid2op.Environment.dispatch.BaseRedispatchSolver`. A solver receives the total power
+  the generators must compensate (`RedispatchConstraints.power_to_compensate_mw`) and returns
+  a `RedispatchResult` (new dispatch, or the reason of the failure and the power it could
+  not compensate) without modifying the state of the environment
 - [IMPROVED] handling of redispatching, storage units, curtailment and detachment as separate
   modules (grid2op/Environment/dispatch)
 

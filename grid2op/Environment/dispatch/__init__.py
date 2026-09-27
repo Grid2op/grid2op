@@ -15,8 +15,11 @@ from .dispatchTypes import (
     DetachmentResult,
     GuardInfo,
     RedispatchConstraints,
+    RedispatchResult,
     RedispatchState,
     StorageResult,
+    dispatch_contributions,
+    total_power_to_compensate,
 )
 from .feasibilityGuard import FeasibilityGuard
 from .storageModule import StorageModule
@@ -31,7 +34,10 @@ __all__ = [
     "FeasibilityGuard",
     "GuardInfo",
     "RedispatchConstraints",
+    "RedispatchResult",
     "RedispatchState",
     "StorageModule",
     "StorageResult",
+    "dispatch_contributions",
+    "total_power_to_compensate",
 ]

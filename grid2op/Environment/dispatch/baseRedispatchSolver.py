@@ -16,7 +16,7 @@ import numpy as np
 
 from grid2op.Exceptions import ImpossibleRedispatching
 
-from .dispatchTypes import RedispatchConstraints, RedispatchState
+from .dispatchTypes import RedispatchConstraints, RedispatchResult, RedispatchState
 
 DETAILED_REDISP_ERR_MSG = (
     "\nThis is an attempt to explain why the dispatch did not succeed and caused a game over.\n"
@@ -41,8 +41,9 @@ class BaseRedispatchSolver(ABC):
     """Base class of the redispatch solvers.
 
     A solver computes, at each step, the new ``actual_dispatch`` of the generators so that
-    the storage units, the curtailment and the detached elements are compensated while
-    pmin / pmax and the ramps are respected.
+    they produce ``constraints.power_to_compensate_mw`` more than the time series (to
+    compensate the storage units, the curtailment, the detached elements...) while pmin /
+    pmax and the ramps are respected.
 
     Only :func:`BaseRedispatchSolver.solve` has to be implemented. Everything else
     (tracking the target dispatch, checking that a redispatching action is valid, the
@@ -59,12 +60,15 @@ class BaseRedispatchSolver(ABC):
     .. code-block:: python
 
         import grid2op
-        from grid2op.Environment.dispatch import BaseRedispatchSolver
+        from grid2op.Environment.dispatch import BaseRedispatchSolver, RedispatchResult
 
         class ProportionalSolver(BaseRedispatchSolver):
             def solve(self, constraints, state):
-                # ... compute the new dispatch and write it in state.actual_dispatch
-                return None  # or an exception if no dispatch can be found
+                new_dispatch = 1.0 * state.actual_dispatch
+                # ... compute the new dispatch
+                return RedispatchResult(success=True, actual_dispatch=new_dispatch)
+                # or, if no dispatch can be found:
+                # return RedispatchResult.failed(ImpossibleRedispatching("..."), unserved_mw=...)
 
         env = grid2op.make("l2rpn_case14_sandbox", redispatch_solver=ProportionalSolver)
 
@@ -93,15 +97,16 @@ class BaseRedispatchSolver(ABC):
         self,
         constraints: RedispatchConstraints,
         state: RedispatchState,
-    ) -> Optional[Exception]:
+    ) -> RedispatchResult:
         """Compute the new dispatch.
 
-        It should update ``state.actual_dispatch`` in place, and nothing else.
+        It must not modify `state` (nor `constraints`): the environment applies the
+        dispatch of the result if it succeeded.
 
         Returns
         -------
-        ``None`` if a dispatch has been found, otherwise the exception explaining why
-        (it causes a game over).
+        The :class:`RedispatchResult`. If it did not succeed, its exception causes a game
+        over and its `unserved_mw` tells how much power the generators could not compensate.
         """
 
     def reset(self) -> None:
@@ -113,7 +118,7 @@ class BaseRedispatchSolver(ABC):
         self,
         constraints: RedispatchConstraints,
         state: RedispatchState,
-    ) -> Tuple[np.ndarray, np.ndarray, Optional[Exception]]:
+    ) -> Tuple[np.ndarray, np.ndarray, Optional[RedispatchResult]]:
         """Compute the generators taking part in the dispatch and how much the time
         series make them move, and check that the problem is feasible.
 
@@ -123,26 +128,26 @@ class BaseRedispatchSolver(ABC):
             Mask of the generators that the solver can modify
         incr_in_chronics:
             Variation of the production of each generator due to the time series
-        except_:
-            ``None`` if the problem is feasible, otherwise the exception to return
+        failure:
+            ``None`` if the problem is feasible, otherwise the (failed) result to return
         """
         new_p = constraints.new_p
         gen_participating = constraints.gen_participating.copy()
         incr_in_chronics = new_p - (state.gen_activeprod_t_redisp - state.actual_dispatch)
 
         # check if the constraints are violated
-        except_ = self._check_feasibility(constraints, state, gen_participating, incr_in_chronics)
-        if except_ is None:
+        failure = self._check_feasibility(constraints, state, gen_participating, incr_in_chronics)
+        if failure is None:
             return gen_participating, incr_in_chronics, None
         if not constraints.can_use_all_redispatchable:
-            return gen_participating, incr_in_chronics, except_
+            return gen_participating, incr_in_chronics, failure
 
         # try to force the turn on of turned off generators (if parameters allow it)
         gen_participating_tmp = constraints.redispatchable_mask.copy()
         gen_participating_tmp[constraints.gen_detached] = False
-        except_tmp = self._check_feasibility(constraints, state, gen_participating_tmp, incr_in_chronics)
-        if except_tmp is not None:
-            return gen_participating, incr_in_chronics, except_tmp
+        failure_tmp = self._check_feasibility(constraints, state, gen_participating_tmp, incr_in_chronics)
+        if failure_tmp is not None:
+            return gen_participating, incr_in_chronics, failure_tmp
         # I can "save" the situation by turning on all generators, I do it
         return gen_participating_tmp, incr_in_chronics, None
 
@@ -152,7 +157,7 @@ class BaseRedispatchSolver(ABC):
         state: RedispatchState,
         gen_participating: np.ndarray,
         incr_in_chronics: np.ndarray,
-    ) -> Optional[Exception]:
+    ) -> Optional[RedispatchResult]:
         ## total available "juice" to go down (incl ramp and pmin / pmax)
         p_min_down = (
             constraints.pmin[gen_participating]
@@ -176,15 +181,10 @@ class BaseRedispatchSolver(ABC):
         avail_down: np.ndarray,
         avail_up: np.ndarray,
         state: RedispatchState,
-    ) -> Optional[Exception]:
+    ) -> Optional[RedispatchResult]:
         """This function is an attempt to give more detailed log by detecting infeasible dispatch"""
-        except_ = None
-        sum_move = (
-            incr_in_chronics.sum()
-            + constraints.amount_storage_mw
-            - constraints.sum_curtailment_mw
-            + constraints.detached_mw
-        )
+        # what the generators have to produce more (time series + storage, curtailment...)
+        sum_move = incr_in_chronics.sum() + constraints.power_to_compensate_mw
         avail_down_sum = avail_down.sum()
         avail_up_sum = avail_up.sum()
         redisp = constraints.redispatchable_mask
@@ -204,7 +204,8 @@ class BaseRedispatchSolver(ABC):
                 pmax="pmax",
                 max_ramp_up="max_ramp_up",
             )
-            except_ = ImpossibleRedispatching(msg)
+            return RedispatchResult.failed(ImpossibleRedispatching(msg),
+                                           unserved_mw=float(sum_move - avail_up_sum))
         elif sum_move < avail_down_sum:
             # infeasible because not enough is asked
             msg = DETAILED_REDISP_ERR_MSG.format(
@@ -220,5 +221,6 @@ class BaseRedispatchSolver(ABC):
                 pmax="pmin",
                 max_ramp_up="max_ramp_down",
             )
-            except_ = ImpossibleRedispatching(msg)
-        return except_
+            return RedispatchResult.failed(ImpossibleRedispatching(msg),
+                                           unserved_mw=float(sum_move - avail_down_sum))
+        return None

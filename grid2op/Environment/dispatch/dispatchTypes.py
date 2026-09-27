@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import Dict, Mapping, Optional, TYPE_CHECKING
 
 import numpy as np
 
@@ -95,6 +95,53 @@ class RedispatchState:
         )
 
 
+def dispatch_contributions(state: RedispatchState) -> Dict[str, float]:
+    """Power (in MW) that the generators have to produce in addition to the time series,
+    for each source. Positive means the generators must produce more.
+
+    This is the only place where a new source (load shedding, deferred loads...) has to be
+    declared for the dispatch to take it into account.
+    """
+    return {
+        # storage units are in load convention: when they absorb, the generators produce more
+        "storage": float(state.amount_storage),
+        # curtailment removes renewable production: the other generators produce more
+        "curtailment": -float(state.sum_curtailment_mw),
+        # detached loads (resp. generators) make the other generators produce less (resp. more)
+        "detachment": float(state.detached_elements_mw),
+    }
+
+
+def total_power_to_compensate(contributions: Mapping[str, float]) -> float:
+    """Sum of the contributions (in MW)."""
+    res = 0.0
+    for val in contributions.values():
+        res += val
+    return res
+
+
+@dataclass
+class RedispatchResult:
+    """What a redispatch solver returns.
+
+    The solver does not modify the state of the environment: if the dispatch succeeds the
+    environment sets its ``actual_dispatch`` to the one of the result.
+    """
+    #: whether a dispatch meeting all the constraints has been found
+    success: bool
+    #: the new dispatch of all the generators (in MW, one per generator), only when `success`
+    actual_dispatch: Optional[np.ndarray] = None
+    #: why no dispatch could be found, only when not `success`
+    exception: Optional[Exception] = None
+    #: the power (in MW, same sign convention as `power_to_compensate_mw`) that the generators
+    #: cannot compensate. 0. on success, ``nan`` when the solver cannot tell.
+    unserved_mw: float = 0.0
+
+    @classmethod
+    def failed(cls, exception: Exception, unserved_mw: float = float("nan")) -> "RedispatchResult":
+        return cls(success=False, exception=exception, unserved_mw=unserved_mw)
+
+
 @dataclass(frozen=True)
 class RedispatchConstraints:
     """Everything a redispatch solver needs to know about the current step.
@@ -103,9 +150,9 @@ class RedispatchConstraints:
     have one entry per generator (``n_gen``), the powers are in MW.
 
     The solver must find the change of ``actual_dispatch`` for the participating generators
-    such that its sum equals ``amount_storage_mw - sum_curtailment_mw + detached_mw`` (the
-    energy the generators have to absorb because of the storage units, the curtailment and
-    the detached elements) while respecting pmin / pmax and the ramps.
+    such that its sum equals ``power_to_compensate_mw`` (the power the generators have to
+    produce in addition to the time series because of the storage units, the curtailment,
+    the detached elements...) while respecting pmin / pmax and the ramps.
     """
     #: productions (in MW) of the generators given by the time series, after curtailment and detachment
     new_p: np.ndarray
@@ -114,12 +161,13 @@ class RedispatchConstraints:
     gen_participating: np.ndarray
     #: generators detached by the agent this step (all ``False`` if detachment is not allowed)
     gen_detached: np.ndarray
-    #: power (in MW) absorbed by the storage units this step, load convention
-    amount_storage_mw: float
-    #: power (in MW) removed by the curtailment this step, generator convention
-    sum_curtailment_mw: float
-    #: power (in MW) of the detached elements that the generators have to compensate
-    detached_mw: float
+    #: power (in MW) the generators have to produce in addition to the time series, for all
+    #: the sources together (positive: the generators must produce more). This is the only
+    #: value a solver needs about the balance, it is the sum of `contributions`
+    power_to_compensate_mw: float
+    #: the same power, split by source ("storage", "curtailment", "detachment"), with the same
+    #: sign convention. For information only (error messages, logs...)
+    contributions: Mapping[str, float]
     pmin: np.ndarray
     pmax: np.ndarray
     ramp_up: np.ndarray
@@ -155,13 +203,13 @@ class RedispatchConstraints:
         gen_participating[~cls_env.gen_redispatchable] = False
         gen_participating[gen_detached] = False
         params = env._parameters
+        contributions = dispatch_contributions(state)
         return cls(
             new_p=new_p,
             gen_participating=gen_participating,
             gen_detached=gen_detached,
-            amount_storage_mw=state.amount_storage,
-            sum_curtailment_mw=state.sum_curtailment_mw,
-            detached_mw=state.detached_elements_mw,
+            power_to_compensate_mw=total_power_to_compensate(contributions),
+            contributions=contributions,
             pmin=cls_env.gen_pmin,
             pmax=cls_env.gen_pmax,
             ramp_up=cls_env.gen_max_ramp_up,

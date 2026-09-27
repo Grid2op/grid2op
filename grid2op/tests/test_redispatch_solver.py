@@ -17,7 +17,9 @@ import numpy as np
 import grid2op
 from grid2op.Action import CompleteAction
 from grid2op.Agent import DoNothingAgent
-from grid2op.Environment.dispatch import BaseRedispatchSolver, DefaultRedispatchSolver
+from grid2op.Environment.dispatch import (BaseRedispatchSolver,
+                                          DefaultRedispatchSolver,
+                                          RedispatchResult)
 from grid2op.Exceptions import EnvError, ImpossibleRedispatching
 from grid2op.Runner import Runner
 
@@ -42,7 +44,32 @@ class CountingSolver(BaseRedispatchSolver):
 class FailingSolver(BaseRedispatchSolver):
     """A solver that never finds a dispatch."""
     def solve(self, constraints, state):
-        return ImpossibleRedispatching("no dispatch from FailingSolver")
+        return RedispatchResult.failed(ImpossibleRedispatching("no dispatch from FailingSolver"),
+                                       unserved_mw=1.)
+
+
+class WrongReturnSolver(BaseRedispatchSolver):
+    """A solver that does not return a RedispatchResult."""
+    def solve(self, constraints, state):
+        return None
+
+
+class RecordingSolver(BaseRedispatchSolver):
+    """Delegates to the default solver and records its inputs and outputs, and whether
+    the state was modified during the call."""
+    def __init__(self):
+        super().__init__()
+        self._default = DefaultRedispatchSolver()
+        self.calls = []
+
+    def solve(self, constraints, state):
+        actual_before = state.actual_dispatch.copy()
+        target_before = state.target_dispatch.copy()
+        res = self._default.solve(constraints, state)
+        state_unchanged = ((state.actual_dispatch == actual_before).all()
+                           and (state.target_dispatch == target_before).all())
+        self.calls.append((constraints, res, state_unchanged))
+        return res
 
 
 class TestCustomRedispatchSolver(unittest.TestCase):
@@ -111,6 +138,15 @@ class TestCustomRedispatchSolver(unittest.TestCase):
             obs, reward, done, info = env.step(self._redisp_act(env))
             assert done
             assert any("no dispatch from FailingSolver" in str(exc) for exc in info["exception"])
+        finally:
+            env.close()
+
+    def test_wrong_return_type(self):
+        env = self._make(WrongReturnSolver())
+        try:
+            env.reset(seed=0, options={"time serie id": 0})
+            with self.assertRaises(EnvError):
+                env.step(self._redisp_act(env))
         finally:
             env.close()
 
@@ -340,6 +376,67 @@ class TestInjectionWithoutRedispatchData(unittest.TestCase):
         obs, _, done, info = self.env.step(self.env.action_space({"injection": {"load_p": load_p}}))
         assert not done, info["exception"]
         assert abs(obs.load_p[0] - load_p[0]) <= 1e-4, f"{obs.load_p[0]} vs {load_p[0]}"
+
+
+class TestRedispatchResult(unittest.TestCase):
+    """The solver receives a single power to compensate and returns a result, without
+    modifying the state of the environment."""
+    def setUp(self) -> None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.env = grid2op.make("educ_case14_storage",
+                                    test=True,
+                                    allow_detachment=True,
+                                    action_class=CompleteAction,
+                                    redispatch_solver=RecordingSolver(),
+                                    _add_to_name=type(self).__name__)
+        self.obs = self.env.reset(seed=0, options={"time serie id": 1})
+        self.solver = self.env._redispatch_solver
+        self.solver.calls.clear()
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.env.close()
+        return super().tearDown()
+
+    def test_success(self):
+        obs, _, done, info = self.env.step(self.env.action_space(
+            {"set_storage": [(0, 2.)], "set_bus": {"loads_id": [(3, -1)]}}
+        ))
+        assert not done, info["exception"]
+        assert self.solver.calls
+        constraints, res, state_unchanged = self.solver.calls[-1]
+        assert state_unchanged
+        assert res.success
+        assert res.exception is None
+        assert res.unserved_mw == 0.
+        # the env applied the dispatch of the result
+        assert np.allclose(obs.actual_dispatch, res.actual_dispatch)
+        # one power to compensate, the sum of the contributions (same sign convention)
+        assert set(constraints.contributions) == {"storage", "curtailment", "detachment"}
+        assert abs(constraints.power_to_compensate_mw - sum(constraints.contributions.values())) <= 1e-6
+        # the storage units absorb (the generators produce more), the load is detached
+        # (the generators produce less)
+        assert constraints.contributions["storage"] > 0.
+        assert constraints.contributions["detachment"] < 0.
+        assert abs(res.actual_dispatch.sum() - constraints.power_to_compensate_mw) <= 1e-3
+
+    def test_failure_unserved(self):
+        # detaching this load asks the generators to decrease more than their ramps allow
+        obs, _, done, info = self.env.step(self.env.action_space(
+            {"set_bus": {"loads_id": [(2, -1)]}}
+        ))
+        assert done
+        constraints, res, state_unchanged = self.solver.calls[-1]
+        assert state_unchanged
+        assert not res.success
+        assert res.actual_dispatch is None
+        assert isinstance(res.exception, ImpossibleRedispatching)
+        assert res.exception in info["exception"]
+        # the generators cannot decrease enough: negative, and less than what is asked
+        assert np.isfinite(res.unserved_mw)
+        assert res.unserved_mw < 0.
+        assert res.unserved_mw > constraints.power_to_compensate_mw
 
 
 if __name__ == "__main__":

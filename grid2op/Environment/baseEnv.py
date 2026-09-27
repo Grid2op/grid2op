@@ -65,8 +65,10 @@ from grid2op.Environment.dispatch import (
     DetachmentModule,
     FeasibilityGuard,
     RedispatchConstraints,
+    RedispatchResult,
     RedispatchState,
     StorageModule,
+    dispatch_contributions,
 )
 from grid2op.Environment.dispatch.baseRedispatchSolver import DETAILED_REDISP_ERR_MSG  # noqa: F401  (kept importable from here)
 
@@ -2361,12 +2363,11 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         
         mismatch = self._actual_dispatch - self._target_dispatch
         mismatch = np.abs(mismatch)
+        contributions = dispatch_contributions(self._dispatch_state)
         if (
             np.abs((self._actual_dispatch).sum()) >= self._tol_poly
             or np.max(mismatch) >= self._tol_poly
-            or np.abs(self._amount_storage) >= self._tol_poly
-            or np.abs(self._sum_curtailment_mw) >= self._tol_poly
-            or np.abs(self._detached_elements_mw) >= self._tol_poly
+            or any(abs(val) >= self._tol_poly for val in contributions.values())
         ):
             # handle the case where there are storage or redispatching
             # action or curtailment action on the "init state"
@@ -2374,8 +2375,17 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             if self.nb_time_step == 0:
                 self._gen_activeprod_t_redisp[:] = new_p
             constraints = RedispatchConstraints.from_state(new_p, self._dispatch_state, self)
-            except_ = self._redispatch_solver.solve(constraints, self._dispatch_state)
-            valid = except_ is None
+            result = self._redispatch_solver.solve(constraints, self._dispatch_state)
+            if not isinstance(result, RedispatchResult):
+                raise EnvError(f"The redispatch solver {type(self._redispatch_solver).__name__} "
+                               f"should return a RedispatchResult, found {result}")
+            valid = result.success
+            if valid:
+                self._actual_dispatch[:] = result.actual_dispatch
+            else:
+                except_ = result.exception
+                if except_ is None:
+                    except_ = ImpossibleRedispatching("The redispatch solver did not find any dispatch")
         return valid, except_
 
     def _update_actions(self):
