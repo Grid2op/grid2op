@@ -98,43 +98,30 @@ class InitTSOptions(unittest.TestCase):
         assert obs.line_status[line_id]
     
     def test_hard_overflow(self):
-        """check lines are disconnected if on hard overflow at the beginning"""
+        """lines on hard overflow at the beginning are not disconnected by the reset: the observation it
+        returns is the initial state of the grid and no protection acts on it (since grid2op 1.12.6).
+        They are disconnected at the first step."""
         line_id = 3
         obs = self.env.reset(options={"time serie id": 0})
         th_lim = 1. * self.env.get_thermal_limit()
         th_lim[line_id] = 0.4 * obs.a_or[line_id]
         self.env.set_thermal_limit(th_lim)
-        obs = self.env.reset(options={"time serie id": 0})
-        assert (obs.timestep_overflow == 0).all()
-        assert obs.rho[line_id] == 0.
-        assert not obs.line_status[line_id]
-        assert obs.time_before_cooldown_line[line_id] == 0
+        hard = self.env.parameters.HARD_OVERFLOW_THRESHOLD
+        for options in [{"time serie id": 0},
+                        {"time serie id": 0},
+                        {"time serie id": 0, "init ts": 1},
+                        {"time serie id": 0, "init ts": 2},
+                        {"time serie id": 0, "init ts": 6}]:
+            obs = self.env.reset(options=options)
+            assert (obs.timestep_overflow == 0).all(), f"error for {options}"
+            assert obs.line_status[line_id], f"error for {options}"
+            assert obs.rho[line_id] > hard, f"error for {options}"
+            assert obs.time_before_cooldown_line[line_id] == 0, f"error for {options}"
+            obs, reward, done, info = self.env.step(self.env.action_space())
+            assert not obs.line_status[line_id], f"error for {options}"
+            assert obs.rho[line_id] == 0., f"error for {options}"
+            assert info["disc_lines"][line_id] == 0, f"error for {options}"
         
-        obs = self.env.reset(options={"time serie id": 0})
-        assert (obs.timestep_overflow == 0).all()
-        assert obs.rho[line_id] == 0.
-        assert not obs.line_status[line_id]
-        assert obs.time_before_cooldown_line[line_id] == 0
-        
-        obs = self.env.reset(options={"time serie id": 0, "init ts": 1})
-        assert (obs.timestep_overflow == 0).all()
-        assert obs.rho[line_id] == 0.
-        assert not obs.line_status[line_id]
-        assert obs.time_before_cooldown_line[line_id] == 0
-        
-        obs = self.env.reset(options={"time serie id": 0, "init ts": 2})
-        assert (obs.timestep_overflow == 0).all()
-        assert obs.rho[line_id] == 0.
-        assert not obs.line_status[line_id]
-        assert obs.time_before_cooldown_line[line_id] == 0
-        
-        obs = self.env.reset(options={"time serie id": 0, "init ts": 6})
-        assert (obs.timestep_overflow == 0).all()
-        assert obs.rho[line_id] == 0.
-        assert not obs.line_status[line_id]
-        assert obs.time_before_cooldown_line[line_id] == 0
-        
-    
     def test_raise_if_args_not_correct(self):
         with self.assertRaises(Grid2OpException):
             # string and not int

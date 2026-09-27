@@ -106,11 +106,18 @@ class Case14DiffGridTester(unittest.TestCase):
         for_obs, for_r, for_d, for_i = for_env.step(act)
         assert np.all(sim_obs.a_or == for_obs.a_or)
     
+    def _check_simulator_limits(self, sim, th_lim):
+        # since grid2op 1.12.6 the limits are not stored in the backend of the simulator (they are the
+        # ones of the protections of the environment, kept in the observation)
+        assert np.all(sim.current_obs.thermal_limit == th_lim)
+        res = sim.predict(self.env.action_space())
+        assert np.allclose(res.current_obs.rho, res.current_obs.a_or / th_lim)
+
     def test_thermal_limit(self):
         obs = self.env.reset()
         sim = obs.get_simulator()
         for_env = obs.get_forecast_env()
-        assert np.all(sim.backend.get_thermal_limit() == self.env.get_thermal_limit())
+        self._check_simulator_limits(sim, self.env.get_thermal_limit())
         assert np.all(for_env.get_thermal_limit() == self.env.get_thermal_limit())
         assert np.all(obs._obs_env.get_thermal_limit() == self.env.get_thermal_limit())
         new_th_lim = 2.0 * self.env.get_thermal_limit()
@@ -119,7 +126,7 @@ class Case14DiffGridTester(unittest.TestCase):
         obs = self.env.reset()
         sim = obs.get_simulator()
         for_env = obs.get_forecast_env()
-        assert np.all(sim.backend.get_thermal_limit() == new_th_lim)
+        self._check_simulator_limits(sim, new_th_lim)
         assert np.all(for_env.get_thermal_limit() == new_th_lim)
         assert np.all(obs._obs_env.get_thermal_limit() == new_th_lim)
         
