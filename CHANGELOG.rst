@@ -111,6 +111,9 @@ Native multi agents support:
 - [IMPROVED] clarify reward kernel flags
 - [ADDED] the archive of a dataset downloaded by `grid2op.make(...)` is checked against the optional `sha256`
   field of its `datasets.json` entry before being extracted (a warning is issued if the field is missing)
+- [FIXED] `grid2op.make(...)` and `grid2op.update_env()` read `datasets.json`, `updates.json` and `env_hashes.json`
+  (and the updated files) from `raw.githubusercontent.com` instead of the rate limited github api (60 requests
+  per hour and per IP address). At least 1 second is still left between two requests to github.
 
 [1.12.5] - 2026-06-12
 -------------------------
