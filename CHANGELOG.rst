@@ -109,6 +109,8 @@ Native multi agents support:
 - [ADDED] add voltage angle attributes to the complete observation vector (issue #711)
 - [IMPROVED] clarify MultiMixENv docstring
 - [IMPROVED] clarify reward kernel flags
+- [ADDED] the archive of a dataset downloaded by `grid2op.make(...)` is checked against the optional `sha256`
+  field of its `datasets.json` entry before being extracted (a warning is issued if the field is missing)
 
 [1.12.5] - 2026-06-12
 -------------------------

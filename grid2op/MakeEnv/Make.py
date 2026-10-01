@@ -176,7 +176,7 @@ def _fecth_environments(dataset_name):
     url = baseurl + filename
     # name is "tar.bz2" so i need to get rid of 2 extensions
     ds_name_dl = os.path.splitext(os.path.splitext(filename)[0])[0]
-    return url, ds_name_dl
+    return url, ds_name_dl, dict_.get("sha256", None)
 
 
 def _extract_ds_name(dataset_path):
@@ -512,9 +512,13 @@ def make(
     # Env needs to be downloaded
     warnings.warn(_MAKE_FIRST_TIME_WARN.format(dataset_name))
     _create_path_folder(grid2op.MakeEnv.PathUtils.DEFAULT_PATH_DATA)
-    url, ds_name_dl = _fecth_environments(dataset_name)
+    url, ds_name_dl, sha256 = _fecth_environments(dataset_name)
     _aux_download(
-        url, dataset_name, grid2op.MakeEnv.PathUtils.DEFAULT_PATH_DATA, ds_name_dl
+        url,
+        dataset_name,
+        grid2op.MakeEnv.PathUtils.DEFAULT_PATH_DATA,
+        ds_name_dl,
+        sha256=sha256,
     )
 
     # Check if multimix from path
