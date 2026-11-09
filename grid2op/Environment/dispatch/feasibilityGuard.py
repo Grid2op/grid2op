@@ -113,13 +113,15 @@ class FeasibilityGuard:
         p_max_up = self.env.gen_pmax[gen_redisp] - state.gen_activeprod_t_redisp[gen_redisp]
         avail_up = np.minimum(p_max_up, self.env.gen_max_ramp_up[gen_redisp])
 
-        # the power of the detached elements also has to be compensated by the generators
-        # (as in the solver) but it cannot be limited here, only storage and curtailment can
+        # the power of the detached elements and of the load injections also has to be compensated
+        # by the generators (as in the solver) but it cannot be limited here, only storage and
+        # curtailment can
         sum_move = (
             normal_increase.sum()
             + state.amount_storage
             - state.sum_curtailment_mw
             + state.detached_elements_mw
+            + state.load_injection_mw
         )
         total_storage_curtail = state.amount_storage - state.sum_curtailment_mw
         update_env_act = False

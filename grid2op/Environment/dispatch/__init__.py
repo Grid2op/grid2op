@@ -22,6 +22,7 @@ from .dispatchTypes import (
     total_power_to_compensate,
 )
 from .feasibilityGuard import FeasibilityGuard
+from .loadInjectionModule import LoadInjectionModule
 from .storageModule import StorageModule
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "DetachmentResult",
     "FeasibilityGuard",
     "GuardInfo",
+    "LoadInjectionModule",
     "RedispatchConstraints",
     "RedispatchResult",
     "RedispatchState",
