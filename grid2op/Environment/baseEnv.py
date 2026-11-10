@@ -2041,8 +2041,13 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         """
         Loads that have a new active consumption in the time series this step.
 
-        NB this is overidden in _ObsEnv where the consumption of all the loads is read from the
-        forecasts
+        For these loads, the injections of the previous steps are over, so the generators have to
+        come back to the production of the time series (see
+        :class:`grid2op.Environment.dispatch.LoadInjectionModule`).
+
+        NB this is overridden in _ObsEnv (used by `obs.simulate`) where the consumption of all the
+        loads is read from the forecasts. The injections of an action are supported there too: they
+        are compensated relatively to the forecasts.
         """
         res = np.zeros(type(self).n_load, dtype=dt_bool)
         if self._env_modification is not None and "load_p" in self._env_modification._dict_inj:
