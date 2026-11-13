@@ -436,6 +436,16 @@ class _ObsEnv(BaseEnv):
         return (1.0 * self._backend_action_set.load_p.values,
                 1.0 * self._backend_action_set.load_q.values)
 
+    def _get_loads_set_by_time_series(self):
+        """
+        In this environment (`obs.simulate`) the consumption of all the loads comes from the forecasts.
+
+        The injections of an action on the loads are supported: they are compensated by the
+        dispatch relatively to the forecasts, like they are relatively to the time series in a
+        "normal" environment.
+        """
+        return np.ones(type(self).n_load, dtype=dt_bool)
+
     def _get_new_prod_setpoint(self, action : "grid2op.Action.BaseAction"):
         new_p = 1.0 * self._backend_action_set.prod_p.values
         if "prod_p" in action._dict_inj:

@@ -65,6 +65,7 @@ from grid2op.Environment.dispatch import (
     DefaultRedispatchSolver,
     DetachmentModule,
     FeasibilityGuard,
+    LoadInjectionModule,
     RedispatchConstraints,
     RedispatchResult,
     RedispatchState,
@@ -675,6 +676,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._storage_module = StorageModule(self)
         self._curtailment_module = CurtailmentModule(self)
         self._detachment_module = DetachmentModule(self)
+        self._load_injection_module = LoadInjectionModule(self)
         self._feasibility_guard = FeasibilityGuard(self)
         if redispatch_solver is None:
             solver = DefaultRedispatchSolver().bind(self)
@@ -1622,6 +1624,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._delta_gen_p[:] = 0.
         
         self._dispatch_state.reset("detachment")
+        self._dispatch_state.reset("load_injection")
         
     def _reset_alert(self):
         self._last_alert[:] = False
@@ -2033,6 +2036,23 @@ class BaseEnv(GridObjects, RandomObject, ABC):
         self._aux_retrieve_modif_act(new_load_p, self._env_modification, "load_p")
         self._aux_retrieve_modif_act(new_load_q, self._env_modification, "load_q")
         return new_load_p, new_load_q
+
+    def _get_loads_set_by_time_series(self) -> np.ndarray:
+        """
+        Loads that have a new active consumption in the time series this step.
+
+        For these loads, the injections of the previous steps are over, so the generators have to
+        come back to the production of the time series (see
+        :class:`grid2op.Environment.dispatch.LoadInjectionModule`).
+
+        NB this is overridden in _ObsEnv (used by `obs.simulate`) where the consumption of all the
+        loads is read from the forecasts. The injections of an action are supported there too: they
+        are compensated relatively to the forecasts.
+        """
+        res = np.zeros(type(self).n_load, dtype=dt_bool)
+        if self._env_modification is not None and "load_p" in self._env_modification._dict_inj:
+            res[:] = np.isfinite(self._env_modification._dict_inj["load_p"])
+        return res
 
     def _get_already_modified_gen(self, action: BaseAction):
         if not action._modif_redispatch:
@@ -2479,6 +2499,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                           action: BaseAction,
                           new_p: np.ndarray,
                           new_p_th: np.ndarray,
+                          new_load_p: np.ndarray,
                           except_: List[Exception],
                           powerline_status):
         cls = type(self)
@@ -2515,6 +2536,17 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 # and NOT absorbed by the generators either
                 self._withdraw_storage_losses()
                 # end storage
+
+        # the generators also have to compensate the loads set by the injections of the action
+        # (computed after the redispatching action has been validated: if it is replaced by
+        # "do nothing", its injections are not applied either)
+        self._load_injection_module.compute(
+            action,
+            new_load_p,
+            self._get_loads_set_by_time_series(),
+            self._dispatch_state,
+            self._backend_action,
+        )
 
         # fix redispatching for curtailment storage
         if (
@@ -3102,7 +3134,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
                 # and it is also in this function that the limiting of the curtailment / storage actions
                 # is perform to make the state "feasible"
                 res_disp = self._aux_apply_redisp(
-                    action, new_p, new_p_th, except_, powerline_status
+                    action, new_p, new_p_th, new_load_p, except_, powerline_status
                 )
                 action, failed_redisp, is_illegal_reco, is_done = res_disp
             else:
@@ -3493,6 +3525,7 @@ class BaseEnv(GridObjects, RandomObject, ABC):
             "_storage_module",
             "_curtailment_module",
             "_detachment_module",
+            "_load_injection_module",
             "_feasibility_guard",
             "_redispatch_solver",
             "_dispatch_state",

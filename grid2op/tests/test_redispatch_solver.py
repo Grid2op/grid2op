@@ -450,12 +450,14 @@ class TestRedispatchResult(unittest.TestCase):
         # the env applied the dispatch of the result
         assert np.allclose(obs.actual_dispatch, res.actual_dispatch)
         # one power to compensate, the sum of the contributions (same sign convention)
-        assert set(constraints.contributions) == {"storage", "curtailment", "detachment"}
+        assert set(constraints.contributions) == {"storage", "curtailment", "detachment", "load"}
         assert abs(constraints.power_to_compensate_mw - sum(constraints.contributions.values())) <= 1e-6
         # the storage units absorb (the generators produce more), the load is detached
         # (the generators produce less)
         assert constraints.contributions["storage"] > 0.
         assert constraints.contributions["detachment"] < 0.
+        # no injection of the agent on the loads
+        assert constraints.contributions["load"] == 0.
         assert abs(res.actual_dispatch.sum() - constraints.power_to_compensate_mw) <= 1e-3
 
     def test_failure_unserved(self):

@@ -59,7 +59,7 @@ class GuardInfo:
 DISPATCH_FIELD_KINDS = ("gen", "storage", "load", "scalar")
 
 #: groups of :class:`RedispatchState` fields, reset together by :func:`RedispatchState.reset`
-DISPATCH_FIELD_GROUPS = ("redispatch", "storage", "curtailment", "detachment")
+DISPATCH_FIELD_GROUPS = ("redispatch", "storage", "curtailment", "detachment", "load_injection")
 
 
 def _state_field(
@@ -153,6 +153,13 @@ class RedispatchState:
     detached_elements_mw: float = _state_field("scalar", dt_float, 0.0, "detachment")
     detached_elements_mw_prev: float = _state_field("scalar", dt_float, 0.0, "detachment")
 
+    # load injections of the agent: consumption of each load above the one of the time series
+    # (it lasts as long as the time series does not set the load again)
+    load_injection_excess: Optional[np.ndarray] = _state_field("load", dt_float, 0.0, "load_injection")
+    # power (in MW) to compensate this step because of the load injections: the change of the sum
+    # of `load_injection_excess` (it is computed again at each step, never restored)
+    load_injection_mw: float = _state_field("scalar", dt_float, 0.0, "load_injection", restore=False)
+
     @classmethod
     def allocate(cls, n_gen: int, n_storage: int, n_load: int) -> "RedispatchState":
         sizes = {"gen": n_gen, "storage": n_storage, "load": n_load}
@@ -240,6 +247,9 @@ def dispatch_contributions(state: RedispatchState) -> Dict[str, float]:
         "curtailment": -float(state.sum_curtailment_mw),
         # detached loads (resp. generators) make the other generators produce less (resp. more)
         "detachment": float(state.detached_elements_mw),
+        # loads set by an injection of the agent: when they consume more than the time series,
+        # the generators produce more
+        "load": float(state.load_injection_mw),
     }
 
 
@@ -284,7 +294,7 @@ class RedispatchConstraints:
     The solver must find the change of ``actual_dispatch`` for the participating generators
     such that its sum equals ``power_to_compensate_mw`` (the power the generators have to
     produce in addition to the time series because of the storage units, the curtailment,
-    the detached elements...) while respecting pmin / pmax and the ramps.
+    the detached elements, the load injections...) while respecting pmin / pmax and the ramps.
     """
     #: productions (in MW) of the generators given by the time series, after curtailment and detachment
     new_p: np.ndarray
@@ -297,7 +307,7 @@ class RedispatchConstraints:
     #: the sources together (positive: the generators must produce more). This is the only
     #: value a solver needs about the balance, it is the sum of `contributions`
     power_to_compensate_mw: float
-    #: the same power, split by source ("storage", "curtailment", "detachment"), with the same
+    #: the same power, split by source ("storage", "curtailment", "detachment", "load"), with the same
     #: sign convention. For information only (error messages, logs...)
     contributions: Mapping[str, float]
     pmin: np.ndarray

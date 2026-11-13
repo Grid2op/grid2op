@@ -101,6 +101,15 @@ Native multi agents support:
 - add detachment
 - add change_bus / set_bus
 
+[1.12.7] - 2026-xx-xx
+-----------------------
+- [FIXED] issue #777: the change of the loads made by an action through its `"injection"` key (`load_p`)
+  is now compensated by the dispatch (new `"load"` source in `grid2op.Environment.dispatch.dispatch_contributions`,
+  computed by `grid2op.Environment.dispatch.LoadInjectionModule`). Before, the slack generator(s) silently
+  took it, without any pmax or ramp check: now the dispatch respects them and the episode ends with an
+  `ImpossibleRedispatching` error if the generators cannot follow. Grids without redispatching data and without
+  storage units are not affected.
+
 [1.12.6] - 2026-10-13
 -----------------------
 - [FIXED] remove deprecated python 3.8 runner on CI
