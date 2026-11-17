@@ -109,6 +109,8 @@ Native multi agents support:
   took it, without any pmax or ramp check: now the dispatch respects them and the episode ends with an
   `ImpossibleRedispatching` error if the generators cannot follow. Grids without redispatching data and without
   storage units are not affected.
+- [FIXED] `WeightedRandomOpponent` without `rho_normalization` raised a `TypeError` at its first attack: the
+  default normalization was an array of strings built from the line names. It is now an array of ones.
 
 [1.12.6] - 2026-10-13
 -----------------------
