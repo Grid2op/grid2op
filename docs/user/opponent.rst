@@ -196,6 +196,10 @@ Of course, in practice this 'oracle opponent' is really hard to find. So we deci
 "worst possible line to disconnect" for a given agent, with a heuristic. This lead to the different
 opponent present in grid2op today.
 
+:class:`LookaheadLineOpponent` is a one-step version of this idea: when it attacks, it simulates the
+disconnection of each attackable line on the current grid state and disconnects the one that loads the
+grid the most.
+
 How to create an opponent in any environment
 ---------------------------------------------
 

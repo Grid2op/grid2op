@@ -109,6 +109,12 @@ Native multi agents support:
   took it, without any pmax or ramp check: now the dispatch respects them and the episode ends with an
   `ImpossibleRedispatching` error if the generators cannot follow. Grids without redispatching data and without
   storage units are not affected.
+- [ADDED] `grid2op.Opponent.LookaheadLineOpponent`: disconnects the attackable line whose simulated
+  disconnection (with `obs.get_simulator()`, on the grid state of the current observation) gives the highest
+  maximum usage rate. It uses the attack timing of `WeightedRandomOpponent` and no random number to choose the line.
+- [IMPROVED] `WeightedRandomOpponent` accepts `independent_timing=True` in `kwargs_opponent`: the attack times
+  are then drawn from a dedicated random generator, so opponents that only differ in how they choose the line
+  attack at the same steps of a seeded episode. The default (`False`) keeps the previous behaviour.
 
 [1.12.6] - 2026-10-13
 -----------------------
