@@ -8,7 +8,8 @@ __all__ = [
     "NeverAttackBudget",
     "GeometricOpponent",
     "GeometricOpponentMultiArea",
-    "FromEpisodeDataOpponent"
+    "FromEpisodeDataOpponent",
+    "LookaheadLineOpponent"
 ]
 
 from grid2op.Opponent.opponentSpace import OpponentSpace
@@ -21,4 +22,5 @@ from grid2op.Opponent.neverAttackBudget import NeverAttackBudget
 from grid2op.Opponent.geometricOpponent import GeometricOpponent
 from grid2op.Opponent.geometricOpponentMultiArea import GeometricOpponentMultiArea
 from grid2op.Opponent.fromEpisodeDataOpponent import FromEpisodeDataOpponent
+from grid2op.Opponent.lookaheadLineOpponent import LookaheadLineOpponent
 from grid2op.Opponent.utils import get_kwargs_no_opponent

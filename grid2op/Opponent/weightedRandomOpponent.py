@@ -9,9 +9,15 @@
 import warnings
 import numpy as np
 import copy
+from typing import TYPE_CHECKING, Optional
 
+from grid2op.dtypes import dt_int
 from grid2op.Opponent.baseOpponent  import BaseOpponent
 from grid2op.Exceptions import OpponentError
+
+if TYPE_CHECKING:
+    from grid2op.Action import BaseAction
+    from grid2op.Observation import BaseObservation
 
 
 class WeightedRandomOpponent(BaseOpponent):
@@ -22,6 +28,12 @@ class WeightedRandomOpponent(BaseOpponent):
 
     When an attack becomes possible, the time of the attack will be sampled uniformly
     in the next `attack_period` steps (see init).
+
+    With `independent_timing=True`, the attack times are drawn from a random generator of their own
+    (seeded from the opponent's generator at each reset), separate from the one that chooses the line.
+    Two opponents built on this class that differ only in how they choose the line then attack at the
+    same steps of a seeded episode (as long as each of them still has a connected attackable line when its
+    attack time comes), which makes paired comparisons of opponents possible (see :class:`LookaheadLineOpponent`).
     """
 
     def __init__(self, action_space):
@@ -32,6 +44,8 @@ class WeightedRandomOpponent(BaseOpponent):
         self._next_attack_time = None
         self._attack_period = None
         self._rho_normalization = None
+        self._independent_timing = False
+        self._timing_prng = None
 
         # this is the constructor:
         # it should have the exact same signature as here
@@ -42,6 +56,7 @@ class WeightedRandomOpponent(BaseOpponent):
         lines_attacked=[],
         rho_normalization=[],
         attack_period=12 * 24,
+        independent_timing=False,
         **kwargs,
     ):
         """
@@ -62,6 +77,10 @@ class WeightedRandomOpponent(BaseOpponent):
             The number of steps among which the attack may happen.
             If attack_period=10, then whenever an attack can be made, it will happen in the 10
             next steps.
+
+        independent_timing: ``bool``
+            If ``True``, the attack times are drawn from a dedicated random generator, so that they
+            do not depend on how the line is chosen. Default ``False`` (one generator for both, as before).
         """
 
         self._set_line_id(lines_attacked)
@@ -87,9 +106,15 @@ class WeightedRandomOpponent(BaseOpponent):
         self._attack_period = attack_period
         if self._attack_period <= 0:
             raise OpponentError("Opponent attack cooldown need to be > 0")
+        self._independent_timing = bool(independent_timing)
 
     def reset(self, initial_budget):
         self._next_attack_time = None
+        if self._independent_timing:
+            self._timing_prng = self._make_timing_prng()
+
+    def _make_timing_prng(self):
+        return np.random.RandomState(self.space_prng.randint(np.iinfo(dt_int).max))
 
     def tell_attack_continues(self, observation, agent_action, env_action, budget):
         self._next_attack_time = None
@@ -141,7 +166,10 @@ class WeightedRandomOpponent(BaseOpponent):
 
         # Decide the time of the next attack
         if self._next_attack_time is None:
-            self._next_attack_time = 1 + self.space_prng.randint(self._attack_period)
+            if self._independent_timing and self._timing_prng is None:
+                self._timing_prng = self._make_timing_prng()
+            timing_prng = self._timing_prng if self._independent_timing else self.space_prng
+            self._next_attack_time = 1 + timing_prng.randint(self._attack_period)
         self._next_attack_time -= 1
 
         # If the attack time has not come yet, do not attack
@@ -153,15 +181,24 @@ class WeightedRandomOpponent(BaseOpponent):
         if not status.sum():
             return None, 0
 
+        attack = self._choose_attack(observation, status)
+        if attack is None:
+            return None, 0
+        return attack, None
+
+    def _choose_attack(self, observation: "BaseObservation", status: np.ndarray) -> Optional["BaseAction"]:
+        """
+        Choose the attack among the connected attackable lines (`status` is ``True`` for them),
+        or return ``None`` to not attack. Here: sampled with probability proportional to the usage rate.
+        """
         available_attacks = self._attacks[status]
         rho = observation.rho[self._lines_ids][status] / self._rho_normalization[status]
         rho_sum = rho.sum()
         if rho_sum <= 0.0:
             # this case can happen if a powerline has a flow of 0.0 but is connected, and it's the only one
             # that can be attacked... Pretty rare hey !
-            return None, 0
-        attack = self.space_prng.choice(available_attacks, p=rho / rho_sum)
-        return attack, None
+            return None
+        return self.space_prng.choice(available_attacks, p=rho / rho_sum)
 
     def _custom_deepcopy_for_copy(self, new_obj, dict_=None):
         super()._custom_deepcopy_for_copy(new_obj, dict_)
@@ -173,3 +210,5 @@ class WeightedRandomOpponent(BaseOpponent):
         new_obj._next_attack_time = copy.deepcopy(self._next_attack_time)
         new_obj._attack_period = copy.deepcopy(self._attack_period)
         new_obj._rho_normalization = copy.deepcopy(self._rho_normalization)
+        new_obj._independent_timing = self._independent_timing
+        new_obj._timing_prng = copy.deepcopy(self._timing_prng)
