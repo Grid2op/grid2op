@@ -221,6 +221,7 @@ class __AuxBoxGymObsSpace:
         else:
             tol_redisp = 1e-2
         extra_for_losses = _compute_extra_power_for_losses(ob_sp)
+        nb_shunt = ob_sp_cls.n_shunt if ob_sp_cls.shunts_data_available else 0
         
         self._dict_properties = {
             "year": (
@@ -594,6 +595,31 @@ class __AuxBoxGymObsSpace:
                 np.full(shape=(ob_sp_cls.dim_alerts,), fill_value=-1, dtype=dt_int),
                 np.full(shape=(ob_sp_cls.dim_alerts,), fill_value=1, dtype=dt_int),
                 (ob_sp_cls.dim_alerts,),
+                dt_int,
+            ),
+            # shunt stuff
+            "_shunt_p": (
+                np.full(shape=(nb_shunt,), fill_value=-np.inf, dtype=dt_float),
+                np.full(shape=(nb_shunt,), fill_value=np.inf, dtype=dt_float),
+                (nb_shunt,),
+                dt_float,
+            ),
+            "_shunt_q": (
+                np.full(shape=(nb_shunt,), fill_value=-np.inf, dtype=dt_float),
+                np.full(shape=(nb_shunt,), fill_value=np.inf, dtype=dt_float),
+                (nb_shunt,),
+                dt_float,
+            ),
+            "_shunt_v": (
+                np.full(shape=(nb_shunt,), fill_value=0.0, dtype=dt_float),
+                np.full(shape=(nb_shunt,), fill_value=np.inf, dtype=dt_float),
+                (nb_shunt,),
+                dt_float,
+            ),
+            "_shunt_bus": (
+                np.full(shape=(nb_shunt,), fill_value=-1, dtype=dt_int),
+                np.full(shape=(nb_shunt,), fill_value=ob_sp_cls.n_busbar_per_sub, dtype=dt_int),
+                (nb_shunt,),
                 dt_int,
             ),
         }

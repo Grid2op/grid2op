@@ -429,6 +429,30 @@ They can all be used like:
 We encourage you to visit the documentation for more information on how to use these classes. Each offer
 different possible customization.
 
+.. note::
+
+    If the backend supports the shunts (`shunts_data_available`), the shunts can be used with
+    :class:`BoxGymActSpace` (keys "shunt_p", "shunt_q" and "shunt_bus") and with
+    :class:`BoxGymObsSpace` (keys "_shunt_p", "_shunt_q", "_shunt_v" and "_shunt_bus"). For example:
+
+    .. code-block:: python
+
+        import grid2op
+        from grid2op.Action import ShuntAction
+        from grid2op.gym_compat import GymEnv, BoxGymActSpace, BoxGymObsSpace
+
+        env_name = "l2rpn_case14_sandbox"
+        # the default action type does not allow to modify the shunts
+        env = grid2op.make(env_name, action_class=ShuntAction)
+        gym_env = GymEnv(env)
+        gym_env.action_space = BoxGymActSpace(env.action_space, attr_to_keep=["shunt_q"])
+        gym_env.observation_space = BoxGymObsSpace(env.observation_space,
+                                                   attr_to_keep=["rho", "_shunt_q", "_shunt_v"])
+
+    Grid2op does not know the limits of the shunts, so the "shunt_p" and "shunt_q" parts of the
+    resulting `Box` are not bounded. You can use the `multiply` and `add` arguments of
+    :class:`BoxGymActSpace` to rescale them.
+
 .. _gymnasium_gym:
 
 Gymnasium vs Gym

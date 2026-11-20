@@ -109,6 +109,11 @@ Native multi agents support:
   took it, without any pmax or ramp check: now the dispatch respects them and the episode ends with an
   `ImpossibleRedispatching` error if the generators cannot follow. Grids without redispatching data and without
   storage units are not affected.
+- [ADDED] `shunt_p`, `shunt_q` and `shunt_bus` properties on the actions to modify the shunts (when the backend
+  supports them and the action type allows it), similar to `redispatch` or `load_set_bus` (partially addresses issue #425)
+- [ADDED] `grid2op.Action.ShuntAction`, a playable action type that only allows to modify the shunts
+- [ADDED] the `"shunt_p"`, `"shunt_q"` and `"shunt_bus"` keys in `BoxGymActSpace` and the `"_shunt_p"`,
+  `"_shunt_q"`, `"_shunt_v"` and `"_shunt_bus"` keys in `BoxGymObsSpace`
 
 [1.12.6] - 2026-10-13
 -----------------------

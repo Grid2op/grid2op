@@ -7460,6 +7460,135 @@ class BaseAction(GridObjects):
     def curtail_mw(self, values_mw):
         self.curtail = self.curtailment_mw_to_ratio(values_mw)
 
+    def _aux_affect_shunt(self, values, attr_nm, prop_nm):
+        cls = type(self)
+        if not cls.shunts_data_available:
+            raise IllegalAction(
+                "Impossible to modify the shunts with this backend (shunt data are not available)."
+            )
+        if "shunt" not in cls.authorized_keys:
+            raise IllegalAction(
+                "Impossible to modify the shunts with this action type."
+            )
+        vect = getattr(self, attr_nm)
+        orig_ = vect.copy()
+        try:
+            if attr_nm == "_shunt_bus":
+                self._aux_affect_object_int(
+                    values,
+                    prop_nm,
+                    cls.n_shunt,
+                    cls.name_shunt,
+                    np.arange(cls.n_shunt),
+                    vect,
+                    max_val=cls.n_busbar_per_sub,
+                )
+            else:
+                self._aux_affect_object_float(
+                    values,
+                    prop_nm,
+                    cls.n_shunt,
+                    cls.name_shunt,
+                    np.arange(cls.n_shunt),
+                    vect,
+                )
+            self._modif_shunt = True
+        except Exception as exc_:
+            vect[:] = orig_
+            raise AmbiguousAction(
+                f"Impossible to modify the {prop_nm} with your input. "
+                f"Please consult the documentation. "
+                f'The error was:\n"{exc_}"'
+            ) from exc_
+
+    @property
+    def shunt_p(self) -> np.ndarray:
+        """
+        Allows to retrieve (and affect) the active power setpoint (in MW, load convention)
+        of the shunts. ``nan`` means "do not change".
+
+        It behaves similarly as :attr:`BaseAction.redispatch`. See the help there for more information.
+
+        .. note::
+            Only available if the backend supports the shunts (`shunts_data_available`) and if
+            "shunt" is in the :attr:`BaseAction.authorized_keys` of this action type (for example
+            :class:`grid2op.Action.ShuntAction` or :class:`grid2op.Action.CompleteAction`).
+
+        """
+        res = 1.0 * self._shunt_p
+        res.flags.writeable = False
+        return res
+
+    @shunt_p.setter
+    def shunt_p(self, values):
+        self._aux_affect_shunt(values, "_shunt_p", "shunt_p")
+
+    @property
+    def shunt_q(self) -> np.ndarray:
+        """
+        Allows to retrieve (and affect) the reactive power setpoint (in MVAr, load convention)
+        of the shunts. ``nan`` means "do not change".
+
+        With the load convention, a negative value means the shunt produces reactive power
+        (capacitive, it tends to raise the voltages) and a positive value means it absorbs
+        reactive power (inductive, it tends to lower the voltages).
+
+        It behaves similarly as :attr:`BaseAction.redispatch`. See the help there for more information.
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            import grid2op
+            from grid2op.Action import ShuntAction
+            env = grid2op.make("l2rpn_case14_sandbox", action_class=ShuntAction)
+
+            act = env.action_space()
+            act.shunt_q = [(0, -25.)]  # shunt 0 now produces 25 MVAr
+            obs, reward, done, info = env.step(act)
+
+        .. note::
+            With some backends (for example :class:`grid2op.Backend.PandaPowerBackend`) the shunts are
+            modeled with a constant admittance and the setpoint is given at the nominal voltage.
+            The reactive power actually exchanged then scales with the square of the voltage, so the
+            value seen in the observation (`obs._shunt_q`) may differ from the setpoint.
+
+        .. note::
+            Only available if the backend supports the shunts (`shunts_data_available`) and if
+            "shunt" is in the :attr:`BaseAction.authorized_keys` of this action type.
+
+        """
+        res = 1.0 * self._shunt_q
+        res.flags.writeable = False
+        return res
+
+    @shunt_q.setter
+    def shunt_q(self, values):
+        self._aux_affect_shunt(values, "_shunt_q", "shunt_q")
+
+    @property
+    def shunt_bus(self) -> np.ndarray:
+        """
+        Allows to retrieve (and affect) the bus to which the shunts are connected.
+
+        It behaves similarly as :attr:`BaseAction.load_set_bus`: -1 to disconnect the shunt,
+        1, 2, ..., `n_busbar_per_sub` to connect it to the corresponding busbar of its substation
+        and 0 means "do not change".
+
+        .. note::
+            Only available if the backend supports the shunts (`shunts_data_available`) and if
+            "shunt" is in the :attr:`BaseAction.authorized_keys` of this action type.
+
+        """
+        res = 1 * self._shunt_bus
+        res.flags.writeable = False
+        return res
+
+    @shunt_bus.setter
+    def shunt_bus(self, values):
+        self._aux_affect_shunt(values, "_shunt_bus", "shunt_bus")
+
     def limit_curtail_storage(self,
                               obs: "BaseObservation",  # noqa: F821
                               margin: float=10.,
