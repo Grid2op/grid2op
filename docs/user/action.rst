@@ -26,6 +26,10 @@
 .. _redispatch: ./action.html#grid2op.Action.BaseAction.redispatch
 .. _storage_p: ./action.html#grid2op.Action.BaseAction.storage_p
 .. _curtail: ./action.html#grid2op.Action.BaseAction.curtail
+.. _n_shunt: ./space.html#grid2op.Space.GridObjects.n_shunt
+.. _shunt_p: ./action.html#grid2op.Action.BaseAction.shunt_p
+.. _shunt_q: ./action.html#grid2op.Action.BaseAction.shunt_q
+.. _shunt_bus: ./action.html#grid2op.Action.BaseAction.shunt_bus
 
 .. _action-module:
 
@@ -134,7 +138,13 @@ Name(s)                                                                         
 `redispatch`_                                                                    float      `n_gen`_
 `storage_p`_                                                                     float      `n_storage`_
 `curtail`_                                                                       float      `n_gen`_
+`shunt_p`_ (*)                                                                   float      `n_shunt`_
+`shunt_q`_ (*)                                                                   float      `n_shunt`_
+`shunt_bus`_ (*)                                                                 int        `n_shunt`_
 =============================================================================    =========  ============
+
+(*) The shunts can only be modified if the backend supports them and with an action type that allows it,
+for example :class:`ShuntAction` (that only allows to modify the shunts) or :class:`CompleteAction`.
 
 All the attributes above are "properties", you don't have to use parenthesis to access them:
 
