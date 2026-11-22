@@ -22,7 +22,7 @@ class ProtectionState:
     counter is frozen; when it is put back in service its counter restarts from 0, so that
     a stale history never makes it trip instantly.
 
-    .. versionadded:: 1.12.6
+    .. versionadded:: 1.12.7
     """
 
     def __init__(self, n_prot: int):

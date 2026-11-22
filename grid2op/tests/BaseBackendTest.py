@@ -1807,7 +1807,7 @@ class BaseTestEnvPerformsCorrectCascadingFailures(MakeBackend):
         assert np.abs(res_a[2]) <= 1e-8
     
     def test_set_thermal_limit(self):
-        # since grid2op 1.12.6 it does nothing once the grid is loaded (the limits are the ones
+        # since grid2op 1.12.7 it does nothing once the grid is loaded (the limits are the ones
         # of the protections of the environment)
         thermal_limit = np.arange(self.backend.n_line)
         init_limit = 1. * self.backend.thermal_limit_a

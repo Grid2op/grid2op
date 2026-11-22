@@ -107,7 +107,7 @@ class Case14DiffGridTester(unittest.TestCase):
         assert np.all(sim_obs.a_or == for_obs.a_or)
     
     def _check_simulator_limits(self, sim, th_lim):
-        # since grid2op 1.12.6 the limits are not stored in the backend of the simulator (they are the
+        # since grid2op 1.12.7 the limits are not stored in the backend of the simulator (they are the
         # ones of the protections of the environment, kept in the observation)
         assert np.all(sim.current_obs.thermal_limit == th_lim)
         res = sim.predict(self.env.action_space())

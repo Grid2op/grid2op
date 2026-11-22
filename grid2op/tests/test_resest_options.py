@@ -99,7 +99,7 @@ class InitTSOptions(unittest.TestCase):
     
     def test_hard_overflow(self):
         """lines on hard overflow at the beginning are not disconnected by the reset: the observation it
-        returns is the initial state of the grid and no protection acts on it (since grid2op 1.12.6).
+        returns is the initial state of the grid and no protection acts on it (since grid2op 1.12.7).
         They are disconnected at the first step."""
         line_id = 3
         obs = self.env.reset(options={"time serie id": 0})

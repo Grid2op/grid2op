@@ -32,7 +32,7 @@ class Parameters:
         disconnected (if :attr:`.NO_OVERFLOW_DISCONNECTION` is set to ``False``) after 2 time steps above its thermal
         limit. This is called a "soft overflow".
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             It is only used to build the "legacy" protections: it is the delay of the reference protection
             of each powerline (see :func:`grid2op.Environment.protection.legacy_from_parameters`). Define the
             protections instead (:func:`grid2op.Environment.BaseEnv.set_protections` or a `protections.json` file).
@@ -65,7 +65,7 @@ class Parameters:
         HARD_OVERFLOW_THRESHOLD is 2.0, then if the flow on the powerline reaches 2 * 150 = 300.0 the powerline
         the powerline is automatically disconnected.
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             It is only used to build the "legacy" protections: an instantaneous protection with a limit of
             ``HARD_OVERFLOW_THRESHOLD / PROTECTION_THRESHOLD * thermal_limit``, so that it acts above
             ``HARD_OVERFLOW_THRESHOLD * thermal_limit`` (see :func:`grid2op.Environment.protection.legacy_from_parameters`).
@@ -73,7 +73,7 @@ class Parameters:
             `protections.json` file).
 
     PROTECTION_THRESHOLD: ``float``
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         A protection is *engaged* (its counter starts) when the current on its side of the powerline is strictly
         above ``PROTECTION_THRESHOLD * limit`` (the limit of this protection, in A), whatever its delay (including
@@ -83,7 +83,7 @@ class Parameters:
     SOFT_OVERFLOW_THRESHOLD: ``float``
         .. versionadded:: 1.9.3
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             Former name of :attr:`Parameters.PROTECTION_THRESHOLD` (which it is an alias of).
 
     ENV_DC: ``bool``
@@ -260,7 +260,7 @@ class Parameters:
     @property
     def SOFT_OVERFLOW_THRESHOLD(self) -> float:
         """
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             Alias of :attr:`Parameters.PROTECTION_THRESHOLD`.
         """
         return self.PROTECTION_THRESHOLD
@@ -437,7 +437,7 @@ class Parameters:
             self.HARD_OVERFLOW_THRESHOLD = dt_float(dict_["HARD_OVERFLOW_THRESHOLD"])
             
         if "SOFT_OVERFLOW_THRESHOLD" in dict_:
-            # legacy name (grid2op < 1.12.6)
+            # legacy name (grid2op < 1.12.7)
             self.PROTECTION_THRESHOLD = dt_float(dict_["SOFT_OVERFLOW_THRESHOLD"])
         if "PROTECTION_THRESHOLD" in dict_:
             self.PROTECTION_THRESHOLD = dt_float(dict_["PROTECTION_THRESHOLD"])

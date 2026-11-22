@@ -1022,7 +1022,7 @@ class Backend(GridObjects, ABC):
         Return the current flow at the "extremity side" of each powerline, the counterpart
         of :func:`Backend.get_line_flow` for the protections placed on the "ex" side.
 
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         .. note::
             It is called after the solver has been ran, only in case of success (convergence),
@@ -1044,7 +1044,7 @@ class Backend(GridObjects, ABC):
         the protections. By default it relies on :func:`Backend.get_line_flow` and
         :func:`Backend.get_line_flow_ex`.
 
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
         """
         return self.get_line_flow(), self.get_line_flow_ex()
 
@@ -1056,7 +1056,7 @@ class Backend(GridObjects, ABC):
 
             You can set the thermal limit directly in the environment.
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             The limits of the powerlines are now the ones of the protections, owned by the environment (see
             :mod:`grid2op.Environment.protection`). Once the backend has exposed its thermal limits
             (:attr:`Backend.thermal_limit_a`, set when the grid is loaded) this function does nothing (and
@@ -1088,7 +1088,7 @@ class Backend(GridObjects, ABC):
 
         """
         if self.thermal_limit_a is not None:
-            warnings.warn("`backend.set_thermal_limit` does nothing (since grid2op 1.12.6) once the backend has "
+            warnings.warn("`backend.set_thermal_limit` does nothing (since grid2op 1.12.7) once the backend has "
                           "loaded its grid: the limits are the ones of the protections of the environment "
                           "(see `env.set_protections` or, for the legacy protections, `env.set_thermal_limit`).",
                           DeprecationWarning, stacklevel=2)
@@ -1123,7 +1123,7 @@ class Backend(GridObjects, ABC):
 
     def update_thermal_limit_from_vect(self, thermal_limit_a : np.ndarray) -> None:
         """
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             Does nothing: the limits of the powerlines are the ones of the protections, owned by the
             environment (see :mod:`grid2op.Environment.protection`).
         """
@@ -1139,7 +1139,7 @@ class Backend(GridObjects, ABC):
 
             If you don't want this feature, do not implement it.
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             It is no longer called by the environment: dynamic line rating is removed from the backend. It
             belongs to the protections (a protection with its own logic, for example computing the temperature
             of the cable from the current and the weather), see :mod:`grid2op.Environment.protection`.
@@ -1172,7 +1172,7 @@ class Backend(GridObjects, ABC):
             Retrieve the thermal limit directly from the environment instead (with a call
             to :func:`grid2op.Environment.BaseEnc.get_thermal_limit` for example)
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             It gives the limits exposed by the backend when the grid is loaded (used to build the legacy
             protections), not the limits used by the environment (the ones of its protections).
 
@@ -1199,7 +1199,7 @@ class Backend(GridObjects, ABC):
 
             Prefer using :attr:`grid2op.Observation.BaseObservation.rho`
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             Not used by the environment anymore: `rho` is computed from the limits of the reference
             protections (see :mod:`grid2op.Environment.protection`).
 
@@ -1231,7 +1231,7 @@ class Backend(GridObjects, ABC):
             :attr:`grid2op.Observation.BaseObservation.timestep_overflow` and check the
             non zero index.
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             Not used by the environment anymore: overflows are computed from the limits of the reference
             protections (see :mod:`grid2op.Environment.protection`).
 

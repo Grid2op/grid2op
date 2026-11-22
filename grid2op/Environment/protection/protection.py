@@ -28,7 +28,7 @@ class Protection:
     :class:`Protection` objects: they are transposed into a :class:`ProtectionConfig`
     (one array per field) as soon as they are given to the environment.
 
-    .. versionadded:: 1.12.6
+    .. versionadded:: 1.12.7
 
     Attributes
     ----------
@@ -131,7 +131,7 @@ class ProtectionConfig:
     delay) is the *reference* protection: `rho` is computed with respect to its limit
     (see :func:`ProtectionConfig.reference_limits`).
 
-    .. versionadded:: 1.12.6
+    .. versionadded:: 1.12.7
 
     Attributes
     ----------
@@ -443,7 +443,7 @@ def legacy_from_parameters(params: "grid2op.Parameters.Parameters",
     ``params.NO_OVERFLOW_DISCONNECTION`` is not part of the configuration: it stays a global switch
     of the environment.
 
-    .. versionadded:: 1.12.6
+    .. versionadded:: 1.12.7
 
     .. seealso:: :func:`grid2op.Environment.BaseEnv.init_protection_legacy`
     """

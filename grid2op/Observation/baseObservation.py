@@ -151,7 +151,7 @@ class BaseObservation(GridObjects):
         The capacity of each powerline. It is defined at the observed current flow divided by the thermal limit of each
         powerline (no unit)
 
-        .. versionchanged:: 1.12.6
+        .. versionchanged:: 1.12.7
             It is the maximum of :attr:`BaseObservation.rho_or` and :attr:`BaseObservation.rho_ex`: the current on
             each side divided by the limit of the reference protection of this side. With the legacy protections
             (built from the thermal limits) it is unchanged: ``a_or / thermal_limit``.
@@ -167,7 +167,7 @@ class BaseObservation(GridObjects):
     timestep_overflow: :class:`numpy.ndarray`, dtype:int
         Gives the number of time steps since a powerline is in overflow.
 
-        .. versionchanged:: 1.12.6
+        .. versionchanged:: 1.12.7
             A powerline is in overflow when :attr:`BaseObservation.rho` is strictly above 1 (on any of its sides).
             It does not depend on the protections, only on the limits of the reference protections.
 
@@ -181,14 +181,14 @@ class BaseObservation(GridObjects):
         
         In that case it counts the consecutive steps for which `flow > limit * SOFT_OVERFLOW_THRESHOLD`
 
-        .. versionchanged:: 1.12.6
+        .. versionchanged:: 1.12.7
             It is the maximum, over the protections in service of each powerline, of
             :attr:`BaseObservation.protection_counters`. With the legacy protections it is unchanged.
             With several delayed protections on the same powerline it does not tell when the powerline
             will be disconnected: use :attr:`BaseObservation.time_before_protection_trip` instead.
 
     rho_or: :class:`numpy.ndarray`, dtype:float
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         Relative loading of the "or" side of each powerline: ``a_or`` divided by the limit of the reference
         protection of this side (the protection with the lowest limit, see
@@ -198,23 +198,23 @@ class BaseObservation(GridObjects):
         ``a_or / thermal_limit``, the historical `rho`.
 
     rho_ex: :class:`numpy.ndarray`, dtype:float
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         Same as :attr:`BaseObservation.rho_or` for the "ex" side (0 when there is no protection on this side).
 
     timestep_protection_engaged_or: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         For each powerline, the maximum of the :attr:`BaseObservation.protection_counters` of the protections in
         service placed on its "or" side.
 
     timestep_protection_engaged_ex: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         Same as :attr:`BaseObservation.timestep_protection_engaged_or` for the "ex" side.
 
     time_before_protection_trip: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         For each powerline, the number of steps before a protection disconnects it if the currents stay above
         the thresholds of the protections currently engaged: the minimum of
@@ -227,18 +227,18 @@ class BaseObservation(GridObjects):
         they are engaged. Compare :attr:`BaseObservation.rho` with their thresholds instead.
 
     time_before_protection_trip_or: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         Minimum, over the protections in service placed on the "or" side of each powerline, of
         :attr:`BaseObservation.protection_steps_before_trip` (``-1`` if none is engaged).
 
     time_before_protection_trip_ex: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         Same as :attr:`BaseObservation.time_before_protection_trip_or` for the "ex" side.
 
     protection_steps_before_trip: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         For each protection, the number of steps before it trips if its current stays above its threshold:
         ``delay + 1 - counter``. ``-1`` if it is not engaged or out of service, ``0`` if it should already
@@ -246,19 +246,19 @@ class BaseObservation(GridObjects):
         Not part of the vector representation.
 
     protection_counters: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         For each overcurrent protection (see :func:`grid2op.Environment.BaseEnv.set_protections`), the number of
         consecutive steps it has been engaged (current on its side above its threshold). Its size is the number of
         protections of the environment, so it is not part of the vector representation of the observation.
 
     protection_line_id: :class:`numpy.ndarray`, dtype:int
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         For each protection, the id of its powerline (static, read only).
 
     protection_side: :class:`numpy.ndarray`, dtype:str
-        .. versionadded:: 1.12.6
+        .. versionadded:: 1.12.7
 
         For each protection, ``"or"`` or ``"ex"``: the side of the powerline where it measures the current
         (static, read only).
@@ -764,7 +764,7 @@ class BaseObservation(GridObjects):
         "storage_p_detached",
         # soft_overflow_threshold
         "timestep_protection_engaged",
-        # protections (>= 1.12.6), not in the vector representation
+        # protections (>= 1.12.7), not in the vector representation
         "rho_or",
         "rho_ex",
         "timestep_protection_engaged_or",
@@ -4501,7 +4501,7 @@ class BaseObservation(GridObjects):
         """
         Return the thermal limit of the powergrid, given in Amps (A)
 
-        .. deprecated:: 1.12.6
+        .. deprecated:: 1.12.7
             It is the limit of the reference protection of each powerline (see
             :func:`grid2op.Environment.BaseEnv.get_thermal_limit`). With the legacy protections it is the thermal
             limit, as before.
@@ -4654,17 +4654,9 @@ class BaseObservation(GridObjects):
         # some parameters used for the "forecast env"
         # but not directly accessible in the observation
         self._env_internal_params = {
-            "_storage_previous_charge": env._storage_previous_charge.copy(),
-            "_amount_storage": env._amount_storage,
-            "_amount_storage_prev": env._amount_storage_prev,
-            "_sum_curtailment_mw": env._sum_curtailment_mw.copy(),
-            "_sum_curtailment_mw_prev": env._sum_curtailment_mw_prev.copy(),
-            "_detached_elements_mw": env._detached_elements_mw.copy(),
-            "_detached_elements_mw_prev": env._detached_elements_mw_prev.copy(),
+            # redispatching, storage units, curtailment and detachment
+            "_dispatch_state": env._dispatch_state.to_dict(),
             "_line_status_env": env.get_current_line_status().astype(dt_int),  # false -> 0 true -> 1
-            "_gen_activeprod_t": env._gen_activeprod_t.copy(),
-            "_gen_activeprod_t_redisp": env._gen_activeprod_t_redisp.copy(),
-            "_already_modified_gen": env._already_modified_gen.copy(),
         }
         self._env_internal_params["_line_status_env"]  *= 2  # false -> 0 true -> 2
         self._env_internal_params["_line_status_env"] -= 1  # false -> -1; true -> 1

@@ -31,7 +31,7 @@ class MaskedEnvironment(Environment):
         At time of writing, the behaviour of "obs.simulate" is not modified
 
     .. note::
-        Since grid2op 1.12.6, it only changes the legacy protections (see
+        Since grid2op 1.12.7, it only changes the legacy protections (see
         :func:`grid2op.Environment.BaseEnv.init_protection_legacy`). The same can be done with any
         environment by putting the protections of some powerlines out of service with
         :func:`grid2op.Environment.BaseEnv.set_protection_in_service` (their counters are then frozen).
@@ -184,7 +184,8 @@ class MaskedEnvironment(Environment):
                              _overload_name_multimix,
                              _local_dir_cls,
                              n_busbar=DEFAULT_N_BUSBAR_PER_SUB,
-                             allow_detachment=DEFAULT_ALLOW_DETACHMENT):
+                             allow_detachment=DEFAULT_ALLOW_DETACHMENT,
+                             redispatch_solver=None):
         grid2op_env = {"init_env_path": init_env_path,
                        "init_grid_path": init_grid_path,
                        "chronics_handler": chronics_handler,
@@ -220,7 +221,8 @@ class MaskedEnvironment(Environment):
                        "_raw_backend_class": _raw_backend_class,
                        "_read_from_local_dir": _read_from_local_dir,
                        "_local_dir_cls": _local_dir_cls,
-                       "_overload_name_multimix": _overload_name_multimix}
+                       "_overload_name_multimix": _overload_name_multimix,
+                       "redispatch_solver": redispatch_solver}
         if "lines_of_interest" not in other_env_kwargs:
             raise EnvError("You cannot make a MaskedEnvironment without providing the list of lines of interest")
         for el in other_env_kwargs:

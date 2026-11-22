@@ -12,7 +12,7 @@ Everything here works on whole arrays of protections (see
 :class:`grid2op.Environment.protection.ProtectionConfig`), there is no python loop over
 the protections.
 
-.. versionadded:: 1.12.6
+.. versionadded:: 1.12.7
 """
 
 from typing import Dict, Optional, Tuple

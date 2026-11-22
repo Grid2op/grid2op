@@ -258,7 +258,7 @@ class Simulator(object):
             otherwise some bugs can appear such as 
             https://github.com/Grid2Op/grid2op/issues/377)
 
-            .. deprecated:: 1.12.6
+            .. deprecated:: 1.12.7
                 Ignored: `rho` is computed from the limits of the protections, stored in the observation
                 (see :mod:`grid2op.Environment.protection`).
 
