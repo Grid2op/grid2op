@@ -50,7 +50,7 @@ class CloseToOverflowReward(BaseReward):
         if has_error or is_illegal or is_ambiguous:
             return self.reward_min
 
-        thermal_limits = env.backend.get_thermal_limit()
+        thermal_limits = env.get_thermal_limit()
         lineflow_ratio = env.current_obs.rho
 
         close_to_overflow = dt_float(0.0)

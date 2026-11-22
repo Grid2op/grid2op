@@ -42,6 +42,7 @@ from grid2op.Exceptions import (
     Grid2OpException,
 )
 from grid2op.Space import GridObjects, ElTypeInfo, DEFAULT_N_BUSBAR_PER_SUB, DEFAULT_ALLOW_DETACHMENT
+from grid2op.Environment.protection.protection_solver import compute_engaged, cascade_iteration
 
 
 # TODO method to get V and theta at each bus, could be in the same shape as check_kirchoff
@@ -1010,6 +1011,43 @@ class Backend(GridObjects, ABC):
         p_or, q_or, v_or, a_or = self.lines_or_info()
         return a_or
 
+    def get_line_flow_ex(self) -> np.ndarray:
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+            Prefer using :attr:`grid2op.Observation.BaseObservation.a_ex`
+
+        Return the current flow at the "extremity side" of each powerline, the counterpart
+        of :func:`Backend.get_line_flow` for the protections placed on the "ex" side.
+
+        .. versionadded:: 1.12.7
+
+        .. note::
+            It is called after the solver has been ran, only in case of success (convergence),
+            and only if at least one protection is placed on the "ex" side of a powerline.
+
+        :return: an array with the current flow at the extremity side of each powerline
+        :rtype: np.array, dtype:float
+        """
+        p_ex, q_ex, v_ex, a_ex = self.lines_ex_info()
+        return a_ex
+
+    def get_line_flows_both_sides(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+        Return the current flows at both sides of each powerline: `(a_or, a_ex)`, as seen by
+        the protections. By default it relies on :func:`Backend.get_line_flow` and
+        :func:`Backend.get_line_flow_ex`.
+
+        .. versionadded:: 1.12.7
+        """
+        return self.get_line_flow(), self.get_line_flow_ex()
+
     def set_thermal_limit(self, limits : Union[np.ndarray, Dict[str, float]]) -> None:
         """
         INTERNAL
@@ -1017,6 +1055,13 @@ class Backend(GridObjects, ABC):
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
             You can set the thermal limit directly in the environment.
+
+        .. deprecated:: 1.12.7
+            The limits of the powerlines are now the ones of the protections, owned by the environment (see
+            :mod:`grid2op.Environment.protection`). Once the backend has exposed its thermal limits
+            (:attr:`Backend.thermal_limit_a`, set when the grid is loaded) this function does nothing (and
+            warns). It is only effective while :attr:`Backend.thermal_limit_a` is not set yet, so that a backend
+            can still use it in its `load_grid` implementation.
 
         This function is used as a convenience function to set the thermal limits :attr:`Backend.thermal_limit_a`
         in amperes.
@@ -1042,6 +1087,12 @@ class Backend(GridObjects, ABC):
             In all cases, limits are expected to be given in A (not in kA)
 
         """
+        if self.thermal_limit_a is not None:
+            warnings.warn("`backend.set_thermal_limit` does nothing (since grid2op 1.12.7) once the backend has "
+                          "loaded its grid: the limits are the ones of the protections of the environment "
+                          "(see `env.set_protections` or, for the legacy protections, `env.set_thermal_limit`).",
+                          DeprecationWarning, stacklevel=2)
+            return
         if isinstance(limits, np.ndarray):
             if limits.shape[0] == self.n_line:
                 self.thermal_limit_a = 1.0 * limits.astype(dt_float)
@@ -1071,23 +1122,12 @@ class Backend(GridObjects, ABC):
                     self.thermal_limit_a[i] = tmp
 
     def update_thermal_limit_from_vect(self, thermal_limit_a : np.ndarray) -> None:
-        """You can use it if your backend stores the thermal limits
-        of the grid in a vector (see :class:`PandaPowerBackend` for example)
-        
-        .. warning::
-            This is not called by the environment and cannot be used to
-            model Dynamic Line Rating. For such purpose please use `update_thermal_limit`
-            
-            This function is used to create a "Simulator" from a backend for example.
-        
-
-        Parameters
-        ----------
-        vect : np.ndarray
-            The thermal limits (in A)
         """
-        thermal_limit_a = np.array(thermal_limit_a).astype(dt_float)
-        self.thermal_limit_a[:] = thermal_limit_a
+        .. deprecated:: 1.12.7
+            Does nothing: the limits of the powerlines are the ones of the protections, owned by the
+            environment (see :mod:`grid2op.Environment.protection`).
+        """
+        pass
     
     def update_thermal_limit(self, env : "BaseEnv") -> None:
         """
@@ -1098,6 +1138,11 @@ class Backend(GridObjects, ABC):
             This is done in a call to `env.step` in case of DLR for example.
 
             If you don't want this feature, do not implement it.
+
+        .. deprecated:: 1.12.7
+            It is no longer called by the environment: dynamic line rating is removed from the backend. It
+            belongs to the protections (a protection with its own logic, for example computing the temperature
+            of the cable from the current and the weather), see :mod:`grid2op.Environment.protection`.
 
         Update the new thermal limit in case of DLR for example.
 
@@ -1127,6 +1172,10 @@ class Backend(GridObjects, ABC):
             Retrieve the thermal limit directly from the environment instead (with a call
             to :func:`grid2op.Environment.BaseEnc.get_thermal_limit` for example)
 
+        .. deprecated:: 1.12.7
+            It gives the limits exposed by the backend when the grid is loaded (used to build the legacy
+            protections), not the limits used by the environment (the ones of its protections).
+
         Gives the thermal limit (in amps) for each powerline of the _grid. Only one value per powerline is returned.
 
         It is assumed that both :func:`Backend.get_line_flow` and *_get_thermal_limit* gives the value of the same
@@ -1149,6 +1198,10 @@ class Backend(GridObjects, ABC):
         .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
 
             Prefer using :attr:`grid2op.Observation.BaseObservation.rho`
+
+        .. deprecated:: 1.12.7
+            Not used by the environment anymore: `rho` is computed from the limits of the reference
+            protections (see :mod:`grid2op.Environment.protection`).
 
         .. note::
             It is called after the solver has been ran, only in case of success (convergence).
@@ -1177,6 +1230,10 @@ class Backend(GridObjects, ABC):
             check whether or not the flow is higher tha 1. or have a look at
             :attr:`grid2op.Observation.BaseObservation.timestep_overflow` and check the
             non zero index.
+
+        .. deprecated:: 1.12.7
+            Not used by the environment anymore: overflows are computed from the limits of the reference
+            protections (see :mod:`grid2op.Environment.protection`).
 
         .. note::
             It is called after the solver has been ran, only in case of success (convergence).
@@ -1466,37 +1523,34 @@ class Backend(GridObjects, ABC):
         infos = []
         self._disconnected_during_cf[:] = -1
         conv_ = self._runpf_with_diverging_exception(is_dc)
-        if env._no_overflow_disconnection or conv_ is not None:
+        if env._no_overflow_disconnection or env._called_from_reset or conv_ is not None:
+            # protections are globally deactivated, or this is the initial state of the grid
+            # (step performed by `env.reset`): no protection can act
             return self._disconnected_during_cf, infos, conv_
 
         # the environment disconnect some powerlines
-        protection_counter = 1 * env._protection_counter
+        # protections, see grid2op.Environment.protection
+        prot_cfg = env._protection_config
+        prot_state = env._protection_state
+        prot_state.sync_in_service(prot_cfg)
+        # working copy of the counters: at most one increment per protection per step
+        protection_counter = 1 * prot_state.counter
         counter_increased = np.zeros_like(protection_counter, dtype=dt_bool)
+        n_line = type(self).n_line
         iter_num = 0
         while True:
             # simulate the cascading failure
-            lines_flows = self.get_line_flow()
-            thermal_limits = self.get_thermal_limit()
+            a_or = self.get_line_flow()
+            a_ex = self.get_line_flow_ex() if prot_cfg.has_ex_side else None
             lines_status = self.get_line_status()
-
-            # a) disconnect lines on hard overflow (that are still connected)
-            to_disc = (
-                lines_flows > env._hard_overflow_threshold * thermal_limits
-            ) & lines_status
-
-            # b) deals with soft overflow (disconnect them if lines still connected)
-            if env._called_from_reset:
-                # no soft overflow after a reset
-                mask_inc = np.zeros_like(thermal_limits, dtype=dt_bool)
-            else: 
-                mask_inc = (lines_flows > env._parameters.SOFT_OVERFLOW_THRESHOLD * thermal_limits) & lines_status
-                mask_inc[counter_increased] = False
-            protection_counter[mask_inc] += 1
-            counter_increased[mask_inc] = True
-            to_disc[
-                (protection_counter > env._nb_ts_max_protection_counter)
-                & lines_status
-            ] = True
+            engaged = compute_engaged(prot_cfg, a_or, a_ex, env._protection_threshold, lines_status)
+            to_disc = cascade_iteration(prot_cfg,
+                                        protection_counter,
+                                        counter_increased,
+                                        engaged,
+                                        n_line,
+                                        protections_disabled=env._no_overflow_disconnection)
+            to_disc &= lines_status
 
             # disconnect the current power lines
             if to_disc[lines_status].any() == 0:

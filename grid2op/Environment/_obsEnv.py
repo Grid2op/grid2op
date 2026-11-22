@@ -201,7 +201,6 @@ class _ObsEnv(BaseEnv):
         self._legalActClass = legalActClass
         
         # self._action_space = self._do_nothing
-        self.backend.set_thermal_limit(self._thermal_limit_a)
 
         from grid2op.Observation import ObservationSpace
         from grid2op.Reward import FlatReward
@@ -363,7 +362,7 @@ class _ObsEnv(BaseEnv):
         
         if time_step >= 1:
             is_overflow = obs.rho > 1.
-            protection_triggered = obs.rho > self._parameters.SOFT_OVERFLOW_THRESHOLD
+            protection_triggered = self._protection_engaged_from_obs(obs)
             # handle the components that depends on the time
             (
                 still_in_maintenance,

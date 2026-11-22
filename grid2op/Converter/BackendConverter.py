@@ -361,7 +361,8 @@ class BackendConverter(Backend):
             self._sh_vnkv = None
             
         self._thermal_limit_a = 1.0 * self.target_backend.thermal_limit_a
-        self.set_thermal_limit(self.target_backend.thermal_limit_a[self._line_tg2sr])
+        # thermal limits exposed by the backend (used by the legacy protections)
+        self.thermal_limit_a = 1.0 * self.target_backend.thermal_limit_a[self._line_tg2sr]
 
     def _get_possible_target_ids(self, id_source, source_2_id_sub, target_2_id_sub, nm):
         id_sub_source = source_2_id_sub[id_source]
@@ -677,12 +678,6 @@ class BackendConverter(Backend):
         tmp = self.target_backend.get_line_flow()
         return self.cst1 * tmp[self._line_tg2sr]
 
-    def set_thermal_limit(self, limits):
-        super().set_thermal_limit(limits=limits)
-        self.source_backend.set_thermal_limit(limits=limits)
-        if limits is not None:
-            self.target_backend.set_thermal_limit(limits=limits[self._line_sr2tg])
-
     def get_thermal_limit(self):
         tmp = self.target_backend.get_thermal_limit()
         return self.cst1 * tmp[self._line_tg2sr]
@@ -818,11 +813,5 @@ class BackendConverter(Backend):
             act._shunt_bus[:] = act._shunt_bus[shunt_vect]
 
         return act
-
-    def update_thermal_limit(self, env):
-        # TODO
-        # env has the powerline stored in the order of the source backend, but i need
-        # to have them stored in the order of the target backend for such function
-        pass
 
     # TODO update_from_obs too, maybe ?

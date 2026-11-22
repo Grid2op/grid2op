@@ -121,6 +121,7 @@ class Environment(BaseEnv):
         observation_bk_class=None,
         observation_bk_kwargs=None,
         highres_sim_counter=None,
+        protections=None,
         _update_obs_after_reward=True,
         _init_obs=None,
         _raw_backend_class=None,
@@ -231,6 +232,8 @@ class Environment(BaseEnv):
             rewardClass,
             legalActClass,
         )
+        if protections is not None:
+            self.set_protections(protections)
         
     def _init_backend(
         self,
@@ -344,9 +347,10 @@ class Environment(BaseEnv):
         self._disc_lines = np.zeros(shape=self.n_line, dtype=dt_int) - 1
 
         if self._thermal_limit_a is None:
+            # thermal limits exposed by the backend (used by the legacy protections)
             self._thermal_limit_a = self.backend.thermal_limit_a.astype(dt_float)
-        else:
-            self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
+        # legacy protections are built from the thermal limits
+        self._update_default_protections()
 
         *_, tmp = self.backend.generators_info()
 
@@ -991,9 +995,6 @@ class Environment(BaseEnv):
         
         self._previous_conn_state.update_from_other(self._cst_prev_state_at_init)
 
-        if self._thermal_limit_a is not None:
-            self.backend.set_thermal_limit(self._thermal_limit_a.astype(dt_float))
-
         self.nb_time_step = -1  # to have init obs at step 1 (and to prevent 'setting to proper state' "action" to be illegal)
             
         # synch the backend action with the init topology        
@@ -1112,7 +1113,8 @@ class Environment(BaseEnv):
               the episode will start
             - "max step" (grid2op >= 1.10.3) : maximum number of steps allowed for the episode
             - "thermal limit" (grid2op >= 1.11.0): which thermal limit to use for this episode 
-              (and the next ones, until they are changed)
+              (and the next ones, until they are changed). Deprecated since grid2op 1.12.7: it only
+              changes the legacy protections, see :func:`grid2op.Environment.BaseEnv.set_thermal_limit`.
             - "init datetime": which time stamp is used in the first observation of the episode.
             
             See examples for more information about this. Ignored if 
@@ -1638,6 +1640,7 @@ class Environment(BaseEnv):
         res["epsilon_poly"] = self._epsilon_poly
         res["tol_poly"] = self._tol_poly
         res["thermal_limit_a"] = self._thermal_limit_a
+        res["protections"] = self._get_custom_protections()
         res["voltagecontrolerClass"] = self._voltagecontrolerClass
         res["other_rewards"] = {k: v.rewardClass for k, v in self.other_rewards.items()}
         res["name"] = self.name
@@ -2262,6 +2265,7 @@ class Environment(BaseEnv):
             res["max_iter"] = self.chronics_handler.max_iter
         res["gridStateclass_kwargs"] = dict_
         res["thermal_limit_a"] = self._thermal_limit_a
+        res["protections"] = self._get_custom_protections()
         res["voltageControlerClass"] = self._voltagecontrolerClass
         res["other_rewards"] = {k: v.rewardClass for k, v in self.other_rewards.items()}
         res["grid_layout"] = self.grid_layout

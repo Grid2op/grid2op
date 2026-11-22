@@ -224,7 +224,6 @@ class ObservationSpace(SerializableObservationSpace):
         self._backend_obs.assert_grid_correct()
         self._backend_obs.runpf()
         self._backend_obs.assert_grid_correct_after_powerflow()
-        self._backend_obs.set_thermal_limit(env.get_thermal_limit())
             
     def _create_backend_obs(self, env, observation_bk_class, observation_bk_kwargs, _local_dir_cls):
         _with_obs_env = True
@@ -401,11 +400,45 @@ class ObservationSpace(SerializableObservationSpace):
                                "function when you cannot simulate (because the "
                                "backend could not be copied)")
 
+    def _set_protections(self, config):
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+        Propagate the protection configuration of the environment to the "simulate" environment and
+        to the kwargs used to build the "forecast env" (``None`` means "built from the parameters").
+        """
+        if self.obs_env is not None and self.obs_env.is_valid():
+            self.obs_env._set_protection_config(config)
+        if self._real_env_kwargs:
+            # the dict can be shared with copies of this observation space
+            self._real_env_kwargs = dict(self._real_env_kwargs)
+            self._real_env_kwargs["protections"] = config.copy() if config is not None else None
+
+    def _set_protection_in_service_mask(self, in_service):
+        """
+        INTERNAL
+
+        .. warning:: /!\\\\ Internal, do not use unless you know what you are doing /!\\\\
+
+        Propagate the operational status of the protections of the environment to the "simulate" environment
+        and to the kwargs used to build the "forecast env".
+        """
+        if self.obs_env is not None and self.obs_env.is_valid():
+            if self.obs_env._protection_config.n_prot == in_service.shape[0]:
+                self.obs_env._set_protection_in_service_mask(in_service)
+        protections = self._real_env_kwargs.get("protections") if self._real_env_kwargs else None
+        if protections is not None and protections.n_prot == in_service.shape[0]:
+            protections = protections.copy()
+            protections.in_service[:] = in_service
+            # the dict can be shared with copies of this observation space
+            self._real_env_kwargs = dict(self._real_env_kwargs)
+            self._real_env_kwargs["protections"] = protections
+
     def set_thermal_limit(self, thermal_limit_a):
         if self.obs_env is not None:
             self.obs_env.set_thermal_limit(thermal_limit_a)
-        if self._backend_obs is not None:
-            self._backend_obs.set_thermal_limit(thermal_limit_a)
         
     def reset_space(self):
         if self.with_forecast:
