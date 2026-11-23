@@ -70,7 +70,7 @@ class WeightedRandomOpponent(BaseOpponent):
         self._prebuild_action()
 
         # Usage rates normalization
-        self._rho_normalization = np.ones_like(lines_attacked)
+        self._rho_normalization = np.ones(len(lines_attacked))
         if len(rho_normalization) == 0:
             warnings.warn(
                 "The usage rate normalization is not specified. No normalization will be performed."

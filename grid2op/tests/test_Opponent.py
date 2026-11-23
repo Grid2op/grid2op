@@ -1024,6 +1024,35 @@ class TestLoadingOpp(unittest.TestCase):
                     line_name = env.action_space.name_line[attacked_line]
                     assert line_name in attackable_lines_case14
 
+    def test_WeightedRandomOpponent_without_rho_normalization(self):
+        """Tests that the WeightedRandomOpponent can attack when no rho_normalization is given"""
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            init_budget = 1000
+            with grid2op.make(
+                "rte_case14_realistic",
+                test=True,
+                opponent_init_budget=init_budget,
+                opponent_budget_per_ts=0.0,
+                opponent_action_class=TopologyAction,
+                opponent_budget_class=BaseActionBudget,
+                opponent_attack_duration=ATTACK_DURATION,
+                opponent_attack_cooldown=ATTACK_COOLDOWN,
+                opponent_class=WeightedRandomOpponent,
+                kwargs_opponent={
+                    "lines_attacked": LINES_ATTACKED,
+                    "attack_period": 1,
+                },
+                _add_to_name=type(self).__name__,
+            ) as env:
+                env.seed(0)
+                env.reset()
+                obs, reward, done, info = env.step(env.action_space())
+                attack = env._oppSpace.last_attack
+                assert attack is not None
+                attacked_line = np.where(attack._set_line_status == -1)[0][0]
+                assert env.action_space.name_line[attacked_line] in LINES_ATTACKED
+
     def test_WeightedRandomOpponent_disconnects_only_one_line(self):
         """Tests that the WeightedRandomOpponent does not disconnect several lines at a time"""
         with warnings.catch_warnings():
