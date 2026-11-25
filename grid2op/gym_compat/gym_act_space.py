@@ -264,7 +264,7 @@ class __AuxGymActionSpace:
                 # discrete action space
                 if attr_nm == "_set_line_status":
                     my_type = type(self)._BoxType(low=-1, high=1, shape=shape, dtype=dt)
-                elif attr_nm == "_set_topo_vect":
+                elif attr_nm == "_set_topo_vect" or attr_nm == "_shunt_bus":
                     my_type = type(self)._BoxType(low=-1,
                                                   high=act_cls.n_busbar_per_sub,
                                                   shape=shape, dtype=dt)

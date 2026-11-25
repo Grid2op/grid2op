@@ -831,6 +831,9 @@ class __AuxBoxGymObsSpace:
         res = np.empty(shape=self.shape, dtype=self.dtype)
         prev = 0
         for attr_nm, where_to_put in zip(self._attr_to_keep, self._dims):
+            if where_to_put == prev:
+                # empty part (eg shunt attributes when the backend has no shunt data)
+                continue
             if attr_nm in self.__func:
                 tmp = self.__func[attr_nm](grid2op_observation)
             elif hasattr(grid2op_observation, attr_nm):

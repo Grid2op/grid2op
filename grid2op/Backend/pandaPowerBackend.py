@@ -964,7 +964,7 @@ class PandaPowerBackend(Backend):
             if (shunt_bus.changed).any():
                 sh_service = shunt_bus.values[shunt_bus.changed] != -1
                 self._grid.shunt.loc[shunt_bus.changed, "in_service"] = sh_service           
-                chg_and_in_service = sh_service & shunt_bus.changed
+                chg_and_in_service = shunt_bus.changed & (shunt_bus.values != -1)
                 self._grid.shunt.loc[chg_and_in_service, "bus"] = cls.local_bus_to_global(shunt_bus.values[chg_and_in_service],
                                                                                           cls.shunt_to_subid[chg_and_in_service])
         # i made at least a real change, so i implement it in the backend

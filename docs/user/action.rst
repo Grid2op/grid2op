@@ -143,8 +143,9 @@ Name(s)                                                                         
 `shunt_bus`_ (*)                                                                 int        `n_shunt`_
 =============================================================================    =========  ============
 
-(*) The shunts can only be modified if the backend supports them and with an action type that allows it,
-for example :class:`ShuntAction` (that only allows to modify the shunts) or :class:`CompleteAction`.
+(*) The shunts can only be modified if the backend supports them and with an action type that allows it.
+For an agent, use :class:`ShuntAction` (that only allows to modify the shunts). :class:`CompleteAction`
+also allows it, but it is meant for the environment, not for agents.
 
 All the attributes above are "properties", you don't have to use parenthesis to access them:
 

@@ -22,6 +22,11 @@ class ShuntAction(PlayableAction):
     The shunts are only available if the backend supports them (`shunts_data_available`). If it does
     not, this action type has no attribute at all and it behaves like a "do nothing" action.
 
+    .. warning::
+        Sampling shunt actions is not supported yet: `env.action_space.sample()` always returns
+        a "do nothing" action with this action type. Build the actions explicitly instead (for example
+        a list of the shunt configurations the agent can choose from).
+
     Examples
     --------
 

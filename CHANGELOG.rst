@@ -114,6 +114,15 @@ Native multi agents support:
 - [ADDED] `grid2op.Action.ShuntAction`, a playable action type that only allows to modify the shunts
 - [ADDED] the `"shunt_p"`, `"shunt_q"` and `"shunt_bus"` keys in `BoxGymActSpace` and the `"_shunt_p"`,
   `"_shunt_q"`, `"_shunt_v"` and `"_shunt_bus"` keys in `BoxGymObsSpace`
+- [FIXED] `PandaPowerBackend.apply_action` raised a numpy `ValueError` when an action changed the bus of
+  several shunts, but not all of them (grids with only one shunt were not affected)
+- [FIXED] the default (`Dict`) action space of `GymEnv` (`GymActionSpace`) did not contain the shunts, even when
+  the action type allows to modify them: it now has the `"shunt_p"`, `"shunt_q"` and `"shunt_bus"` keys for
+  these action types (for example `CompleteAction` or `ShuntAction`), with `"shunt_bus"` bounded between -1
+  and `n_busbar_per_sub`
+- [FIXED] comparing two actions (`act_1 == act_2`) ignored a difference in the bus of the shunts
+  (`"shunt_bus"` or `"set_bus"` in the `"shunt"` dictionary, or the new `shunt_bus` property): such
+  actions were considered equal
 
 [1.12.6] - 2026-10-13
 -----------------------

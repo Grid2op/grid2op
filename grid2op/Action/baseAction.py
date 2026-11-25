@@ -9,7 +9,7 @@
 import copy
 import numpy as np
 import warnings
-from typing import Callable, Tuple, Dict, Literal, Any, List, Optional, TYPE_CHECKING, Type
+from typing import Callable, Tuple, Dict, Literal, Any, List, Optional, TYPE_CHECKING, Type, Union
 
 if TYPE_CHECKING:
     from grid2op.Observation import BaseObservation
@@ -502,9 +502,9 @@ class BaseAction(GridObjects):
         "_curtail": "curtail",
         "_raise_alarm": "raise_alarm",
         "_raise_alert": "raise_alert",
-        "_shunt_p": "shunt_p",
-        "_shunt_q": "shunt_q",
-        "_shunt_bus": "shunt_bus",
+        "_shunt_p": "shunt",
+        "_shunt_q": "shunt",
+        "_shunt_bus": "shunt",
         "_detach_load": "detach_load",  # new in 1.11.0
         "_detach_gen": "detach_gen",  # new in 1.11.0
         "_detach_storage": "detach_storage",  # new in 1.11.0
@@ -1621,7 +1621,7 @@ class BaseAction(GridObjects):
                 return False
             
             me_sh_bus = self._private_shunt_bus if self._private_shunt_bus is not None else cls._build_attr("_shunt_bus")
-            oth_sh_bus = self._private_shunt_bus if self._private_shunt_bus is not None else cls._build_attr("_shunt_bus")
+            oth_sh_bus = other._private_shunt_bus if other._private_shunt_bus is not None else cls._build_attr("_shunt_bus")
             if not (me_sh_bus == oth_sh_bus).all():
                 return False
         return True
@@ -4107,6 +4107,27 @@ class BaseAction(GridObjects):
                     )
         else:
             res.append("\t - NOT perform any curtailment")
+
+        # shunts: only shown when they are modified, so that the output of the other actions is unchanged
+        if self._modif_shunt:
+            res.append("\t - Modify the shunts in the following way:")
+            sh_p = self._private_shunt_p
+            sh_q = self._private_shunt_q
+            sh_bus = self._private_shunt_bus
+            for sh_id in range(type(self).n_shunt):
+                changes = []
+                if sh_bus is not None and sh_bus[sh_id] == -1:
+                    changes.append("disconnect it")
+                elif sh_bus is not None and sh_bus[sh_id] > 0:
+                    changes.append(f"connect it to busbar {sh_bus[sh_id]}")
+                if sh_p is not None and np.isfinite(sh_p[sh_id]):
+                    changes.append(f"set its active power to {sh_p[sh_id]:.2f} MW")
+                if sh_q is not None and np.isfinite(sh_q[sh_id]):
+                    changes.append(f"set its reactive power to {sh_q[sh_id]:.2f} MVAr")
+                if changes:
+                    res.append(
+                        '\t \t - For shunt "{}": {}'.format(type(self).name_shunt[sh_id], ", ".join(changes))
+                    )
 
         # force line status
         force_line_impact = impact["force_line"]
@@ -7460,7 +7481,10 @@ class BaseAction(GridObjects):
     def curtail_mw(self, values_mw):
         self.curtail = self.curtailment_mw_to_ratio(values_mw)
 
-    def _aux_affect_shunt(self, values, attr_nm, prop_nm):
+    def _aux_affect_shunt(self,
+                          values: Union[np.ndarray, list, tuple, dict],
+                          attr_nm: Literal["_shunt_p", "_shunt_q", "_shunt_bus"],
+                          prop_nm: Literal["shunt_p", "shunt_q", "shunt_bus"]) -> None:
         cls = type(self)
         if not cls.shunts_data_available:
             raise IllegalAction(
@@ -7476,7 +7500,7 @@ class BaseAction(GridObjects):
             if attr_nm == "_shunt_bus":
                 self._aux_affect_object_int(
                     values,
-                    prop_nm,
+                    "shunt",
                     cls.n_shunt,
                     cls.name_shunt,
                     np.arange(cls.n_shunt),
@@ -7486,13 +7510,14 @@ class BaseAction(GridObjects):
             else:
                 self._aux_affect_object_float(
                     values,
-                    prop_nm,
+                    "shunt",
                     cls.n_shunt,
                     cls.name_shunt,
                     np.arange(cls.n_shunt),
                     vect,
                 )
             self._modif_shunt = True
+            self._reset_vect()
         except Exception as exc_:
             vect[:] = orig_
             raise AmbiguousAction(
@@ -7513,14 +7538,18 @@ class BaseAction(GridObjects):
             Only available if the backend supports the shunts (`shunts_data_available`) and if
             "shunt" is in the :attr:`BaseAction.authorized_keys` of this action type (for example
             :class:`grid2op.Action.ShuntAction` or :class:`grid2op.Action.CompleteAction`).
+            If the backend does not support the shunts, an empty vector is returned.
 
         """
+        if self._shunt_p is None:
+            # backend without shunt data
+            return np.zeros(0, dtype=dt_float)
         res = 1.0 * self._shunt_p
         res.flags.writeable = False
         return res
 
     @shunt_p.setter
-    def shunt_p(self, values):
+    def shunt_p(self, values: Union[np.ndarray, list, tuple, dict]) -> None:
         self._aux_affect_shunt(values, "_shunt_p", "shunt_p")
 
     @property
@@ -7557,14 +7586,18 @@ class BaseAction(GridObjects):
         .. note::
             Only available if the backend supports the shunts (`shunts_data_available`) and if
             "shunt" is in the :attr:`BaseAction.authorized_keys` of this action type.
+            If the backend does not support the shunts, an empty vector is returned.
 
         """
+        if self._shunt_q is None:
+            # backend without shunt data
+            return np.zeros(0, dtype=dt_float)
         res = 1.0 * self._shunt_q
         res.flags.writeable = False
         return res
 
     @shunt_q.setter
-    def shunt_q(self, values):
+    def shunt_q(self, values: Union[np.ndarray, list, tuple, dict]) -> None:
         self._aux_affect_shunt(values, "_shunt_q", "shunt_q")
 
     @property
@@ -7579,14 +7612,18 @@ class BaseAction(GridObjects):
         .. note::
             Only available if the backend supports the shunts (`shunts_data_available`) and if
             "shunt" is in the :attr:`BaseAction.authorized_keys` of this action type.
+            If the backend does not support the shunts, an empty vector is returned.
 
         """
+        if self._shunt_bus is None:
+            # backend without shunt data
+            return np.zeros(0, dtype=dt_int)
         res = 1 * self._shunt_bus
         res.flags.writeable = False
         return res
 
     @shunt_bus.setter
-    def shunt_bus(self, values):
+    def shunt_bus(self, values: Union[np.ndarray, list, tuple, dict]) -> None:
         self._aux_affect_shunt(values, "_shunt_bus", "shunt_bus")
 
     def limit_curtail_storage(self,
