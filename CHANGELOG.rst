@@ -111,6 +111,9 @@ Native multi agents support:
   storage units are not affected.
 - [FIXED] `WeightedRandomOpponent` without `rho_normalization` raised a `TypeError` at its first attack: the
   default normalization was an array of strings built from the line names. It is now an array of ones.
+- [FIXED] issue #792 (first point): the 100 points anchor of `ScoreL2RPN2020` (and of `ScoreICAPS2021`,
+  `ScoreL2RPN2022` and `ScoreL2RPN2023`, which reuse it) read the load where it should read the production, so
+  the losses it is built on were always 0. Scores near the top of the range change.
 
 [1.12.6] - 2026-10-13
 -----------------------
