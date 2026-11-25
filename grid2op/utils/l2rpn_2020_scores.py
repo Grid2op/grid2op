@@ -207,7 +207,7 @@ class ScoreL2RPN2020(object):
         # load_p, ids = self.stat_no_overflow.get("load_p")
         # prod_p, _ = self.stat_no_overflow.get("prod_p")
         load_p_rp, ids_rp = self.stat_no_overflow_rp.get("load_p")
-        prod_p_rp, _ = self.stat_no_overflow_rp.get("load_p")
+        prod_p_rp, _ = self.stat_no_overflow_rp.get("prod_p")
 
         if score_file_to_use is None:
             score_file_to_use = EpisodeStatistics.SCORES
